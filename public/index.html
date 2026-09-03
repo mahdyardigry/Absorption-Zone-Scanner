@@ -1,407 +1,313 @@
-<!DOCTYPE html>
-<html lang="fa" dir="rtl">
-
-<head>
-
+<!DOCTYPE html><html lang="fa" dir="rtl"><head>
 <meta charset="UTF-8">
-
-<meta
-  name="viewport"
-  content="width=device-width,initial-scale=1,maximum-scale=1"
->
-
-<title>
-Bybit Order Flow Map
-</title>
-
-<style>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1"><title>Bybit Absorption Zone Scanner</title><style>
 
 *{
   box-sizing:border-box;
 }
 
 body{
-
   margin:0;
-
   background:#080b10;
-
   color:#e8edf5;
-
-  font-family:
-    Tahoma,
-    Arial,
-    sans-serif;
+  font-family:Tahoma,Arial,sans-serif;
 }
 
 .app{
-
   max-width:1500px;
-
   margin:auto;
-
   padding:12px;
 }
 
 .header,
 .card{
-
   background:#111720;
-
-  border:
-    1px solid
-    #202a38;
-
+  border:1px solid #202a38;
   border-radius:16px;
-
-  box-shadow:
-    0 8px 30px #0005;
+  box-shadow:0 8px 30px #0005;
 }
 
 .header{
-
   padding:16px;
-
   margin-bottom:12px;
 }
 
 h1{
-
-  margin:
-    0 0 6px;
-
+  margin:0 0 6px;
   font-size:24px;
 }
 
 .muted{
-
   color:#8d9aae;
-
   font-size:13px;
 }
 
 .controls{
-
   display:grid;
-
-  grid-template-columns:
-    1.4fr
-    .7fr
-    .7fr
-    .7fr;
-
+  grid-template-columns:1.4fr .7fr .7fr .7fr;
   gap:8px;
-
   margin-top:14px;
 }
 
 input,
 button{
-
   height:46px;
-
   border-radius:11px;
-
-  border:
-    1px solid
-    #293546;
-
+  border:1px solid #293546;
   background:#0b1119;
-
   color:#fff;
-
-  padding:
-    0 13px;
-
+  padding:0 13px;
   font-size:15px;
 }
 
 button{
-
   cursor:pointer;
-
   font-weight:bold;
 }
 
 .primary{
-
   background:#126b4f;
 }
 
 .danger{
-
   background:#762f38;
 }
 
 .blue{
-
   background:#194c7c;
 }
 
 .status{
-
   margin-top:10px;
-
   padding:9px;
-
   border-radius:10px;
-
   background:#0c121a;
-
   color:#9fe4bf;
 }
 
 .grid{
-
   display:grid;
-
-  grid-template-columns:
-    1fr
-    330px;
-
+  grid-template-columns:1fr 330px;
   gap:12px;
 }
 
 .card{
-
   padding:12px;
-
   margin-bottom:12px;
 }
 
 .chartWrap{
-
   position:relative;
-
   height:700px;
-
   overflow:hidden;
-
   background:#070a0e;
-
   border-radius:12px;
-
-  border:
-    1px solid
-    #1d2733;
+  border:1px solid #1d2733;
 }
 
 canvas{
-
   width:100%;
-
   height:100%;
-
   display:block;
 }
 
 .chartInfo{
-
   position:absolute;
-
   top:10px;
-
   right:10px;
-
-  background:#080c12dd;
-
-  border:
-    1px solid
-    #263244;
-
+  background:#080c12e8;
+  border:1px solid #263244;
   border-radius:10px;
-
   padding:9px;
-
   line-height:1.8;
-
   font-size:12px;
-
   pointer-events:none;
+  min-width:175px;
 }
 
 .side{
-
   display:grid;
-
   gap:10px;
-
   align-content:start;
 }
 
 .statgrid{
-
   display:grid;
-
-  grid-template-columns:
-    1fr
-    1fr;
-
+  grid-template-columns:1fr 1fr;
   gap:7px;
 }
 
 .stat{
-
   background:#0b1118;
-
-  border:
-    1px solid
-    #202b39;
-
+  border:1px solid #202b39;
   border-radius:10px;
-
   padding:9px;
 }
 
 .stat b{
-
   display:block;
-
   font-size:17px;
-
   margin-top:3px;
 }
 
 .green{
-
   color:#42df9a;
 }
 
 .red{
-
   color:#ff6570;
 }
 
 .yellow{
-
   color:#ffd166;
 }
 
 .cyan{
-
   color:#55d8ff;
 }
 
+.purple{
+  color:#c28cff;
+}
+
 .sectionTitle{
-
   font-weight:bold;
-
   margin-bottom:9px;
 }
 
 .bar{
-
   height:9px;
-
   background:#1a2330;
-
   border-radius:10px;
-
   overflow:hidden;
-
   margin:6px 0;
 }
 
 .bar i{
-
   display:block;
-
   height:100%;
 }
 
 .rows{
-
   max-height:300px;
-
   overflow:auto;
 }
 
 .row{
-
   display:flex;
-
   justify-content:space-between;
-
+  gap:8px;
   padding:6px 4px;
-
-  border-bottom:
-    1px solid
-    #1b2430;
-
+  border-bottom:1px solid #1b2430;
   font-size:12px;
 }
 
 table{
-
   width:100%;
-
   border-collapse:collapse;
-
   font-size:12px;
 }
 
 td,
 th{
-
   padding:7px;
-
-  border-bottom:
-    1px solid
-    #1b2430;
-
+  border-bottom:1px solid #1b2430;
   text-align:center;
 }
 
 .notice{
-
   padding:10px;
-
   border-radius:10px;
-
   background:#101a14;
-
-  border:
-    1px solid
-    #244331;
-
+  border:1px solid #244331;
   line-height:1.8;
-
   font-size:13px;
 }
 
 .small{
-
   font-size:11px;
-
   color:#8995a7;
 }
 
+.zoneCard{
+  border-radius:11px;
+  padding:10px;
+  margin-top:8px;
+  background:#0b1118;
+}
+
+.zoneBuy{
+  border:1px solid #168b63;
+  background:linear-gradient(
+    90deg,
+    #09291f,
+    #0b1118
+  );
+}
+
+.zoneSell{
+  border:1px solid #a43d49;
+  background:linear-gradient(
+    90deg,
+    #2b1116,
+    #0b1118
+  );
+}
+
+.zoneNone{
+  border:1px solid #263244;
+}
+
+.zoneHeader{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin-bottom:7px;
+}
+
+.zoneScore{
+  font-weight:bold;
+  font-size:17px;
+}
+
+.badge{
+  padding:3px 7px;
+  border-radius:7px;
+  font-size:10px;
+  font-weight:bold;
+}
+
+.badgeBuy{
+  background:#0d694c;
+  color:#6dffc0;
+}
+
+.badgeSell{
+  background:#752c37;
+  color:#ff9da5;
+}
+
+.badgeWait{
+  background:#423817;
+  color:#ffd166;
+}
+
 hr{
-
   border:0;
-
-  border-top:
-    1px solid
-    #1d2733;
+  border-top:1px solid #1d2733;
 }
 
 @media(max-width:950px){
 
   .grid{
-
-    grid-template-columns:
-      1fr;
+    grid-template-columns:1fr;
   }
 
   .controls{
-
-    grid-template-columns:
-      1fr
-      1fr;
+    grid-template-columns:1fr 1fr;
   }
 
   .chartWrap{
-
     height:620px;
   }
 }
@@ -409,369 +315,116 @@ hr{
 @media(max-width:550px){
 
   .controls{
-
-    grid-template-columns:
-      1fr;
+    grid-template-columns:1fr;
   }
 
   .chartWrap{
-
     height:560px;
   }
+
 }
 
-</style>
+</style></head><body><div class="app"><div class="header"><h1>
+🧲 اسکنر ناحیه جذب Bybit
+</h1><div class="muted">
+داده واقعی Bybit · Order Flow · Delta · Order Book · Liquidity · Absorption Zone
+</div><div class="controls"><input
+id="symbol"
+value="BTCUSDT"
+placeholder="مثلاً BTCUSDT"
+autocomplete="off"
 
-</head>
-
-
-<body>
-
-<div class="app">
-
-
-<div class="header">
-
-<h1>
-📊 نقشه Order Flow بای‌بیت
-</h1>
-
-<div class="muted">
-
-داده واقعی Bybit · کندل · Heatmap · عمق سفارش · معاملات واقعی · نقدینگی · جذب سفارش
-
-</div>
-
-
-<div class="controls">
-
-<input
-  id="symbol"
-  value="BTCUSDT"
-  placeholder="مثلاً BTCUSDT"
->
+«»
 
 <button
-  class="primary"
-  onclick="analyze()"
->
+class="primary"
+onclick="analyze()"
+
+«»
+
 تحلیل کامل
 </button>
 
 <button
-  class="blue"
-  onclick="startLive()"
->
+class="blue"
+onclick="startLive()"
+
+«»
+
 شروع زنده
 </button>
 
 <button
-  class="danger"
-  onclick="stopLive()"
->
+class="danger"
+onclick="stopLive()"
+
+«»
+
 توقف
 </button>
 
-</div>
-
-
-<div
+</div><div
   id="status"
   class="status"
 >
 🟡 آماده
-</div>
-
-</div>
-
-
-
-<div class="grid">
-
-
-<main>
-
-
-<div class="card">
-
-<div class="chartWrap">
-
-<canvas id="chart"></canvas>
+</div></div><div class="grid"><main><div class="card"><div class="chartWrap"><canvas id="chart"></canvas>
 
 <div
   id="chartInfo"
   class="chartInfo"
 >
 در انتظار داده...
-</div>
-
-</div>
-
-</div>
-
-
-
-<div class="card">
-
-<div class="sectionTitle">
-
+</div></div></div><div class="card"><div class="sectionTitle">
+🧲 ناحیه جذب روی بازار
+</div><div id="zoneMain"></div></div><div class="card"><div class="sectionTitle">
 🧾 معاملات واقعی
-
-</div>
-
-<div
+</div><div
   class="rows"
   id="trades"
-></div>
-
-</div>
-
-
-
-<div class="card">
-
-<div class="sectionTitle">
-
+></div></div><div class="card"><div class="sectionTitle">
 🧱 Order Book / دیوارهای نقدینگی
-
-</div>
-
-<div
-  id="book"
-></div>
-
-</div>
-
-
-
-<div class="card">
-
-<div class="sectionTitle">
-
+</div><div id="book"></div></div><div class="card"><div class="sectionTitle">
 🐋 معاملات بزرگ
-
-</div>
-
-<div
-  id="blocks"
-></div>
-
-</div>
-
-
-</main>
-
-
-
-<aside class="side">
-
-
-
-<div class="card">
-
-<div class="sectionTitle">
-
+</div><div id="blocks"></div></div></main><aside class="side"><div class="card"><div class="sectionTitle">
 🎯 وضعیت هوشمند
-
-</div>
-
-
-<div class="statgrid">
-
-
-<div class="stat">
-
+</div><div class="statgrid"><div class="stat">
 امتیاز Smart Money
-
-<b
-  id="score"
->
-—
-</b>
-
-</div>
-
-
-<div class="stat">
-
+<b id="score">—</b>
+</div><div class="stat">
 قدرت سیگنال
-
-<b
-  id="signal"
->
-—
-</b>
-
-</div>
-
-
-<div class="stat">
-
+<b id="signal">—</b>
+</div><div class="stat">
 مسیر بازار
-
-<b
-  id="movement"
->
-—
-</b>
-
-</div>
-
-
-<div class="stat">
-
+<b id="movement">—</b>
+</div><div class="stat">
 جذب سفارش
-
-<b
-  id="abs"
->
-—
-</b>
-
-</div>
-
-
-<div class="stat">
-
+<b id="abs">—</b>
+</div><div class="stat">
 فشار خرید / فروش
-
-<b
-  id="pressure"
->
-—
-</b>
-
-</div>
-
-
-<div class="stat">
-
+<b id="pressure">—</b>
+</div><div class="stat">
 Delta
-
-<b
-  id="delta"
->
-—
-</b>
-
-</div>
-
-
-</div>
-
-</div>
-
-
-
-<div class="card">
-
-<div class="sectionTitle">
-
+<b id="delta">—</b>
+</div></div></div><div class="card"><div class="sectionTitle">
 ⚖️ فشار معاملات واقعی
-
-</div>
-
-<div id="pressureBox"></div>
-
-</div>
-
-
-
-<div class="card">
-
-<div class="sectionTitle">
-
-🧲 جذب سفارش
-
-</div>
-
-<div id="absBox"></div>
-
-</div>
-
-
-
-<div class="card">
-
-<div class="sectionTitle">
-
+</div><div id="pressureBox"></div></div><div class="card"><div class="sectionTitle">
+🧲 جزئیات جذب سفارش
+</div><div id="absBox"></div></div><div class="card"><div class="sectionTitle">
 💧 نقدینگی و Sweep
-
-</div>
-
-<div id="liqBox"></div>
-
-</div>
-
-
-
-<div class="card">
-
-<div class="sectionTitle">
-
+</div><div id="liqBox"></div></div><div class="card"><div class="sectionTitle">
 📈 Open Interest و Funding
-
-</div>
-
-<div id="oiBox"></div>
-
-</div>
-
-
-
-<div class="card">
-
-<div class="sectionTitle">
-
+</div><div id="oiBox"></div></div><div class="card"><div class="sectionTitle">
 📍 حمایت و مقاومت
-
-</div>
-
-<div id="srBox"></div>
-
-</div>
-
-
-
-<div class="card">
-
-<div class="sectionTitle">
-
+</div><div id="srBox"></div></div><div class="card"><div class="sectionTitle">
 🎯 ورود ۱ دقیقه
-
-</div>
-
-<div id="entryBox"></div>
-
-</div>
-
-
-
-<div class="card">
-
-<div class="sectionTitle">
-
+</div><div id="entryBox"></div></div><div class="card"><div class="sectionTitle">
 🧠 دلایل تحلیل
-
-</div>
-
-<div id="reasons"></div>
-
-</div>
-
-
-
-</aside>
-
-</div>
-
-</div>
-
-
-
-<script>
+</div><div id="reasons"></div></div></aside></div></div><script>
 
 const API="";
+
+const REFRESH_MS=2500;
 
 let data=null;
 
@@ -782,33 +435,39 @@ let candles=[];
 let liveTrades=[];
 
 
+/* =========================================================
+   HELPERS
+========================================================= */
 
 const $=
   id=>
     document.getElementById(id);
 
 
+function fmt(x,d=2){
 
-function fmt(
-  x,
-  d=2
-){
-
-  return Number.isFinite(
-    Number(x)
-  )
-
-    ? Number(x)
-        .toLocaleString(
-          "en-US",
-          {
-            maximumFractionDigits:d
-          }
-        )
-
+  return Number.isFinite(Number(x))
+    ? Number(x).toLocaleString(
+        "en-US",
+        {
+          maximumFractionDigits:d
+        }
+      )
     : "—";
+
 }
 
+
+function num(x){
+
+  const n=Number(x);
+
+  if(!Number.isFinite(n))
+    return 0;
+
+  return n;
+
+}
 
 
 function fa(x){
@@ -831,17 +490,40 @@ function fa(x){
   if(x==="NONE")
     return "—";
 
-  return x;
+  return x||"—";
+
 }
 
 
+function clamp(x,a,b){
 
-function setStatus(t){
+  return Math.max(
+    a,
+    Math.min(
+      b,
+      Number(x)||0
+    )
+  );
 
-  $("status")
-    .textContent=t;
 }
 
+
+function priceDigits(price){
+
+  price=Number(price);
+
+  if(price>=1000)
+    return 2;
+
+  if(price>=1)
+    return 4;
+
+  if(price>=0.01)
+    return 6;
+
+  return 8;
+
+}
 
 
 /* =========================================================
@@ -858,8 +540,19 @@ async function get(path){
       }
     );
 
+
+  if(!r.ok){
+
+    throw new Error(
+      "HTTP "+r.status
+    );
+
+  }
+
+
   const d=
     await r.json();
+
 
   if(!d.ok){
 
@@ -867,11 +560,13 @@ async function get(path){
       d.error||
       "خطا"
     );
+
   }
 
-  return d;
-}
 
+  return d;
+
+}
 
 
 /* =========================================================
@@ -881,6 +576,7 @@ async function get(path){
 async function analyze(){
 
   stopLive();
+
 
   const s=
     $("symbol")
@@ -908,7 +604,8 @@ async function analyze(){
 
 
     candles=
-      data.candles.tf5||
+      data.candles?.tf5||
+      data.candles?.tf1||
       [];
 
 
@@ -917,8 +614,9 @@ async function analyze(){
       [];
 
 
-    renderAll();
+    normalizeData();
 
+    renderAll();
 
     setStatus(
       "🟢 تحلیل با داده واقعی Bybit انجام شد"
@@ -930,12 +628,162 @@ async function analyze(){
 
   }catch(e){
 
+    console.error(e);
+
     setStatus(
       "🔴 "+e.message
     );
+
   }
+
 }
 
+
+/* =========================================================
+   NORMALIZE
+========================================================= */
+
+function normalizeData(){
+
+  if(!data)
+    return;
+
+
+  /*
+    اگر Worker به جای value
+    از price*size استفاده کرده باشد
+  */
+
+  const ob=
+    data.orderbook;
+
+
+  if(ob){
+
+    if(Array.isArray(ob.bids)){
+
+      ob.bids=
+        ob.bids.map(
+          x=>{
+
+            const price=
+              num(x.price);
+
+            const size=
+              num(
+                x.size ??
+                x.qty ??
+                x.volume
+              );
+
+            return {
+              ...x,
+              price,
+              size,
+              value:
+                num(
+                  x.value ??
+                  x.notional ??
+                  price*size
+                )
+            };
+
+          }
+        );
+
+    }
+
+
+    if(Array.isArray(ob.asks)){
+
+      ob.asks=
+        ob.asks.map(
+          x=>{
+
+            const price=
+              num(x.price);
+
+            const size=
+              num(
+                x.size ??
+                x.qty ??
+                x.volume
+              );
+
+            return {
+              ...x,
+              price,
+              size,
+              value:
+                num(
+                  x.value ??
+                  x.notional ??
+                  price*size
+                )
+            };
+
+          }
+        );
+
+    }
+
+  }
+
+
+  /*
+    بعضی Workerها قیمت را
+    داخل ticker می‌فرستند.
+  */
+
+  if(
+    !Number.isFinite(
+      Number(data.price)
+    )
+  ){
+
+    data.price=
+      num(
+        data.ticker?.lastPrice
+      );
+
+  }
+
+
+  /*
+    اگر zone وجود نداشته باشد
+    از absorption آن را می‌سازیم.
+  */
+
+  if(
+    !data.zone &&
+    data.absorption?.detected
+  ){
+
+    const p=
+      num(data.price);
+
+    const atr=
+      num(
+        data.absorption.atr
+      );
+
+
+    const width=
+      atr>0
+        ? atr*.35
+        : p*.001;
+
+
+    data.zone={
+      low:p-width,
+      high:p+width,
+      center:p,
+      source:"FRONTEND_FALLBACK"
+    };
+
+  }
+
+}
 
 
 /* =========================================================
@@ -971,7 +819,8 @@ async function startLive(){
 
 
         liveTrades=
-          d.trades||[];
+          d.trades||
+          [];
 
 
         if(data){
@@ -995,9 +844,25 @@ async function startLive(){
             d.blocks;
 
 
+          if(d.absorption)
+            data.absorption=
+              d.absorption;
+
+          if(d.zone)
+            data.zone=
+              d.zone;
+
+          if(d.sweep)
+            data.sweep=
+              d.sweep;
+
+
+          normalizeData();
+
           draw();
 
           renderLive();
+
         }
 
 
@@ -1012,11 +877,15 @@ async function startLive(){
 
       }catch(e){
 
+        console.error(e);
+
         setStatus(
           "🟠 خطای اتصال زنده: "+
           e.message
         );
+
       }
+
     };
 
 
@@ -1026,10 +895,10 @@ async function startLive(){
   liveTimer=
     setInterval(
       tick,
-      2500
+      REFRESH_MS
     );
-}
 
+}
 
 
 function stopLive(){
@@ -1041,9 +910,22 @@ function stopLive(){
     );
 
     liveTimer=null;
+
   }
+
 }
 
+
+/* =========================================================
+   STATUS
+========================================================= */
+
+function setStatus(t){
+
+  $("status")
+    .textContent=t;
+
+}
 
 
 /* =========================================================
@@ -1056,16 +938,20 @@ function renderAll(){
     return;
 
 
+  const score=
+    num(data.score);
+
+
   $("score")
     .textContent=
-      data.score;
+      fmt(score,0);
 
 
   $("score")
     .className=
-      data.score>=70
+      score>=70
         ? "green"
-        : data.score>=55
+        : score>=55
           ? "yellow"
           : "red";
 
@@ -1084,45 +970,129 @@ function renderAll(){
       );
 
 
+  const a=
+    data.absorption||
+    {};
+
+
   $("abs")
     .textContent=
-      data.absorption?.detected
-
+      a.detected
         ? (
-            data.absorption.real
+            a.real
               ? "واقعی"
               : "ساختاری"
           )
-
         : "ندارد";
+
+
+  const f=
+    data.currentFlow||
+    {};
 
 
   $("pressure")
     .textContent=
-
       fmt(
-        data.currentFlow?.buyShare,
+        f.buyShare,
         0
       )+
-
       "% / "+
-
       fmt(
-        data.currentFlow?.sellShare,
+        f.sellShare,
         0
-      )+"%";
+      )+
+      "%";
 
 
   $("delta")
     .textContent=
       fmt(
-        data.currentFlow?.deltaValue,
+        f.deltaValue,
         0
       );
 
 
+  renderPressure();
 
-  /* PRESSURE */
+  renderAbsorption();
+
+  renderLiquidity();
+
+  renderOI();
+
+  renderSR();
+
+  renderEntry();
+
+  renderReasons();
+
+  renderTrades();
+
+  renderBook();
+
+  renderBlocks();
+
+  renderZone();
+
+  draw();
+
+}
+
+
+/* =========================================================
+   LIVE RENDER
+========================================================= */
+
+function renderLive(){
+
+  if(!data)
+    return;
+
+
+  const f=
+    data.currentFlow||
+    {};
+
+
+  $("pressure")
+    .textContent=
+      fmt(
+        f.buyShare,
+        0
+      )+
+      "% / "+
+      fmt(
+        f.sellShare,
+        0
+      )+
+      "%";
+
+
+  $("delta")
+    .textContent=
+      fmt(
+        f.deltaValue,
+        0
+      );
+
+
+  renderTrades();
+
+  renderBook();
+
+  renderBlocks();
+
+  renderZone();
+
+}
+
+
+/* =========================================================
+   PRESSURE
+========================================================= */
+
+function renderPressure(){
 
   const f=
     data.currentFlow||
@@ -1133,72 +1103,310 @@ function renderAll(){
     .innerHTML=`
 
 <div>
-
 فشار خرید:
-
 <b class="green">
-
 ${fmt(f.buyValue,0)}
-
 </b>
-
 </div>
 
-
 <div class="bar">
-
-<i
-style="
-width:${clamp(
-  f.buyShare||0,
-  0,
-  100
-)}%;
+<i style="
+width:${clamp(f.buyShare,0,100)}%;
 background:#25d695
-"
-></i>
+"></i>
+</div>
+
+<div>
+فشار فروش:
+<b class="red">
+${fmt(f.sellValue,0)}
+</b>
+</div>
+
+<div class="bar">
+<i style="
+width:${clamp(f.sellShare,0,100)}%;
+background:#ff5965
+"></i>
+</div>
+
+<div>
+Delta ارزش:
+<b>
+${fmt(f.deltaValue,0)}
+</b>
+</div>
+
+<div>
+Delta درصد:
+<b>
+${fmt(f.deltaValuePercent,2)}%
+</b>
+</div>
+
+`;
+
+}
+
+
+/* =========================================================
+   ABSORPTION
+========================================================= */
+
+function renderAbsorption(){
+
+  const a=
+    data.absorption||
+    {};
+
+
+  if(!a.detected){
+
+    $("absBox")
+      .innerHTML=`
+
+<div class="zoneCard zoneNone">
+
+<b>
+⚪ ناحیه جذب تأیید نشده
+</b>
+
+<br>
+
+برای تأیید جذب، رفتار حجم و حرکت قیمت باید
+در کنار Order Flow بررسی شود.
+
+</div>
+
+`;
+
+    return;
+
+  }
+
+
+  const isBuy=
+    a.direction==="LONG"||
+    a.direction==="BUY";
+
+
+  $("absBox")
+    .innerHTML=`
+
+<div class="
+zoneCard
+${isBuy?"zoneBuy":"zoneSell"}
+">
+
+<div class="zoneHeader">
+
+<b>
+${isBuy
+  ? "🟢 Buy Absorption"
+  : "🔴 Sell Absorption"
+}
+</b>
+
+<span class="
+badge
+${isBuy
+  ? "badgeBuy"
+  : "badgeSell"
+}
+">
+
+${a.real
+  ? "REAL"
+  : "STRUCTURAL"
+}
+
+</span>
 
 </div>
 
 
 <div>
 
-فشار فروش:
+امتیاز جذب:
 
-<b class="red">
+<b class="zoneScore">
 
-${fmt(f.sellValue,0)}
+${fmt(a.score,0)}
 
 </b>
 
 </div>
 
 
-<div class="bar">
+<div>
 
-<i
-style="
-width:${clamp(
-  f.sellShare||0,
-  0,
-  100
-)}%;
-background:#ff5965
-"
-></i>
+تعداد معاملات:
+
+${fmt(a.tradeCount,0)}
 
 </div>
 
 
 <div>
 
-Delta ارزش:
+حجم خرید:
+
+<span class="green">
+
+${fmt(a.buyVolume,4)}
+
+</span>
+
+</div>
+
+
+<div>
+
+حجم فروش:
+
+<span class="red">
+
+${fmt(a.sellVolume,4)}
+
+</span>
+
+</div>
+
+
+<div>
+
+Delta:
+
+<b>
+
+${fmt(a.deltaPercent,2)}%
+
+</b>
+
+</div>
+
+
+<hr>
+
+
+<div class="small">
+
+${
+  a.source==="REAL_BYBIT_TRADES"
+
+    ? "✅ تأیید با معاملات واقعی Bybit"
+
+    : "⚠️ تأیید ساختاری/کندلی"
+}
+
+</div>
+
+</div>
+
+`;
+
+}
+
+
+/* =========================================================
+   ABSORPTION ZONE
+========================================================= */
+
+function renderZone(){
+
+  const a=
+    data?.absorption||
+    {};
+
+
+  const z=
+    data?.zone;
+
+
+  if(
+    !a.detected &&
+    !z
+  ){
+
+    $("zoneMain")
+      .innerHTML=`
+
+<div class="zoneCard zoneNone">
+
+⚪ در حال حاضر ناحیه جذب معتبر روی نمودار وجود ندارد.
+
+</div>
+
+`;
+
+    return;
+
+  }
+
+
+  const buy=
+    a.direction==="LONG"||
+    a.direction==="BUY";
+
+
+  const low=
+    num(
+      z?.low ??
+      data.price
+    );
+
+
+  const high=
+    num(
+      z?.high ??
+      data.price
+    );
+
+
+  const center=
+    num(
+      z?.center ??
+      (low+high)/2
+    );
+
+
+  $("zoneMain")
+    .innerHTML=`
+
+<div class="
+zoneCard
+${buy?"zoneBuy":"zoneSell"}
+">
+
+<div class="zoneHeader">
+
+<b>
+${buy
+  ? "🧲 BUY ABSORPTION ZONE"
+  : "🧲 SELL ABSORPTION ZONE"
+}
+</b>
+
+<span class="zoneScore">
+
+${fmt(a.score,0)}/100
+
+</span>
+
+</div>
+
+
+<div class="statgrid">
+
+<div class="stat">
+
+کف Zone
 
 <b>
 
 ${fmt(
-  f.deltaValue,
-  0
+  low,
+  priceDigits(low)
 )}
 
 </b>
@@ -1206,128 +1414,78 @@ ${fmt(
 </div>
 
 
-<div>
+<div class="stat">
 
-Delta درصد:
+سقف Zone
 
 <b>
 
 ${fmt(
-  f.deltaValuePercent,
-  2
-)}%
+  high,
+  priceDigits(high)
+)}
 
 </b>
 
 </div>
 
-`;
+
+<div class="stat">
+
+مرکز Zone
+
+<b class="${
+  buy
+    ? "green"
+    : "red"
+}">
+
+${fmt(
+  center,
+  priceDigits(center)
+)}
+
+</b>
+
+</div>
 
 
+<div class="stat">
 
-  /* ABSORPTION */
-
-  const a=
-    data.absorption||
-    {};
-
-
-  $("absBox")
-    .innerHTML=`
-
-<div class="notice">
-
+وضعیت
 
 <b>
 
 ${
-  a.detected
-
-    ? (
-        a.direction==="LONG"
-
-          ? "🧲 جذب فروش توسط خریداران"
-
-          : "🧲 جذب خرید توسط فروشندگان"
-      )
-
-    : "⚪ جذب قطعی شناسایی نشد"
+  a.status||
+  "ACTIVE"
 }
 
 </b>
 
+</div>
 
-<br>
-
-امتیاز جذب:
-
-${fmt(a.score,0)}
+</div>
 
 
-<br>
+<div style="margin-top:9px">
 
-معاملات:
+${a.reason||""}
 
-${fmt(a.tradeCount,0)}
-
-
-<br>
-
-حجم خرید:
-
-${fmt(a.buyVolume,3)}
-
-
-<br>
-
-حجم فروش:
-
-${fmt(a.sellVolume,3)}
-
-
-<br>
-
-Delta:
-
-${fmt(a.deltaPercent,2)}%
-
-
-<br>
-
-
-${
-  a.real
-
-    ? "✅ شواهد بر اساس معاملات واقعی"
-
-    : "⚠️ شواهد بیشتر ساختاری/کندلی است"
-}
-
-
-<br>
-
-<span class="small">
-
-منبع:
-
-${
-  a.source==="REAL_BYBIT_TRADES"
-
-    ? "معاملات واقعی Bybit در بازه کندل"
-
-    : "ساختار کندل؛ معاملات تاریخی کافی نبود"
-}
-
-</span>
-
+</div>
 
 </div>
 
 `;
 
+}
 
 
-  /* LIQUIDITY */
+/* =========================================================
+   LIQUIDITY
+========================================================= */
+
+function renderLiquidity(){
 
   const sw=
     data.sweep||
@@ -1350,13 +1508,11 @@ ${
 
 ${
   sw.detected
-
     ? (
         sw.direction==="LONG"
-          ? "صعودی"
-          : "نزولی"
+          ? "🟢 صعودی"
+          : "🔴 نزولی"
       )
-
     : "ندارد"
 }
 
@@ -1380,14 +1536,14 @@ ${fmt(
 
 </div>
 
-
 <hr>
 
 
-${zones
-  .slice(0,10)
-  .map(
-    z=>`
+${
+  zones
+    .slice(0,10)
+    .map(
+      z=>`
 
 <div class="row">
 
@@ -1419,15 +1575,20 @@ ${fmt(
 </div>
 
 `
-  )
-  .join("")
+    )
+    .join("")
 }
 
 `;
 
+}
 
 
-  /* OI */
+/* =========================================================
+   OI
+========================================================= */
+
+function renderOI(){
 
   const oi=
     data.oiFunding||
@@ -1508,9 +1669,14 @@ ${fmt(
 
 `;
 
+}
 
 
-  /* SUPPORT RESISTANCE */
+/* =========================================================
+   SUPPORT RESISTANCE
+========================================================= */
+
+function renderSR(){
 
   const sr=
     data.supportResistance||
@@ -1591,9 +1757,14 @@ ${fmt(
 
 `;
 
+}
 
 
-  /* ENTRY */
+/* =========================================================
+   ENTRY
+========================================================= */
+
+function renderEntry(){
 
   const e=
     data.entry1m||
@@ -1608,7 +1779,6 @@ ${fmt(
         ? `
 
 <div class="notice">
-
 
 وضعیت:
 
@@ -1701,20 +1871,23 @@ ${fmt(
 
 ${e.reason||""}
 
-
 </div>
 
 `
 
         : "—";
 
+}
 
 
-  /* REASONS */
+/* =========================================================
+   REASONS
+========================================================= */
+
+function renderReasons(){
 
   $("reasons")
     .innerHTML=
-
       (
         data.reasons||
         []
@@ -1725,9 +1898,7 @@ ${e.reason||""}
 <div class="row">
 
 <span>
-
 • ${x}
-
 </span>
 
 </div>
@@ -1736,64 +1907,7 @@ ${e.reason||""}
       )
       .join("");
 
-
-  renderTrades();
-
-  renderBook();
-
-  renderBlocks();
-
-  draw();
 }
-
-
-
-/* =========================================================
-   LIVE RENDER
-========================================================= */
-
-function renderLive(){
-
-  if(!data)
-    return;
-
-
-  const f=
-    data.currentFlow||
-    {};
-
-
-  $("pressure")
-    .textContent=
-
-      fmt(
-        f.buyShare,
-        0
-      )+
-
-      "% / "+
-
-      fmt(
-        f.sellShare,
-        0
-      )+"%";
-
-
-  $("delta")
-    .textContent=
-      fmt(
-        f.deltaValue,
-        0
-      );
-
-
-  renderTrades();
-
-  renderBook();
-
-  renderBlocks();
-}
-
 
 
 /* =========================================================
@@ -1820,21 +1934,10 @@ function renderTrades(){
 
 <tr>
 
-<th>
-زمان
-</th>
-
-<th>
-قیمت
-</th>
-
-<th>
-ارزش
-</th>
-
-<th>
-طرف
-</th>
+<th>زمان</th>
+<th>قیمت</th>
+<th>ارزش</th>
+<th>طرف</th>
 
 </tr>
 
@@ -1865,7 +1968,7 @@ ${new Date(
 
 ${fmt(
   x.price,
-  8
+  priceDigits(x.price)
 )}
 
 </td>
@@ -1874,20 +1977,19 @@ ${fmt(
 <td>
 
 ${fmt(
-  x.price*x.size,
+  num(x.price)*
+  num(x.size),
   0
 )}
 
 </td>
 
 
-<td
-class="${
+<td class="${
   x.side==="buy"
     ? "green"
     : "red"
-}"
->
+}">
 
 ${
   x.side==="buy"
@@ -1908,8 +2010,8 @@ ${
 `</tbody>
 
 </table>`;
-}
 
+}
 
 
 /* =========================================================
@@ -1929,6 +2031,28 @@ function renderBook(){
     return;
 
 
+  const bids=
+    (ob.bids||[])
+      .slice(0,8);
+
+
+  const asks=
+    (ob.asks||[])
+      .slice(0,8);
+
+
+  const buyShare=
+    num(
+      w?.buyShare
+    );
+
+
+  const sellShare=
+    num(
+      w?.sellShare
+    );
+
+
   $("book")
     .innerHTML=`
 
@@ -1942,7 +2066,7 @@ function renderBook(){
 <b class="green">
 
 ${fmt(
-  w?.buyShare,
+  buyShare,
   1
 )}%
 
@@ -1958,7 +2082,7 @@ ${fmt(
 <b class="red">
 
 ${fmt(
-  w?.sellShare,
+  sellShare,
   1
 )}%
 
@@ -2008,21 +2132,10 @@ ${fmt(
 
 <tr>
 
-<th>
-نوع
-</th>
-
-<th>
-قیمت
-</th>
-
-<th>
-ارزش
-</th>
-
-<th>
-فاصله
-</th>
+<th>نوع</th>
+<th>قیمت</th>
+<th>حجم</th>
+<th>ارزش</th>
 
 </tr>
 
@@ -2032,102 +2145,78 @@ ${fmt(
 
 
 ${
-  (
-    w?.nearSell||
-    []
-  )
-  .slice(0,8)
-  .map(
-    x=>`
+  asks
+    .map(
+      x=>`
 
 <tr>
 
 <td class="red">
-🧱 فروش
+🔴 فروش
 </td>
 
 <td>
-
 ${fmt(
   x.price,
-  8
+  priceDigits(x.price)
 )}
-
 </td>
 
 <td>
+${fmt(x.size,4)}
+</td>
 
+<td>
 ${fmt(
-  x.value,
+  x.value ??
+  x.price*x.size,
   0
 )}
-
-</td>
-
-<td>
-
-${fmt(
-  x.distancePercent,
-  2
-)}%
-
 </td>
 
 </tr>
 
 `
-  )
-  .join("")
+    )
+    .join("")
 }
 
 
 ${
-  (
-    w?.nearBuy||
-    []
-  )
-  .slice(0,8)
-  .map(
-    x=>`
+  bids
+    .map(
+      x=>`
 
 <tr>
 
 <td class="green">
-🧱 خرید
+🟢 خرید
 </td>
 
 <td>
-
 ${fmt(
   x.price,
-  8
+  priceDigits(x.price)
 )}
-
 </td>
 
 <td>
+${fmt(x.size,4)}
+</td>
 
+<td>
 ${fmt(
-  x.value,
+  x.value ??
+  x.price*x.size,
   0
 )}
-
-</td>
-
-<td>
-
-${fmt(
-  x.distancePercent,
-  2
-)}%
-
 </td>
 
 </tr>
 
 `
-  )
-  .join("")
+    )
+    .join("")
 }
 
 
@@ -2136,12 +2225,12 @@ ${fmt(
 </table>
 
 `;
+
 }
 
 
-
 /* =========================================================
-   BLOCK TRADES
+   BLOCKS
 ========================================================= */
 
 function renderBlocks(){
@@ -2164,21 +2253,10 @@ function renderBlocks(){
 
 <tr>
 
-<th>
-زمان
-</th>
-
-<th>
-قیمت
-</th>
-
-<th>
-ارزش
-</th>
-
-<th>
-طرف
-</th>
+<th>زمان</th>
+<th>قیمت</th>
+<th>ارزش</th>
+<th>طرف</th>
 
 </tr>
 
@@ -2209,7 +2287,7 @@ ${new Date(
 
 ${fmt(
   x.price,
-  8
+  priceDigits(x.price)
 )}
 
 </td>
@@ -2259,29 +2337,8 @@ ${
 </div>
 
 `;
+
 }
-
-
-
-/* =========================================================
-   CLAMP
-========================================================= */
-
-function clamp(
-  x,
-  a,
-  b
-){
-
-  return Math.max(
-    a,
-    Math.min(
-      b,
-      x
-    )
-  );
-}
-
 
 
 /* =========================================================
@@ -2293,10 +2350,9 @@ function draw(){
   const c=
     $("chart");
 
+
   const ctx=
-    c.getContext(
-      "2d"
-    );
+    c.getContext("2d");
 
 
   const r=
@@ -2304,15 +2360,26 @@ function draw(){
 
 
   const dpr=
-    devicePixelRatio||1;
+    window.devicePixelRatio||1;
+
+
+  if(
+    r.width<=0||
+    r.height<=0
+  )
+    return;
 
 
   c.width=
-    r.width*dpr;
+    Math.floor(
+      r.width*dpr
+    );
 
 
   c.height=
-    r.height*dpr;
+    Math.floor(
+      r.height*dpr
+    );
 
 
   ctx.setTransform(
@@ -2325,9 +2392,11 @@ function draw(){
   );
 
 
-  const W=r.width;
+  const W=
+    r.width;
 
-  const H=r.height;
+  const H=
+    r.height;
 
 
   ctx.fillStyle=
@@ -2342,11 +2411,24 @@ function draw(){
 
 
   if(
-    !data ||
+    !data||
     !candles.length
-  ) {
+  ){
+
+    ctx.fillStyle=
+      "#64748b";
+
+    ctx.font=
+      "14px Tahoma";
+
+    ctx.fillText(
+      "در انتظار کندل...",
+      20,
+      30
+    );
 
     return;
+
   }
 
 
@@ -2354,57 +2436,86 @@ function draw(){
     candles.slice(-70);
 
 
-  const bidPrices=
-    (
-      data.orderbook?.bids||
-      []
-    )
-    .slice(0,30)
-    .map(
-      x=>x.price
+  const price=
+    num(
+      data.price
     );
 
 
-  const askPrices=
-    (
-      data.orderbook?.asks||
-      []
-    )
-    .slice(0,30)
-    .map(
-      x=>x.price
+  const book=
+    data.orderbook||
+    {};
+
+
+  const bids=
+    (book.bids||[])
+      .map(
+        x=>num(x.price)
+      )
+      .filter(Boolean);
+
+
+  const asks=
+    (book.asks||[])
+      .map(
+        x=>num(x.price)
+      )
+      .filter(Boolean);
+
+
+  const prices=
+    [
+      ...cs.map(x=>num(x.low)),
+      ...cs.map(x=>num(x.high)),
+      ...bids.slice(0,30),
+      ...asks.slice(0,30)
+    ]
+    .filter(
+      x=>x>0
     );
 
 
-  const min=
+  if(!prices.length)
+    return;
+
+
+  let min=
     Math.min(
-      ...cs.map(
-        x=>x.low
-      ),
-
-      ...bidPrices
+      ...prices
     );
 
 
-  const max=
+  let max=
     Math.max(
-      ...cs.map(
-        x=>x.high
-      ),
-
-      ...askPrices
+      ...prices
     );
 
+
+  if(price>0){
+
+    min=
+      Math.min(
+        min,
+        price
+      );
+
+    max=
+      Math.max(
+        max,
+        price
+      );
+
+  }
+
+
+  const range=
+    max-min||1;
 
   const pad=
-    (
-      max-min
-    )*.08||1;
-
+    range*.08;
 
   const lo=
     min-pad;
-
 
   const hi=
     max+pad;
@@ -2418,9 +2529,7 @@ function draw(){
         (p-lo)/
         (hi-lo)
       )*
-      (
-        H-70
-      );
+      (H-70);
 
 
   const step=
@@ -2441,7 +2550,7 @@ function draw(){
      GRID
   ===================================================== */
 
-  ctx.globalAlpha=.18;
+  ctx.globalAlpha=.20;
 
   ctx.strokeStyle=
     "#27303b";
@@ -2476,193 +2585,205 @@ function draw(){
     );
 
     ctx.stroke();
+
+  }
+
+
+  for(
+    let i=0;
+    i<10;
+    i++
+  ){
+
+    const x=
+      i*
+      (
+        W/9
+      );
+
+
+    ctx.beginPath();
+
+    ctx.moveTo(
+      x,
+      0
+    );
+
+    ctx.lineTo(
+      x,
+      H
+    );
+
+    ctx.stroke();
+
   }
 
 
   ctx.globalAlpha=1;
-
 
 
   /* =====================================================
      ORDER BOOK HEATMAP
   ===================================================== */
 
-  const ob=
-    data.orderbook||
-    {};
+  const levels=
+    [
+      ...(book.bids||[])
+        .map(
+          x=>({
+            ...x,
+            side:"BUY",
+            value:
+              num(
+                x.value ??
+                num(x.price)*
+                num(x.size)
+              )
+          })
+        ),
+
+      ...(book.asks||[])
+        .map(
+          x=>({
+            ...x,
+            side:"SELL",
+            value:
+              num(
+                x.value ??
+                num(x.price)*
+                num(x.size)
+              )
+          })
+        )
+    ];
 
 
-  const bid=
-    ob.bids||
-    [];
-
-
-  const ask=
-    ob.asks||
-    [];
-
-
-  const maxVal=
+  const maxBookValue=
     Math.max(
-      ...bid.map(
+      1,
+      ...levels.map(
         x=>x.value
-      ),
-
-      ...ask.map(
-        x=>x.value
-      ),
-
-      1
+      )
     );
 
 
   for(
-    const q of [
-      ...bid,
-      ...ask
-    ]
+    const q of levels
   ){
 
-    if(
-      q.price<lo ||
-      q.price>hi
-    ) {
+    const qp=
+      num(q.price);
 
+
+    if(
+      qp<lo||
+      qp>hi
+    )
       continue;
-    }
 
 
     const y=
-      py(q.price);
+      py(qp);
 
 
     const strength=
-      Math.sqrt(
-        q.value/maxVal
+      clamp(
+        q.value/
+        maxBookValue,
+        0,
+        1
       );
 
 
     const width=
       Math.max(
-        15,
-        strength*W*.45
+        12,
+        strength*
+        W*.42
       );
 
 
     ctx.globalAlpha=
-      .08+
-      .24*strength;
+      .06+
+      .28*strength;
 
 
     ctx.fillStyle=
-      q.price<=data.price
+      q.side==="BUY"
         ? "#00d98b"
         : "#ff4d5d";
 
 
-    ctx.fillRect(
+    if(q.side==="BUY"){
 
-      q.price<=data.price
-        ? W*.52-width
-        : W*.52,
+      ctx.fillRect(
+        0,
+        y-3,
+        width,
+        6
+      );
 
-      y-3,
+    }else{
 
-      width,
+      ctx.fillRect(
+        W-width,
+        y-3,
+        width,
+        6
+      );
 
-      6
-    );
+    }
+
   }
 
 
   ctx.globalAlpha=1;
-
 
 
   /* =====================================================
-     LIQUIDITY WALL LINES
+     WALLS
   ===================================================== */
 
-  for(
-    const x of
-      (
-        data.wall?.buyWalls||
-        []
-      ).slice(0,8)
-  ){
-
-    if(
-      x.price<lo ||
-      x.price>hi
-    )
-      continue;
+  const walls=
+    data.wall||
+    {};
 
 
-    ctx.strokeStyle=
-      "#00e6a0";
-
-    ctx.globalAlpha=.45;
-
-    ctx.lineWidth=2;
-
-
-    ctx.beginPath();
-
-    ctx.moveTo(
-      0,
-      py(x.price)
-    );
-
-    ctx.lineTo(
-      W,
-      py(x.price)
-    );
-
-    ctx.stroke();
-  }
+  drawWallList(
+    walls.buyWalls||
+    [],
+    "#00e6a0",
+    lo,
+    hi,
+    py,
+    W,
+    "BUY WALL"
+  );
 
 
-  for(
-    const x of
-      (
-        data.wall?.sellWalls||
-        []
-      ).slice(0,8)
-  ){
-
-    if(
-      x.price<lo ||
-      x.price>hi
-    )
-      continue;
+  drawWallList(
+    walls.sellWalls||
+    [],
+    "#ff5362",
+    lo,
+    hi,
+    py,
+    W,
+    "SELL WALL"
+  );
 
 
-    ctx.strokeStyle=
-      "#ff5362";
+  /* =====================================================
+     ABSORPTION ZONE
+  ===================================================== */
 
-    ctx.globalAlpha=.45;
-
-    ctx.lineWidth=2;
-
-
-    ctx.beginPath();
-
-    ctx.moveTo(
-      0,
-      py(x.price)
-    );
-
-    ctx.lineTo(
-      W,
-      py(x.price)
-    );
-
-    ctx.stroke();
-  }
-
-
-  ctx.globalAlpha=1;
-
+  drawAbsorptionZone(
+    lo,
+    hi,
+    py,
+    W,
+    H
+  );
 
 
   /* =====================================================
@@ -2679,20 +2800,21 @@ function draw(){
 
 
       const yo=
-        py(x.open);
+        py(num(x.open));
 
       const yc=
-        py(x.close);
+        py(num(x.close));
 
       const yh=
-        py(x.high);
+        py(num(x.high));
 
       const yl=
-        py(x.low);
+        py(num(x.low));
 
 
       const up=
-        x.close>=x.open;
+        num(x.close)>=
+        num(x.open);
 
 
       ctx.strokeStyle=
@@ -2743,74 +2865,663 @@ function draw(){
             yc-yo
           )
         )
+
       );
 
     }
   );
 
 
-
   /* =====================================================
-     REAL TRADE BUBBLES
+     TRADES
   ===================================================== */
 
+  drawTrades(
+    cs,
+    step,
+    py,
+    lo,
+    hi
+  );
+
+
+  /* =====================================================
+     BLOCKS
+  ===================================================== */
+
+  drawBlocks(
+    cs,
+    step,
+    py,
+    lo,
+    hi
+  );
+
+
+  /* =====================================================
+     PRICE
+  ===================================================== */
+
+  if(price>0){
+
+    const y=
+      py(price);
+
+
+    ctx.strokeStyle=
+      "#ffd166";
+
+    ctx.lineWidth=1;
+
+    ctx.setLineDash(
+      [5,5]
+    );
+
+
+    ctx.beginPath();
+
+    ctx.moveTo(
+      0,
+      y
+    );
+
+    ctx.lineTo(
+      W,
+      y
+    );
+
+    ctx.stroke();
+
+
+    ctx.setLineDash([]);
+
+
+    ctx.fillStyle=
+      "#ffd166";
+
+    ctx.font=
+      "bold 12px Tahoma";
+
+
+    ctx.fillText(
+      fmt(
+        price,
+        priceDigits(price)
+      ),
+      10,
+      Math.max(
+        18,
+        y-6
+      )
+    );
+
+  }
+
+
+  /* =====================================================
+     PRICE SCALE
+  ===================================================== */
+
+  ctx.fillStyle=
+    "#68788d";
+
+  ctx.font=
+    "10px Arial";
+
+
   for(
-    const t of
-      (
-        liveTrades||
-        []
-      ).slice(-120)
+    let i=0;
+    i<=8;
+    i++
   ){
 
+    const p=
+      hi-
+      (
+        hi-lo
+      )*
+      i/8;
+
+
+    const y=
+      py(p);
+
+
+    ctx.fillText(
+      fmt(
+        p,
+        priceDigits(p)
+      ),
+      W-75,
+      y
+    );
+
+  }
+
+
+  /* =====================================================
+     TITLE
+  ===================================================== */
+
+  ctx.fillStyle=
+    "#8190a5";
+
+  ctx.font=
+    "bold 11px Tahoma";
+
+
+  ctx.fillText(
+    "PRICE · ORDER FLOW · LIQUIDITY · ABSORPTION",
+    12,
+    17
+  );
+
+
+  $("chartInfo")
+    .innerHTML=`
+
+<b>
+${data.symbol||$("symbol").value}
+</b>
+
+<br>
+
+قیمت:
+${fmt(
+  price,
+  priceDigits(price)
+)}
+
+<br>
+
+🟢 Buy:
+${fmt(
+  data.currentFlow?.buyShare,
+  1
+)}%
+
+<br>
+
+🔴 Sell:
+${fmt(
+  data.currentFlow?.sellShare,
+  1
+)}%
+
+<br>
+
+Δ:
+${fmt(
+  data.currentFlow?.deltaValue,
+  0
+)}
+
+<br>
+
+🧲 جذب:
+${
+  data.absorption?.detected
+    ? (
+        data.absorption.direction==="LONG"
+          ? "BUY"
+          : "SELL"
+      )
+    : "—"
+}
+
+<br>
+
+Score:
+${fmt(
+  data.score,
+  0
+)}
+
+`;
+
+}
+
+
+/* =========================================================
+   WALL DRAW
+========================================================= */
+
+function drawWallList(
+  list,
+  color,
+  lo,
+  hi,
+  py,
+  W,
+  label
+){
+
+  for(
+    const x of list.slice(0,10)
+  ){
+
+    const p=
+      num(x.price);
+
+
     if(
-      t.price<lo ||
-      t.price>hi
+      p<lo||
+      p>hi
     )
       continue;
 
 
-    const idx=
-      cs.findIndex(
-        x=>
-          t.time>=x.time &&
-          t.time<
-            x.time+
-            5*60*1000
-      );
+    const y=
+      py(p);
 
 
-    if(idx<0)
+    ctx.strokeStyle=
+      color;
+
+    ctx.globalAlpha=.65;
+
+    ctx.lineWidth=2;
+
+    ctx.setLineDash(
+      [7,5]
+    );
+
+
+    ctx.beginPath();
+
+    ctx.moveTo(
+      0,
+      y
+    );
+
+    ctx.lineTo(
+      W,
+      y
+    );
+
+    ctx.stroke();
+
+
+    ctx.setLineDash([]);
+
+
+    ctx.fillStyle=
+      color;
+
+    ctx.font=
+      "10px Arial";
+
+
+    ctx.fillText(
+      label+
+      " "+
+      fmt(
+        p,
+        priceDigits(p)
+      ),
+      8,
+      y-5
+    );
+
+  }
+
+
+  ctx.globalAlpha=1;
+
+}
+
+
+/* =========================================================
+   ABSORPTION ZONE DRAW
+========================================================= */
+
+function drawAbsorptionZone(
+  lo,
+  hi,
+  py,
+  W,
+  H
+){
+
+  const a=
+    data?.absorption||
+    {};
+
+
+  const z=
+    data?.zone;
+
+
+  if(
+    !a.detected &&
+    !z
+  )
+    return;
+
+
+  let low=
+    num(
+      z?.low
+    );
+
+
+  let high=
+    num(
+      z?.high
+    );
+
+
+  const current=
+    num(data.price);
+
+
+  if(
+    !low||
+    !high
+  ){
+
+    const width=
+      current*.001;
+
+
+    low=
+      current-width;
+
+    high=
+      current+width;
+
+  }
+
+
+  if(
+    high<lo||
+    low>hi
+  )
+    return;
+
+
+  const yHigh=
+    py(high);
+
+  const yLow=
+    py(low);
+
+
+  const buy=
+    a.direction==="LONG"||
+    a.direction==="BUY";
+
+
+  const fill=
+    buy
+      ? "#00e6a0"
+      : "#ff5362";
+
+
+  const border=
+    buy
+      ? "#00ffae"
+      : "#ff4058";
+
+
+  /*
+    Main Zone
+  */
+
+  ctx.globalAlpha=.14;
+
+  ctx.fillStyle=
+    fill;
+
+
+  ctx.fillRect(
+    0,
+    Math.min(
+      yHigh,
+      yLow
+    ),
+    W,
+    Math.abs(
+      yLow-yHigh
+    )
+  );
+
+
+  ctx.globalAlpha=.85;
+
+  ctx.strokeStyle=
+    border;
+
+  ctx.lineWidth=2;
+
+
+  ctx.setLineDash(
+    [8,5]
+  );
+
+
+  ctx.beginPath();
+
+  ctx.moveTo(
+    0,
+    yHigh
+  );
+
+  ctx.lineTo(
+    W,
+    yHigh
+  );
+
+  ctx.stroke();
+
+
+  ctx.beginPath();
+
+  ctx.moveTo(
+    0,
+    yLow
+  );
+
+  ctx.lineTo(
+    W,
+    yLow
+  );
+
+  ctx.stroke();
+
+
+  ctx.setLineDash([]);
+
+
+  /*
+    Center line
+  */
+
+  const center=
+    num(
+      z?.center ??
+      (
+        low+
+        high
+      )/2
+    );
+
+
+  const yc=
+    py(center);
+
+
+  ctx.strokeStyle=
+    border;
+
+  ctx.lineWidth=1;
+
+
+  ctx.beginPath();
+
+  ctx.moveTo(
+    0,
+    yc
+  );
+
+  ctx.lineTo(
+    W,
+    yc
+  );
+
+  ctx.stroke();
+
+
+  /*
+    Label
+  */
+
+  ctx.fillStyle=
+    border;
+
+  ctx.font=
+    "bold 11px Tahoma";
+
+
+  ctx.fillText(
+    buy
+      ? "🧲 BUY ABSORPTION"
+      : "🧲 SELL ABSORPTION",
+    12,
+    Math.max(
+      20,
+      yHigh-7
+    )
+  );
+
+
+  ctx.globalAlpha=1;
+
+}
+
+
+/* =========================================================
+   TRADE BUBBLES
+========================================================= */
+
+function drawTrades(
+  cs,
+  step,
+  py,
+  lo,
+  hi
+){
+
+  const trades=
+    liveTrades||
+    [];
+
+
+  if(!trades.length)
+    return;
+
+
+  const first=
+    cs[0]?.time||0;
+
+
+  const last=
+    cs[
+      cs.length-1
+    ]?.time||0;
+
+
+  if(!first||!last)
+    return;
+
+
+  const range=
+    Math.max(
+      1,
+      last-first
+    );
+
+
+  const recent=
+    trades.filter(
+      t=>
+        num(t.time)>=first&&
+        num(t.time)<=
+          last+
+          5*60*1000
+    );
+
+
+  const maxValue=
+    Math.max(
+      1,
+      ...recent.map(
+        t=>
+          num(t.price)*
+          num(t.size)
+      )
+    );
+
+
+  for(
+    const t of recent
+  ){
+
+    const p=
+      num(t.price);
+
+
+    if(
+      p<lo||
+      p>hi
+    )
       continue;
 
 
-    const xx=
-      20+
-      idx*step+
-      step/2+
+    const ratio=
       (
-        Math.random()-.5
-      )*
-      step*.4;
+        num(t.time)-first
+      )/
+      range;
 
 
-    const yy=
-      py(t.price);
-
-
-    const rad=
+    const xx=
       clamp(
-        Math.log10(
-          Math.max(
-            t.price*t.size,
-            1
-          )
-        )/2.2,
-        2,
-        10
+        ratio,
+        0,
+        1
+      )*(
+        cs.length*
+        step
       );
 
 
-    ctx.globalAlpha=.65;
+    const yy=
+      py(p);
+
+
+    const value=
+      p*
+      num(t.size);
+
+
+    const strength=
+      clamp(
+        value/
+        maxValue,
+        0,
+        1
+      );
+
+
+    const radius=
+      2+
+      strength*9;
+
+
+    ctx.globalAlpha=
+      .25+
+      strength*.75;
 
 
     ctx.fillStyle=
@@ -2824,35 +3535,49 @@ function draw(){
     ctx.arc(
       xx,
       yy,
-      rad,
+      radius,
       0,
       Math.PI*2
     );
 
     ctx.fill();
+
   }
 
 
   ctx.globalAlpha=1;
 
+}
 
 
-  /* =====================================================
-     BLOCK TRADE BUBBLES
-  ===================================================== */
+/* =========================================================
+   BLOCK BUBBLES
+========================================================= */
 
-  const blockList=
-    data.blocks?.trades||
+function drawBlocks(
+  cs,
+  step,
+  py,
+  lo,
+  hi
+){
+
+  const blocks=
+    data?.blocks?.trades||
     [];
 
 
   for(
-    const t of blockList.slice(0,40)
+    const t of blocks.slice(0,40)
   ){
 
+    const p=
+      num(t.price);
+
+
     if(
-      t.price<lo ||
-      t.price>hi
+      p<lo||
+      p>hi
     )
       continue;
 
@@ -2860,10 +3585,11 @@ function draw(){
     const idx=
       cs.findIndex(
         x=>
-          t.time>=x.time &&
-          t.time<
-            x.time+
-            5*60*1000
+          num(t.time)>=
+          num(x.time)&&
+          num(t.time)<
+          num(x.time)+
+          5*60*1000
       );
 
 
@@ -2873,12 +3599,13 @@ function draw(){
 
     const xx=
       20+
-      idx*step+
+      idx*
+      step+
       step/2;
 
 
     const yy=
-      py(t.price);
+      py(p);
 
 
     ctx.strokeStyle=
@@ -2901,192 +3628,10 @@ function draw(){
     );
 
     ctx.stroke();
+
   }
 
-
-
-  /* =====================================================
-     ABSORPTION ZONE
-  ===================================================== */
-
-  if(
-    data.absorption?.detected
-  ){
-
-    const z=
-      data.zone;
-
-
-    if(
-      z &&
-      z.low>=lo &&
-      z.high<=hi
-    ){
-
-      const y1=
-        py(z.high);
-
-      const y2=
-        py(z.low);
-
-
-      ctx.globalAlpha=.10;
-
-
-      ctx.fillStyle=
-        data.absorption.direction==="LONG"
-          ? "#00e6a0"
-          : "#ff5362";
-
-
-      ctx.fillRect(
-        0,
-        Math.min(
-          y1,
-          y2
-        ),
-        W,
-        Math.abs(
-          y2-y1
-        )
-      );
-
-
-      ctx.globalAlpha=1;
-    }
-  }
-
-
-
-  /* =====================================================
-     PRICE LINE
-  ===================================================== */
-
-  ctx.strokeStyle=
-    "#ffd166";
-
-  ctx.setLineDash(
-    [5,5]
-  );
-
-  ctx.lineWidth=1;
-
-
-  ctx.beginPath();
-
-  ctx.moveTo(
-    0,
-    py(data.price)
-  );
-
-  ctx.lineTo(
-    W,
-    py(data.price)
-  );
-
-  ctx.stroke();
-
-
-  ctx.setLineDash([]);
-
-
-
-  /* =====================================================
-     CURRENT PRICE LABEL
-  ===================================================== */
-
-  ctx.fillStyle=
-    "#ffd166";
-
-  ctx.font=
-    "bold 12px Tahoma";
-
-
-  ctx.fillText(
-
-    fmt(
-      data.price,
-      8
-    ),
-
-    10,
-
-    Math.max(
-      18,
-      py(data.price)-6
-    )
-  );
-
-
-
-  $("chartInfo")
-    .innerHTML=`
-
-<b>
-
-${data.symbol}
-
-</b>
-
-<br>
-
-قیمت:
-
-${fmt(
-  data.price,
-  8
-)}
-
-<br>
-
-🟢 سفارش خرید:
-
-${fmt(
-  data.wall?.buyShare,
-  1
-)}%
-
-<br>
-
-🔴 سفارش فروش:
-
-${fmt(
-  data.wall?.sellShare,
-  1
-)}%
-
-<br>
-
-Delta:
-
-${fmt(
-  data.currentFlow?.deltaValue,
-  0
-)}
-
-<br>
-
-🧲 جذب:
-
-${
-  data.absorption?.detected
-
-    ? data.absorption.direction==="LONG"
-      ? "خرید"
-      : "فروش"
-
-    : "—"
 }
-
-<br>
-
-🧠 امتیاز:
-
-${data.score}
-
-`;
-}
-
 
 
 /* =========================================================
@@ -3103,16 +3648,19 @@ $("symbol")
   .addEventListener(
     "keydown",
     e=>{
-      if(e.key==="Enter")
+      if(
+        e.key==="Enter"
+      )
         analyze();
     }
   );
 
 
+/* =========================================================
+   START
+========================================================= */
+
 analyze();
 
-</script>
-
-</body>
-
+</script></body>
 </html>
