@@ -1,6 +1,6 @@
 const BYBIT = "https://api.bybit.com";
 
-const VERSION = "ABSORPTION-ZONE-SCANNER-V2";
+const VERSION = "ABSORPTION-ZONE-SCANNER-V3";
 
 const MAIN_TF = "5";
 const CONFIRM_TF_15M = "15";
@@ -16,7 +16,10 @@ const MAX_SYMBOLS = 200;
 
 const MIN_VOLUME_RATIO = 1.5;
 const MIN_ABSORPTION_SCORE = 60;
-const RETEST_TOLERANCE_PERCENT = 0.45;
+
+const RETEST_LOOKBACK_CANDLES = 18;
+const RETEST_MAX_DISTANCE_PERCENT = 0.60;
+const RETEST_CONFIRMATION_BARS = 3;
 
 const sleep = ms =>
   new Promise(resolve => setTimeout(resolve, ms));
@@ -47,7 +50,7 @@ async function bybit(path, params = {}) {
       headers: {
         "Accept": "application/json",
         "User-Agent":
-          "Mozilla/5.0 (compatible; AbsorptionZoneScanner/1.0)",
+          "Mozilla/5.0 (compatible; AbsorptionZoneScanner/3.0)",
         "Cache-Control": "no-cache"
       }
     }
@@ -105,12 +108,22 @@ function clamp(v, min = 0, max = 100) {
 
 function avg(arr) {
   if (!Array.isArray(arr) || !arr.length) return 0;
-  return arr.reduce((a, b) => a + num(b), 0) / arr.length;
+
+  return (
+    arr.reduce(
+      (a, b) => a + num(b),
+      0
+    ) / arr.length
+  );
 }
 
 function sum(arr) {
   if (!Array.isArray(arr) || !arr.length) return 0;
-  return arr.reduce((a, b) => a + num(b), 0);
+
+  return arr.reduce(
+    (a, b) => a + num(b),
+    0
+  );
 }
 
 function pctChange(from, to) {
@@ -120,14 +133,6 @@ function pctChange(from, to) {
   if (!from) return 0;
 
   return ((to - from) / from) * 100;
-}
-
-function safeFixed(value, digits = 4) {
-  const n = num(value);
-
-  if (!Number.isFinite(n)) return "0";
-
-  return n.toFixed(digits);
 }
 
 function last(arr) {
@@ -150,6 +155,37 @@ function median(arr) {
     : (a[mid - 1] + a[mid]) / 2;
 }
 
+function ema(values, period) {
+  if (
+    !Array.isArray(values) ||
+    values.length < period
+  ) {
+    return 0;
+  }
+
+  const multiplier =
+    2 / (period + 1);
+
+  let result =
+    avg(values.slice(0, period));
+
+  for (
+    let i = period;
+    i < values.length;
+    i++
+  ) {
+    result =
+      (
+        values[i] -
+        result
+      ) *
+        multiplier +
+      result;
+  }
+
+  return result;
+}
+
 
 /* =========================================================
    SYMBOLS
@@ -165,40 +201,53 @@ async function getSymbols() {
     }
   );
 
-  const list = Array.isArray(result?.list)
-    ? result.list
-    : [];
+  const list =
+    Array.isArray(result?.list)
+      ? result.list
+      : [];
 
-  const symbols = list
-    .filter(x =>
-      x &&
-      x.symbol &&
-      x.quoteCoin === "USDT" &&
-      x.contractType === "LinearPerpetual"
-    )
-    .map(x => ({
-      symbol: x.symbol,
-      baseCoin: x.baseCoin,
-      quoteCoin: x.quoteCoin,
-      status: x.status
-    }));
+  const symbols =
+    list
+      .filter(
+        x =>
+          x &&
+          x.symbol &&
+          x.quoteCoin === "USDT" &&
+          x.contractType ===
+            "LinearPerpetual"
+      )
+      .map(
+        x => ({
+          symbol: x.symbol,
+          baseCoin: x.baseCoin,
+          quoteCoin: x.quoteCoin,
+          status: x.status
+        })
+      );
 
   let tickerMap = {};
 
   try {
-    const tickerResult = await bybit(
-      "/v5/market/tickers",
-      {
-        category: "linear"
-      }
-    );
+    const tickerResult =
+      await bybit(
+        "/v5/market/tickers",
+        {
+          category: "linear"
+        }
+      );
 
-    for (const t of tickerResult?.list || []) {
+    for (
+      const t of tickerResult?.list || []
+    ) {
       tickerMap[t.symbol] = {
-        lastPrice: num(t.lastPrice),
-        volume24h: num(t.volume24h),
-        turnover24h: num(t.turnover24h),
-        price24hPcnt: num(t.price24hPcnt) * 100
+        lastPrice:
+          num(t.lastPrice),
+        volume24h:
+          num(t.volume24h),
+        turnover24h:
+          num(t.turnover24h),
+        price24hPcnt:
+          num(t.price24hPcnt) * 100
       };
     }
   } catch {
@@ -206,10 +255,12 @@ async function getSymbols() {
   }
 
   return symbols
-    .map(s => ({
-      ...s,
-      ...(tickerMap[s.symbol] || {})
-    }))
+    .map(
+      s => ({
+        ...s,
+        ...(tickerMap[s.symbol] || {})
+      })
+    )
     .sort(
       (a, b) =>
         num(b.turnover24h) -
@@ -219,17 +270,24 @@ async function getSymbols() {
 }
 
 async function findSymbol(input) {
-  const symbols = await getSymbols();
+  const symbols =
+    await getSymbols();
 
-  const raw = String(input || "")
-    .trim()
-    .toUpperCase()
-    .replace(/[^A-Z0-9]/g, "");
+  const raw =
+    String(input || "")
+      .trim()
+      .toUpperCase()
+      .replace(
+        /[^A-Z0-9]/g,
+        ""
+      );
 
   if (!raw) return null;
 
   return (
-    symbols.find(x => x.symbol === raw) ||
+    symbols.find(
+      x => x.symbol === raw
+    ) ||
     symbols.find(
       x =>
         x.baseCoin === raw &&
@@ -249,39 +307,44 @@ async function getKlines(
   interval = MAIN_TF,
   limit = KLINE_LIMIT
 ) {
-  const result = await bybit(
-    "/v5/market/kline",
-    {
-      category: "linear",
-      symbol,
-      interval,
-      limit
-    }
-  );
+  const result =
+    await bybit(
+      "/v5/market/kline",
+      {
+        category: "linear",
+        symbol,
+        interval,
+        limit
+      }
+    );
 
-  const rows = Array.isArray(result?.list)
-    ? result.list
-    : [];
+  const rows =
+    Array.isArray(result?.list)
+      ? result.list
+      : [];
 
   return rows
-    .map(row => ({
-      startTime: num(row[0]),
-      open: num(row[1]),
-      high: num(row[2]),
-      low: num(row[3]),
-      close: num(row[4]),
-      volume: num(row[5]),
-      turnover: num(row[6])
-    }))
+    .map(
+      row => ({
+        startTime: num(row[0]),
+        open: num(row[1]),
+        high: num(row[2]),
+        low: num(row[3]),
+        close: num(row[4]),
+        volume: num(row[5]),
+        turnover: num(row[6])
+      })
+    )
     .sort(
       (a, b) =>
-        a.startTime - b.startTime
+        a.startTime -
+        b.startTime
     );
 }
 
 
 /* =========================================================
-   CANDLE ANALYSIS
+   CANDLE
 ========================================================= */
 
 function candleStats(c) {
@@ -290,18 +353,29 @@ function candleStats(c) {
   const low = num(c.low);
   const close = num(c.close);
 
-  const range = Math.max(
-    high - low,
-    0
-  );
+  const range =
+    Math.max(
+      high - low,
+      0
+    );
 
-  const body = Math.abs(close - open);
+  const body =
+    Math.abs(
+      close - open
+    );
 
   const upperWick =
-    high - Math.max(open, close);
+    high -
+    Math.max(
+      open,
+      close
+    );
 
   const lowerWick =
-    Math.min(open, close) - low;
+    Math.min(
+      open,
+      close
+    ) - low;
 
   const bodyRatio =
     range > 0
@@ -320,7 +394,8 @@ function candleStats(c) {
 
   const change =
     open > 0
-      ? ((close - open) / open) * 100
+      ? ((close - open) / open) *
+        100
       : 0;
 
   return {
@@ -332,10 +407,13 @@ function candleStats(c) {
     upperWickRatio,
     lowerWickRatio,
     change,
-    bullish: close > open,
-    bearish: close < open,
+    bullish:
+      close > open,
+    bearish:
+      close < open,
     neutral:
-      Math.abs(change) <= 0.15
+      Math.abs(change) <=
+      0.15
   };
 }
 
@@ -344,17 +422,28 @@ function candleStats(c) {
    VOLUME
 ========================================================= */
 
-function volumeAnalysis(candles, index) {
+function volumeAnalysis(
+  candles,
+  index
+) {
   const current =
     candles[index];
 
   const start =
-    Math.max(0, index - 20);
+    Math.max(
+      0,
+      index - 20
+    );
 
   const previous =
     candles
-      .slice(start, index)
-      .map(x => x.volume);
+      .slice(
+        start,
+        index
+      )
+      .map(
+        x => x.volume
+      );
 
   const averageVolume =
     avg(previous);
@@ -366,20 +455,25 @@ function volumeAnalysis(candles, index) {
       : 0;
 
   return {
-    currentVolume: current.volume,
+    currentVolume:
+      current.volume,
     averageVolume,
     ratio,
     spike:
-      ratio >= MIN_VOLUME_RATIO
+      ratio >=
+      MIN_VOLUME_RATIO
   };
 }
 
 
 /* =========================================================
-   PUMP DETECTION
+   PUMP
 ========================================================= */
 
-function detectPump(candles, index) {
+function detectPump(
+  candles,
+  index
+) {
   if (
     !candles ||
     index < 6
@@ -391,10 +485,15 @@ function detectPump(candles, index) {
     candles[index];
 
   const lookbackStart =
-    Math.max(0, index - 12);
+    Math.max(
+      0,
+      index - 12
+    );
 
   const base =
-    candles[lookbackStart];
+    candles[
+      lookbackStart
+    ];
 
   const pumpPercent =
     pctChange(
@@ -402,41 +501,40 @@ function detectPump(candles, index) {
       current.close
     );
 
+  const window =
+    candles.slice(
+      lookbackStart,
+      index + 1
+    );
+
   const bullishCandles =
-    candles
-      .slice(lookbackStart, index + 1)
-      .filter(
-        x => x.close > x.open
-      ).length;
+    window.filter(
+      x =>
+        x.close >
+        x.open
+    ).length;
 
   const total =
-    index -
-    lookbackStart +
-    1;
+    window.length;
 
   const greenRatio =
     total > 0
-      ? bullishCandles / total
+      ? bullishCandles /
+        total
       : 0;
 
   const rangeHigh =
     Math.max(
-      ...candles
-        .slice(
-          lookbackStart,
-          index + 1
-        )
-        .map(x => x.high)
+      ...window.map(
+        x => x.high
+      )
     );
 
   const rangeLow =
     Math.min(
-      ...candles
-        .slice(
-          lookbackStart,
-          index + 1
-        )
-        .map(x => x.low)
+      ...window.map(
+        x => x.low
+      )
     );
 
   const rangeMove =
@@ -452,17 +550,25 @@ function detectPump(candles, index) {
     return null;
   }
 
-  const score = clamp(
-    pumpPercent * 8 +
-    greenRatio * 25 +
-    Math.min(rangeMove * 2, 20)
-  );
+  const score =
+    clamp(
+      pumpPercent * 8 +
+      greenRatio * 25 +
+      Math.min(
+        rangeMove * 2,
+        20
+      )
+    );
 
   return {
-    startTime: base.startTime,
-    endTime: current.startTime,
-    startPrice: base.close,
-    endPrice: current.close,
+    startTime:
+      base.startTime,
+    endTime:
+      current.startTime,
+    startPrice:
+      base.close,
+    endPrice:
+      current.close,
     pumpPercent,
     greenRatio,
     rangeMove,
@@ -507,7 +613,10 @@ function detectAbsorption(
   const pressure =
     candles
       .slice(
-        Math.max(0, index - 5),
+        Math.max(
+          0,
+          index - 5
+        ),
         index
       )
       .map(candleStats);
@@ -521,24 +630,31 @@ function detectAbsorption(
     Math.max(
       ...candles
         .slice(
-          Math.max(0, index - 8),
+          Math.max(
+            0,
+            index - 8
+          ),
           index
         )
-        .map(x => x.high)
+        .map(
+          x => x.high
+        )
     );
 
   const nearHigh =
     recentHigh > 0
       ? (
-          (recentHigh - c.high) /
+          (recentHigh -
+            c.high) /
           recentHigh
-        ) *
-        100
+        ) * 100
       : 0;
 
   const weakRed =
     stats.bearish &&
-    Math.abs(stats.change) <= 1.5;
+    Math.abs(
+      stats.change
+    ) <= 1.5;
 
   const neutral =
     stats.neutral;
@@ -552,7 +668,8 @@ function detectAbsorption(
     0.25;
 
   const smallBody =
-    stats.bodyRatio <= 0.45;
+    stats.bodyRatio <=
+    0.45;
 
   const bullishContext =
     bullishPressure >= 3 ||
@@ -563,8 +680,11 @@ function detectAbsorption(
 
   let score = 0;
 
-  if (weakRed) score += 18;
-  else if (neutral) score += 14;
+  if (weakRed) {
+    score += 18;
+  } else if (neutral) {
+    score += 14;
+  }
 
   if (highVolume) {
     score += Math.min(
@@ -573,15 +693,24 @@ function detectAbsorption(
     );
   }
 
-  if (longLowerWick) score += 18;
+  if (longLowerWick) {
+    score += 18;
+  }
 
-  if (smallBody) score += 12;
+  if (smallBody) {
+    score += 12;
+  }
 
-  if (bullishContext) score += 12;
+  if (bullishContext) {
+    score += 12;
+  }
 
-  if (nearResistance) score += 5;
+  if (nearResistance) {
+    score += 5;
+  }
 
-  score = clamp(score);
+  score =
+    clamp(score);
 
   if (
     score <
@@ -601,15 +730,24 @@ function detectAbsorption(
 
   return {
     index,
-    time: c.startTime,
-    open: c.open,
-    high: c.high,
-    low: c.low,
-    close: c.close,
-    volume: c.volume,
-    volumeRatio: volume.ratio,
-    change: stats.change,
-    bodyRatio: stats.bodyRatio,
+    time:
+      c.startTime,
+    open:
+      c.open,
+    high:
+      c.high,
+    low:
+      c.low,
+    close:
+      c.close,
+    volume:
+      c.volume,
+    volumeRatio:
+      volume.ratio,
+    change:
+      stats.change,
+    bodyRatio:
+      stats.bodyRatio,
     lowerWickRatio:
       stats.lowerWickRatio,
     upperWickRatio:
@@ -626,20 +764,28 @@ function detectAbsorption(
 
 
 /* =========================================================
-   PUMP + ABSORPTION SEARCH
+   PUMP + ABSORPTION
 ========================================================= */
 
 function findAbsorptionSetup(
   candles
 ) {
-  if (!candles?.length) {
+  if (
+    !candles?.length
+  ) {
     return null;
   }
 
   let best = null;
 
+  const recentStart =
+    Math.max(
+      20,
+      candles.length - 60
+    );
+
   for (
-    let i = 20;
+    let i = recentStart;
     i < candles.length;
     i++
   ) {
@@ -657,12 +803,15 @@ function findAbsorptionSetup(
         i
       );
 
-    if (!absorption) continue;
+    if (!absorption) {
+      continue;
+    }
 
     const combinedScore =
       clamp(
         pump.score * 0.35 +
-        absorption.score * 0.65
+        absorption.score *
+          0.65
       );
 
     const candidate = {
@@ -686,39 +835,69 @@ function findAbsorptionSetup(
 
 
 /* =========================================================
-   TRADES / DELTA
+   RECENT TRADES
 ========================================================= */
 
 async function getRecentTrades(
   symbol,
   limit = TRADE_LIMIT
 ) {
-  const result = await bybit(
-    "/v5/market/recent-trade",
-    {
-      category: "linear",
-      symbol,
-      limit
-    }
-  );
+  const result =
+    await bybit(
+      "/v5/market/recent-trade",
+      {
+        category: "linear",
+        symbol,
+        limit
+      }
+    );
 
-  return Array.isArray(result?.list)
-    ? result.list.map(t => ({
-        id: t.execId,
-        price: num(t.price),
-        size: num(t.size),
-        side: t.side,
-        time: num(t.time)
-      }))
+  return Array.isArray(
+    result?.list
+  )
+    ? result.list.map(
+        t => ({
+          id:
+            t.execId,
+          price:
+            num(t.price),
+          size:
+            num(t.size),
+          side:
+            t.side,
+          time:
+            num(t.time)
+        })
+      )
     : [];
 }
+
+
+/* =========================================================
+   FOOTPRINT
+   IMPORTANT:
+   recent-trade is CURRENT recent data.
+   It is not historical footprint for old candle.
+========================================================= */
 
 function makeFootprint(
   trades,
   zone = null
 ) {
-  if (!trades?.length) {
+  if (
+    !trades?.length
+  ) {
     return {
+      source:
+        "recent-trade",
+      historicalMatched:
+        false,
+      historicalCandleTime:
+        zone?.time || null,
+      selectedWindowStart:
+        null,
+      selectedWindowEnd:
+        null,
       buyVolume: 0,
       sellVolume: 0,
       delta: 0,
@@ -731,43 +910,62 @@ function makeFootprint(
   let selected =
     trades;
 
+  let historicalMatched =
+    false;
+
+  let selectedWindowStart =
+    null;
+
+  let selectedWindowEnd =
+    null;
+
   if (zone?.time) {
-    const start =
+    selectedWindowStart =
       zone.time;
 
-    const end =
-      start +
+    selectedWindowEnd =
+      zone.time +
       5 * 60 * 1000;
 
     const filtered =
       trades.filter(
         t =>
-          t.time >= start &&
-          t.time < end
+          t.time >=
+            selectedWindowStart &&
+          t.time <
+            selectedWindowEnd
       );
 
     if (filtered.length) {
       selected =
         filtered;
+
+      historicalMatched =
+        true;
     }
   }
 
   let buyVolume = 0;
   let sellVolume = 0;
 
-  for (const trade of selected) {
+  for (
+    const trade of selected
+  ) {
     const value =
       num(trade.size) *
       num(trade.price);
 
     if (
-      String(trade.side)
-        .toLowerCase() ===
+      String(
+        trade.side
+      ).toLowerCase() ===
       "buy"
     ) {
-      buyVolume += value;
+      buyVolume +=
+        value;
     } else {
-      sellVolume += value;
+      sellVolume +=
+        value;
     }
   }
 
@@ -781,11 +979,22 @@ function makeFootprint(
 
   const deltaPercent =
     totalVolume > 0
-      ? (delta / totalVolume) *
-        100
+      ? (
+          delta /
+          totalVolume
+        ) * 100
       : 0;
 
   return {
+    source:
+      historicalMatched
+        ? "recent-trade-matched"
+        : "recent-trade",
+    historicalMatched,
+    historicalCandleTime:
+      zone?.time || null,
+    selectedWindowStart,
+    selectedWindowEnd,
     buyVolume,
     sellVolume,
     delta,
@@ -798,46 +1007,54 @@ function makeFootprint(
 
 
 /* =========================================================
-   ORDER BOOK
+   ORDERBOOK
 ========================================================= */
 
 async function getOrderbook(
   symbol
 ) {
-  const result = await bybit(
-    "/v5/market/orderbook",
-    {
-      category: "linear",
-      symbol,
-      limit: ORDERBOOK_LIMIT
-    }
-  );
+  const result =
+    await bybit(
+      "/v5/market/orderbook",
+      {
+        category: "linear",
+        symbol,
+        limit:
+          ORDERBOOK_LIMIT
+      }
+    );
 
   const bids =
     (result?.b || [])
-      .map(x => [
-        num(x[0]),
-        num(x[1])
-      ]);
+      .map(
+        x => [
+          num(x[0]),
+          num(x[1])
+        ]
+      );
 
   const asks =
     (result?.a || [])
-      .map(x => [
-        num(x[0]),
-        num(x[1])
-      ]);
+      .map(
+        x => [
+          num(x[0]),
+          num(x[1])
+        ]
+      );
 
   const bidValue =
     sum(
       bids.map(
-        x => x[0] * x[1]
+        x =>
+          x[0] * x[1]
       )
     );
 
   const askValue =
     sum(
       asks.map(
-        x => x[0] * x[1]
+        x =>
+          x[0] * x[1]
       )
     );
 
@@ -848,17 +1065,18 @@ async function getOrderbook(
   const imbalance =
     total > 0
       ? (
-          (bidValue - askValue) /
+          (bidValue -
+            askValue) /
           total
-        ) *
-        100
+        ) * 100
       : 0;
 
   const strongestBid =
     bids.length
       ? Math.max(
           ...bids.map(
-            x => x[0] * x[1]
+            x =>
+              x[0] * x[1]
           )
         )
       : 0;
@@ -867,7 +1085,8 @@ async function getOrderbook(
     asks.length
       ? Math.max(
           ...asks.map(
-            x => x[0] * x[1]
+            x =>
+              x[0] * x[1]
           )
         )
       : 0;
@@ -878,8 +1097,10 @@ async function getOrderbook(
     imbalance,
     strongestBid,
     strongestAsk,
-    bidCount: bids.length,
-    askCount: asks.length
+    bidCount:
+      bids.length,
+    askCount:
+      asks.length
   };
 }
 
@@ -897,7 +1118,8 @@ async function getOpenInterest(
       {
         category: "linear",
         symbol,
-        intervalTime: "5min",
+        intervalTime:
+          "5min",
         limit: 20
       }
     );
@@ -907,15 +1129,22 @@ async function getOpenInterest(
       result?.list
     )
       ? result.list
-          .map(x => ({
-            time: num(x.timestamp),
-            oi: num(
-              x.openInterest
-            )
-          }))
+          .map(
+            x => ({
+              time:
+                num(
+                  x.timestamp
+                ),
+              oi:
+                num(
+                  x.openInterest
+                )
+            })
+          )
           .sort(
             (a, b) =>
-              a.time - b.time
+              a.time -
+              b.time
           )
       : [];
 
@@ -924,26 +1153,31 @@ async function getOpenInterest(
 
   const previous =
     list.length >= 2
-      ? list[list.length - 2]
+      ? list[
+          list.length - 2
+        ]
       : null;
 
   const change =
     previous &&
     previous.oi
       ? (
-          (current.oi -
-            previous.oi) /
+          (
+            current.oi -
+            previous.oi
+          ) /
           previous.oi
-        ) *
-        100
+        ) * 100
       : 0;
 
   return {
-    current: current?.oi || 0,
+    current:
+      current?.oi || 0,
     previous:
       previous?.oi || 0,
     change,
-    points: list
+    points:
+      list
   };
 }
 
@@ -963,30 +1197,58 @@ function detectRetest(
   ) {
     return {
       detected: false,
-      confirmed: false
+      confirmed: false,
+      index: -1,
+      barsSinceRetest: null,
+      zoneHigh:
+        absorption?.zoneHigh || 0,
+      zoneLow:
+        absorption?.zoneLow || 0,
+      tolerance: 0,
+      distanceToZone: 0,
+      distancePercent: 0,
+      reason:
+        "هنوز کندل کافی بعد از جذب وجود ندارد.",
+      status:
+        "NO_RETEST"
     };
   }
 
   const zoneHigh =
-    absorption.zoneHigh;
+    num(
+      absorption.zoneHigh
+    );
 
   const zoneLow =
-    absorption.zoneLow;
+    num(
+      absorption.zoneLow
+    );
+
+  const zoneWidth =
+    Math.max(
+      zoneHigh -
+        zoneLow,
+      0
+    );
 
   const tolerance =
-    (
-      (zoneHigh -
-        zoneLow) *
-      RETEST_TOLERANCE_PERCENT
-    ) / 100;
+    Math.max(
+      zoneWidth * 0.15,
+      zoneHigh * 0.001
+    );
 
-  let touched = false;
-  let bounced = false;
+  const startIndex =
+    Math.max(
+      absorption.index + 1,
+      candles.length -
+        RETEST_LOOKBACK_CANDLES
+    );
+
   let retestIndex = -1;
 
   for (
     let i =
-      absorption.index + 1;
+      startIndex;
     i < candles.length;
     i++
   ) {
@@ -995,46 +1257,181 @@ function detectRetest(
 
     const touches =
       c.low <=
-        zoneHigh + tolerance &&
+        zoneHigh +
+          tolerance &&
       c.high >=
-        zoneLow - tolerance;
+        zoneLow -
+          tolerance;
 
     if (touches) {
-      touched = true;
       retestIndex = i;
-
-      if (
-        c.close >
-        zoneHigh
-      ) {
-        bounced = true;
-      }
-
-      if (
-        i + 1 <
-        candles.length
-      ) {
-        const next =
-          candles[i + 1];
-
-        if (
-          next.close >
-          c.close
-        ) {
-          bounced = true;
-        }
-      }
     }
   }
 
+  const current =
+    last(candles);
+
+  const currentPrice =
+    num(
+      current?.close
+    );
+
+  let distancePercent = 0;
+
+  if (
+    currentPrice >
+    zoneHigh
+  ) {
+    distancePercent =
+      (
+        (
+          currentPrice -
+          zoneHigh
+        ) /
+        zoneHigh
+      ) * 100;
+  } else if (
+    currentPrice <
+    zoneLow
+  ) {
+    distancePercent =
+      (
+        (
+          zoneLow -
+          currentPrice
+        ) /
+        zoneLow
+      ) * 100;
+  }
+
+  const distanceToZone =
+    distancePercent;
+
+  if (
+    retestIndex < 0
+  ) {
+    return {
+      detected: false,
+      confirmed: false,
+      index: -1,
+      barsSinceRetest: null,
+      zoneHigh,
+      zoneLow,
+      tolerance,
+      distanceToZone,
+      distancePercent,
+      reason:
+        "در 18 کندل اخیر لمس معتبر ناحیه دیده نشد.",
+      status:
+        "NO_RECENT_RETEST"
+    };
+  }
+
+  const barsSinceRetest =
+    candles.length -
+    1 -
+    retestIndex;
+
+  const retestCandle =
+    candles[
+      retestIndex
+    ];
+
+  let rejection = false;
+
+  if (
+    retestCandle.close >
+    zoneHigh
+  ) {
+    rejection = true;
+  }
+
+  if (
+    retestCandle.close >
+      retestCandle.open &&
+    retestCandle.lowerWickRatio >=
+      0.20
+  ) {
+    rejection = true;
+  }
+
+  for (
+    let j = 1;
+    j <=
+      RETEST_CONFIRMATION_BARS;
+    j++
+  ) {
+    const idx =
+      retestIndex + j;
+
+    if (
+      idx >=
+      candles.length
+    ) {
+      break;
+    }
+
+    if (
+      candles[idx].close >
+      retestCandle.close
+    ) {
+      rejection = true;
+      break;
+    }
+  }
+
+  const currentNear =
+    distancePercent <=
+    RETEST_MAX_DISTANCE_PERCENT;
+
+  const recent =
+    barsSinceRetest <=
+    RETEST_CONFIRMATION_BARS;
+
+  const confirmed =
+    rejection &&
+    currentNear &&
+    (
+      recent ||
+      currentPrice >
+        zoneHigh
+    );
+
+  let reason;
+
+  if (confirmed) {
+    reason =
+      "لمس اخیر ناحیه + واکنش صعودی + قیمت همچنان نزدیک ناحیه است.";
+  } else if (!currentNear) {
+    reason =
+      "ری‌تست قدیمی یا قیمت فعلی بیش از حد از ناحیه فاصله گرفته است.";
+  } else if (!rejection) {
+    reason =
+      "ناحیه لمس شده اما واکنش صعودی کافی تأیید نشده است.";
+  } else {
+    reason =
+      "لمس ناحیه ثبت شده ولی تأیید ری‌تست هنوز کامل نیست.";
+  }
+
   return {
-    detected: touched,
-    confirmed:
-      touched && bounced,
-    index: retestIndex,
+    detected: true,
+    confirmed,
+    index:
+      retestIndex,
+    barsSinceRetest,
     zoneHigh,
     zoneLow,
-    tolerance
+    tolerance,
+    distanceToZone,
+    distancePercent,
+    rejection,
+    recent,
+    currentNear,
+    reason,
+    status:
+      confirmed
+        ? "CONFIRMED"
+        : "DETECTED"
   };
 }
 
@@ -1051,7 +1448,8 @@ function structureAnalysis(
     candles.length < 10
   ) {
     return {
-      trend: "unknown",
+      trend:
+        "unknown",
       bos: false,
       higherHigh: false,
       higherLow: false
@@ -1076,22 +1474,20 @@ function structureAnalysis(
 
   const previousHigh =
     Math.max(
-      ...recent.slice(
-        0,
-        -2
-      ).map(
-        x => x.high
-      )
+      ...recent
+        .slice(0, -2)
+        .map(
+          x => x.high
+        )
     );
 
   const previousLow =
     Math.min(
-      ...recent.slice(
-        0,
-        -2
-      ).map(
-        x => x.low
-      )
+      ...recent
+        .slice(0, -2)
+        .map(
+          x => x.low
+        )
     );
 
   const higherHigh =
@@ -1109,12 +1505,14 @@ function structureAnalysis(
     higherHigh &&
     higherLow
   ) {
-    trend = "bullish";
+    trend =
+      "bullish";
   } else if (
     current.close <
     previousLow
   ) {
-    trend = "bearish";
+    trend =
+      "bearish";
   }
 
   return {
@@ -1133,7 +1531,7 @@ function structureAnalysis(
 
 
 /* =========================================================
-   TIMEFRAME CONFIRMATION
+   TIMEFRAME
 ========================================================= */
 
 function timeframeConfirmation(
@@ -1144,10 +1542,13 @@ function timeframeConfirmation(
     candles.length < 25
   ) {
     return {
-      trend: "unknown",
+      trend:
+        "unknown",
       score: 0,
       price: 0,
-      average: 0
+      average: 0,
+      ema8: 0,
+      ema20: 0
     };
   }
 
@@ -1162,14 +1563,16 @@ function timeframeConfirmation(
   const currentPrice =
     current.close;
 
-  const short =
-    avg(
-      closes.slice(-8)
+  const ema8 =
+    ema(
+      closes,
+      8
     );
 
-  const medium =
-    avg(
-      closes.slice(-20)
+  const ema20 =
+    ema(
+      closes,
+      20
     );
 
   let trend =
@@ -1177,44 +1580,51 @@ function timeframeConfirmation(
 
   if (
     currentPrice >
-      short &&
-    short >
-      medium
+      ema8 &&
+    ema8 >
+      ema20
   ) {
-    trend = "bullish";
+    trend =
+      "bullish";
   } else if (
     currentPrice <
-      short &&
-    short <
-      medium
+      ema8 &&
+    ema8 <
+      ema20
   ) {
-    trend = "bearish";
+    trend =
+      "bearish";
   }
 
-  let score = 0;
+  let score = 50;
 
   if (
-    trend === "bullish"
+    trend ===
+    "bullish"
   ) {
     score = 100;
   } else if (
-    trend === "neutral"
+    trend ===
+    "bearish"
   ) {
-    score = 50;
+    score = 0;
   }
 
   return {
     trend,
     score,
-    price: currentPrice,
-    average: medium,
-    shortAverage: short
+    price:
+      currentPrice,
+    average:
+      ema20,
+    ema8,
+    ema20
   };
 }
 
 
 /* =========================================================
-   FINAL SCORE
+   SCORE
 ========================================================= */
 
 function calculateFinalScore({
@@ -1240,19 +1650,40 @@ function calculateFinalScore({
       Math.max(
         0,
         setup.pump.pumpPercent *
-        2
+          2
       )
     );
 
+  /*
+    Recent trades are current pressure.
+    They are NOT historical absorption delta
+    unless timestamps actually matched.
+  */
   if (
-    footprint.delta >= 0
+    footprint.historicalMatched
   ) {
-    score += 8;
-  } else if (
-    footprint.deltaPercent >
+    if (
+      footprint.delta >= 0
+    ) {
+      score += 5;
+    } else if (
+      footprint.deltaPercent >
       -15
-  ) {
-    score += 4;
+    ) {
+      score += 2;
+    }
+  } else {
+    if (
+      footprint.deltaPercent >=
+      10
+    ) {
+      score += 4;
+    } else if (
+      footprint.deltaPercent >
+      -10
+    ) {
+      score += 2;
+    }
   }
 
   if (
@@ -1328,9 +1759,7 @@ function signalFromScore(
   retest,
   confirmations
 ) {
-  if (
-    !setup
-  ) {
+  if (!setup) {
     return "NO_SETUP";
   }
 
@@ -1343,7 +1772,9 @@ function signalFromScore(
   }
 
   if (
-    score >= 70
+    score >= 70 &&
+    retest.confirmed &&
+    confirmations
   ) {
     return "LONG";
   }
@@ -1359,7 +1790,7 @@ function signalFromScore(
 
 
 /* =========================================================
-   SINGLE SYMBOL
+   ANALYZE
 ========================================================= */
 
 async function analyzeSymbol(
@@ -1381,28 +1812,29 @@ async function analyzeSymbol(
     candles15,
     candles3,
     candles1
-  ] = await Promise.all([
-    getKlines(
-      normalized,
-      MAIN_TF,
-      KLINE_LIMIT
-    ),
-    getKlines(
-      normalized,
-      CONFIRM_TF_15M,
-      100
-    ),
-    getKlines(
-      normalized,
-      CONFIRM_TF_3M,
-      100
-    ),
-    getKlines(
-      normalized,
-      CONFIRM_TF_1M,
-      100
-    )
-  ]);
+  ] =
+    await Promise.all([
+      getKlines(
+        normalized,
+        MAIN_TF,
+        KLINE_LIMIT
+      ),
+      getKlines(
+        normalized,
+        CONFIRM_TF_15M,
+        100
+      ),
+      getKlines(
+        normalized,
+        CONFIRM_TF_3M,
+        100
+      ),
+      getKlines(
+        normalized,
+        CONFIRM_TF_1M,
+        100
+      )
+    ]);
 
   if (
     !candles5.length
@@ -1423,23 +1855,30 @@ async function analyzeSymbol(
   if (!setup) {
     return {
       ok: true,
-      symbol: normalized,
-      version: VERSION,
-      signal: "NO_SETUP",
+      symbol:
+        normalized,
+      version:
+        VERSION,
+      signal:
+        "NO_SETUP",
       score: 0,
-      detected: false,
+      detected:
+        false,
       currentPrice:
         current?.close || 0,
       message:
         "No absorption zone detected",
       timeframe: {
-        primary: MAIN_TF,
+        primary:
+          MAIN_TF,
         confirmations: [
           CONFIRM_TF_15M,
           CONFIRM_TF_3M,
           CONFIRM_TF_1M
         ]
-      }
+      },
+      generatedAt:
+        Date.now()
     };
   }
 
@@ -1450,18 +1889,19 @@ async function analyzeSymbol(
     trades,
     orderbook,
     openInterest
-  ] = await Promise.all([
-    getRecentTrades(
-      normalized,
-      TRADE_LIMIT
-    ),
-    getOrderbook(
-      normalized
-    ),
-    getOpenInterest(
-      normalized
-    )
-  ]);
+  ] =
+    await Promise.all([
+      getRecentTrades(
+        normalized,
+        TRADE_LIMIT
+      ),
+      getOrderbook(
+        normalized
+      ),
+      getOpenInterest(
+        normalized
+      )
+    ]);
 
   const footprint =
     makeFootprint(
@@ -1529,33 +1969,54 @@ async function analyzeSymbol(
   const currentPrice =
     current.close;
 
-  const distanceToZone =
-    zone.zoneHigh > 0
-      ? (
-          (
-            currentPrice -
-            zone.zoneHigh
-          ) /
+  let distanceToZone = 0;
+
+  if (
+    currentPrice >
+    zone.zoneHigh
+  ) {
+    distanceToZone =
+      (
+        (
+          currentPrice -
           zone.zoneHigh
-        ) *
-        100
-      : 0;
+        ) /
+        zone.zoneHigh
+      ) * 100;
+  } else if (
+    currentPrice <
+    zone.zoneLow
+  ) {
+    distanceToZone =
+      (
+        (
+          zone.zoneLow -
+          currentPrice
+        ) /
+        zone.zoneLow
+      ) * 100;
+  }
 
   return {
     ok: true,
     detected: true,
-    symbol: normalized,
-    version: VERSION,
+    symbol:
+      normalized,
+    version:
+      VERSION,
 
     signal,
-    score: Number(
-      score.toFixed(2)
-    ),
+
+    score:
+      Number(
+        score.toFixed(2)
+      ),
 
     currentPrice,
 
     timeframe: {
-      primary: MAIN_TF,
+      primary:
+        MAIN_TF,
       confirmations: [
         CONFIRM_TF_15M,
         CONFIRM_TF_3M,
@@ -1584,13 +2045,20 @@ async function analyzeSymbol(
       },
 
       absorption: {
-        time: zone.time,
-        open: zone.open,
-        high: zone.high,
-        low: zone.low,
-        close: zone.close,
-        change: zone.change,
-        volume: zone.volume,
+        time:
+          zone.time,
+        open:
+          zone.open,
+        high:
+          zone.high,
+        low:
+          zone.low,
+        close:
+          zone.close,
+        change:
+          zone.change,
+        volume:
+          zone.volume,
         volumeRatio:
           zone.volumeRatio,
         bodyRatio:
@@ -1615,6 +2083,16 @@ async function analyzeSymbol(
     },
 
     footprint: {
+      source:
+        footprint.source,
+      historicalMatched:
+        footprint.historicalMatched,
+      historicalCandleTime:
+        footprint.historicalCandleTime,
+      selectedWindowStart:
+        footprint.selectedWindowStart,
+      selectedWindowEnd:
+        footprint.selectedWindowEnd,
       buyVolume:
         footprint.buyVolume,
       sellVolume:
@@ -1647,13 +2125,28 @@ async function analyzeSymbol(
         retest.confirmed,
       index:
         retest.index,
+      barsSinceRetest:
+        retest.barsSinceRetest,
       zoneHigh:
         retest.zoneHigh,
       zoneLow:
         retest.zoneLow,
       tolerance:
         retest.tolerance,
-      distanceToZone
+      distanceToZone:
+        retest.distanceToZone,
+      distancePercent:
+        retest.distancePercent,
+      rejection:
+        retest.rejection,
+      recent:
+        retest.recent,
+      currentNear:
+        retest.currentNear,
+      reason:
+        retest.reason,
+      status:
+        retest.status
     },
 
     structure,
@@ -1666,6 +2159,27 @@ async function analyzeSymbol(
       "1m":
         confirmation1
     },
+
+    analysisQuality: {
+      recentRetest:
+        retest.detected,
+      confirmedRetest:
+        retest.confirmed,
+      bullish15m:
+        confirmation15.trend ===
+        "bullish",
+      bullishLowerTF:
+        (
+          confirmation3.trend ===
+            "bullish" ||
+          confirmation1.trend ===
+            "bullish"
+        ),
+      currentTradePressure:
+        true
+    },
+
+    distanceToZone,
 
     generatedAt:
       Date.now()
@@ -1703,17 +2217,21 @@ async function scanMarkets() {
         result.score >=
           MIN_ABSORPTION_SCORE
       ) {
-        results.push(
-          {
-            ...result,
-            volume24h:
-              item.volume24h || 0,
-            turnover24h:
-              item.turnover24h || 0,
-            price24hPcnt:
-              item.price24hPcnt || 0
-          }
-        );
+        results.push({
+          ...result,
+
+          volume24h:
+            item.volume24h ||
+            0,
+
+          turnover24h:
+            item.turnover24h ||
+            0,
+
+          price24hPcnt:
+            item.price24hPcnt ||
+            0
+        });
       }
     } catch (error) {
       results.push({
@@ -1737,7 +2255,8 @@ async function scanMarkets() {
 
   return {
     ok: true,
-    version: VERSION,
+    version:
+      VERSION,
     count:
       results.filter(
         x => x.ok
@@ -1774,12 +2293,16 @@ function json(
       headers: {
         "content-type":
           "application/json; charset=UTF-8",
+
         "cache-control":
           "no-store, no-cache, must-revalidate",
+
         "access-control-allow-origin":
           "*",
+
         "access-control-allow-methods":
           "GET, OPTIONS",
+
         "access-control-allow-headers":
           "*"
       }
@@ -1851,13 +2374,16 @@ async function router(
   }
 
   if (
-    path === "/api/health"
+    path ===
+    "/api/health"
   ) {
     return json({
       ok: true,
       online: true,
-      version: VERSION,
-      exchange: "Bybit",
+      version:
+        VERSION,
+      exchange:
+        "Bybit",
       market:
         "USDT Perpetual Futures",
       primaryTimeframe:
@@ -1867,18 +2393,27 @@ async function router(
         CONFIRM_TF_3M,
         CONFIRM_TF_1M
       ],
+      retest: {
+        lookbackCandles:
+          RETEST_LOOKBACK_CANDLES,
+        maxDistancePercent:
+          RETEST_MAX_DISTANCE_PERCENT
+      },
       timestamp:
         Date.now()
     });
   }
 
   if (
-    path === "/api/config"
+    path ===
+    "/api/config"
   ) {
     return json({
       ok: true,
-      version: VERSION,
-      exchange: "Bybit",
+      version:
+        VERSION,
+      exchange:
+        "Bybit",
       market:
         "USDT Perpetual Futures",
       mainTimeframe:
@@ -1905,14 +2440,17 @@ async function router(
           MIN_VOLUME_RATIO,
         minAbsorptionScore:
           MIN_ABSORPTION_SCORE,
-        retestTolerancePercent:
-          RETEST_TOLERANCE_PERCENT
+        retestLookbackCandles:
+          RETEST_LOOKBACK_CANDLES,
+        retestMaxDistancePercent:
+          RETEST_MAX_DISTANCE_PERCENT
       }
     });
   }
 
   if (
-    path === "/api/symbols"
+    path ===
+    "/api/symbols"
   ) {
     try {
       const symbols =
@@ -1942,7 +2480,8 @@ async function router(
   }
 
   if (
-    path === "/api/test-bybit"
+    path ===
+    "/api/test-bybit"
   ) {
     try {
       const result =
@@ -1974,7 +2513,8 @@ async function router(
   }
 
   if (
-    path === "/api/analyze"
+    path ===
+    "/api/analyze"
   ) {
     const symbol =
       url.searchParams.get(
@@ -2015,7 +2555,8 @@ async function router(
   }
 
   if (
-    path === "/api/scan"
+    path ===
+    "/api/scan"
   ) {
     try {
       return json(
@@ -2039,7 +2580,8 @@ async function router(
   return json(
     {
       ok: false,
-      error: "Not Found",
+      error:
+        "Not Found",
       path
     },
     404
@@ -2068,7 +2610,8 @@ export default {
           error:
             error?.message ||
             String(error),
-          version: VERSION,
+          version:
+            VERSION,
           timestamp:
             Date.now()
         },
