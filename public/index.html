@@ -1,10 +1,12 @@
-<!DOCTYPE html><html lang="fa" dir="rtl"><head>
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1"><title>Bybit Absorption Zone Scanner</title><style>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>Bybit Absorption Zone Scanner</title>
 
-*{
-  box-sizing:border-box;
-}
+<style>
+*{box-sizing:border-box}
 
 body{
   margin:0;
@@ -19,8 +21,7 @@ body{
   padding:12px;
 }
 
-.header,
-.card{
+.header,.card{
   background:#111720;
   border:1px solid #202a38;
   border-radius:16px;
@@ -49,8 +50,7 @@ h1{
   margin-top:14px;
 }
 
-input,
-button{
+input,button{
   height:46px;
   border-radius:11px;
   border:1px solid #293546;
@@ -65,17 +65,9 @@ button{
   font-weight:bold;
 }
 
-.primary{
-  background:#126b4f;
-}
-
-.danger{
-  background:#762f38;
-}
-
-.blue{
-  background:#194c7c;
-}
+.primary{background:#126b4f}
+.danger{background:#762f38}
+.blue{background:#194c7c}
 
 .status{
   margin-top:10px;
@@ -150,25 +142,11 @@ canvas{
   margin-top:3px;
 }
 
-.green{
-  color:#42df9a;
-}
-
-.red{
-  color:#ff6570;
-}
-
-.yellow{
-  color:#ffd166;
-}
-
-.cyan{
-  color:#55d8ff;
-}
-
-.purple{
-  color:#c28cff;
-}
+.green{color:#42df9a}
+.red{color:#ff6570}
+.yellow{color:#ffd166}
+.cyan{color:#55d8ff}
+.purple{color:#c28cff}
 
 .sectionTitle{
   font-weight:bold;
@@ -208,8 +186,7 @@ table{
   font-size:12px;
 }
 
-td,
-th{
+td,th{
   padding:7px;
   border-bottom:1px solid #1b2430;
   text-align:center;
@@ -238,20 +215,12 @@ th{
 
 .zoneBuy{
   border:1px solid #168b63;
-  background:linear-gradient(
-    90deg,
-    #09291f,
-    #0b1118
-  );
+  background:linear-gradient(90deg,#09291f,#0b1118);
 }
 
 .zoneSell{
   border:1px solid #a43d49;
-  background:linear-gradient(
-    90deg,
-    #2b1116,
-    #0b1118
-  );
+  background:linear-gradient(90deg,#2b1116,#0b1118);
 }
 
 .zoneNone{
@@ -298,140 +267,260 @@ hr{
 }
 
 @media(max-width:950px){
-
-  .grid{
-    grid-template-columns:1fr;
-  }
-
-  .controls{
-    grid-template-columns:1fr 1fr;
-  }
-
-  .chartWrap{
-    height:620px;
-  }
+  .grid{grid-template-columns:1fr}
+  .controls{grid-template-columns:1fr 1fr}
+  .chartWrap{height:620px}
 }
 
 @media(max-width:550px){
-
-  .controls{
-    grid-template-columns:1fr;
-  }
-
-  .chartWrap{
-    height:560px;
-  }
-
+  .controls{grid-template-columns:1fr}
+  .chartWrap{height:560px}
 }
+</style>
+</head>
 
-</style></head><body><div class="app"><div class="header"><h1>
-🧲 اسکنر ناحیه جذب Bybit
-</h1><div class="muted">
+<body>
+
+<div class="app">
+
+<div class="header">
+
+<h1>🧲 اسکنر ناحیه جذب Bybit</h1>
+
+<div class="muted">
 داده واقعی Bybit · Order Flow · Delta · Order Book · Liquidity · Absorption Zone
-</div><div class="controls"><input
+</div>
+
+<div class="controls">
+
+<input
 id="symbol"
 value="BTCUSDT"
 placeholder="مثلاً BTCUSDT"
 autocomplete="off"
+>
 
-«»
-
-<button
-class="primary"
-onclick="analyze()"
-
-«»
-
+<button class="primary" onclick="analyze()">
 تحلیل کامل
 </button>
 
-<button
-class="blue"
-onclick="startLive()"
-
-«»
-
+<button class="blue" onclick="startLive()">
 شروع زنده
 </button>
 
-<button
-class="danger"
-onclick="stopLive()"
-
-«»
-
+<button class="danger" onclick="stopLive()">
 توقف
 </button>
 
-</div><div
-  id="status"
-  class="status"
->
-🟡 آماده
-</div></div><div class="grid"><main><div class="card"><div class="chartWrap"><canvas id="chart"></canvas>
+</div>
 
-<div
-  id="chartInfo"
-  class="chartInfo"
->
+<div id="status" class="status">
+🟡 آماده
+</div>
+
+</div>
+
+
+<div class="grid">
+
+<main>
+
+<div class="card">
+
+<div class="chartWrap">
+
+<canvas id="chart"></canvas>
+
+<div id="chartInfo" class="chartInfo">
 در انتظار داده...
-</div></div></div><div class="card"><div class="sectionTitle">
+</div>
+
+</div>
+
+</div>
+
+
+<div class="card">
+
+<div class="sectionTitle">
 🧲 ناحیه جذب روی بازار
-</div><div id="zoneMain"></div></div><div class="card"><div class="sectionTitle">
+</div>
+
+<div id="zoneMain"></div>
+
+</div>
+
+
+<div class="card">
+
+<div class="sectionTitle">
 🧾 معاملات واقعی
-</div><div
-  class="rows"
-  id="trades"
-></div></div><div class="card"><div class="sectionTitle">
+</div>
+
+<div class="rows" id="trades"></div>
+
+</div>
+
+
+<div class="card">
+
+<div class="sectionTitle">
 🧱 Order Book / دیوارهای نقدینگی
-</div><div id="book"></div></div><div class="card"><div class="sectionTitle">
+</div>
+
+<div id="book"></div>
+
+</div>
+
+
+<div class="card">
+
+<div class="sectionTitle">
 🐋 معاملات بزرگ
-</div><div id="blocks"></div></div></main><aside class="side"><div class="card"><div class="sectionTitle">
+</div>
+
+<div id="blocks"></div>
+
+</div>
+
+</main>
+
+
+<aside class="side">
+
+<div class="card">
+
+<div class="sectionTitle">
 🎯 وضعیت هوشمند
-</div><div class="statgrid"><div class="stat">
+</div>
+
+<div class="statgrid">
+
+<div class="stat">
 امتیاز Smart Money
 <b id="score">—</b>
-</div><div class="stat">
+</div>
+
+<div class="stat">
 قدرت سیگنال
 <b id="signal">—</b>
-</div><div class="stat">
+</div>
+
+<div class="stat">
 مسیر بازار
 <b id="movement">—</b>
-</div><div class="stat">
+</div>
+
+<div class="stat">
 جذب سفارش
 <b id="abs">—</b>
-</div><div class="stat">
+</div>
+
+<div class="stat">
 فشار خرید / فروش
 <b id="pressure">—</b>
-</div><div class="stat">
+</div>
+
+<div class="stat">
 Delta
 <b id="delta">—</b>
-</div></div></div><div class="card"><div class="sectionTitle">
+</div>
+
+</div>
+</div>
+
+
+<div class="card">
+
+<div class="sectionTitle">
 ⚖️ فشار معاملات واقعی
-</div><div id="pressureBox"></div></div><div class="card"><div class="sectionTitle">
+</div>
+
+<div id="pressureBox"></div>
+
+</div>
+
+
+<div class="card">
+
+<div class="sectionTitle">
 🧲 جزئیات جذب سفارش
-</div><div id="absBox"></div></div><div class="card"><div class="sectionTitle">
+</div>
+
+<div id="absBox"></div>
+
+</div>
+
+
+<div class="card">
+
+<div class="sectionTitle">
 💧 نقدینگی و Sweep
-</div><div id="liqBox"></div></div><div class="card"><div class="sectionTitle">
+</div>
+
+<div id="liqBox"></div>
+
+</div>
+
+
+<div class="card">
+
+<div class="sectionTitle">
 📈 Open Interest و Funding
-</div><div id="oiBox"></div></div><div class="card"><div class="sectionTitle">
+</div>
+
+<div id="oiBox"></div>
+
+</div>
+
+
+<div class="card">
+
+<div class="sectionTitle">
 📍 حمایت و مقاومت
-</div><div id="srBox"></div></div><div class="card"><div class="sectionTitle">
+</div>
+
+<div id="srBox"></div>
+
+</div>
+
+
+<div class="card">
+
+<div class="sectionTitle">
 🎯 ورود ۱ دقیقه
-</div><div id="entryBox"></div></div><div class="card"><div class="sectionTitle">
+</div>
+
+<div id="entryBox"></div>
+
+</div>
+
+
+<div class="card">
+
+<div class="sectionTitle">
 🧠 دلایل تحلیل
-</div><div id="reasons"></div></div></aside></div></div><script>
+</div>
+
+<div id="reasons"></div>
+
+</div>
+
+</aside>
+
+</div>
+
+</div>
+
+
+<script>
 
 const API="";
-
 const REFRESH_MS=2500;
 
 let data=null;
-
 let liveTimer=null;
-
 let candles=[];
-
 let liveTrades=[];
 
 
@@ -439,20 +528,15 @@ let liveTrades=[];
    HELPERS
 ========================================================= */
 
-const $=
-  id=>
-    document.getElementById(id);
+const $=id=>document.getElementById(id);
 
 
 function fmt(x,d=2){
 
   return Number.isFinite(Number(x))
-    ? Number(x).toLocaleString(
-        "en-US",
-        {
-          maximumFractionDigits:d
-        }
-      )
+    ? Number(x).toLocaleString("en-US",{
+        maximumFractionDigits:d
+      })
     : "—";
 
 }
@@ -462,33 +546,19 @@ function num(x){
 
   const n=Number(x);
 
-  if(!Number.isFinite(n))
-    return 0;
-
-  return n;
+  return Number.isFinite(n)?n:0;
 
 }
 
 
 function fa(x){
 
-  if(x==="LONG")
-    return "صعودی";
-
-  if(x==="SHORT")
-    return "نزولی";
-
-  if(x==="BUY")
-    return "خرید";
-
-  if(x==="SELL")
-    return "فروش";
-
-  if(x==="WAIT")
-    return "انتظار";
-
-  if(x==="NONE")
-    return "—";
+  if(x==="LONG") return "صعودی";
+  if(x==="SHORT") return "نزولی";
+  if(x==="BUY") return "خرید";
+  if(x==="SELL") return "فروش";
+  if(x==="WAIT") return "انتظار";
+  if(x==="NONE") return "—";
 
   return x||"—";
 
@@ -512,16 +582,20 @@ function priceDigits(price){
 
   price=Number(price);
 
-  if(price>=1000)
-    return 2;
-
-  if(price>=1)
-    return 4;
-
-  if(price>=0.01)
-    return 6;
+  if(price>=1000) return 2;
+  if(price>=1) return 4;
+  if(price>=0.01) return 6;
 
   return 8;
+
+}
+
+
+function finitePositive(x){
+
+  const n=Number(x);
+
+  return Number.isFinite(n)&&n>0;
 
 }
 
@@ -532,37 +606,20 @@ function priceDigits(price){
 
 async function get(path){
 
-  const r=
-    await fetch(
-      API+path,
-      {
-        cache:"no-store"
-      }
-    );
+  const r=await fetch(
+    API+path,
+    {
+      cache:"no-store"
+    }
+  );
 
+  if(!r.ok)
+    throw new Error("HTTP "+r.status);
 
-  if(!r.ok){
+  const d=await r.json();
 
-    throw new Error(
-      "HTTP "+r.status
-    );
-
-  }
-
-
-  const d=
-    await r.json();
-
-
-  if(!d.ok){
-
-    throw new Error(
-      d.error||
-      "خطا"
-    );
-
-  }
-
+  if(!d.ok)
+    throw new Error(d.error||"خطا");
 
   return d;
 
@@ -577,42 +634,26 @@ async function analyze(){
 
   stopLive();
 
-
-  const s=
-    $("symbol")
-      .value
-      .trim()
-      .toUpperCase();
-
+  const s=$("symbol")
+    .value
+    .trim()
+    .toUpperCase();
 
   if(!s)
     return;
 
-
-  setStatus(
-    "🟡 دریافت داده واقعی از Bybit..."
-  );
-
+  setStatus("🟡 دریافت داده واقعی از Bybit...");
 
   try{
 
-    data=
-      await get(
-        "/api/analyze?symbol="+
-        encodeURIComponent(s)
-      );
+    data=await get(
+      "/api/analyze?symbol="+
+      encodeURIComponent(s)
+    );
 
+    candles=data.candles?.tf5||[];
 
-    candles=
-      data.candles?.tf5||
-      data.candles?.tf1||
-      [];
-
-
-    liveTrades=
-      data.trades||
-      [];
-
+    liveTrades=data.trades||[];
 
     normalizeData();
 
@@ -622,17 +663,13 @@ async function analyze(){
       "🟢 تحلیل با داده واقعی Bybit انجام شد"
     );
 
-
     startLive();
-
 
   }catch(e){
 
     console.error(e);
 
-    setStatus(
-      "🔴 "+e.message
-    );
+    setStatus("🔴 "+e.message);
 
   }
 
@@ -649,137 +686,98 @@ function normalizeData(){
     return;
 
 
-  /*
-    اگر Worker به جای value
-    از price*size استفاده کرده باشد
-  */
-
-  const ob=
-    data.orderbook;
-
+  const ob=data.orderbook;
 
   if(ob){
 
     if(Array.isArray(ob.bids)){
 
-      ob.bids=
-        ob.bids.map(
-          x=>{
+      ob.bids=ob.bids
+        .map(x=>{
 
-            const price=
-              num(x.price);
+          const price=num(x.price);
 
-            const size=
-              num(
-                x.size ??
-                x.qty ??
-                x.volume
-              );
+          const size=num(
+            x.size ??
+            x.qty ??
+            x.volume
+          );
 
-            return {
-              ...x,
-              price,
-              size,
-              value:
-                num(
-                  x.value ??
-                  x.notional ??
-                  price*size
-                )
-            };
+          return {
+            ...x,
+            price,
+            size,
+            value:num(
+              x.value ??
+              x.notional ??
+              price*size
+            )
+          };
 
-          }
-        );
+        })
+        .filter(x=>finitePositive(x.price));
 
     }
 
 
     if(Array.isArray(ob.asks)){
 
-      ob.asks=
-        ob.asks.map(
-          x=>{
+      ob.asks=ob.asks
+        .map(x=>{
 
-            const price=
-              num(x.price);
+          const price=num(x.price);
 
-            const size=
-              num(
-                x.size ??
-                x.qty ??
-                x.volume
-              );
+          const size=num(
+            x.size ??
+            x.qty ??
+            x.volume
+          );
 
-            return {
-              ...x,
-              price,
-              size,
-              value:
-                num(
-                  x.value ??
-                  x.notional ??
-                  price*size
-                )
-            };
+          return {
+            ...x,
+            price,
+            size,
+            value:num(
+              x.value ??
+              x.notional ??
+              price*size
+            )
+          };
 
-          }
-        );
+        })
+        .filter(x=>finitePositive(x.price));
 
     }
 
   }
 
 
-  /*
-    بعضی Workerها قیمت را
-    داخل ticker می‌فرستند.
-  */
+  if(!Number.isFinite(Number(data.price))){
 
-  if(
-    !Number.isFinite(
-      Number(data.price)
-    )
-  ){
-
-    data.price=
-      num(
-        data.ticker?.lastPrice
-      );
+    data.price=num(
+      data.ticker?.lastPrice
+    );
 
   }
 
 
-  /*
-    اگر zone وجود نداشته باشد
-    از absorption آن را می‌سازیم.
-  */
+  if(!data.zone){
 
-  if(
-    !data.zone &&
-    data.absorption?.detected
-  ){
+    const a=data.absorption||{};
 
-    const p=
-      num(data.price);
+    const low=num(a.low);
+    const high=num(a.high);
 
-    const atr=
-      num(
-        data.absorption.atr
-      );
+    if(low>0&&high>0){
 
+      data.zone={
+        low,
+        high,
+        center:num(a.center)||(low+high)/2,
+        source:"ABSORPTION"
+      };
 
-    const width=
-      atr>0
-        ? atr*.35
-        : p*.001;
-
-
-    data.zone={
-      low:p-width,
-      high:p+width,
-      center:p,
-      source:"FRONTEND_FALLBACK"
-    };
+    }
 
   }
 
@@ -794,109 +792,85 @@ async function startLive(){
 
   stopLive();
 
-
-  const s=
-    $("symbol")
-      .value
-      .trim()
-      .toUpperCase();
-
+  const s=$("symbol")
+    .value
+    .trim()
+    .toUpperCase();
 
   if(!s)
     return;
 
 
-  const tick=
-    async()=>{
+  const tick=async()=>{
 
-      try{
+    try{
 
-        const d=
-          await get(
-            "/api/live?symbol="+
-            encodeURIComponent(s)
-          );
+      const d=await get(
+        "/api/live?symbol="+
+        encodeURIComponent(s)
+      );
 
 
-        liveTrades=
-          d.trades||
-          [];
+      liveTrades=d.trades||[];
 
 
-        if(data){
+      /*
+       * مهم:
+       * /api/live فقط داده زنده می‌دهد.
+       * نتیجه کامل /api/analyze را overwrite نمی‌کنیم.
+       */
 
-          data.price=
-            d.price;
+      if(data){
 
-          data.ticker=
-            d.ticker;
+        data.price=num(d.price);
 
-          data.orderbook=
-            d.orderbook;
+        data.ticker=d.ticker||data.ticker;
 
-          data.wall=
-            d.wall;
+        data.orderbook=d.orderbook||data.orderbook;
 
-          data.currentFlow=
-            d.flow;
+        data.wall=d.wall||data.wall;
 
-          data.blocks=
-            d.blocks;
+        data.currentFlow=d.flow||data.currentFlow;
 
-
-          if(d.absorption)
-            data.absorption=
-              d.absorption;
-
-          if(d.zone)
-            data.zone=
-              d.zone;
-
-          if(d.sweep)
-            data.sweep=
-              d.sweep;
+        data.blocks=d.blocks||data.blocks;
 
 
-          normalizeData();
+        normalizeData();
 
-          draw();
+        renderLive();
 
-          renderLive();
-
-        }
-
-
-        setStatus(
-          "🟢 زنده · "+
-          new Date()
-            .toLocaleTimeString(
-              "fa-IR"
-            )
-        );
-
-
-      }catch(e){
-
-        console.error(e);
-
-        setStatus(
-          "🟠 خطای اتصال زنده: "+
-          e.message
-        );
+        draw();
 
       }
 
-    };
+
+      setStatus(
+        "🟢 زنده · "+
+        new Date().toLocaleTimeString("fa-IR")
+      );
+
+
+    }catch(e){
+
+      console.error(e);
+
+      setStatus(
+        "🟠 خطای اتصال زنده: "+
+        e.message
+      );
+
+    }
+
+  };
 
 
   await tick();
 
 
-  liveTimer=
-    setInterval(
-      tick,
-      REFRESH_MS
-    );
+  liveTimer=setInterval(
+    tick,
+    REFRESH_MS
+  );
 
 }
 
@@ -905,9 +879,7 @@ function stopLive(){
 
   if(liveTimer){
 
-    clearInterval(
-      liveTimer
-    );
+    clearInterval(liveTimer);
 
     liveTimer=null;
 
@@ -922,8 +894,7 @@ function stopLive(){
 
 function setStatus(t){
 
-  $("status")
-    .textContent=t;
+  $("status").textContent=t;
 
 }
 
@@ -938,101 +909,62 @@ function renderAll(){
     return;
 
 
-  const score=
-    num(data.score);
+  const score=num(data.score);
+
+  $("score").textContent=fmt(score,0);
+
+  $("score").className=
+    score>=70
+      ? "green"
+      : score>=55
+        ? "yellow"
+        : "red";
 
 
-  $("score")
-    .textContent=
-      fmt(score,0);
+  $("signal").textContent=
+    data.signalLabel||"—";
 
 
-  $("score")
-    .className=
-      score>=70
-        ? "green"
-        : score>=55
-          ? "yellow"
-          : "red";
+  $("movement").textContent=
+    data.movement?.label||
+    fa(data.movement?.direction);
 
 
-  $("signal")
-    .textContent=
-      data.signalLabel||
-      "—";
+  const a=data.absorption||{};
+
+  $("abs").textContent=
+    a.detected
+      ? (
+          a.real
+            ? "واقعی"
+            : "ساختاری"
+        )
+      : "ندارد";
 
 
-  $("movement")
-    .textContent=
-      data.movement?.label||
-      fa(
-        data.movement?.direction
-      );
+  const f=data.currentFlow||{};
+
+  $("pressure").textContent=
+    fmt(f.buyShare,0)+
+    "% / "+
+    fmt(f.sellShare,0)+
+    "%";
 
 
-  const a=
-    data.absorption||
-    {};
-
-
-  $("abs")
-    .textContent=
-      a.detected
-        ? (
-            a.real
-              ? "واقعی"
-              : "ساختاری"
-          )
-        : "ندارد";
-
-
-  const f=
-    data.currentFlow||
-    {};
-
-
-  $("pressure")
-    .textContent=
-      fmt(
-        f.buyShare,
-        0
-      )+
-      "% / "+
-      fmt(
-        f.sellShare,
-        0
-      )+
-      "%";
-
-
-  $("delta")
-    .textContent=
-      fmt(
-        f.deltaValue,
-        0
-      );
+  $("delta").textContent=
+    fmt(f.deltaValue,0);
 
 
   renderPressure();
-
   renderAbsorption();
-
   renderLiquidity();
-
   renderOI();
-
   renderSR();
-
   renderEntry();
-
   renderReasons();
-
   renderTrades();
-
   renderBook();
-
   renderBlocks();
-
   renderZone();
 
   draw();
@@ -1050,39 +982,24 @@ function renderLive(){
     return;
 
 
-  const f=
-    data.currentFlow||
-    {};
+  const f=data.currentFlow||{};
 
 
-  $("pressure")
-    .textContent=
-      fmt(
-        f.buyShare,
-        0
-      )+
-      "% / "+
-      fmt(
-        f.sellShare,
-        0
-      )+
-      "%";
+  $("pressure").textContent=
+    fmt(f.buyShare,0)+
+    "% / "+
+    fmt(f.sellShare,0)+
+    "%";
 
 
-  $("delta")
-    .textContent=
-      fmt(
-        f.deltaValue,
-        0
-      );
+  $("delta").textContent=
+    fmt(f.deltaValue,0);
 
 
+  renderPressure();
   renderTrades();
-
   renderBook();
-
   renderBlocks();
-
   renderZone();
 
 }
@@ -1094,13 +1011,9 @@ function renderLive(){
 
 function renderPressure(){
 
-  const f=
-    data.currentFlow||
-    {};
+  const f=data.currentFlow||{};
 
-
-  $("pressureBox")
-    .innerHTML=`
+  $("pressureBox").innerHTML=`
 
 <div>
 فشار خرید:
@@ -1155,21 +1068,15 @@ ${fmt(f.deltaValuePercent,2)}%
 
 function renderAbsorption(){
 
-  const a=
-    data.absorption||
-    {};
-
+  const a=data.absorption||{};
 
   if(!a.detected){
 
-    $("absBox")
-      .innerHTML=`
+    $("absBox").innerHTML=`
 
 <div class="zoneCard zoneNone">
 
-<b>
-⚪ ناحیه جذب تأیید نشده
-</b>
+<b>⚪ ناحیه جذب تأیید نشده</b>
 
 <br>
 
@@ -1190,8 +1097,7 @@ function renderAbsorption(){
     a.direction==="BUY";
 
 
-  $("absBox")
-    .innerHTML=`
+  $("absBox").innerHTML=`
 
 <div class="
 zoneCard
@@ -1209,16 +1115,10 @@ ${isBuy
 
 <span class="
 badge
-${isBuy
-  ? "badgeBuy"
-  : "badgeSell"
-}
+${isBuy?"badgeBuy":"badgeSell"}
 ">
 
-${a.real
-  ? "REAL"
-  : "STRUCTURAL"
-}
+${a.real?"REAL":"STRUCTURAL"}
 
 </span>
 
@@ -1226,76 +1126,50 @@ ${a.real
 
 
 <div>
-
 امتیاز جذب:
-
 <b class="zoneScore">
-
 ${fmt(a.score,0)}
-
 </b>
-
 </div>
 
 
 <div>
-
 تعداد معاملات:
-
 ${fmt(a.tradeCount,0)}
-
 </div>
 
 
 <div>
-
 حجم خرید:
-
 <span class="green">
-
 ${fmt(a.buyVolume,4)}
-
 </span>
-
 </div>
 
 
 <div>
-
 حجم فروش:
-
 <span class="red">
-
 ${fmt(a.sellVolume,4)}
-
 </span>
-
 </div>
 
 
 <div>
-
 Delta:
-
 <b>
-
 ${fmt(a.deltaPercent,2)}%
-
 </b>
-
 </div>
 
 
 <hr>
 
-
 <div class="small">
 
 ${
   a.source==="REAL_BYBIT_TRADES"
-
     ? "✅ تأیید با معاملات واقعی Bybit"
-
     : "⚠️ تأیید ساختاری/کندلی"
 }
 
@@ -1314,27 +1188,15 @@ ${
 
 function renderZone(){
 
-  const a=
-    data?.absorption||
-    {};
+  const a=data?.absorption||{};
+  const z=data?.zone;
 
+  if(!a.detected&&!z){
 
-  const z=
-    data?.zone;
-
-
-  if(
-    !a.detected &&
-    !z
-  ){
-
-    $("zoneMain")
-      .innerHTML=`
+    $("zoneMain").innerHTML=`
 
 <div class="zoneCard zoneNone">
-
 ⚪ در حال حاضر ناحیه جذب معتبر روی نمودار وجود ندارد.
-
 </div>
 
 `;
@@ -1349,29 +1211,28 @@ function renderZone(){
     a.direction==="BUY";
 
 
-  const low=
-    num(
-      z?.low ??
-      data.price
-    );
+  const low=num(
+    z?.low ??
+    a.low ??
+    data.price
+  );
 
 
-  const high=
-    num(
-      z?.high ??
-      data.price
-    );
+  const high=num(
+    z?.high ??
+    a.high ??
+    data.price
+  );
 
 
-  const center=
-    num(
-      z?.center ??
-      (low+high)/2
-    );
+  const center=num(
+    z?.center ??
+    a.center ??
+    (low+high)/2
+  );
 
 
-  $("zoneMain")
-    .innerHTML=`
+  $("zoneMain").innerHTML=`
 
 <div class="
 zoneCard
@@ -1388,9 +1249,7 @@ ${buy
 </b>
 
 <span class="zoneScore">
-
 ${fmt(a.score,0)}/100
-
 </span>
 
 </div>
@@ -1399,79 +1258,41 @@ ${fmt(a.score,0)}/100
 <div class="statgrid">
 
 <div class="stat">
-
 کف Zone
-
 <b>
-
-${fmt(
-  low,
-  priceDigits(low)
-)}
-
+${fmt(low,priceDigits(low))}
 </b>
-
 </div>
 
 
 <div class="stat">
-
 سقف Zone
-
 <b>
-
-${fmt(
-  high,
-  priceDigits(high)
-)}
-
+${fmt(high,priceDigits(high))}
 </b>
-
 </div>
 
 
 <div class="stat">
-
 مرکز Zone
-
-<b class="${
-  buy
-    ? "green"
-    : "red"
-}">
-
-${fmt(
-  center,
-  priceDigits(center)
-)}
-
+<b class="${buy?"green":"red"}">
+${fmt(center,priceDigits(center))}
 </b>
-
 </div>
 
 
 <div class="stat">
-
 وضعیت
-
 <b>
-
-${
-  a.status||
-  "ACTIVE"
-}
-
+${a.status||"ACTIVE"}
 </b>
-
 </div>
 
 </div>
 
 
 <div style="margin-top:9px">
-
 ${a.reason||""}
-
 </div>
 
 </div>
@@ -1487,25 +1308,14 @@ ${a.reason||""}
 
 function renderLiquidity(){
 
-  const sw=
-    data.sweep||
-    {};
+  const sw=data.sweep||{};
+  const zones=data.liquidityZones||[];
 
-
-  const zones=
-    data.liquidityZones||
-    [];
-
-
-  $("liqBox")
-    .innerHTML=`
+  $("liqBox").innerHTML=`
 
 <div>
-
 جمع‌آوری نقدینگی:
-
 <b>
-
 ${
   sw.detected
     ? (
@@ -1515,68 +1325,39 @@ ${
       )
     : "ندارد"
 }
-
 </b>
-
 </div>
 
-
 <div>
-
 قدرت Sweep:
-
 <b>
-
-${fmt(
-  sw.strength,
-  0
-)}
-
+${fmt(sw.strength,0)}
 </b>
-
 </div>
 
 <hr>
 
-
 ${
   zones
+    .filter(z=>z&&Number.isFinite(Number(z.price)))
     .slice(0,10)
-    .map(
-      z=>`
+    .map(z=>`
 
 <div class="row">
 
 <span>
-
-${
-  z.side==="BUY"
-    ? "🟢"
-    : "🔴"
-}
-
-${fmt(
-  z.price,
-  8
-)}
-
+${z.side==="BUY"?"🟢":"🔴"}
+${fmt(z.price,8)}
 </span>
 
-
 <span>
-
-${fmt(
-  z.distancePercent,
-  3
-)}%
-
+${fmt(z.distancePercent,3)}%
 </span>
 
 </div>
 
-`
-    )
-    .join("")
+`)
+.join("")
 }
 
 `;
@@ -1590,80 +1371,39 @@ ${fmt(
 
 function renderOI(){
 
-  const oi=
-    data.oiFunding||
-    {};
+  const oi=data.oiFunding||{};
 
-
-  $("oiBox")
-    .innerHTML=`
+  $("oiBox").innerHTML=`
 
 <div class="statgrid">
 
-
 <div class="stat">
-
 Open Interest
-
 <b>
-
-${fmt(
-  oi.openInterest,
-  0
-)}
-
+${fmt(oi.openInterest,0)}
 </b>
-
 </div>
 
-
 <div class="stat">
-
 تغییر OI
-
 <b>
-
-${fmt(
-  oi.changePercent,
-  2
-)}%
-
+${fmt(oi.changePercent,2)}%
 </b>
-
 </div>
 
-
 <div class="stat">
-
 Funding
-
 <b>
-
-${fmt(
-  oi.fundingRate,
-  4
-)}%
-
+${fmt(oi.fundingRate,4)}%
 </b>
-
 </div>
-
 
 <div class="stat">
-
 Funding قبلی
-
 <b>
-
-${fmt(
-  oi.previousFundingRate,
-  4
-)}%
-
+${fmt(oi.previousFundingRate,4)}%
 </b>
-
 </div>
-
 
 </div>
 
@@ -1678,80 +1418,39 @@ ${fmt(
 
 function renderSR(){
 
-  const sr=
-    data.supportResistance||
-    {};
+  const sr=data.supportResistance||{};
 
-
-  $("srBox")
-    .innerHTML=`
+  $("srBox").innerHTML=`
 
 <div class="statgrid">
 
-
 <div class="stat">
-
 مقاومت
-
 <b class="red">
-
-${fmt(
-  sr.resistance,
-  8
-)}
-
+${fmt(sr.resistance,8)}
 </b>
-
 </div>
 
-
 <div class="stat">
-
 حمایت
-
 <b class="green">
-
-${fmt(
-  sr.support,
-  8
-)}
-
+${fmt(sr.support,8)}
 </b>
-
 </div>
 
-
 <div class="stat">
-
 مقاومت نزدیک
-
 <b>
-
-${fmt(
-  sr.recentResistance,
-  8
-)}
-
+${fmt(sr.recentResistance,8)}
 </b>
-
 </div>
-
 
 <div class="stat">
-
 حمایت نزدیک
-
 <b>
-
-${fmt(
-  sr.recentSupport,
-  8
-)}
-
+${fmt(sr.recentSupport,8)}
 </b>
-
 </div>
-
 
 </div>
 
@@ -1766,106 +1465,62 @@ ${fmt(
 
 function renderEntry(){
 
-  const e=
-    data.entry1m||
-    {};
+  const e=data.entry1m||{};
 
+  $("entryBox").innerHTML=
 
-  $("entryBox")
-    .innerHTML=
+    e.status
 
-      e.status
-
-        ? `
+      ? `
 
 <div class="notice">
 
 وضعیت:
 
 <b>
-
 ${
   e.status==="READY"
     ? "🟢 آماده"
     : "🟡 انتظار"
 }
-
 </b>
-
 
 <br>
 
 جهت:
-
 ${fa(e.direction)}
-
 
 <br>
 
 محدوده ورود:
-
-${fmt(
-  e.entryLow,
-  8
-)}
-
+${fmt(e.entryLow,8)}
 تا
-
-${fmt(
-  e.entryHigh,
-  8
-)}
-
+${fmt(e.entryHigh,8)}
 
 <br>
 
 ماشۀ ورود:
-
-${fmt(
-  e.trigger,
-  8
-)}
-
+${fmt(e.trigger,8)}
 
 <br>
 
 حد ضرر:
-
-${fmt(
-  e.stopLoss,
-  8
-)}
-
+${fmt(e.stopLoss,8)}
 
 <br>
 
 هدف ۱:
-
-${fmt(
-  e.target1,
-  8
-)}
-
+${fmt(e.target1,8)}
 
 <br>
 
 هدف ۲:
-
-${fmt(
-  e.target2,
-  8
-)}
-
+${fmt(e.target2,8)}
 
 <br>
 
 ریسک:
-
-${fmt(
-  e.riskPercent,
-  2
-)}%
-
+${fmt(e.riskPercent,2)}%
 
 <br>
 
@@ -1875,7 +1530,7 @@ ${e.reason||""}
 
 `
 
-        : "—";
+      : "—";
 
 }
 
@@ -1886,26 +1541,29 @@ ${e.reason||""}
 
 function renderReasons(){
 
-  $("reasons")
-    .innerHTML=
-      (
-        data.reasons||
-        []
-      )
-      .map(
-        x=>`
+  const reasons=Array.isArray(data.reasons)
+    ? data.reasons
+        .filter(x=>x!==null&&x!==undefined&&String(x).trim()!=="")
+        .map(x=>String(x).trim())
+    : [];
+
+
+  $("reasons").innerHTML=
+    reasons.length
+      ? reasons.map(x=>`
 
 <div class="row">
-
-<span>
-• ${x}
-</span>
-
+<span>• ${x}</span>
 </div>
 
-`
-      )
-      .join("");
+`).join("")
+      : `
+
+<div class="notice">
+دلیل مشخصی برای سیگنال فعلی ثبت نشده است.
+</div>
+
+`;
 
 }
 
@@ -1916,29 +1574,23 @@ function renderReasons(){
 
 function renderTrades(){
 
-  const t=
-    (
-      liveTrades||
-      []
-    )
+  const t=(liveTrades||[])
+    .filter(x=>x&&Number.isFinite(Number(x.time)))
     .slice(-80)
     .reverse();
 
 
-  $("trades")
-    .innerHTML=
+  $("trades").innerHTML=
 
 `<table>
 
 <thead>
 
 <tr>
-
 <th>زمان</th>
 <th>قیمت</th>
 <th>ارزش</th>
 <th>طرف</th>
-
 </tr>
 
 </thead>
@@ -1947,68 +1599,37 @@ function renderTrades(){
 
 `+
 
-t.map(
-  x=>`
+t.map(x=>`
 
 <tr>
 
 <td>
-
-${new Date(
-  x.time
-)
-.toLocaleTimeString(
-  "fa-IR"
-)}
-
+${new Date(Number(x.time)).toLocaleTimeString("fa-IR")}
 </td>
 
-
 <td>
-
-${fmt(
-  x.price,
-  priceDigits(x.price)
-)}
-
+${fmt(x.price,priceDigits(x.price))}
 </td>
 
-
 <td>
-
 ${fmt(
-  num(x.price)*
-  num(x.size),
+  num(x.value)||
+  num(x.price)*num(x.size),
   0
 )}
-
 </td>
 
-
-<td class="${
-  x.side==="buy"
-    ? "green"
-    : "red"
-}">
-
-${
-  x.side==="buy"
-    ? "🟢 خرید"
-    : "🔴 فروش"
-}
-
+<td class="${x.side==="buy"?"green":"red"}">
+${x.side==="buy"?"🟢 خرید":"🔴 فروش"}
 </td>
 
 </tr>
 
-`
-)
-.join("")
+`).join("")
 
 +
 
 `</tbody>
-
 </table>`;
 
 }
@@ -2020,108 +1641,58 @@ ${
 
 function renderBook(){
 
-  const ob=
-    data?.orderbook;
-
-  const w=
-    data?.wall;
-
+  const ob=data?.orderbook;
+  const w=data?.wall;
 
   if(!ob)
     return;
 
 
-  const bids=
-    (ob.bids||[])
-      .slice(0,8);
+  const bids=(ob.bids||[])
+    .filter(x=>finitePositive(x.price))
+    .slice(0,8);
 
 
-  const asks=
-    (ob.asks||[])
-      .slice(0,8);
+  const asks=(ob.asks||[])
+    .filter(x=>finitePositive(x.price))
+    .slice(0,8);
 
 
-  const buyShare=
-    num(
-      w?.buyShare
-    );
+  const buyShare=num(w?.buyShare);
+  const sellShare=num(w?.sellShare);
 
 
-  const sellShare=
-    num(
-      w?.sellShare
-    );
-
-
-  $("book")
-    .innerHTML=`
+  $("book").innerHTML=`
 
 <div class="statgrid">
 
-
 <div class="stat">
-
 سهم سفارش خرید
-
 <b class="green">
-
-${fmt(
-  buyShare,
-  1
-)}%
-
+${fmt(buyShare,1)}%
 </b>
-
 </div>
 
-
 <div class="stat">
-
 سهم سفارش فروش
-
 <b class="red">
-
-${fmt(
-  sellShare,
-  1
-)}%
-
+${fmt(sellShare,1)}%
 </b>
-
 </div>
 
-
 <div class="stat">
-
 بهترین خرید
-
 <b>
-
-${fmt(
-  w?.bestBid,
-  8
-)}
-
+${fmt(w?.bestBid,8)}
 </b>
-
 </div>
-
 
 <div class="stat">
-
 بهترین فروش
-
 <b>
-
-${fmt(
-  w?.bestAsk,
-  8
-)}
-
+${fmt(w?.bestAsk,8)}
 </b>
-
 </div>
-
 
 </div>
 
@@ -2131,23 +1702,18 @@ ${fmt(
 <thead>
 
 <tr>
-
 <th>نوع</th>
 <th>قیمت</th>
 <th>حجم</th>
 <th>ارزش</th>
-
 </tr>
 
 </thead>
 
 <tbody>
 
-
 ${
-  asks
-    .map(
-      x=>`
+  asks.map(x=>`
 
 <tr>
 
@@ -2156,10 +1722,7 @@ ${
 </td>
 
 <td>
-${fmt(
-  x.price,
-  priceDigits(x.price)
-)}
+${fmt(x.price,priceDigits(x.price))}
 </td>
 
 <td>
@@ -2168,7 +1731,8 @@ ${fmt(x.size,4)}
 
 <td>
 ${fmt(
-  x.value ??
+  x.value||
+  x.notional||
   x.price*x.size,
   0
 )}
@@ -2176,16 +1740,12 @@ ${fmt(
 
 </tr>
 
-`
-    )
-    .join("")
+`).join("")
 }
 
 
 ${
-  bids
-    .map(
-      x=>`
+  bids.map(x=>`
 
 <tr>
 
@@ -2194,10 +1754,7 @@ ${
 </td>
 
 <td>
-${fmt(
-  x.price,
-  priceDigits(x.price)
-)}
+${fmt(x.price,priceDigits(x.price))}
 </td>
 
 <td>
@@ -2206,7 +1763,8 @@ ${fmt(x.size,4)}
 
 <td>
 ${fmt(
-  x.value ??
+  x.value||
+  x.notional||
   x.price*x.size,
   0
 )}
@@ -2214,14 +1772,10 @@ ${fmt(
 
 </tr>
 
-`
-    )
-    .join("")
+`).join("")
 }
 
-
 </tbody>
-
 </table>
 
 `;
@@ -2235,29 +1789,23 @@ ${fmt(
 
 function renderBlocks(){
 
-  const blocks=
-    data?.blocks?.trades||
-    [];
+  const blocks=data?.blocks?.trades||[];
 
+  $("blocks").innerHTML=
 
-  $("blocks")
-    .innerHTML=
+    blocks.length
 
-      blocks.length
-
-        ? `
+      ? `
 
 <table>
 
 <thead>
 
 <tr>
-
 <th>زمان</th>
 <th>قیمت</th>
 <th>ارزش</th>
 <th>طرف</th>
-
 </tr>
 
 </thead>
@@ -2266,74 +1814,43 @@ function renderBlocks(){
 
 ${
   blocks
+    .filter(x=>x)
     .slice(0,20)
-    .map(
-      x=>`
+    .map(x=>`
 
 <tr>
 
 <td>
-
-${new Date(
-  x.time
-)
-.toLocaleTimeString(
-  "fa-IR"
-)}
-
+${new Date(Number(x.time)).toLocaleTimeString("fa-IR")}
 </td>
 
 <td>
-
-${fmt(
-  x.price,
-  priceDigits(x.price)
-)}
-
+${fmt(x.price,priceDigits(x.price))}
 </td>
 
 <td>
-
-${fmt(
-  x.value,
-  0
-)}
-
+${fmt(x.value,0)}
 </td>
 
-<td class="${
-  x.aggressor==="BUY"
-    ? "green"
-    : "red"
-}">
-
-${
-  x.aggressor==="BUY"
-    ? "🐋 خرید"
-    : "🐋 فروش"
-}
-
+<td class="${x.aggressor==="BUY"?"green":"red"}">
+${x.aggressor==="BUY"?"🐋 خرید":"🐋 فروش"}
 </td>
 
 </tr>
 
-`
-    )
-    .join("")
+`)
+.join("")
 }
 
 </tbody>
-
 </table>
 
 `
 
-        : `
+      : `
 
 <div class="notice">
-
 معامله Block کافی شناسایی نشد.
-
 </div>
 
 `;
@@ -2347,39 +1864,34 @@ ${
 
 function draw(){
 
-  const c=
-    $("chart");
+  const c=$("chart");
 
-
-  const ctx=
-    c.getContext("2d");
-
-
-  const r=
-    c.getBoundingClientRect();
-
-
-  const dpr=
-    window.devicePixelRatio||1;
-
-
-  if(
-    r.width<=0||
-    r.height<=0
-  )
+  if(!c)
     return;
 
 
-  c.width=
-    Math.floor(
-      r.width*dpr
-    );
+  /*
+   * ctx فقط اینجا ساخته می‌شود.
+   * سپس به تمام توابع رسم پاس داده می‌شود.
+   */
+
+  const ctx=c.getContext("2d");
+
+  if(!ctx)
+    return;
 
 
-  c.height=
-    Math.floor(
-      r.height*dpr
-    );
+  const r=c.getBoundingClientRect();
+
+  const dpr=window.devicePixelRatio||1;
+
+
+  if(r.width<=0||r.height<=0)
+    return;
+
+
+  c.width=Math.floor(r.width*dpr);
+  c.height=Math.floor(r.height*dpr);
 
 
   ctx.setTransform(
@@ -2392,15 +1904,11 @@ function draw(){
   );
 
 
-  const W=
-    r.width;
-
-  const H=
-    r.height;
+  const W=r.width;
+  const H=r.height;
 
 
-  ctx.fillStyle=
-    "#070a0e";
+  ctx.fillStyle="#070a0e";
 
   ctx.fillRect(
     0,
@@ -2410,16 +1918,10 @@ function draw(){
   );
 
 
-  if(
-    !data||
-    !candles.length
-  ){
+  if(!data||!candles.length){
 
-    ctx.fillStyle=
-      "#64748b";
-
-    ctx.font=
-      "14px Tahoma";
+    ctx.fillStyle="#64748b";
+    ctx.font="14px Tahoma";
 
     ctx.fillText(
       "در انتظار کندل...",
@@ -2432,187 +1934,118 @@ function draw(){
   }
 
 
-  const cs=
-    candles.slice(-70);
+  const cs=candles
+    .filter(x=>
+      Number.isFinite(Number(x.time))&&
+      Number.isFinite(Number(x.open))&&
+      Number.isFinite(Number(x.high))&&
+      Number.isFinite(Number(x.low))&&
+      Number.isFinite(Number(x.close))
+    )
+    .slice(-70);
 
 
-  const price=
-    num(
-      data.price
-    );
+  if(!cs.length)
+    return;
 
 
-  const book=
-    data.orderbook||
-    {};
+  const price=num(data.price);
+
+  const book=data.orderbook||{};
 
 
-  const bids=
-    (book.bids||[])
-      .map(
-        x=>num(x.price)
-      )
-      .filter(Boolean);
+  const bids=(book.bids||[])
+    .map(x=>num(x.price))
+    .filter(finitePositive);
 
 
-  const asks=
-    (book.asks||[])
-      .map(
-        x=>num(x.price)
-      )
-      .filter(Boolean);
+  const asks=(book.asks||[])
+    .map(x=>num(x.price))
+    .filter(finitePositive);
 
 
-  const prices=
-    [
-      ...cs.map(x=>num(x.low)),
-      ...cs.map(x=>num(x.high)),
-      ...bids.slice(0,30),
-      ...asks.slice(0,30)
-    ]
-    .filter(
-      x=>x>0
-    );
+  const prices=[
+    ...cs.map(x=>num(x.low)),
+    ...cs.map(x=>num(x.high)),
+    ...bids.slice(0,30),
+    ...asks.slice(0,30),
+    price
+  ].filter(finitePositive);
 
 
   if(!prices.length)
     return;
 
 
-  let min=
-    Math.min(
-      ...prices
-    );
-
-
-  let max=
-    Math.max(
-      ...prices
-    );
+  let min=Math.min(...prices);
+  let max=Math.max(...prices);
 
 
   if(price>0){
 
-    min=
-      Math.min(
-        min,
-        price
-      );
-
-    max=
-      Math.max(
-        max,
-        price
-      );
+    min=Math.min(min,price);
+    max=Math.max(max,price);
 
   }
 
 
-  const range=
-    max-min||1;
+  const range=max-min||1;
+  const pad=range*.08;
 
-  const pad=
-    range*.08;
-
-  const lo=
-    min-pad;
-
-  const hi=
-    max+pad;
+  const lo=min-pad;
+  const hi=max+pad;
 
 
-  const py=
-    p=>
-      H-
-      45-
-      (
-        (p-lo)/
-        (hi-lo)
-      )*
-      (H-70);
+  const py=p=>
+    H-
+    45-
+    ((p-lo)/(hi-lo))*
+    (H-70);
 
 
-  const step=
-    Math.max(
-      7,
-      W/cs.length
-    );
+  const step=Math.max(
+    7,
+    W/cs.length
+  );
 
 
-  const bodyW=
-    Math.max(
-      3,
-      step*.58
-    );
+  const bodyW=Math.max(
+    3,
+    step*.58
+  );
 
 
-  /* =====================================================
-     GRID
-  ===================================================== */
+  /* GRID */
 
   ctx.globalAlpha=.20;
-
-  ctx.strokeStyle=
-    "#27303b";
-
+  ctx.strokeStyle="#27303b";
   ctx.lineWidth=1;
 
 
-  for(
-    let i=0;
-    i<8;
-    i++
-  ){
+  for(let i=0;i<8;i++){
 
     const y=
       20+
-      i*
-      (
-        (H-70)/7
-      );
-
+      i*((H-70)/7);
 
     ctx.beginPath();
 
-    ctx.moveTo(
-      0,
-      y
-    );
-
-    ctx.lineTo(
-      W,
-      y
-    );
+    ctx.moveTo(0,y);
+    ctx.lineTo(W,y);
 
     ctx.stroke();
 
   }
 
 
-  for(
-    let i=0;
-    i<10;
-    i++
-  ){
+  for(let i=0;i<10;i++){
 
-    const x=
-      i*
-      (
-        W/9
-      );
-
+    const x=i*(W/9);
 
     ctx.beginPath();
 
-    ctx.moveTo(
-      x,
-      0
-    );
-
-    ctx.lineTo(
-      x,
-      H
-    );
+    ctx.moveTo(x,0);
+    ctx.lineTo(x,H);
 
     ctx.stroke();
 
@@ -2622,85 +2055,65 @@ function draw(){
   ctx.globalAlpha=1;
 
 
-  /* =====================================================
-     ORDER BOOK HEATMAP
-  ===================================================== */
+  /* ORDER BOOK HEATMAP */
 
-  const levels=
-    [
-      ...(book.bids||[])
-        .map(
-          x=>({
-            ...x,
-            side:"BUY",
-            value:
-              num(
-                x.value ??
-                num(x.price)*
-                num(x.size)
-              )
-          })
-        ),
-
-      ...(book.asks||[])
-        .map(
-          x=>({
-            ...x,
-            side:"SELL",
-            value:
-              num(
-                x.value ??
-                num(x.price)*
-                num(x.size)
-              )
-          })
+  const levels=[
+    ...(book.bids||[])
+      .map(x=>({
+        ...x,
+        side:"BUY",
+        price:num(x.price),
+        size:num(x.size),
+        value:num(
+          x.value ??
+          x.notional ??
+          num(x.price)*num(x.size)
         )
-    ];
+      })),
+
+    ...(book.asks||[])
+      .map(x=>({
+        ...x,
+        side:"SELL",
+        price:num(x.price),
+        size:num(x.size),
+        value:num(
+          x.value ??
+          x.notional ??
+          num(x.price)*num(x.size)
+        )
+      }))
+  ]
+  .filter(x=>finitePositive(x.price));
 
 
-  const maxBookValue=
-    Math.max(
-      1,
-      ...levels.map(
-        x=>x.value
-      )
-    );
+  const maxBookValue=Math.max(
+    1,
+    ...levels.map(x=>num(x.value))
+  );
 
 
-  for(
-    const q of levels
-  ){
+  for(const q of levels){
 
-    const qp=
-      num(q.price);
+    const qp=num(q.price);
 
-
-    if(
-      qp<lo||
-      qp>hi
-    )
+    if(qp<lo||qp>hi)
       continue;
 
 
-    const y=
-      py(qp);
+    const y=py(qp);
+
+    const strength=clamp(
+      num(q.value)/maxBookValue,
+      0,
+      1
+    );
 
 
-    const strength=
-      clamp(
-        q.value/
-        maxBookValue,
-        0,
-        1
-      );
-
-
-    const width=
-      Math.max(
-        12,
-        strength*
-        W*.42
-      );
+    const width=Math.max(
+      12,
+      strength*W*.42
+    );
 
 
     ctx.globalAlpha=
@@ -2740,18 +2153,14 @@ function draw(){
   ctx.globalAlpha=1;
 
 
-  /* =====================================================
-     WALLS
-  ===================================================== */
+  /* WALLS */
 
-  const walls=
-    data.wall||
-    {};
+  const walls=data.wall||{};
 
 
   drawWallList(
-    walls.buyWalls||
-    [],
+    ctx,
+    walls.buyWalls||[],
     "#00e6a0",
     lo,
     hi,
@@ -2762,8 +2171,8 @@ function draw(){
 
 
   drawWallList(
-    walls.sellWalls||
-    [],
+    ctx,
+    walls.sellWalls||[],
     "#ff5362",
     lo,
     hi,
@@ -2773,11 +2182,10 @@ function draw(){
   );
 
 
-  /* =====================================================
-     ABSORPTION ZONE
-  ===================================================== */
+  /* ABSORPTION */
 
   drawAbsorptionZone(
+    ctx,
     lo,
     hi,
     py,
@@ -2786,161 +2194,110 @@ function draw(){
   );
 
 
-  /* =====================================================
-     CANDLES
-  ===================================================== */
+  /* CANDLES */
 
-  cs.forEach(
-    (x,i)=>{
+  cs.forEach((x,i)=>{
 
-      const xx=
-        20+
-        i*step+
-        step/2;
+    const xx=
+      20+
+      i*step+
+      step/2;
 
 
-      const yo=
-        py(num(x.open));
-
-      const yc=
-        py(num(x.close));
-
-      const yh=
-        py(num(x.high));
-
-      const yl=
-        py(num(x.low));
+    const yo=py(num(x.open));
+    const yc=py(num(x.close));
+    const yh=py(num(x.high));
+    const yl=py(num(x.low));
 
 
-      const up=
-        num(x.close)>=
-        num(x.open);
-
-
-      ctx.strokeStyle=
-        up
-          ? "#25d695"
-          : "#ff5965";
-
-
-      ctx.lineWidth=1.3;
-
-
-      ctx.beginPath();
-
-      ctx.moveTo(
-        xx,
-        yh
-      );
-
-      ctx.lineTo(
-        xx,
-        yl
-      );
-
-      ctx.stroke();
-
-
-      ctx.fillStyle=
-        up
-          ? "#25d695"
-          : "#ff5965";
-
-
-      ctx.fillRect(
-
-        xx-
-        bodyW/2,
-
-        Math.min(
-          yo,
-          yc
-        ),
-
-        bodyW,
-
-        Math.max(
-          1,
-          Math.abs(
-            yc-yo
-          )
-        )
-
-      );
-
-    }
-  );
-
-
-  /* =====================================================
-     TRADES
-  ===================================================== */
-
-  drawTrades(
-    cs,
-    step,
-    py,
-    lo,
-    hi
-  );
-
-
-  /* =====================================================
-     BLOCKS
-  ===================================================== */
-
-  drawBlocks(
-    cs,
-    step,
-    py,
-    lo,
-    hi
-  );
-
-
-  /* =====================================================
-     PRICE
-  ===================================================== */
-
-  if(price>0){
-
-    const y=
-      py(price);
+    const up=
+      num(x.close)>=
+      num(x.open);
 
 
     ctx.strokeStyle=
-      "#ffd166";
+      up
+        ? "#25d695"
+        : "#ff5965";
 
-    ctx.lineWidth=1;
 
-    ctx.setLineDash(
-      [5,5]
-    );
-
+    ctx.lineWidth=1.3;
 
     ctx.beginPath();
 
-    ctx.moveTo(
-      0,
-      y
-    );
-
-    ctx.lineTo(
-      W,
-      y
-    );
+    ctx.moveTo(xx,yh);
+    ctx.lineTo(xx,yl);
 
     ctx.stroke();
 
 
+    ctx.fillStyle=
+      up
+        ? "#25d695"
+        : "#ff5965";
+
+
+    ctx.fillRect(
+      xx-bodyW/2,
+      Math.min(yo,yc),
+      bodyW,
+      Math.max(
+        1,
+        Math.abs(yc-yo)
+      )
+    );
+
+  });
+
+
+  /* TRADES */
+
+  drawTrades(
+    ctx,
+    cs,
+    step,
+    py,
+    lo,
+    hi,
+    W
+  );
+
+
+  /* BLOCKS */
+
+  drawBlocks(
+    ctx,
+    cs,
+    step,
+    py,
+    lo,
+    hi
+  );
+
+
+  /* PRICE */
+
+  if(price>0){
+
+    const y=py(price);
+
+    ctx.strokeStyle="#ffd166";
+    ctx.lineWidth=1;
+
+    ctx.setLineDash([5,5]);
+
+    ctx.beginPath();
+
+    ctx.moveTo(0,y);
+    ctx.lineTo(W,y);
+
+    ctx.stroke();
+
     ctx.setLineDash([]);
 
 
-    ctx.fillStyle=
-      "#ffd166";
-
-    ctx.font=
-      "bold 12px Tahoma";
+    ctx.fillStyle="#ffd166";
+    ctx.font="bold 12px Tahoma";
 
 
     ctx.fillText(
@@ -2949,42 +2306,25 @@ function draw(){
         priceDigits(price)
       ),
       10,
-      Math.max(
-        18,
-        y-6
-      )
+      Math.max(18,y-6)
     );
 
   }
 
 
-  /* =====================================================
-     PRICE SCALE
-  ===================================================== */
+  /* PRICE SCALE */
 
-  ctx.fillStyle=
-    "#68788d";
-
-  ctx.font=
-    "10px Arial";
+  ctx.fillStyle="#68788d";
+  ctx.font="10px Arial";
 
 
-  for(
-    let i=0;
-    i<=8;
-    i++
-  ){
+  for(let i=0;i<=8;i++){
 
     const p=
       hi-
-      (
-        hi-lo
-      )*
-      i/8;
+      (hi-lo)*i/8;
 
-
-    const y=
-      py(p);
+    const y=py(p);
 
 
     ctx.fillText(
@@ -2999,16 +2339,10 @@ function draw(){
   }
 
 
-  /* =====================================================
-     TITLE
-  ===================================================== */
+  /* TITLE */
 
-  ctx.fillStyle=
-    "#8190a5";
-
-  ctx.font=
-    "bold 11px Tahoma";
-
+  ctx.fillStyle="#8190a5";
+  ctx.font="bold 11px Tahoma";
 
   ctx.fillText(
     "PRICE · ORDER FLOW · LIQUIDITY · ABSORPTION",
@@ -3017,8 +2351,7 @@ function draw(){
   );
 
 
-  $("chartInfo")
-    .innerHTML=`
+  $("chartInfo").innerHTML=`
 
 <b>
 ${data.symbol||$("symbol").value}
@@ -3027,34 +2360,22 @@ ${data.symbol||$("symbol").value}
 <br>
 
 قیمت:
-${fmt(
-  price,
-  priceDigits(price)
-)}
+${fmt(price,priceDigits(price))}
 
 <br>
 
 🟢 Buy:
-${fmt(
-  data.currentFlow?.buyShare,
-  1
-)}%
+${fmt(data.currentFlow?.buyShare,1)}%
 
 <br>
 
 🔴 Sell:
-${fmt(
-  data.currentFlow?.sellShare,
-  1
-)}%
+${fmt(data.currentFlow?.sellShare,1)}%
 
 <br>
 
 Δ:
-${fmt(
-  data.currentFlow?.deltaValue,
-  0
-)}
+${fmt(data.currentFlow?.deltaValue,0)}
 
 <br>
 
@@ -3072,10 +2393,7 @@ ${
 <br>
 
 Score:
-${fmt(
-  data.score,
-  0
-)}
+${fmt(data.score,0)}
 
 `;
 
@@ -3087,6 +2405,7 @@ ${fmt(
 ========================================================= */
 
 function drawWallList(
+  ctx,
   list,
   color,
   lo,
@@ -3096,65 +2415,39 @@ function drawWallList(
   label
 ){
 
-  for(
-    const x of list.slice(0,10)
-  ){
+  for(const x of list.slice(0,10)){
 
-    const p=
-      num(x.price);
+    const p=num(x.price);
 
-
-    if(
-      p<lo||
-      p>hi
-    )
+    if(p<lo||p>hi)
       continue;
 
 
-    const y=
-      py(p);
+    const y=py(p);
 
 
-    ctx.strokeStyle=
-      color;
-
+    ctx.strokeStyle=color;
     ctx.globalAlpha=.65;
-
     ctx.lineWidth=2;
 
-    ctx.setLineDash(
-      [7,5]
-    );
-
+    ctx.setLineDash([7,5]);
 
     ctx.beginPath();
 
-    ctx.moveTo(
-      0,
-      y
-    );
-
-    ctx.lineTo(
-      W,
-      y
-    );
+    ctx.moveTo(0,y);
+    ctx.lineTo(W,y);
 
     ctx.stroke();
-
 
     ctx.setLineDash([]);
 
 
-    ctx.fillStyle=
-      color;
-
-    ctx.font=
-      "10px Arial";
+    ctx.fillStyle=color;
+    ctx.font="10px Arial";
 
 
     ctx.fillText(
-      label+
-      " "+
+      label+" "+
       fmt(
         p,
         priceDigits(p)
@@ -3176,6 +2469,7 @@ function drawWallList(
 ========================================================= */
 
 function drawAbsorptionZone(
+  ctx,
   lo,
   hi,
   py,
@@ -3183,68 +2477,46 @@ function drawAbsorptionZone(
   H
 ){
 
-  const a=
-    data?.absorption||
-    {};
+  const a=data?.absorption||{};
+  const z=data?.zone||{};
 
 
-  const z=
-    data?.zone;
-
-
-  if(
-    !a.detected &&
-    !z
-  )
+  if(!a.detected&&!z.low&&!z.high)
     return;
 
 
-  let low=
-    num(
-      z?.low
-    );
+  let low=num(
+    z.low ??
+    a.low
+  );
 
 
-  let high=
-    num(
-      z?.high
-    );
+  let high=num(
+    z.high ??
+    a.high
+  );
 
 
-  const current=
-    num(data.price);
+  const current=num(data.price);
 
 
-  if(
-    !low||
-    !high
-  ){
+  if(!low||!high){
 
     const width=
       current*.001;
 
-
-    low=
-      current-width;
-
-    high=
-      current+width;
+    low=current-width;
+    high=current+width;
 
   }
 
 
-  if(
-    high<lo||
-    low>hi
-  )
+  if(high<lo||low>hi)
     return;
 
 
-  const yHigh=
-    py(high);
-
-  const yLow=
-    py(low);
+  const yHigh=py(high);
+  const yLow=py(low);
 
 
   const buy=
@@ -3264,68 +2536,37 @@ function drawAbsorptionZone(
       : "#ff4058";
 
 
-  /*
-    Main Zone
-  */
-
   ctx.globalAlpha=.14;
-
-  ctx.fillStyle=
-    fill;
+  ctx.fillStyle=fill;
 
 
   ctx.fillRect(
     0,
-    Math.min(
-      yHigh,
-      yLow
-    ),
+    Math.min(yHigh,yLow),
     W,
-    Math.abs(
-      yLow-yHigh
-    )
+    Math.abs(yLow-yHigh)
   );
 
 
   ctx.globalAlpha=.85;
-
-  ctx.strokeStyle=
-    border;
-
+  ctx.strokeStyle=border;
   ctx.lineWidth=2;
 
-
-  ctx.setLineDash(
-    [8,5]
-  );
+  ctx.setLineDash([8,5]);
 
 
   ctx.beginPath();
 
-  ctx.moveTo(
-    0,
-    yHigh
-  );
-
-  ctx.lineTo(
-    W,
-    yHigh
-  );
+  ctx.moveTo(0,yHigh);
+  ctx.lineTo(W,yHigh);
 
   ctx.stroke();
 
 
   ctx.beginPath();
 
-  ctx.moveTo(
-    0,
-    yLow
-  );
-
-  ctx.lineTo(
-    W,
-    yLow
-  );
+  ctx.moveTo(0,yLow);
+  ctx.lineTo(W,yLow);
 
   ctx.stroke();
 
@@ -3333,54 +2574,29 @@ function drawAbsorptionZone(
   ctx.setLineDash([]);
 
 
-  /*
-    Center line
-  */
-
-  const center=
-    num(
-      z?.center ??
-      (
-        low+
-        high
-      )/2
-    );
+  const center=num(
+    z.center ??
+    a.center ??
+    (low+high)/2
+  );
 
 
-  const yc=
-    py(center);
+  const yc=py(center);
 
 
-  ctx.strokeStyle=
-    border;
-
+  ctx.strokeStyle=border;
   ctx.lineWidth=1;
-
 
   ctx.beginPath();
 
-  ctx.moveTo(
-    0,
-    yc
-  );
-
-  ctx.lineTo(
-    W,
-    yc
-  );
+  ctx.moveTo(0,yc);
+  ctx.lineTo(W,yc);
 
   ctx.stroke();
 
 
-  /*
-    Label
-  */
-
-  ctx.fillStyle=
-    border;
-
-  ctx.font=
-    "bold 11px Tahoma";
+  ctx.fillStyle=border;
+  ctx.font="bold 11px Tahoma";
 
 
   ctx.fillText(
@@ -3388,10 +2604,7 @@ function drawAbsorptionZone(
       ? "🧲 BUY ABSORPTION"
       : "🧲 SELL ABSORPTION",
     12,
-    Math.max(
-      20,
-      yHigh-7
-    )
+    Math.max(20,yHigh-7)
   );
 
 
@@ -3405,113 +2618,106 @@ function drawAbsorptionZone(
 ========================================================= */
 
 function drawTrades(
+  ctx,
   cs,
   step,
   py,
   lo,
-  hi
+  hi,
+  W
 ){
 
-  const trades=
-    liveTrades||
-    [];
-
+  const trades=liveTrades||[];
 
   if(!trades.length)
     return;
 
 
-  const first=
-    cs[0]?.time||0;
-
-
-  const last=
-    cs[
-      cs.length-1
-    ]?.time||0;
+  const first=num(cs[0]?.time);
+  const last=num(cs[cs.length-1]?.time);
 
 
   if(!first||!last)
     return;
 
 
-  const range=
-    Math.max(
-      1,
-      last-first
-    );
+  const candleDuration=5*60*1000;
 
 
-  const recent=
-    trades.filter(
-      t=>
-        num(t.time)>=first&&
-        num(t.time)<=
-          last+
-          5*60*1000
-    );
+  const chartEnd=
+    last+candleDuration;
 
 
-  const maxValue=
-    Math.max(
-      1,
-      ...recent.map(
-        t=>
-          num(t.price)*
-          num(t.size)
-      )
-    );
+  const range=Math.max(
+    1,
+    chartEnd-first
+  );
 
 
-  for(
-    const t of recent
-  ){
+  const recent=trades.filter(t=>{
 
-    const p=
-      num(t.price);
+    const time=num(t.time);
+
+    return time>=first&&time<=chartEnd;
+
+  });
 
 
-    if(
-      p<lo||
-      p>hi
+  if(!recent.length)
+    return;
+
+
+  const maxValue=Math.max(
+    1,
+    ...recent.map(t=>
+      num(t.price)*num(t.size)
     )
+  );
+
+
+  for(const t of recent){
+
+    const p=num(t.price);
+    const tm=num(t.time);
+
+
+    if(p<lo||p>hi)
       continue;
 
 
-    const ratio=
-      (
-        num(t.time)-first
-      )/
-      range;
+    /*
+     * جای معامله کاملاً بر اساس زمان واقعی
+     * محاسبه می‌شود و دیگر Math.random وجود ندارد.
+     */
+
+    const ratio=clamp(
+      (tm-first)/range,
+      0,
+      1
+    );
 
 
     const xx=
-      clamp(
-        ratio,
-        0,
-        1
-      )*(
-        cs.length*
-        step
+      20+
+      ratio*
+      Math.max(
+        1,
+        cs.length*step
       );
 
 
-    const yy=
-      py(p);
+    const yy=py(p);
 
 
     const value=
-      p*
-      num(t.size);
+      p*num(t.size);
 
 
-    const strength=
-      clamp(
-        value/
-        maxValue,
-        0,
-        1
-      );
+    const strength=clamp(
+      value/maxValue,
+      0,
+      1
+    );
 
 
     const radius=
@@ -3555,6 +2761,7 @@ function drawTrades(
 ========================================================= */
 
 function drawBlocks(
+  ctx,
   cs,
   step,
   py,
@@ -3562,35 +2769,27 @@ function drawBlocks(
   hi
 ){
 
-  const blocks=
-    data?.blocks?.trades||
-    [];
+  const blocks=data?.blocks?.trades||[];
 
 
-  for(
-    const t of blocks.slice(0,40)
-  ){
+  for(const t of blocks.slice(0,40)){
 
-    const p=
-      num(t.price);
+    const p=num(t.price);
 
-
-    if(
-      p<lo||
-      p>hi
-    )
+    if(p<lo||p>hi)
       continue;
 
 
-    const idx=
-      cs.findIndex(
-        x=>
-          num(t.time)>=
-          num(x.time)&&
-          num(t.time)<
-          num(x.time)+
-          5*60*1000
-      );
+    const tm=num(t.time);
+
+
+    const idx=cs.findIndex(
+      x=>
+        tm>=num(x.time)&&
+        tm<
+        num(x.time)+
+        5*60*1000
+    );
 
 
     if(idx<0)
@@ -3599,13 +2798,11 @@ function drawBlocks(
 
     const xx=
       20+
-      idx*
-      step+
+      idx*step+
       step/2;
 
 
-    const yy=
-      py(p);
+    const yy=py(p);
 
 
     ctx.strokeStyle=
@@ -3644,16 +2841,13 @@ window.addEventListener(
 );
 
 
-$("symbol")
-  .addEventListener(
-    "keydown",
-    e=>{
-      if(
-        e.key==="Enter"
-      )
-        analyze();
-    }
-  );
+$("symbol").addEventListener(
+  "keydown",
+  e=>{
+    if(e.key==="Enter")
+      analyze();
+  }
+);
 
 
 /* =========================================================
@@ -3662,5 +2856,7 @@ $("symbol")
 
 analyze();
 
-</script></body>
+</script>
+
+</body>
 </html>
