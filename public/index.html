@@ -2,13 +2,11 @@
 <html lang="fa" dir="rtl">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport"
-      content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 
 <title>Bybit Smart Money Order Flow</title>
 
 <style>
-
 *{
   box-sizing:border-box;
   -webkit-tap-highlight-color:transparent;
@@ -28,9 +26,7 @@ body{
   overflow-x:hidden;
 }
 
-button,
-input,
-select{
+button,input,select{
   font-family:inherit;
 }
 
@@ -41,6 +37,7 @@ button{
   color:#dce7f3;
   border-radius:8px;
   padding:8px 11px;
+  touch-action:manipulation;
 }
 
 button:active{
@@ -217,6 +214,7 @@ button.active{
   border-radius:8px;
   background:#03070c;
   touch-action:none;
+  user-select:none;
 }
 
 #chart{
@@ -224,6 +222,7 @@ button.active{
   height:100%;
   display:block;
   touch-action:none;
+  user-select:none;
 }
 
 .crosshair-info{
@@ -231,7 +230,7 @@ button.active{
   left:8px;
   top:8px;
   z-index:5;
-  background:rgba(4,8,13,.82);
+  background:rgba(4,8,13,.88);
   border:1px solid #253346;
   border-radius:7px;
   padding:7px 9px;
@@ -239,12 +238,14 @@ button.active{
   pointer-events:none;
   direction:ltr;
   text-align:left;
-  min-width:120px;
+  min-width:150px;
+  max-width:80%;
 }
 
 .mode{
   display:flex;
   gap:5px;
+  margin-top:5px;
 }
 
 .mode button{
@@ -253,8 +254,7 @@ button.active{
 
 .cards{
   display:grid;
-  grid-template-columns:
-    repeat(auto-fit,minmax(145px,1fr));
+  grid-template-columns:repeat(auto-fit,minmax(145px,1fr));
   gap:6px;
 }
 
@@ -306,8 +306,7 @@ button.active{
 
 .scan-results{
   display:grid;
-  grid-template-columns:
-    repeat(auto-fit,minmax(190px,1fr));
+  grid-template-columns:repeat(auto-fit,minmax(190px,1fr));
   gap:7px;
 }
 
@@ -357,8 +356,7 @@ table{
   font-size:10px;
 }
 
-th,
-td{
+th,td{
   padding:6px;
   border-bottom:1px solid #17212e;
   text-align:center;
@@ -394,7 +392,6 @@ th{
 }
 
 @media(max-width:700px){
-
   .container{
     padding:5px;
   }
@@ -404,7 +401,7 @@ th{
   }
 
   .canvas-box{
-    height:620px;
+    height:650px;
   }
 
   .status{
@@ -415,9 +412,7 @@ th{
   #symbol{
     width:120px;
   }
-
 }
-
 </style>
 </head>
 
@@ -425,505 +420,297 @@ th{
 
 <div class="container">
 
-  <div class="header">
-    <h1>📊 Bybit Smart Money · Absorption Order Flow</h1>
-    <small>
-      Footprint واقعی · Bid/Ask · Delta · Heatmap · Liquidity · Absorption · Sweep · Blocks · Pump Scanner
-    </small>
+<div class="header">
+  <h1>📊 Bybit Smart Money · Absorption Order Flow</h1>
+  <small>
+    Footprint واقعی · Bid/Ask · Delta · Volume · Heatmap · Liquidity · Absorption · Sweep · Blocks · Pump Scanner
+  </small>
+</div>
+
+<div class="toolbar">
+
+  <input
+    id="symbol"
+    value="BTCUSDT"
+    placeholder="BTCUSDT"
+    autocomplete="off"
+  >
+
+  <div class="tf">
+    <button data-tf="1">1m</button>
+    <button data-tf="3">3m</button>
+    <button data-tf="5" class="active">5m</button>
+    <button data-tf="15">15m</button>
   </div>
 
-  <div class="toolbar">
+  <button id="analyzeBtn" class="main">🔎 تحلیل</button>
+  <button id="liveBtn" class="main">🟢 LIVE</button>
+  <button id="stopBtn" class="stop">⛔ توقف</button>
 
-    <input
-      id="symbol"
-      value="BTCUSDT"
-      placeholder="BTCUSDT"
-      autocomplete="off"
-    >
+  <div id="status" class="status">⚪ آماده</div>
 
-    <div class="tf">
+</div>
 
-      <button data-tf="1">1m</button>
-      <button data-tf="3">3m</button>
-      <button data-tf="5" class="active">5m</button>
-      <button data-tf="15">15m</button>
+<div class="toolbar scan-panel">
 
-    </div>
+  <button id="scanStart" class="main">🚀 شروع اسکن پامپ</button>
+  <button id="scanStop" class="stop">⛔ توقف اسکن</button>
+  <button id="scanOnce">🔎 اسکن فوری</button>
 
-    <button id="analyzeBtn" class="main">
-      🔎 تحلیل
-    </button>
-
-    <button id="liveBtn" class="main">
-      🟢 LIVE
-    </button>
-
-    <button id="stopBtn" class="stop">
-      ⛔ توقف
-    </button>
-
-    <div id="status" class="status">
-      ⚪ آماده
-    </div>
-
+  <div class="volume-box">
+    🔊 هشدار
+    <input id="volume" type="range" min="0" max="100" value="35">
+    <span id="volumeText">35%</span>
   </div>
 
-  <div class="toolbar scan-panel">
+  <button id="soundTest">🔔 تست صدا</button>
 
-    <button id="scanStart" class="main">
-      🚀 شروع اسکن پامپ
-    </button>
-
-    <button id="scanStop" class="stop">
-      ⛔ توقف اسکن
-    </button>
-
-    <button id="scanOnce">
-      🔎 اسکن فوری
-    </button>
-
-    <div class="volume-box">
-
-      🔊 هشدار
-
-      <input
-        id="volume"
-        type="range"
-        min="0"
-        max="100"
-        value="35"
-      >
-
-      <span id="volumeText">
-        35%
-      </span>
-
-    </div>
-
-    <button id="soundTest">
-      🔔 تست صدا
-    </button>
-
-    <div
-      id="scanStatus"
-      class="scan-status"
-    >
-      اسکنر خاموش است
-    </div>
-
+  <div id="scanStatus" class="scan-status">
+    اسکنر خاموش است
   </div>
 
-  <div class="toolbar">
+</div>
 
-    <div class="layers">
+<div class="toolbar">
 
-      <button
-        class="layer active"
-        data-layer="candles"
-      >
-        <span
-          class="dot"
-          style="background:#fff"
-        ></span>
-        کندل
-      </button>
+<div class="layers">
 
-      <button
-        class="layer active"
-        data-layer="footprint"
-      >
-        <span
-          class="dot"
-          style="background:#35d07f"
-        ></span>
-        Footprint
-      </button>
+<button class="layer active" data-layer="candles">
+  <span class="dot" style="background:#fff"></span>
+  کندل
+</button>
 
-      <button
-        class="layer active"
-        data-layer="heatmap"
-      >
-        <span
-          class="dot"
-          style="background:#28d7ff"
-        ></span>
-        Heatmap
-      </button>
+<button class="layer active" data-layer="footprint">
+  <span class="dot" style="background:#35d07f"></span>
+  Footprint
+</button>
 
-      <button
-        class="layer active"
-        data-layer="walls"
-      >
-        <span
-          class="dot"
-          style="background:#ff5268"
-        ></span>
-        Walls
-      </button>
+<button class="layer active" data-layer="heatmap">
+  <span class="dot" style="background:#28d7ff"></span>
+  Heatmap
+</button>
 
-      <button
-        class="layer active"
-        data-layer="liquidity"
-      >
-        <span
-          class="dot"
-          style="background:#b875ff"
-        ></span>
-        Liquidity
-      </button>
+<button class="layer active" data-layer="walls">
+  <span class="dot" style="background:#ff5268"></span>
+  Walls
+</button>
 
-      <button
-        class="layer active"
-        data-layer="absorption"
-      >
-        <span
-          class="dot"
-          style="background:#ff55d8"
-        ></span>
-        Absorption
-      </button>
+<button class="layer active" data-layer="liquidity">
+  <span class="dot" style="background:#b875ff"></span>
+  Liquidity
+</button>
 
-      <button
-        class="layer active"
-        data-layer="sweep"
-      >
-        <span
-          class="dot"
-          style="background:#ff9f43"
-        ></span>
-        Sweep
-      </button>
+<button class="layer active" data-layer="absorption">
+  <span class="dot" style="background:#ff55d8"></span>
+  Absorption
+</button>
 
-      <button
-        class="layer active"
-        data-layer="blocks"
-      >
-        <span
-          class="dot"
-          style="background:#ffd34d"
-        ></span>
-        Blocks
-      </button>
+<button class="layer active" data-layer="sweep">
+  <span class="dot" style="background:#ff9f43"></span>
+  Sweep
+</button>
 
-      <button
-        class="layer active"
-        data-layer="delta"
-      >
-        <span
-          class="dot"
-          style="background:#7cff8a"
-        ></span>
-        Delta
-      </button>
+<button class="layer active" data-layer="blocks">
+  <span class="dot" style="background:#ffd34d"></span>
+  Blocks
+</button>
 
-      <button
-        class="layer active"
-        data-layer="bidask"
-      >
-        <span
-          class="dot"
-          style="background:#28d7ff"
-        ></span>
-        Bid/Ask
-      </button>
+<button class="layer active" data-layer="delta">
+  <span class="dot" style="background:#7cff8a"></span>
+  Delta
+</button>
 
-    </div>
+<button class="layer active" data-layer="bidask">
+  <span class="dot" style="background:#28d7ff"></span>
+  Bid/Ask
+</button>
 
+</div>
+</div>
+
+<div class="chart-panel">
+
+<div class="chart-head">
+
+<div id="chartTitle" class="chart-title">
+  Order Flow
+</div>
+
+<div class="chart-tools">
+  <button id="zoomIn">＋</button>
+  <button id="zoomOut">−</button>
+  <button id="moveLeft">←</button>
+  <button id="moveRight">→</button>
+  <button id="reset">⟳</button>
+</div>
+
+</div>
+
+<div class="canvas-box">
+
+<canvas id="chart"></canvas>
+
+<div id="crosshairInfo" class="crosshair-info">
+  —
+</div>
+
+</div>
+
+<div class="mode">
+
+<button id="modeBidAsk" class="active">
+  Bid × Ask
+</button>
+
+<button id="modeDelta">
+  Delta
+</button>
+
+</div>
+
+<div class="legend">
+
+<span>
+  <i class="dot" style="background:#35d07f"></i>
+  Buy / Bid
+</span>
+
+<span>
+  <i class="dot" style="background:#ff5268"></i>
+  Sell / Ask
+</span>
+
+<span>
+  <i class="dot" style="background:#28d7ff"></i>
+  Heatmap
+</span>
+
+<span>
+  <i class="dot" style="background:#b875ff"></i>
+  Liquidity
+</span>
+
+<span>
+  <i class="dot" style="background:#ff55d8"></i>
+  Absorption
+</span>
+
+<span>
+  <i class="dot" style="background:#ff9f43"></i>
+  Sweep
+</span>
+
+<span>
+  <i class="dot" style="background:#ffd34d"></i>
+  Block
+</span>
+
+</div>
+
+<div class="help">
+  👆 Drag = حرکت سریع
+  ·
+  🤏 دو انگشت = زوم
+  ·
+  👆 یک ضربه = انتخاب کندل
+  ·
+  👆👆 دابل‌تپ = زوم روی کندل
+  ·
+  🖱 Wheel = زوم
+  ·
+  ⟳ = بازگشت
+</div>
+
+</div>
+
+<div class="toolbar">
+
+<div class="cards">
+
+<div class="card">
+  <div class="card-title">قیمت</div>
+  <div id="price" class="card-value">—</div>
+</div>
+
+<div class="card">
+  <div class="card-title">Buy / Ask Aggressor</div>
+  <div id="buy" class="card-value buy">—</div>
+</div>
+
+<div class="card">
+  <div class="card-title">Sell / Bid Aggressor</div>
+  <div id="sell" class="card-value sell">—</div>
+</div>
+
+<div class="card">
+  <div class="card-title">Delta</div>
+  <div id="delta" class="card-value">—</div>
+</div>
+
+<div class="card">
+  <div class="card-title">Bid / Ask Book</div>
+  <div id="bidask" class="card-value cyan">—</div>
+</div>
+
+<div class="card">
+  <div class="card-title">Absorption</div>
+  <div id="abs" class="card-value magenta">—</div>
+</div>
+
+<div class="card">
+  <div class="card-title">Score</div>
+  <div id="score" class="card-value yellow">—</div>
+</div>
+
+<div class="card">
+  <div class="card-title">Signal</div>
+  <div id="signal" class="card-value">—</div>
+</div>
+
+</div>
+</div>
+
+<div class="chart-panel">
+
+<div class="chart-head">
+  <div class="chart-title">
+    🚀 Pump / Absorption Scanner
   </div>
+</div>
 
-  <div class="chart-panel">
+<div id="scanResults" class="scan-results"></div>
 
-    <div class="chart-head">
+</div>
 
-      <div
-        id="chartTitle"
-        class="chart-title"
-      >
-        Order Flow
-      </div>
+<div class="chart-panel">
 
-      <div class="chart-tools">
-
-        <button id="zoomIn">＋</button>
-        <button id="zoomOut">−</button>
-
-        <button id="moveLeft">
-          ←
-        </button>
-
-        <button id="moveRight">
-          →
-        </button>
-
-        <button id="reset">
-          ⟳
-        </button>
-
-      </div>
-
-    </div>
-
-    <div class="canvas-box">
-
-      <canvas id="chart"></canvas>
-
-      <div
-        id="crosshairInfo"
-        class="crosshair-info"
-      >
-        —
-      </div>
-
-    </div>
-
-    <div class="mode">
-
-      <button
-        id="modeBidAsk"
-        class="active"
-      >
-        Bid × Ask
-      </button>
-
-      <button id="modeDelta">
-        Delta
-      </button>
-
-    </div>
-
-    <div class="legend">
-
-      <span>
-        <i
-          class="dot"
-          style="background:#35d07f"
-        ></i>
-        Buy
-      </span>
-
-      <span>
-        <i
-          class="dot"
-          style="background:#ff5268"
-        ></i>
-        Sell
-      </span>
-
-      <span>
-        <i
-          class="dot"
-          style="background:#28d7ff"
-        ></i>
-        Heatmap
-      </span>
-
-      <span>
-        <i
-          class="dot"
-          style="background:#b875ff"
-        ></i>
-        Liquidity
-      </span>
-
-      <span>
-        <i
-          class="dot"
-          style="background:#ff55d8"
-        ></i>
-        Absorption
-      </span>
-
-      <span>
-        <i
-          class="dot"
-          style="background:#ff9f43"
-        ></i>
-        Sweep
-      </span>
-
-      <span>
-        <i
-          class="dot"
-          style="background:#ffd34d"
-        ></i>
-        Block
-      </span>
-
-    </div>
-
-    <div class="help">
-
-      👆 لمس و Drag = حرکت
-      ·
-      🤏 دو انگشت = زوم
-      ·
-      👆 یک ضربه روی کندل = انتخاب
-      ·
-      👆👆 دابل‌تپ = زوم روی کندل
-      ·
-      🖱 Wheel = زوم
-      ·
-      ⟳ = بازگشت
-
-    </div>
-
+<div class="chart-head">
+  <div class="chart-title">
+    🧱 معاملات اخیر
   </div>
+</div>
 
-  <div class="toolbar">
+<div class="table-wrap">
 
-    <div class="cards">
+<table>
 
-      <div class="card">
-        <div class="card-title">
-          قیمت
-        </div>
-        <div
-          id="price"
-          class="card-value"
-        >
-          —
-        </div>
-      </div>
+<thead>
+<tr>
+  <th>زمان</th>
+  <th>قیمت</th>
+  <th>Side</th>
+  <th>حجم</th>
+  <th>Value</th>
+  <th>نوع</th>
+</tr>
+</thead>
 
-      <div class="card">
-        <div class="card-title">
-          Buy
-        </div>
-        <div
-          id="buy"
-          class="card-value buy"
-        >
-          —
-        </div>
-      </div>
+<tbody id="tradesBody"></tbody>
 
-      <div class="card">
-        <div class="card-title">
-          Sell
-        </div>
-        <div
-          id="sell"
-          class="card-value sell"
-        >
-          —
-        </div>
-      </div>
+</table>
 
-      <div class="card">
-        <div class="card-title">
-          Delta
-        </div>
-        <div
-          id="delta"
-          class="card-value"
-        >
-          —
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="card-title">
-          Bid / Ask
-        </div>
-        <div
-          id="bidask"
-          class="card-value cyan"
-        >
-          —
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="card-title">
-          Absorption
-        </div>
-        <div
-          id="abs"
-          class="card-value magenta"
-        >
-          —
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="card-title">
-          Score
-        </div>
-        <div
-          id="score"
-          class="card-value yellow"
-        >
-          —
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="card-title">
-          Signal
-        </div>
-        <div
-          id="signal"
-          class="card-value"
-        >
-          —
-        </div>
-      </div>
-
-    </div>
-
-  </div>
-
-  <div class="chart-panel">
-
-    <div class="chart-head">
-
-      <div class="chart-title">
-        🚀 Pump / Absorption Scanner
-      </div>
-
-    </div>
-
-    <div
-      id="scanResults"
-      class="scan-results"
-    ></div>
-
-  </div>
-
-  <div class="chart-panel">
-
-    <div class="chart-head">
-
-      <div class="chart-title">
-        🧱 معاملات اخیر
-      </div>
-
-    </div>
-
-    <div class="table-wrap">
-
-      <table>
-
-        <thead>
-
-          <tr>
-            <th>زمان</th>
-            <th>قیمت</th>
-            <th>Side</th>
-            <th>حجم</th>
-            <th>Value</th>
-            <th>نوع</th>
-          </tr>
-
-        </thead>
-
-        <tbody id="tradesBody"></tbody>
-
-      </table>
-
-    </div>
-
-  </div>
+</div>
+</div>
 
 </div>
 
@@ -931,25 +718,16 @@ th{
 
 const API=location.origin;
 
-const canvas=
-  document.getElementById("chart");
+const canvas=document.getElementById("chart");
+const ctx=canvas.getContext("2d",{alpha:false,desynchronized:true});
 
-const ctx=
-  canvas.getContext("2d");
-
-const crosshairInfo=
-  document.getElementById(
-    "crosshairInfo"
-  );
+const crosshairInfo=document.getElementById("crosshairInfo");
 
 let data=null;
-
 let selectedTF="5";
 
 let liveTimer=null;
-
 let scanTimer=null;
-
 let scanning=false;
 
 let selectedCandle=-1;
@@ -959,38 +737,34 @@ let footprintMode="bidask";
 let heatHistory=[];
 
 let viewStart=0;
-
 let viewEnd=0;
 
 let dragging=false;
-
 let dragStartX=0;
-
 let dragStartView=0;
+let dragMoved=false;
 
 let pinchStartDistance=0;
-
 let pinchStartCount=0;
+let pinchCenterRatio=.5;
 
-let pointers=new Map();
+const pointers=new Map();
 
 let lastTap=0;
+let lastTapIndex=-1;
 
 let audioContext=null;
 
-let masterVolume=
-  Number(
-    localStorage.getItem(
-      "of_volume"
-    ) ?? 35
-  );
+let masterVolume=Number(
+  localStorage.getItem("of_volume") ?? 35
+);
 
 let alertLevel=0;
-
 let lastAlertKey="";
 
-const layers={
+let drawQueued=false;
 
+const layers={
   candles:true,
   footprint:true,
   heatmap:true,
@@ -1001,61 +775,42 @@ const layers={
   blocks:true,
   delta:true,
   bidask:true
-
 };
 
 const COLORS={
 
   bg:"#03070c",
-
   grid:"#15202d",
-
   text:"#718096",
-
   white:"#ffffff",
 
   buy:"#35d07f",
-
   sell:"#ff5268",
 
   bid:"#28d7ff",
-
   ask:"#ff9f43",
 
   heat:"#28d7ff",
 
   wallBuy:"#3288ff",
-
   wallSell:"#ff4260",
 
   liquidity:"#b875ff",
-
   absorption:"#ff55d8",
-
   sweep:"#ff9f43",
-
   block:"#ffd34d",
 
   delta:"#7cff8a",
-
   selected:"#ffffff"
-
 };
 
 function $(id){
-
   return document.getElementById(id);
-
 }
 
 function num(v,d=0){
-
   const x=Number(v);
-
-  return Number.isFinite(x)
-    ? x
-    : d;
-
+  return Number.isFinite(x)?x:d;
 }
 
 function fmt(v){
@@ -1079,8 +834,10 @@ function fmt(v){
   if(a>=1)
     return x.toFixed(2);
 
-  return x.toPrecision(4);
+  if(a===0)
+    return "0";
 
+  return x.toPrecision(4);
 }
 
 function priceFmt(v){
@@ -1099,8 +856,10 @@ function priceFmt(v){
   if(x>=.01)
     return x.toFixed(5);
 
-  return x.toPrecision(7);
+  if(x>=.0001)
+    return x.toFixed(7);
 
+  return x.toPrecision(8);
 }
 
 function normalizeSymbol(s){
@@ -1117,33 +876,26 @@ function normalizeSymbol(s){
   }
 
   return s;
-
 }
 
 function setStatus(s){
-
   $("status").textContent=s;
-
 }
 
 function setScanStatus(s){
-
   $("scanStatus").textContent=s;
-
 }
 
 async function api(path){
 
-  const r=
-    await fetch(
-      API+path,
-      {
-        cache:"no-store"
-      }
-    );
+  const r=await fetch(
+    API+path,
+    {
+      cache:"no-store"
+    }
+  );
 
-  const text=
-    await r.text();
+  const text=await r.text();
 
   let j;
 
@@ -1156,17 +908,27 @@ async function api(path){
   }
 
   if(!r.ok || j.ok===false){
-
     throw new Error(
-      j.error ||
-      j.message ||
+      j.error||
+      j.message||
       "API error"
     );
-
   }
 
   return j;
+}
 
+function scheduleDraw(){
+
+  if(drawQueued)
+    return;
+
+  drawQueued=true;
+
+  requestAnimationFrame(()=>{
+    drawQueued=false;
+    draw();
+  });
 }
 
 function normalizeCandle(c){
@@ -1174,14 +936,13 @@ function normalizeCandle(c){
   if(Array.isArray(c)){
 
     return {
-
       time:num(c[0]),
       open:num(c[1]),
       high:num(c[2]),
       low:num(c[3]),
       close:num(c[4]),
-      volume:num(c[5])
-
+      volume:num(c[5]),
+      turnover:num(c[6])
     };
 
   }
@@ -1197,10 +958,27 @@ function normalizeCandle(c){
     high:num(c?.high),
     low:num(c?.low),
     close:num(c?.close),
-    volume:num(c?.volume)
+    volume:num(c?.volume),
+    turnover:num(c?.turnover),
 
+    buyValue:num(c?.buyValue),
+    sellValue:num(c?.sellValue),
+
+    delta:num(c?.delta),
+    deltaValue:num(c?.deltaValue),
+
+    tradeCount:num(
+      c?.tradeCount ??
+      c?.trades
+    ),
+
+    cumulativeDelta:num(
+      c?.cumulativeDelta
+    ),
+
+    footprint:c?.footprint||null,
+    imbalances:c?.imbalances||[]
   };
-
 }
 
 function normalizeData(){
@@ -1224,24 +1002,16 @@ function normalizeData(){
       )
     : [];
 
-  if(
-    !Array.isArray(data.footprint)
-  )
+  if(!Array.isArray(data.footprint))
     data.footprint=[];
 
-  if(
-    !Array.isArray(data.liquidityZones)
-  )
+  if(!Array.isArray(data.liquidityZones))
     data.liquidityZones=[];
 
-  if(
-    !Array.isArray(data.blocks)
-  )
+  if(!Array.isArray(data.blocks))
     data.blocks=[];
 
-  if(
-    !Array.isArray(data.trades)
-  )
+  if(!Array.isArray(data.trades))
     data.trades=[];
 
   if(
@@ -1253,32 +1023,58 @@ function normalizeData(){
 
     viewStart=Math.max(
       0,
-      viewEnd-70
+      viewEnd-60
     );
-
   }
 
+  viewStart=Math.max(
+    0,
+    Math.min(
+      viewStart,
+      Math.max(
+        0,
+        data.candles.length-1
+      )
+    )
+  );
+
+  viewEnd=Math.max(
+    viewStart+1,
+    Math.min(
+      viewEnd,
+      data.candles.length
+    )
+  );
 }
 
 function resizeCanvas(){
 
-  const r=
-    canvas.getBoundingClientRect();
+  const r=canvas.getBoundingClientRect();
 
-  const dpr=
-    window.devicePixelRatio||1;
+  const dpr=Math.min(
+    2,
+    window.devicePixelRatio||1
+  );
 
-  canvas.width=
-    Math.max(
-      1,
-      Math.floor(r.width*dpr)
-    );
+  const width=Math.max(
+    1,
+    Math.round(r.width*dpr)
+  );
 
-  canvas.height=
-    Math.max(
-      1,
-      Math.floor(r.height*dpr)
-    );
+  const height=Math.max(
+    1,
+    Math.round(r.height*dpr)
+  );
+
+  if(
+    canvas.width!==width ||
+    canvas.height!==height
+  ){
+
+    canvas.width=width;
+    canvas.height=height;
+
+  }
 
   ctx.setTransform(
     dpr,
@@ -1289,13 +1085,13 @@ function resizeCanvas(){
     0
   );
 
-  draw();
-
+  scheduleDraw();
 }
 
 window.addEventListener(
   "resize",
-  resizeCanvas
+  resizeCanvas,
+  {passive:true}
 );
 
 function resetView(){
@@ -1303,15 +1099,42 @@ function resetView(){
   if(!data?.candles?.length)
     return;
 
-  viewEnd=
-    data.candles.length;
+  viewEnd=data.candles.length;
 
-  viewStart=
-    Math.max(
+  viewStart=Math.max(
+    0,
+    viewEnd-60
+  );
+
+  selectedCandle=-1;
+}
+
+function clampView(){
+
+  if(!data?.candles?.length)
+    return;
+
+  const total=data.candles.length;
+
+  let count=viewEnd-viewStart;
+
+  count=Math.max(
+    5,
+    Math.min(total,count)
+  );
+
+  viewStart=Math.round(viewStart);
+
+  if(viewStart<0)
+    viewStart=0;
+
+  if(viewStart+count>total)
+    viewStart=Math.max(
       0,
-      viewEnd-70
+      total-count
     );
 
+  viewEnd=viewStart+count;
 }
 
 function zoomAt(
@@ -1322,13 +1145,19 @@ function zoomAt(
   if(!data?.candles?.length)
     return;
 
-  const total=
-    viewEnd-viewStart;
+  const total=viewEnd-viewStart;
 
-  let next=
-    Math.round(
-      total*factor
-    );
+  if(total<=0)
+    return;
+
+  centerRatio=Math.max(
+    0,
+    Math.min(1,centerRatio)
+  );
+
+  let next=Math.round(
+    total*factor
+  );
 
   next=Math.max(
     5,
@@ -1342,39 +1171,36 @@ function zoomAt(
     viewStart+
     total*centerRatio;
 
-  viewStart=
-    Math.round(
-      center-next*centerRatio
-    );
+  viewStart=Math.round(
+    center-next*centerRatio
+  );
 
-  viewEnd=
-    viewStart+next;
+  viewEnd=viewStart+next;
 
-  if(viewStart<0){
+  clampView();
 
-    viewStart=0;
-    viewEnd=next;
+  scheduleDraw();
+}
 
-  }
+function zoomAroundIndex(
+  index,
+  factor
+){
 
-  if(
-    viewEnd>
-    data.candles.length
-  ){
+  if(!data?.candles?.length)
+    return;
 
-    viewEnd=
-      data.candles.length;
+  const total=viewEnd-viewStart;
 
-    viewStart=
-      Math.max(
-        0,
-        viewEnd-next
-      );
+  const ratio=
+    total>0
+    ? (index-viewStart)/total
+    : .5;
 
-  }
-
-  draw();
-
+  zoomAt(
+    factor,
+    ratio
+  );
 }
 
 function moveChart(percent){
@@ -1382,76 +1208,88 @@ function moveChart(percent){
   if(!data?.candles?.length)
     return;
 
-  const count=
-    viewEnd-viewStart;
+  const count=viewEnd-viewStart;
 
-  const step=
-    Math.max(
-      1,
-      Math.round(
-        count*percent
-      )
-    );
+  const step=Math.max(
+    1,
+    Math.round(count*percent)
+  );
 
-  viewStart+=step;
-  viewEnd+=step;
+  let start=viewStart+step;
 
-  if(viewStart<0){
+  start=Math.max(
+    0,
+    Math.min(
+      data.candles.length-count,
+      start
+    )
+  );
 
-    viewStart=0;
-    viewEnd=count;
+  viewStart=start;
+  viewEnd=start+count;
 
-  }
+  scheduleDraw();
+}
 
-  if(
-    viewEnd>
-    data.candles.length
-  ){
+function chartGeometry(){
 
-    viewEnd=
-      data.candles.length;
+  const r=canvas.getBoundingClientRect();
 
-    viewStart=
-      Math.max(
-        0,
-        viewEnd-count
-      );
+  const w=r.width;
+  const h=r.height;
 
-  }
+  const left=55;
+  const right=Math.max(
+    left+100,
+    w-130
+  );
 
-  draw();
+  const top=20;
 
+  const deltaHeight=
+    layers.delta
+    ? 95
+    : 0;
+
+  const bottom=Math.max(
+    top+100,
+    h-28-deltaHeight
+  );
+
+  return {
+    w,
+    h,
+    left,
+    right,
+    top,
+    bottom
+  };
 }
 
 function candleAtX(x){
 
-  const r=
-    canvas.getBoundingClientRect();
+  if(!data?.candles?.length)
+    return -1;
 
-  const left=55;
-  const right=
-    r.width-125;
+  const g=chartGeometry();
 
-  const count=
-    viewEnd-viewStart;
+  const count=viewEnd-viewStart;
 
   if(
-    x<left ||
-    x>right ||
+    x<g.left ||
+    x>g.right ||
     count<=0
   )
     return -1;
 
   const gap=
-    (right-left)/count;
+    (g.right-g.left)/count;
 
-  const i=
-    Math.floor(
-      (x-left)/gap
-    );
+  const i=Math.floor(
+    (x-g.left)/gap
+  );
 
-  const idx=
-    viewStart+i;
+  const idx=viewStart+i;
 
   if(
     idx<0 ||
@@ -1460,47 +1298,45 @@ function candleAtX(x){
     return -1;
 
   return idx;
-
 }
 
 function focusCandle(index){
 
   if(
     !data?.candles?.length ||
-    index<0
+    index<0 ||
+    index>=data.candles.length
   )
     return;
 
   selectedCandle=index;
 
-  const target=22;
+  const target=Math.min(
+    25,
+    data.candles.length
+  );
 
-  viewStart=
-    Math.max(
-      0,
-      index-Math.floor(target/2)
-    );
+  viewStart=Math.max(
+    0,
+    index-Math.floor(target/2)
+  );
 
-  viewEnd=
-    Math.min(
-      data.candles.length,
-      viewStart+target
-    );
+  viewEnd=Math.min(
+    data.candles.length,
+    viewStart+target
+  );
 
   if(
     viewEnd-viewStart<target
   ){
 
-    viewStart=
-      Math.max(
-        0,
-        viewEnd-target
-      );
-
+    viewStart=Math.max(
+      0,
+      viewEnd-target
+    );
   }
 
-  draw();
-
+  scheduleDraw();
 }
 
 function getVisible(){
@@ -1512,7 +1348,6 @@ function getVisible(){
     viewStart,
     viewEnd
   );
-
 }
 
 function getRange(candles){
@@ -1520,20 +1355,15 @@ function getRange(candles){
   let lo=Infinity;
   let hi=-Infinity;
 
-  for(
-    const c of candles
-  ){
+  for(const c of candles){
 
     lo=Math.min(
-      lo,
-      c.low
+      lo,c.low
     );
 
     hi=Math.max(
-      hi,
-      c.high
+      hi,c.high
     );
-
   }
 
   if(data?.price){
@@ -1547,7 +1377,6 @@ function getRange(candles){
       hi,
       Number(data.price)
     );
-
   }
 
   const p=hi-lo;
@@ -1557,28 +1386,21 @@ function getRange(candles){
     p<=0
   ){
 
-    const center=
-      num(
-        data?.price,
-        1
-      );
+    const center=num(
+      data?.price,
+      1
+    );
 
     return {
-
       low:center*.999,
       high:center*1.001
-
     };
-
   }
 
   return {
-
     low:lo-p*.08,
     high:hi+p*.08
-
   };
-
 }
 
 function p2y(
@@ -1589,13 +1411,15 @@ function p2y(
   bottom
 ){
 
+  if(high===low)
+    return (top+bottom)/2;
+
   return bottom-
     (
       (price-low)/
       (high-low)
     )*
     (bottom-top);
-
 }
 
 function y2p(
@@ -1606,16 +1430,18 @@ function y2p(
   bottom
 ){
 
+  if(bottom===top)
+    return low;
+
   return low+
     (
       (bottom-y)/
       (bottom-top)
     )*
     (high-low);
-
 }
 
-function t2x(
+function timeToVisibleX(
   time,
   candles,
   left,
@@ -1625,37 +1451,255 @@ function t2x(
   if(!candles.length)
     return left;
 
-  if(candles.length===1)
-    return (left+right)/2;
+  const intervalMs=
+    num(
+      data?.intervalMs,
+      Number(selectedTF)*60000
+    );
 
-  const a=
-    candles[0].time;
+  const first=candles[0].time;
 
-  const b=
-    candles[candles.length-1].time;
+  const last=
+    candles[candles.length-1].time+
+    intervalMs;
 
-  if(a===b)
+  if(last<=first)
     return (left+right)/2;
 
   return left+
     (
-      (time-a)/
-      (b-a)
+      (time-first)/
+      (last-first)
     )*
     (right-left);
+}
 
+function getFP(index){
+
+  const c=data?.candles?.[index];
+
+  if(!c)
+    return null;
+
+  if(c.footprint){
+
+    if(Array.isArray(c.footprint))
+      return {
+        time:c.time,
+        levels:c.footprint,
+        delta:c.delta,
+        deltaValue:c.deltaValue,
+        buyValue:c.buyValue,
+        sellValue:c.sellValue,
+        totalVolume:c.volume
+      };
+
+    if(
+      typeof c.footprint==="object"
+    )
+      return c.footprint;
+  }
+
+  const f=data?.footprint?.find(
+    x =>
+      num(x.time)===num(c.time)
+  );
+
+  return f||null;
+}
+
+function getLevels(fp){
+
+  if(!fp)
+    return [];
+
+  let levels=
+    fp.levels||
+    fp.rows||
+    fp.priceLevels||
+    [];
+
+  if(!Array.isArray(levels))
+    return [];
+
+  return levels
+    .map(x=>{
+
+      if(Array.isArray(x)){
+
+        const bid=num(x[1]);
+        const ask=num(x[2]);
+
+        return {
+          price:num(x[0]),
+          bid,
+          ask,
+          delta:num(
+            x[3],
+            ask-bid
+          ),
+          bidValue:0,
+          askValue:0
+        };
+      }
+
+      const bid=num(
+        x.bidVolume ??
+        x.bid ??
+        x.sellVolume ??
+        x.sell ??
+        x.bidValue
+      );
+
+      const ask=num(
+        x.askVolume ??
+        x.ask ??
+        x.buyVolume ??
+        x.buy ??
+        x.askValue
+      );
+
+      return {
+
+        price:num(
+          x.price ??
+          x.level
+        ),
+
+        bid,
+        ask,
+
+        delta:num(
+          x.delta,
+          ask-bid
+        ),
+
+        bidValue:num(
+          x.bidValue ??
+          x.bidNotional ??
+          x.sellValue
+        ),
+
+        askValue:num(
+          x.askValue ??
+          x.askNotional ??
+          x.buyValue
+        ),
+
+        bidTrades:num(
+          x.bidTrades
+        ),
+
+        askTrades:num(
+          x.askTrades
+        )
+      };
+
+    })
+    .filter(
+      x =>
+        x.price>0 &&
+        (
+          x.bid>0 ||
+          x.ask>0 ||
+          x.delta!==0
+        )
+    )
+    .sort(
+      (a,b)=>b.price-a.price
+    );
+}
+
+function candleFlowValues(
+  index
+){
+
+  const c=data?.candles?.[index];
+  const fp=getFP(index);
+
+  let buy=num(
+    c?.buyValue
+  );
+
+  let sell=num(
+    c?.sellValue
+  );
+
+  let deltaValue=num(
+    c?.deltaValue
+  );
+
+  let delta=num(
+    c?.delta
+  );
+
+  if(fp){
+
+    buy=num(
+      fp.buyValue,
+      buy
+    );
+
+    sell=num(
+      fp.sellValue,
+      sell
+    );
+
+    deltaValue=num(
+      fp.deltaValue,
+      deltaValue
+    );
+
+    delta=num(
+      fp.delta,
+      delta
+    );
+  }
+
+  if(
+    !deltaValue &&
+    (buy||sell)
+  ){
+    deltaValue=buy-sell;
+  }
+
+  if(
+    !delta &&
+    fp
+  ){
+
+    const levels=getLevels(fp);
+
+    delta=levels.reduce(
+      (s,l)=>s+l.delta,
+      0
+    );
+  }
+
+  return {
+    volume:num(c?.volume),
+    flowVolume:num(
+      fp?.totalVolume
+    ),
+    buy,
+    sell,
+    delta,
+    deltaValue
+  };
 }
 
 function draw(){
 
-  const r=
-    canvas.getBoundingClientRect();
+  const g=chartGeometry();
 
-  const w=r.width;
-  const h=r.height;
-
-  if(!w||!h)
-    return;
+  const {
+    w,
+    h,
+    left,
+    right,
+    top,
+    bottom
+  }=g;
 
   ctx.clearRect(
     0,
@@ -1664,8 +1708,7 @@ function draw(){
     h
   );
 
-  ctx.fillStyle=
-    COLORS.bg;
+  ctx.fillStyle=COLORS.bg;
 
   ctx.fillRect(
     0,
@@ -1678,11 +1721,8 @@ function draw(){
     !data?.candles?.length
   ){
 
-    ctx.fillStyle=
-      COLORS.text;
-
+    ctx.fillStyle=COLORS.text;
     ctx.font="14px Arial";
-
     ctx.textAlign="center";
 
     ctx.fillText(
@@ -1692,26 +1732,11 @@ function draw(){
     );
 
     return;
-
   }
 
-  const candles=
-    getVisible();
+  const candles=getVisible();
 
-  const left=55;
-  const right=w-125;
-  const top=20;
-
-  const deltaHeight=
-    layers.delta
-    ? 90
-    : 0;
-
-  const bottom=
-    h-25-deltaHeight;
-
-  const range=
-    getRange(candles);
+  const range=getRange(candles);
 
   drawGrid(
     w,
@@ -1724,33 +1749,42 @@ function draw(){
     range.high
   );
 
-  drawHeatmap(
-    candles,
-    left,
-    right,
-    top,
-    bottom,
-    range.low,
-    range.high
-  );
+  if(layers.heatmap){
 
-  drawLiquidity(
-    left,
-    right,
-    top,
-    bottom,
-    range.low,
-    range.high
-  );
+    drawHeatmap(
+      candles,
+      left,
+      right,
+      top,
+      bottom,
+      range.low,
+      range.high
+    );
+  }
 
-  drawAbsorption(
-    left,
-    right,
-    top,
-    bottom,
-    range.low,
-    range.high
-  );
+  if(layers.liquidity){
+
+    drawLiquidity(
+      left,
+      right,
+      top,
+      bottom,
+      range.low,
+      range.high
+    );
+  }
+
+  if(layers.absorption){
+
+    drawAbsorption(
+      left,
+      right,
+      top,
+      bottom,
+      range.low,
+      range.high
+    );
+  }
 
   drawCandles(
     candles,
@@ -1762,42 +1796,54 @@ function draw(){
     range.high
   );
 
-  drawWalls(
-    left,
-    right,
-    top,
-    bottom,
-    range.low,
-    range.high
-  );
+  if(layers.walls){
 
-  drawSweep(
-    left,
-    right,
-    top,
-    bottom,
-    range.low,
-    range.high
-  );
+    drawWalls(
+      left,
+      right,
+      top,
+      bottom,
+      range.low,
+      range.high
+    );
+  }
 
-  drawBlocks(
-    candles,
-    left,
-    right,
-    top,
-    bottom,
-    range.low,
-    range.high
-  );
+  if(layers.sweep){
 
-  drawOrderBook(
-    left,
-    right,
-    top,
-    bottom,
-    range.low,
-    range.high
-  );
+    drawSweep(
+      left,
+      right,
+      top,
+      bottom,
+      range.low,
+      range.high
+    );
+  }
+
+  if(layers.blocks){
+
+    drawBlocks(
+      candles,
+      left,
+      right,
+      top,
+      bottom,
+      range.low,
+      range.high
+    );
+  }
+
+  if(layers.bidask){
+
+    drawOrderBook(
+      left,
+      right,
+      top,
+      bottom,
+      range.low,
+      range.high
+    );
+  }
 
   drawPrice(
     left,
@@ -1814,9 +1860,8 @@ function draw(){
       candles,
       left,
       right,
-      h-25
+      h-28
     );
-
   }
 
   drawTime(
@@ -1825,7 +1870,6 @@ function draw(){
     right,
     bottom
   );
-
 }
 
 function drawGrid(
@@ -1839,9 +1883,7 @@ function drawGrid(
   high
 ){
 
-  ctx.strokeStyle=
-    COLORS.grid;
-
+  ctx.strokeStyle=COLORS.grid;
   ctx.lineWidth=1;
 
   for(let i=0;i<=10;i++){
@@ -1851,17 +1893,12 @@ function drawGrid(
       i*(bottom-top)/10;
 
     ctx.beginPath();
-
     ctx.moveTo(left,y);
     ctx.lineTo(right,y);
-
     ctx.stroke();
 
-    ctx.fillStyle=
-      COLORS.text;
-
+    ctx.fillStyle=COLORS.text;
     ctx.font="9px Arial";
-
     ctx.textAlign="left";
 
     ctx.fillText(
@@ -1877,14 +1914,15 @@ function drawGrid(
       right+7,
       y+3
     );
-
   }
 
-  const count=
-    Math.min(
-      12,
+  const count=Math.min(
+    12,
+    Math.max(
+      1,
       data.candles.length
-    );
+    )
+  );
 
   for(let i=0;i<=count;i++){
 
@@ -1893,125 +1931,10 @@ function drawGrid(
       i*(right-left)/count;
 
     ctx.beginPath();
-
     ctx.moveTo(x,top);
     ctx.lineTo(x,bottom);
-
     ctx.stroke();
-
   }
-
-}
-
-function getFP(index){
-
-  const c=
-    data.candles[index];
-
-  if(!c)
-    return null;
-
-  const f=
-    data.footprint?.find(
-      x =>
-        num(x.time)===
-        num(c.time)
-    );
-
-  return f||null;
-
-}
-
-function getLevels(fp){
-
-  if(!fp)
-    return [];
-
-  let levels=
-    fp.levels ||
-    fp.rows ||
-    fp.priceLevels ||
-    [];
-
-  if(
-    !Array.isArray(levels)
-  )
-    return [];
-
-  return levels
-    .map(x=>{
-
-      if(Array.isArray(x)){
-
-        return {
-
-          price:num(x[0]),
-          bid:num(x[1]),
-          ask:num(x[2]),
-          delta:num(
-            x[3],
-            num(x[2])-num(x[1])
-          )
-
-        };
-
-      }
-
-      const bid=num(
-        x.bid ??
-        x.bidVolume ??
-        x.buy ??
-        x.buyVolume ??
-        x.buyValue
-      );
-
-      const ask=num(
-        x.ask ??
-        x.askVolume ??
-        x.sell ??
-        x.sellVolume ??
-        x.sellValue
-      );
-
-      return {
-
-        price:num(
-          x.price ??
-          x.level
-        ),
-
-        bid,
-
-        ask,
-
-        delta:num(
-          x.delta,
-          bid-ask
-        ),
-
-        buyValue:num(
-          x.buyValue ??
-          x.buyNotional
-        ),
-
-        sellValue:num(
-          x.sellValue ??
-          x.sellNotional
-        )
-
-      };
-
-    })
-    .filter(
-      x =>
-        x.price>0 &&
-        (
-          x.bid>0 ||
-          x.ask>0 ||
-          x.delta!==0
-        )
-    );
-
 }
 
 function drawCandles(
@@ -2024,27 +1947,21 @@ function drawCandles(
   high
 ){
 
-  if(!layers.candles)
+  const count=candles.length;
+
+  if(count<=0)
     return;
 
-  const count=
-    candles.length;
-
   const gap=
-    (right-left)/
-    Math.max(
-      1,
-      count
-    );
+    (right-left)/count;
 
-  const bodyWidth=
-    Math.max(
-      2,
-      Math.min(
-        18,
-        gap*.55
-      )
-    );
+  const bodyWidth=Math.max(
+    2,
+    Math.min(
+      22,
+      gap*.52
+    )
+  );
 
   candles.forEach(
     (c,i)=>{
@@ -2056,41 +1973,37 @@ function drawCandles(
         left+
         (i+.5)*gap;
 
-      const yo=
-        p2y(
-          c.open,
-          low,
-          high,
-          top,
-          bottom
-        );
+      const yo=p2y(
+        c.open,
+        low,
+        high,
+        top,
+        bottom
+      );
 
-      const yc=
-        p2y(
-          c.close,
-          low,
-          high,
-          top,
-          bottom
-        );
+      const yc=p2y(
+        c.close,
+        low,
+        high,
+        top,
+        bottom
+      );
 
-      const yh=
-        p2y(
-          c.high,
-          low,
-          high,
-          top,
-          bottom
-        );
+      const yh=p2y(
+        c.high,
+        low,
+        high,
+        top,
+        bottom
+      );
 
-      const yl=
-        p2y(
-          c.low,
-          low,
-          high,
-          top,
-          bottom
-        );
+      const yl=p2y(
+        c.low,
+        low,
+        high,
+        top,
+        bottom
+      );
 
       const up=
         c.close>=c.open;
@@ -2108,20 +2021,24 @@ function drawCandles(
       ctx.lineWidth=1;
 
       ctx.beginPath();
-
       ctx.moveTo(x,yh);
       ctx.lineTo(x,yl);
-
       ctx.stroke();
+
+      const bodyY=Math.min(
+        yo,yc
+      );
+
+      const bodyH=Math.max(
+        1,
+        Math.abs(yc-yo)
+      );
 
       ctx.fillRect(
         x-bodyWidth/2,
-        Math.min(yo,yc),
+        bodyY,
         bodyWidth,
-        Math.max(
-          1,
-          Math.abs(yc-yo)
-        )
+        bodyH
       );
 
       if(
@@ -2135,19 +2052,19 @@ function drawCandles(
         ctx.lineWidth=2;
 
         ctx.strokeRect(
-          x-bodyWidth/2-3,
-          Math.min(yo,yc)-3,
-          bodyWidth+6,
+          x-bodyWidth/2-4,
+          bodyY-4,
+          bodyWidth+8,
           Math.max(
-            7,
-            Math.abs(yc-yo)+6
+            8,
+            bodyH+8
           )
         );
-
       }
 
       if(
-        layers.footprint
+        layers.footprint &&
+        gap>=7
       ){
 
         drawFootprint(
@@ -2160,12 +2077,76 @@ function drawCandles(
           low,
           high
         );
-
       }
 
+      drawCandleBottomStats(
+        globalIndex,
+        c,
+        x,
+        gap,
+        bottom
+      );
     }
   );
+}
 
+function drawCandleBottomStats(
+  index,
+  candle,
+  x,
+  gap,
+  bottom
+){
+
+  const values=
+    candleFlowValues(index);
+
+  const delta=
+    values.deltaValue;
+
+  const volume=
+    values.volume||
+    values.flowVolume;
+
+  if(
+    gap<10
+  )
+    return;
+
+  const small=
+    gap<24;
+
+  ctx.font=
+    small
+    ? "7px Arial"
+    : "8px Arial";
+
+  ctx.textAlign="center";
+
+  const y=bottom+10;
+
+  ctx.fillStyle=
+    "#9aa9bb";
+
+  ctx.fillText(
+    "V "+fmt(volume),
+    x,
+    y
+  );
+
+  if(gap>=18){
+
+    ctx.fillStyle=
+      delta>=0
+      ? COLORS.buy
+      : COLORS.sell;
+
+    ctx.fillText(
+      "Δ "+fmt(delta),
+      x,
+      y+10
+    );
+  }
 }
 
 function drawFootprint(
@@ -2179,42 +2160,32 @@ function drawFootprint(
   high
 ){
 
-  const fp=
-    getFP(index);
+  const fp=getFP(index);
 
   if(!fp)
     return;
 
-  const levels=
-    getLevels(fp);
+  let levels=getLevels(fp);
 
   if(!levels.length)
     return;
 
-  const priceRange=
-    Math.max(
-      candle.high-candle.low,
-      candle.close*.0005
-    );
+  /*
+    برای سرعت:
+    فقط Levelهایی که داخل محدوده کندل دیده می‌شوند
+    رسم می‌شوند؛ داده اصلی حذف نمی‌شود.
+  */
 
-  const rowHeight=
-    Math.max(
-      5,
-      Math.min(
-        17,
-        (
-          bottom-top
-        )/
-        Math.max(
-          25,
-          data.candles.length>0
-          ? 25
-          : 25
-        )
-      )
-    );
+  levels=levels.filter(
+    l =>
+      l.price>=candle.low &&
+      l.price<=candle.high
+  );
 
-  let max=Math.max(
+  if(!levels.length)
+    return;
+
+  const max=Math.max(
     1,
     ...levels.map(
       l =>
@@ -2226,18 +2197,58 @@ function drawFootprint(
     )
   );
 
-  for(
-    const l of levels
-  ){
+  const priceSpan=
+    Math.max(
+      candle.high-candle.low,
+      num(data?.price)*.000001,
+      1e-12
+    );
 
-    const y=
-      p2y(
-        l.price,
-        low,
-        high,
-        top,
-        bottom
-      );
+  let rowHeight=
+    (
+      bottom-top
+    )/
+    Math.max(
+      35,
+      Math.min(
+        90,
+        levels.length
+      )
+    );
+
+  rowHeight=Math.max(
+    5,
+    Math.min(
+      15,
+      rowHeight
+    )
+  );
+
+  /*
+    در زوم دور، متن زیاد باعث کندی می‌شود.
+    در زوم نزدیک Bid/Ask دقیقاً داخل هر Level نمایش داده می‌شود.
+  */
+
+  const showNumbers=
+    gap>=34;
+
+  const maxWidth=Math.max(
+    24,
+    Math.min(
+      gap*.88,
+      150
+    )
+  );
+
+  for(const l of levels){
+
+    const y=p2y(
+      l.price,
+      low,
+      high,
+      top,
+      bottom
+    );
 
     if(
       y<top ||
@@ -2245,106 +2256,111 @@ function drawFootprint(
     )
       continue;
 
-    const bid=
-      num(l.bid);
+    const bid=num(l.bid);
+    const ask=num(l.ask);
 
-    const ask=
-      num(l.ask);
-
-    const delta=
-      num(
-        l.delta,
-        bid-ask
-      );
-
-    const maxWidth=
-      Math.max(
-        18,
-        Math.min(
-          gap*1.8,
-          110
-        )
-      );
+    const delta=num(
+      l.delta,
+      ask-bid
+    );
 
     if(
-      footprintMode===
-      "bidask"
+      footprintMode==="bidask"
     ){
 
       const bidW=
         maxWidth*
         (
           bid/
-          Math.max(
-            max,
-            1
-          )
+          Math.max(1,max)
         );
 
       const askW=
         maxWidth*
         (
           ask/
-          Math.max(
-            max,
-            1
-          )
+          Math.max(1,max)
         );
 
-      ctx.globalAlpha=.85;
+      /*
+        Bid = فروشنده تهاجمی که Bid را زده
+        Ask = خریدار تهاجمی که Ask را زده
+      */
 
-      ctx.fillStyle=
-        COLORS.buy;
+      ctx.globalAlpha=.82;
 
-      ctx.fillRect(
-        x-maxWidth*.15-bidW,
-        y-rowHeight/2,
-        bidW,
-        Math.max(
-          3,
-          rowHeight-1
-        )
-      );
+      if(bid>0){
 
-      ctx.fillStyle=
-        COLORS.sell;
+        ctx.fillStyle=
+          COLORS.bid;
 
-      ctx.fillRect(
-        x+maxWidth*.15,
-        y-rowHeight/2,
-        askW,
-        Math.max(
-          3,
-          rowHeight-1
-        )
-      );
+        ctx.fillRect(
+          x-maxWidth*.08-bidW,
+          y-rowHeight/2,
+          bidW,
+          Math.max(
+            3,
+            rowHeight-1
+          )
+        );
+      }
+
+      if(ask>0){
+
+        ctx.fillStyle=
+          COLORS.ask;
+
+        ctx.fillRect(
+          x+maxWidth*.08,
+          y-rowHeight/2,
+          askW,
+          Math.max(
+            3,
+            rowHeight-1
+          )
+        );
+      }
 
       ctx.globalAlpha=1;
 
-      ctx.font=
-        "bold 8px Arial";
+      if(showNumbers){
 
-      ctx.textAlign="right";
+        ctx.font="bold 8px Arial";
 
-      ctx.fillStyle=
-        COLORS.buy;
+        ctx.textAlign="right";
+        ctx.fillStyle=COLORS.bid;
 
-      ctx.fillText(
-        fmt(bid),
-        x-3,
-        y+3
-      );
+        ctx.fillText(
+          fmt(bid),
+          x-3,
+          y+3
+        );
 
-      ctx.textAlign="left";
+        ctx.textAlign="left";
+        ctx.fillStyle=COLORS.ask;
 
-      ctx.fillStyle=
-        COLORS.sell;
+        ctx.fillText(
+          fmt(ask),
+          x+3,
+          y+3
+        );
 
-      ctx.fillText(
-        fmt(ask),
-        x+3,
-        y+3
-      );
+      }else{
+
+        ctx.fillStyle=
+          delta>=0
+          ? COLORS.buy
+          : COLORS.sell;
+
+        ctx.font="7px Arial";
+        ctx.textAlign="center";
+
+        ctx.fillText(
+          "B "+fmt(bid)+" / A "+fmt(ask),
+          x,
+          y+3
+        );
+      }
 
     }else{
 
@@ -2352,15 +2368,12 @@ function drawFootprint(
         Math.min(
           1,
           Math.abs(delta)/
-          Math.max(
-            1,
-            max
-          )
+          Math.max(1,max)
         );
 
       ctx.globalAlpha=
-        .25+
-        intensity*.7;
+        .20+
+        intensity*.70;
 
       ctx.fillStyle=
         delta>=0
@@ -2384,9 +2397,7 @@ function drawFootprint(
         ? COLORS.buy
         : COLORS.sell;
 
-      ctx.font=
-        "bold 9px Arial";
-
+      ctx.font="bold 9px Arial";
       ctx.textAlign="center";
 
       ctx.fillText(
@@ -2394,46 +2405,47 @@ function drawFootprint(
         x,
         y+3
       );
-
     }
-
   }
 
-  const totalDelta=
-    num(
-      fp.deltaValue ??
-      fp.delta ??
-      (
-        num(fp.buyValue)-
-        num(fp.sellValue)
-      )
-    );
+  /*
+    Delta کل + Volume کل پایین/بالای کندل
+  */
 
-  ctx.font=
-    "bold 9px Arial";
+  const values=candleFlowValues(index);
 
-  ctx.textAlign="center";
-
-  ctx.fillStyle=
-    totalDelta>=0
-    ? COLORS.buy
-    : COLORS.sell;
-
-  ctx.fillText(
-    "Δ "+fmt(totalDelta),
-    x,
-    Math.max(
-      top+10,
-      p2y(
-        candle.high,
-        low,
-        high,
-        top,
-        bottom
-      )-7
-    )
+  const totalDelta=num(
+    values.deltaValue,
+    values.delta
   );
 
+  if(gap>=16){
+
+    ctx.font="bold 8px Arial";
+    ctx.textAlign="center";
+
+    ctx.fillStyle=
+      totalDelta>=0
+      ? COLORS.buy
+      : COLORS.sell;
+
+    const highY=p2y(
+      candle.high,
+      low,
+      high,
+      top,
+      bottom
+    );
+
+    ctx.fillText(
+      "Δ "+fmt(totalDelta),
+      x,
+      Math.max(
+        top+10,
+        highY-6
+      )
+    );
+  }
 }
 
 function drawHeatmap(
@@ -2446,34 +2458,42 @@ function drawHeatmap(
   high
 ){
 
-  if(!layers.heatmap)
-    return;
-
   if(!heatHistory.length)
     return;
 
-  for(
-    const snap of heatHistory
-  ){
-
-    const t=num(
-      snap.time
+  const maxSnapshots=
+    Math.min(
+      50,
+      heatHistory.length
     );
 
-    if(!t)
+  const start=
+    Math.max(
+      0,
+      heatHistory.length-maxSnapshots
+    );
+
+  for(
+    let si=start;
+    si<heatHistory.length;
+    si++
+  ){
+
+    const snap=heatHistory[si];
+
+    if(!snap?.time)
       continue;
 
-    const x=
-      t2x(
-        t,
-        candles,
-        left,
-        right
-      );
+    const x=timeToVisibleX(
+      snap.time,
+      candles,
+      left,
+      right
+    );
 
     if(
-      x<left-20 ||
-      x>right+20
+      x<left-25 ||
+      x>right+25
     )
       continue;
 
@@ -2481,7 +2501,7 @@ function drawHeatmap(
 
     for(
       const b of
-      (snap.bids||[])
+      snap.bids||[]
     ){
 
       const p=num(
@@ -2501,24 +2521,19 @@ function drawHeatmap(
         p*size
       );
 
-      if(
-        p>0 &&
-        value>0
-      ){
+      if(p>0 && value>0){
 
         levels.push({
           price:p,
           value,
           side:"BUY"
         });
-
       }
-
     }
 
     for(
       const a of
-      (snap.asks||[])
+      snap.asks||[]
     ){
 
       const p=num(
@@ -2538,19 +2553,14 @@ function drawHeatmap(
         p*size
       );
 
-      if(
-        p>0 &&
-        value>0
-      ){
+      if(p>0 && value>0){
 
         levels.push({
           price:p,
           value,
           side:"SELL"
         });
-
       }
-
     }
 
     if(!levels.length)
@@ -2563,18 +2573,15 @@ function drawHeatmap(
       )
     );
 
-    for(
-      const l of levels
-    ){
+    for(const l of levels){
 
-      const y=
-        p2y(
-          l.price,
-          low,
-          high,
-          top,
-          bottom
-        );
+      const y=p2y(
+        l.price,
+        low,
+        high,
+        top,
+        bottom
+      );
 
       if(
         y<top ||
@@ -2584,12 +2591,11 @@ function drawHeatmap(
 
       const alpha=
         Math.min(
-          .42,
-          .04+
+          .30,
+          .025+
           (
-            l.value/
-            max
-          )*.38
+            l.value/max
+          )*.27
         );
 
       ctx.globalAlpha=alpha;
@@ -2600,18 +2606,15 @@ function drawHeatmap(
         : COLORS.ask;
 
       ctx.fillRect(
-        x-8,
-        y-3,
-        16,
-        6
+        x-7,
+        y-2,
+        14,
+        4
       );
-
     }
 
     ctx.globalAlpha=1;
-
   }
-
 }
 
 function drawOrderBook(
@@ -2623,11 +2626,7 @@ function drawOrderBook(
   high
 ){
 
-  if(!layers.bidask)
-    return;
-
-  const ob=
-    data?.orderbook;
+  const ob=data?.orderbook;
 
   if(!ob)
     return;
@@ -2644,9 +2643,7 @@ function drawOrderBook(
 
   const all=[];
 
-  for(
-    const b of bids
-  ){
+  for(const b of bids){
 
     const p=num(
       b.price ??
@@ -2670,14 +2667,10 @@ function drawOrderBook(
         ),
         side:"BUY"
       });
-
     }
-
   }
 
-  for(
-    const a of asks
-  ){
+  for(const a of asks){
 
     const p=num(
       a.price ??
@@ -2701,9 +2694,7 @@ function drawOrderBook(
         ),
         side:"SELL"
       });
-
     }
-
   }
 
   if(!all.length)
@@ -2716,18 +2707,15 @@ function drawOrderBook(
     )
   );
 
-  for(
-    const l of all
-  ){
+  for(const l of all){
 
-    const y=
-      p2y(
-        l.price,
-        low,
-        high,
-        top,
-        bottom
-      );
+    const y=p2y(
+      l.price,
+      low,
+      high,
+      top,
+      bottom
+    );
 
     if(
       y<top ||
@@ -2735,26 +2723,22 @@ function drawOrderBook(
     )
       continue;
 
-    const width=
-      Math.min(
-        90,
-        8+
-        (
-          l.value/
-          max
-        )*90
-      );
+    const width=Math.min(
+      85,
+      7+
+      (
+        l.value/max
+      )*85
+    );
 
-    ctx.globalAlpha=.38;
+    ctx.globalAlpha=.28;
 
     ctx.fillStyle=
       l.side==="BUY"
       ? COLORS.bid
       : COLORS.ask;
 
-    if(
-      l.side==="BUY"
-    ){
+    if(l.side==="BUY"){
 
       ctx.fillRect(
         right-width,
@@ -2771,13 +2755,10 @@ function drawOrderBook(
         width,
         4
       );
-
     }
-
   }
 
   ctx.globalAlpha=1;
-
 }
 
 function drawWalls(
@@ -2789,52 +2770,44 @@ function drawWalls(
   high
 ){
 
-  if(!layers.walls)
-    return;
-
-  const wall=
-    data?.wall;
+  const wall=data?.wall;
 
   if(!wall)
     return;
 
   const buyWalls=
-    wall.buyWalls ||
-    wall.bids ||
+    wall.buyWalls||
+    wall.bids||
     [];
 
   const sellWalls=
-    wall.sellWalls ||
-    wall.asks ||
+    wall.sellWalls||
+    wall.asks||
     [];
 
   function price(x){
 
     return num(
-      x.price ??
-      x.level ??
-      x[0]
+      x?.price ??
+      x?.level ??
+      x?.[0]
     );
-
   }
 
-  for(
-    const w of buyWalls
-  ){
+  for(const w of buyWalls){
 
     const p=price(w);
 
     if(!p)
       continue;
 
-    const y=
-      p2y(
-        p,
-        low,
-        high,
-        top,
-        bottom
-      );
+    const y=p2y(
+      p,
+      low,
+      high,
+      top,
+      bottom
+    );
 
     if(
       y<top ||
@@ -2848,18 +2821,14 @@ function drawWalls(
     ctx.lineWidth=2;
 
     ctx.beginPath();
-
     ctx.moveTo(left,y);
     ctx.lineTo(right,y);
-
     ctx.stroke();
 
     ctx.fillStyle=
       COLORS.wallBuy;
 
-    ctx.font=
-      "9px Arial";
-
+    ctx.font="9px Arial";
     ctx.textAlign="right";
 
     ctx.fillText(
@@ -2867,26 +2836,22 @@ function drawWalls(
       right-5,
       y-5
     );
-
   }
 
-  for(
-    const w of sellWalls
-  ){
+  for(const w of sellWalls){
 
     const p=price(w);
 
     if(!p)
       continue;
 
-    const y=
-      p2y(
-        p,
-        low,
-        high,
-        top,
-        bottom
-      );
+    const y=p2y(
+      p,
+      low,
+      high,
+      top,
+      bottom
+    );
 
     if(
       y<top ||
@@ -2900,18 +2865,14 @@ function drawWalls(
     ctx.lineWidth=2;
 
     ctx.beginPath();
-
     ctx.moveTo(left,y);
     ctx.lineTo(right,y);
-
     ctx.stroke();
 
     ctx.fillStyle=
       COLORS.wallSell;
 
-    ctx.font=
-      "9px Arial";
-
+    ctx.font="9px Arial";
     ctx.textAlign="right";
 
     ctx.fillText(
@@ -2919,9 +2880,7 @@ function drawWalls(
       right-5,
       y+11
     );
-
   }
-
 }
 
 function drawLiquidity(
@@ -2933,12 +2892,9 @@ function drawLiquidity(
   high
 ){
 
-  if(!layers.liquidity)
-    return;
-
   for(
     const z of
-    data?.liquidityZones || []
+    data?.liquidityZones||[]
   ){
 
     const center=num(
@@ -2957,35 +2913,27 @@ function drawLiquidity(
       center
     );
 
-    if(
-      !zl &&
-      !zh &&
-      !center
-    )
+    if(!center && !zl && !zh)
       continue;
 
-    const y1=
-      p2y(
-        zh,
-        low,
-        high,
-        top,
-        bottom
-      );
+    const y1=p2y(
+      zh,
+      low,
+      high,
+      top,
+      bottom
+    );
 
-    const y2=
-      p2y(
-        zl,
-        low,
-        high,
-        top,
-        bottom
-      );
+    const y2=p2y(
+      zl,
+      low,
+      high,
+      top,
+      bottom
+    );
 
-    ctx.globalAlpha=.13;
-
-    ctx.fillStyle=
-      COLORS.liquidity;
+    ctx.globalAlpha=.11;
+    ctx.fillStyle=COLORS.liquidity;
 
     ctx.fillRect(
       left,
@@ -2997,8 +2945,7 @@ function drawLiquidity(
       )
     );
 
-    ctx.globalAlpha=.7;
-
+    ctx.globalAlpha=.65;
     ctx.strokeStyle=
       COLORS.liquidity;
 
@@ -3017,9 +2964,7 @@ function drawLiquidity(
     ctx.stroke();
 
     ctx.globalAlpha=1;
-
   }
-
 }
 
 function drawAbsorption(
@@ -3031,11 +2976,7 @@ function drawAbsorption(
   high
 ){
 
-  if(!layers.absorption)
-    return;
-
-  const a=
-    data?.absorption;
+  const a=data?.absorption;
 
   if(!a)
     return;
@@ -3050,32 +2991,26 @@ function drawAbsorption(
     data?.zone?.high
   );
 
-  if(
-    !zl ||
-    !zh
-  )
+  if(!zl || !zh)
     return;
 
-  const y1=
-    p2y(
-      zh,
-      low,
-      high,
-      top,
-      bottom
-    );
+  const y1=p2y(
+    zh,
+    low,
+    high,
+    top,
+    bottom
+  );
 
-  const y2=
-    p2y(
-      zl,
-      low,
-      high,
-      top,
-      bottom
-    );
+  const y2=p2y(
+    zl,
+    low,
+    high,
+    top,
+    bottom
+  );
 
-  ctx.globalAlpha=.12;
-
+  ctx.globalAlpha=.10;
   ctx.fillStyle=
     COLORS.absorption;
 
@@ -3090,7 +3025,6 @@ function drawAbsorption(
   );
 
   ctx.globalAlpha=.8;
-
   ctx.strokeStyle=
     COLORS.absorption;
 
@@ -3132,9 +3066,7 @@ function drawAbsorption(
   ctx.fillStyle=
     COLORS.absorption;
 
-  ctx.font=
-    "10px Arial";
-
+  ctx.font="10px Arial";
   ctx.textAlign="left";
 
   ctx.fillText(
@@ -3142,7 +3074,6 @@ function drawAbsorption(
     left+6,
     Math.min(y1,y2)-5
   );
-
 }
 
 function drawSweep(
@@ -3154,11 +3085,7 @@ function drawSweep(
   high
 ){
 
-  if(!layers.sweep)
-    return;
-
-  const s=
-    data?.sweep;
+  const s=data?.sweep;
 
   if(!s)
     return;
@@ -3173,14 +3100,13 @@ function drawSweep(
   if(!p)
     return;
 
-  const y=
-    p2y(
-      p,
-      low,
-      high,
-      top,
-      bottom
-    );
+  const y=p2y(
+    p,
+    low,
+    high,
+    top,
+    bottom
+  );
 
   if(
     y<top ||
@@ -3199,10 +3125,8 @@ function drawSweep(
   ]);
 
   ctx.beginPath();
-
   ctx.moveTo(left,y);
   ctx.lineTo(right,y);
-
   ctx.stroke();
 
   ctx.setLineDash([]);
@@ -3210,9 +3134,7 @@ function drawSweep(
   ctx.fillStyle=
     COLORS.sweep;
 
-  ctx.font=
-    "10px Arial";
-
+  ctx.font="10px Arial";
   ctx.textAlign="left";
 
   ctx.fillText(
@@ -3220,7 +3142,6 @@ function drawSweep(
     left+7,
     y-6
   );
-
 }
 
 function drawBlocks(
@@ -3233,12 +3154,9 @@ function drawBlocks(
   high
 ){
 
-  if(!layers.blocks)
-    return;
-
   for(
     const b of
-    data?.blocks || []
+    data?.blocks||[]
   ){
 
     const p=num(
@@ -3254,24 +3172,25 @@ function drawBlocks(
       b.timestamp
     );
 
-    const x=
-      t
-      ? t2x(
-          t,
-          candles,
-          left,
-          right
-        )
-      : right-20;
+    let x=right-20;
 
-    const y=
-      p2y(
-        p,
-        low,
-        high,
-        top,
-        bottom
+    if(t){
+
+      x=timeToVisibleX(
+        t,
+        candles,
+        left,
+        right
       );
+    }
+
+    const y=p2y(
+      p,
+      low,
+      high,
+      top,
+      bottom
+    );
 
     if(
       x<left ||
@@ -3287,26 +3206,24 @@ function drawBlocks(
       b.volume
     );
 
-    const radius=
-      Math.max(
-        4,
-        Math.min(
-          13,
-          Math.sqrt(
-            Math.max(
-              1,
-              value
-            )
-          )/9
-        )
-      );
+    const radius=Math.max(
+      4,
+      Math.min(
+        13,
+        Math.sqrt(
+          Math.max(
+            1,
+            value
+          )
+        )/9
+      )
+    );
 
-    const side=
-      String(
-        b.side||
-        b.type||
-        ""
-      ).toLowerCase();
+    const side=String(
+      b.side||
+      b.type||
+      ""
+    ).toLowerCase();
 
     ctx.fillStyle=
       side.includes("sell")
@@ -3324,9 +3241,7 @@ function drawBlocks(
     );
 
     ctx.fill();
-
   }
-
 }
 
 function drawPrice(
@@ -3338,21 +3253,18 @@ function drawPrice(
   high
 ){
 
-  const p=num(
-    data?.price
-  );
+  const p=num(data?.price);
 
   if(!p)
     return;
 
-  const y=
-    p2y(
-      p,
-      low,
-      high,
-      top,
-      bottom
-    );
+  const y=p2y(
+    p,
+    low,
+    high,
+    top,
+    bottom
+  );
 
   if(
     y<top ||
@@ -3380,9 +3292,7 @@ function drawPrice(
   ctx.fillStyle=
     COLORS.white;
 
-  ctx.font=
-    "10px Arial";
-
+  ctx.font="10px Arial";
   ctx.textAlign="right";
 
   ctx.fillText(
@@ -3390,7 +3300,6 @@ function drawPrice(
     right-4,
     y-5
   );
-
 }
 
 function drawDelta(
@@ -3400,10 +3309,8 @@ function drawDelta(
   bottom
 ){
 
-  const h=85;
-
-  const top=
-    bottom-h;
+  const h=90;
+  const top=bottom-h;
 
   ctx.fillStyle="#070d14";
 
@@ -3439,28 +3346,20 @@ function drawDelta(
     i++
   ){
 
-    const fp=
-      getFP(
-        viewStart+i
+    const index=
+      viewStart+i;
+
+    const v=
+      candleFlowValues(
+        index
       );
 
-    let d=0;
-
-    if(fp){
-
-      d=num(
-        fp.deltaValue ??
-        fp.delta ??
-        (
-          num(fp.buyValue)-
-          num(fp.sellValue)
-        )
-      );
-
-    }
-
-    values.push(d);
-
+    values.push(
+      num(
+        v.deltaValue,
+        v.delta
+      )
+    );
   }
 
   const max=Math.max(
@@ -3486,11 +3385,10 @@ function drawDelta(
 
       const bh=
         (
-          Math.abs(v)/
-          max
+          Math.abs(v)/max
         )*
         (
-          h/2-8
+          h/2-9
         );
 
       ctx.fillStyle=
@@ -3515,18 +3413,31 @@ function drawDelta(
           gap*.64,
           bh
         );
-
       }
 
+      if(
+        gap>=32 &&
+        selectedCandle===
+        viewStart+i
+      ){
+
+        ctx.strokeStyle=
+          COLORS.white;
+
+        ctx.strokeRect(
+          x-gap*.35,
+          top+2,
+          gap*.7,
+          h-4
+        );
+      }
     }
   );
 
   ctx.fillStyle=
     COLORS.delta;
 
-  ctx.font=
-    "9px Arial";
-
+  ctx.font="9px Arial";
   ctx.textAlign="left";
 
   ctx.fillText(
@@ -3534,7 +3445,6 @@ function drawDelta(
     left+5,
     top+11
   );
-
 }
 
 function drawTime(
@@ -3551,36 +3461,30 @@ function drawTime(
     (right-left)/
     candles.length;
 
-  const step=
-    Math.max(
-      1,
-      Math.ceil(
-        candles.length/10
-      )
-    );
+  const step=Math.max(
+    1,
+    Math.ceil(
+      candles.length/9
+    )
+  );
 
   ctx.fillStyle=
     COLORS.text;
 
-  ctx.font=
-    "8px Arial";
-
+  ctx.font="8px Arial";
   ctx.textAlign="center";
 
   candles.forEach(
     (c,i)=>{
 
-      if(
-        i%step!==0
-      )
+      if(i%step!==0)
         return;
 
       const x=
         left+
         (i+.5)*gap;
 
-      const d=
-        new Date(c.time);
+      const d=new Date(c.time);
 
       const hh=
         String(
@@ -3595,46 +3499,38 @@ function drawTime(
       ctx.fillText(
         hh+":"+mm,
         x,
-        bottom+15
+        bottom+28
       );
-
     }
   );
-
 }
 
 function addHeatSnapshot(){
 
-  const ob=
-    data?.orderbook;
+  const ob=data?.orderbook;
 
   if(!ob)
     return;
 
   heatHistory.push({
-
     time:Date.now(),
 
     bids:
       Array.isArray(ob.bids)
-      ? ob.bids
+      ? ob.bids.slice(0,50)
       : [],
 
     asks:
       Array.isArray(ob.asks)
-      ? ob.asks
+      ? ob.asks.slice(0,50)
       : []
-
   });
 
   if(
-    heatHistory.length>180
+    heatHistory.length>100
   ){
-
     heatHistory.shift();
-
   }
-
 }
 
 function renderCards(){
@@ -3642,18 +3538,17 @@ function renderCards(){
   if(!data)
     return;
 
-  const price=
-    num(
-      data.price ??
-      data.ticker?.lastPrice
-    );
+  const price=num(
+    data.price ??
+    data.ticker?.lastPrice
+  );
 
   $("price").textContent=
     priceFmt(price);
 
   const flow=
-    data.currentFlow ||
-    data.flow ||
+    data.currentFlow||
+    data.flow||
     {};
 
   const buy=num(
@@ -3691,8 +3586,7 @@ function renderCards(){
       : "sell"
     );
 
-  const ob=
-    data.orderbook;
+  const ob=data.orderbook;
 
   if(ob){
 
@@ -3721,15 +3615,11 @@ function renderCards(){
     }else{
 
       $("bidask").textContent=
-        "Bid "+fmt(
-          ob.buyLiquidity
-        )+
-        " · Ask "+fmt(
-          ob.sellLiquidity
-        );
-
+        "Bid "+
+        fmt(ob.buyLiquidity)+
+        " · Ask "+
+        fmt(ob.sellLiquidity);
     }
-
   }
 
   const absorption=
@@ -3738,9 +3628,9 @@ function renderCards(){
   $("abs").textContent=
     absorption
     ? (
-        absorption.type ||
-        absorption.signal ||
-        absorption.direction ||
+        absorption.type||
+        absorption.signal||
+        absorption.direction||
         "Detected"
       )
     : "—";
@@ -3751,15 +3641,13 @@ function renderCards(){
     : "—";
 
   $("signal").textContent=
-    data.signal ||
+    data.signal||
     "—";
-
 }
 
 function renderTrades(){
 
-  const body=
-    $("tradesBody");
+  const body=$("tradesBody");
 
   body.innerHTML="";
 
@@ -3770,13 +3658,9 @@ function renderTrades(){
       .reverse()
     : [];
 
-  for(
-    const t of trades
-  ){
+  for(const t of trades){
 
-    const price=num(
-      t.price
-    );
+    const price=num(t.price);
 
     const size=num(
       t.size ??
@@ -3836,7 +3720,7 @@ function renderTrades(){
 
       <td>
         ${
-          t.isBlock ||
+          t.isBlock||
           t.block
           ? "BLOCK"
           : "TRADE"
@@ -3846,9 +3730,7 @@ function renderTrades(){
     `;
 
     body.appendChild(tr);
-
   }
-
 }
 
 async function analyze(){
@@ -3860,8 +3742,7 @@ async function analyze(){
       $("symbol").value
     );
 
-  $("symbol").value=
-    symbol;
+  $("symbol").value=symbol;
 
   if(!symbol){
 
@@ -3870,7 +3751,6 @@ async function analyze(){
     );
 
     return;
-
   }
 
   setStatus(
@@ -3900,7 +3780,6 @@ async function analyze(){
     addHeatSnapshot();
 
     renderCards();
-
     renderTrades();
 
     $("chartTitle").textContent=
@@ -3913,7 +3792,7 @@ async function analyze(){
       "🟢 اتصال Bybit برقرار است"
     );
 
-    draw();
+    scheduleDraw();
 
   }catch(e){
 
@@ -3922,9 +3801,7 @@ async function analyze(){
     setStatus(
       "🔴 "+e.message
     );
-
   }
-
 }
 
 async function live(){
@@ -3962,65 +3839,56 @@ async function live(){
         );
 
       data.ticker=
-        d.ticker ||
+        d.ticker||
         data.ticker;
 
       data.orderbook=
-        d.orderbook ||
+        d.orderbook||
         data.orderbook;
 
       data.wall=
-        d.wall ||
+        d.wall||
         data.wall;
 
       data.trades=
-        d.trades ||
+        d.trades||
         data.trades;
 
       data.flow=
-        d.flow ||
+        d.flow||
         data.flow;
 
       data.currentFlow=
-        d.flow ||
+        d.flow||
         data.currentFlow;
 
       data.blocks=
-        d.blocks ||
+        d.blocks||
         data.blocks;
 
-      if(
-        Array.isArray(
-          d.candles
-        )
-      )
-        data.candles=
-          d.candles;
+      data.footprint=
+        Array.isArray(d.footprint)
+        ? d.footprint
+        : data.footprint;
 
-      if(
-        Array.isArray(
-          d.footprint
-        )
-      )
-        data.footprint=
-          d.footprint;
+      data.candles=
+        Array.isArray(d.candles)
+        ? d.candles
+        : data.candles;
 
-      if(
-        Array.isArray(
-          d.liquidityZones
-        )
-      )
-        data.liquidityZones=
-          d.liquidityZones;
+      data.liquidityZones=
+        Array.isArray(d.liquidityZones)
+        ? d.liquidityZones
+        : data.liquidityZones;
 
       if(d.absorption)
-        data.absorption=
-          d.absorption;
+        data.absorption=d.absorption;
 
       if(d.sweep)
-        data.sweep=
-          d.sweep;
+        data.sweep=d.sweep;
 
+      if(d.heatmap)
+        data.heatmap=d.heatmap;
     }
 
     normalizeData();
@@ -4028,17 +3896,14 @@ async function live(){
     addHeatSnapshot();
 
     renderCards();
-
     renderTrades();
 
-    draw();
+    scheduleDraw();
 
     setStatus(
       "🟢 LIVE · "+
       new Date()
-      .toLocaleTimeString(
-        "fa-IR"
-      )
+        .toLocaleTimeString("fa-IR")
     );
 
   }catch(e){
@@ -4046,12 +3911,9 @@ async function live(){
     console.error(e);
 
     setStatus(
-      "🔴 LIVE: "+
-      e.message
+      "🔴 LIVE: "+e.message
     );
-
   }
-
 }
 
 function startLive(){
@@ -4060,12 +3922,10 @@ function startLive(){
 
   live();
 
-  liveTimer=
-    setInterval(
-      live,
-      2000
-    );
-
+  liveTimer=setInterval(
+    live,
+    2500
+  );
 }
 
 function stopLive(){
@@ -4077,9 +3937,7 @@ function stopLive(){
     );
 
     liveTimer=null;
-
   }
-
 }
 
 async function scanOnce(){
@@ -4114,15 +3972,12 @@ async function scanOnce(){
       await handleScannerAlert(
         strongest
       );
-
     }
 
     setScanStatus(
       "🟢 آخرین اسکن: "+
       new Date()
-      .toLocaleTimeString(
-        "fa-IR"
-      )+
+        .toLocaleTimeString("fa-IR")+
       " · "+
       found.length+
       " مورد"
@@ -4136,128 +3991,87 @@ async function scanOnce(){
       "🔴 خطای اسکن: "+
       e.message
     );
-
   }
-
 }
 
 function extractSignals(d){
 
   let list=[];
 
-  if(
-    Array.isArray(d)
-  ){
-
+  if(Array.isArray(d))
     list=d;
 
-  }else if(
-    Array.isArray(
-      d.results
-    )
-  ){
-
+  else if(Array.isArray(d.results))
     list=d.results;
 
-  }else if(
-    Array.isArray(
-      d.signals
-    )
-  ){
-
+  else if(Array.isArray(d.signals))
     list=d.signals;
 
-  }else if(
-    Array.isArray(
-      d.items
-    )
-  ){
-
+  else if(Array.isArray(d.items))
     list=d.items;
 
-  }
-
   return list.filter(
-    x => {
+    x=>{
 
-      const score=
-        num(
-          x.score ??
-          x.smartMoneyScore
-        );
+      const score=num(
+        x.score ??
+        x.smartMoneyScore
+      );
 
-      const signal=
-        String(
-          x.signal ??
-          x.type ??
-          x.status ??
-          ""
-        ).toUpperCase();
+      const signal=String(
+        x.signal ??
+        x.type ??
+        x.status ??
+        ""
+      ).toUpperCase();
 
-      const absorption=
-        x.absorption;
+      const absorption=x.absorption;
 
       const hasAbsorption=
-        !!absorption ||
-        signal.includes(
-          "ABSORB"
-        );
+        !!absorption||
+        signal.includes("ABSORB");
 
-      const pump=
-        num(
-          x.pumpPercent ??
-          x.changePercent ??
-          x.priceChangePercent ??
-          x.movement?.percent
-        );
+      const pump=num(
+        x.pumpPercent ??
+        x.changePercent ??
+        x.priceChangePercent ??
+        x.movement?.percent
+      );
 
-      return (
-        hasAbsorption &&
+      return(
+        hasAbsorption&&
         (
-          pump>0 ||
-          score>=50 ||
-          signal.includes("BUY") ||
+          pump>0||
+          score>=50||
+          signal.includes("BUY")||
           signal.includes("LONG")
         )
       );
-
     }
   );
-
 }
 
 function renderScanResults(d){
 
-  const box=
-    $("scanResults");
+  const box=$("scanResults");
 
   box.innerHTML="";
 
   let list=[];
 
-  if(
-    Array.isArray(d)
-  )
+  if(Array.isArray(d))
     list=d;
 
-  else if(
-    Array.isArray(d.results)
-  )
+  else if(Array.isArray(d.results))
     list=d.results;
 
-  else if(
-    Array.isArray(d.signals)
-  )
+  else if(Array.isArray(d.signals))
     list=d.signals;
 
-  else if(
-    Array.isArray(d.items)
-  )
+  else if(Array.isArray(d.items))
     list=d.items;
 
-  list=
-    list
-      .slice(0,30);
+  list=list.slice(0,30);
 
   if(!list.length){
 
@@ -4267,46 +4081,38 @@ function renderScanResults(d){
       </div>`;
 
     return;
-
   }
 
-  for(
-    const x of list
-  ){
+  for(const x of list){
 
     const symbol=
       normalizeSymbol(
-        x.symbol ||
-        x.ticker?.symbol ||
+        x.symbol||
+        x.ticker?.symbol||
         ""
       );
 
-    const score=
-      num(
-        x.score ??
-        x.smartMoneyScore
-      );
+    const score=num(
+      x.score ??
+      x.smartMoneyScore
+    );
 
-    const pump=
-      num(
-        x.pumpPercent ??
-        x.changePercent ??
-        x.priceChangePercent ??
-        x.movement?.percent
-      );
+    const pump=num(
+      x.pumpPercent ??
+      x.changePercent ??
+      x.priceChangePercent ??
+      x.movement?.percent
+    );
 
     const signal=
-      x.signal ||
-      x.type ||
+      x.signal||
+      x.type||
       "WATCH";
 
-    const abs=
-      x.absorption;
+    const abs=x.absorption;
 
     const card=
-      document.createElement(
-        "div"
-      );
+      document.createElement("div");
 
     card.className=
       "signal-card";
@@ -4318,8 +4124,7 @@ function renderScanResults(d){
       </div>
 
       <div class="signal-meta">
-        Pump:
-        ${pump.toFixed(2)}%
+        Pump: ${pump.toFixed(2)}%
       </div>
 
       <div class="signal-score">
@@ -4333,15 +4138,14 @@ function renderScanResults(d){
         ${
           abs
           ? (
-              abs.type ||
-              abs.signal ||
-              abs.direction ||
+              abs.type||
+              abs.signal||
+              abs.direction||
               "Absorption"
             )
           : "بدون جذب"
         }
       </div>
-
     `;
 
     card.onclick=()=>{
@@ -4350,13 +4154,10 @@ function renderScanResults(d){
         symbol;
 
       analyze();
-
     };
 
     box.appendChild(card);
-
   }
-
 }
 
 function startScanner(){
@@ -4372,12 +4173,10 @@ function startScanner(){
 
   scanOnce();
 
-  scanTimer=
-    setInterval(
-      scanOnce,
-      15000
-    );
-
+  scanTimer=setInterval(
+    scanOnce,
+    15000
+  );
 }
 
 function stopScanner(){
@@ -4391,38 +4190,30 @@ function stopScanner(){
     );
 
     scanTimer=null;
-
   }
 
   setScanStatus(
     "⚪ اسکنر متوقف شد"
   );
-
 }
 
 function initAudio(){
 
-  if(
-    !audioContext
-  ){
+  if(!audioContext){
 
     audioContext=
-      new (
-        window.AudioContext ||
+      new(
+        window.AudioContext||
         window.webkitAudioContext
       )();
-
   }
 
   if(
-    audioContext.state===
-    "suspended"
+    audioContext.state==="suspended"
   ){
 
     audioContext.resume();
-
   }
-
 }
 
 function playTone(
@@ -4442,8 +4233,7 @@ function playTone(
   const gain=
     audioContext.createGain();
 
-  osc.type=
-    "sine";
+  osc.type="sine";
 
   osc.frequency.setValueAtTime(
     frequency,
@@ -4451,15 +4241,12 @@ function playTone(
   );
 
   gain.gain.setValueAtTime(
-    0.0001,
+    .0001,
     now
   );
 
   gain.gain.exponentialRampToValueAtTime(
-    Math.max(
-      .0001,
-      volume
-    ),
+    Math.max(.0001,volume),
     now+.025
   );
 
@@ -4478,47 +4265,39 @@ function playTone(
   osc.stop(
     now+duration+.03
   );
-
 }
 
-async function handleScannerAlert(
-  signal
-){
+async function handleScannerAlert(signal){
 
   if(!signal)
     return;
 
   const symbol=
     normalizeSymbol(
-      signal.symbol ||
+      signal.symbol||
       signal.ticker?.symbol
     );
 
   if(!symbol)
     return;
 
-  const score=
-    Math.max(
-      0,
-      Math.min(
-        100,
-        num(
-          signal.score ??
-          signal.smartMoneyScore
-        )
+  const score=Math.max(
+    0,
+    Math.min(
+      100,
+      num(
+        signal.score ??
+        signal.smartMoneyScore
       )
-    );
+    )
+  );
 
-  const absorption=
-    signal.absorption;
-
-  const pump=
-    num(
-      signal.pumpPercent ??
-      signal.changePercent ??
-      signal.priceChangePercent ??
-      signal.movement?.percent
-    );
+  const pump=num(
+    signal.pumpPercent ??
+    signal.changePercent ??
+    signal.priceChangePercent ??
+    signal.movement?.percent
+  );
 
   const alertKey=
     symbol+
@@ -4528,27 +4307,22 @@ async function handleScannerAlert(
     Math.round(pump);
 
   if(
-    alertKey===
-    lastAlertKey
+    alertKey===lastAlertKey
   )
     return;
 
-  lastAlertKey=
-    alertKey;
+  lastAlertKey=alertKey;
 
-  if(
-    masterVolume<=0
-  )
+  if(masterVolume<=0)
     return;
 
-  alertLevel=
-    Math.min(
-      100,
-      Math.max(
-        alertLevel+10,
-        score
-      )
-    );
+  alertLevel=Math.min(
+    100,
+    Math.max(
+      alertLevel+10,
+      score
+    )
+  );
 
   const volume=
     (
@@ -4560,8 +4334,7 @@ async function handleScannerAlert(
     );
 
   playTone(
-    520+
-    score*5,
+    520+score*5,
     .14,
     volume
   );
@@ -4569,8 +4342,7 @@ async function handleScannerAlert(
   setTimeout(
     ()=>{
       playTone(
-        760+
-        score*4,
+        760+score*4,
         .18,
         volume*.8
       );
@@ -4590,11 +4362,9 @@ async function handleScannerAlert(
       },
       400
     );
-
   }
 
-  $("symbol").value=
-    symbol;
+  $("symbol").value=symbol;
 
   try{
 
@@ -4617,10 +4387,9 @@ async function handleScannerAlert(
     addHeatSnapshot();
 
     renderCards();
-
     renderTrades();
 
-    draw();
+    scheduleDraw();
 
     setStatus(
       "🚨 سیگنال پیدا شد: "+
@@ -4632,10 +4401,13 @@ async function handleScannerAlert(
   }catch(e){
 
     console.error(e);
-
   }
-
 }
+
+
+/* =========================
+   VOLUME / SOUND
+========================= */
 
 $("volume").value=
   masterVolume;
@@ -4657,7 +4429,6 @@ $("volume").addEventListener(
 
     $("volumeText").textContent=
       masterVolume+"%";
-
   }
 );
 
@@ -4685,8 +4456,12 @@ $("soundTest").onclick=()=>{
     },
     180
   );
-
 };
+
+
+/* =========================
+   BUTTONS
+========================= */
 
 $("analyzeBtn").onclick=
   analyze;
@@ -4708,129 +4483,129 @@ $("scanOnce").onclick=
 
 $("zoomIn").onclick=
   ()=>{
-    zoomAt(.72);
+    zoomAt(.70,.5);
   };
 
 $("zoomOut").onclick=
   ()=>{
-    zoomAt(1.35);
+    zoomAt(1.42,.5);
   };
 
 $("moveLeft").onclick=
   ()=>{
-    moveChart(-.55);
+    moveChart(-.50);
   };
 
 $("moveRight").onclick=
   ()=>{
-    moveChart(.55);
+    moveChart(.50);
   };
 
 $("reset").onclick=
   ()=>{
     resetView();
-    draw();
+    scheduleDraw();
   };
 
+
+/* =========================
+   TIMEFRAME
+========================= */
+
 document
-  .querySelectorAll(
-    "[data-tf]"
-  )
-  .forEach(
-    button=>{
+.querySelectorAll("[data-tf]")
+.forEach(
+  button=>{
 
-      button.onclick=
-        async()=>{
+    button.onclick=
+      async()=>{
 
-          document
-            .querySelectorAll(
-              "[data-tf]"
+        document
+        .querySelectorAll(
+          "[data-tf]"
+        )
+        .forEach(
+          x=>
+            x.classList.remove(
+              "active"
             )
-            .forEach(
-              x=>
-                x.classList.remove(
-                  "active"
-                )
-            );
-
-          button.classList.add(
-            "active"
-          );
-
-          selectedTF=
-            button.dataset.tf;
-
-          await analyze();
-
-        };
-
-    }
-  );
-
-document
-  .querySelectorAll(
-    "[data-layer]"
-  )
-  .forEach(
-    button=>{
-
-      button.onclick=()=>{
-
-        const key=
-          button.dataset.layer;
-
-        layers[key]=
-          !layers[key];
-
-        button.classList.toggle(
-          "active",
-          layers[key]
         );
 
-        draw();
+        button.classList.add(
+          "active"
+        );
 
+        selectedTF=
+          button.dataset.tf;
+
+        await analyze();
       };
+  }
+);
 
-    }
-  );
+
+/* =========================
+   LAYERS
+========================= */
+
+document
+.querySelectorAll("[data-layer]")
+.forEach(
+  button=>{
+
+    button.onclick=()=>{
+
+      const key=
+        button.dataset.layer;
+
+      layers[key]=
+        !layers[key];
+
+      button.classList.toggle(
+        "active",
+        layers[key]
+      );
+
+      scheduleDraw();
+    };
+  }
+);
+
+
+/* =========================
+   FOOTPRINT MODE
+========================= */
 
 $("modeBidAsk").onclick=()=>{
 
-  footprintMode=
-    "bidask";
+  footprintMode="bidask";
 
   $("modeBidAsk")
-    .classList.add(
-      "active"
-    );
+    .classList.add("active");
 
   $("modeDelta")
-    .classList.remove(
-      "active"
-    );
+    .classList.remove("active");
 
-  draw();
-
+  scheduleDraw();
 };
 
 $("modeDelta").onclick=()=>{
 
-  footprintMode=
-    "delta";
+  footprintMode="delta";
 
   $("modeDelta")
-    .classList.add(
-      "active"
-    );
+    .classList.add("active");
 
   $("modeBidAsk")
-    .classList.remove(
-      "active"
-    );
+    .classList.remove("active");
 
-  draw();
-
+  scheduleDraw();
 };
+
+
+/* =========================
+   SYMBOL ENTER
+========================= */
 
 $("symbol").addEventListener(
   "keydown",
@@ -4838,17 +4613,20 @@ $("symbol").addEventListener(
 
     if(e.key==="Enter")
       analyze();
-
   }
 );
 
-/* =========================
-   TOUCH / POINTER
-========================= */
+
+/* =====================================================
+   POINTER ENGINE
+   سریع‌تر و دقیق‌تر برای موبایل / تاچ / موس
+===================================================== */
 
 canvas.addEventListener(
   "pointerdown",
   e=>{
+
+    e.preventDefault();
 
     pointers.set(
       e.pointerId,
@@ -4858,50 +4636,80 @@ canvas.addEventListener(
       }
     );
 
-    canvas.setPointerCapture(
-      e.pointerId
-    );
+    try{
+      canvas.setPointerCapture(
+        e.pointerId
+      );
+    }catch{}
 
     if(
       pointers.size===1
     ){
 
       dragging=true;
+      dragMoved=false;
 
-      dragStartX=
-        e.clientX;
-
-      dragStartView=
-        viewStart;
-
+      dragStartX=e.clientX;
+      dragStartView=viewStart;
     }
 
     if(
       pointers.size===2
     ){
 
-      const pts=
-        [...pointers.values()];
+      const pts=[
+        ...pointers.values()
+      ];
 
       pinchStartDistance=
-        Math.hypot(
-          pts[0].x-pts[1].x,
-          pts[0].y-pts[1].y
+        Math.max(
+          1,
+          Math.hypot(
+            pts[0].x-pts[1].x,
+            pts[0].y-pts[1].y
+          )
         );
 
       pinchStartCount=
         viewEnd-viewStart;
 
+      const rect=
+        canvas.getBoundingClientRect();
+
+      const centerX=
+        (
+          pts[0].x+
+          pts[1].x
+        )/2-
+        rect.left;
+
+      pinchCenterRatio=
+        Math.max(
+          0,
+          Math.min(
+            1,
+            (
+              centerX-55
+            )/
+            Math.max(
+              1,
+              rect.width-185
+            )
+          )
+        );
+
       dragging=false;
-
+      dragMoved=true;
     }
-
-  }
+  },
+  {passive:false}
 );
 
 canvas.addEventListener(
   "pointermove",
   e=>{
+
+    e.preventDefault();
 
     if(
       !pointers.has(
@@ -4922,29 +4730,30 @@ canvas.addEventListener(
       pointers.size===2
     ){
 
-      const pts=
-        [...pointers.values()];
+      const pts=[
+        ...pointers.values()
+      ];
 
-      const distance=
+      const distance=Math.max(
+        1,
         Math.hypot(
           pts[0].x-pts[1].x,
           pts[0].y-pts[1].y
-        );
+        )
+      );
 
       if(
         pinchStartDistance>0 &&
         data?.candles?.length
       ){
 
-        const factor=
-          pinchStartDistance/
-          distance;
-
-        let next=
-          Math.round(
-            pinchStartCount*
-            factor
-          );
+        let next=Math.round(
+          pinchStartCount*
+          (
+            pinchStartDistance/
+            distance
+          )
+        );
 
         next=Math.max(
           5,
@@ -4955,48 +4764,25 @@ canvas.addEventListener(
         );
 
         const center=
-          (
-            viewStart+
-            viewEnd
-          )/2;
+          viewStart+
+          pinchStartCount*
+          pinchCenterRatio;
 
-        viewStart=
-          Math.round(
-            center-next/2
-          );
+        viewStart=Math.round(
+          center-
+          next*
+          pinchCenterRatio
+        );
 
         viewEnd=
           viewStart+next;
 
-        if(viewStart<0){
+        clampView();
 
-          viewStart=0;
-          viewEnd=next;
-
-        }
-
-        if(
-          viewEnd>
-          data.candles.length
-        ){
-
-          viewEnd=
-            data.candles.length;
-
-          viewStart=
-            Math.max(
-              0,
-              viewEnd-next
-            );
-
-        }
-
-        draw();
-
+        scheduleDraw();
       }
 
       return;
-
     }
 
     if(
@@ -5017,15 +4803,20 @@ canvas.addEventListener(
         e.clientX-
         dragStartX;
 
-      const shift=
-        Math.round(
-          -dx/
-          Math.max(
-            1,
-            rect.width
-          )*
-          count
+      if(Math.abs(dx)>3)
+        dragMoved=true;
+
+      const chartWidth=
+        Math.max(
+          1,
+          rect.width-185
         );
+
+      const shift=Math.round(
+        -dx/
+        chartWidth*
+        count
+      );
 
       let start=
         dragStartView+
@@ -5040,84 +4831,102 @@ canvas.addEventListener(
       );
 
       viewStart=start;
-      viewEnd=
-        start+count;
+      viewEnd=start+count;
 
-      draw();
-
+      scheduleDraw();
     }
-
-  }
+  },
+  {passive:false}
 );
 
-canvas.addEventListener(
-  "pointerup",
-  e=>{
+function finishPointer(e){
 
-    const wasSingle=
-      pointers.size===1;
+  const wasSingle=
+    pointers.size===1;
 
-    const x=e.clientX;
+  const x=e.clientX;
+  const y=e.clientY;
 
-    pointers.delete(
+  pointers.delete(
+    e.pointerId
+  );
+
+  try{
+    canvas.releasePointerCapture(
       e.pointerId
     );
+  }catch{}
 
-    if(
-      wasSingle &&
-      !dragging
-    ){
+  if(
+    wasSingle &&
+    !dragMoved
+  ){
 
-      const rect=
-        canvas.getBoundingClientRect();
+    const rect=
+      canvas.getBoundingClientRect();
 
-      const localX=
-        x-
-        rect.left;
+    const localX=
+      x-rect.left;
 
-      const index=
-        candleAtX(
-          localX
+    const index=
+      candleAtX(
+        localX
+      );
+
+    if(index>=0){
+
+      const now=Date.now();
+
+      /*
+        دابل‌تپ دقیق:
+        هم فاصله زمانی و هم همان کندل بررسی می‌شود.
+      */
+
+      const doubleTap=
+        now-lastTap<380 &&
+        index===lastTapIndex;
+
+      if(doubleTap){
+
+        selectedCandle=index;
+
+        zoomAroundIndex(
+          index,
+          .42
         );
 
-      const now=
-        Date.now();
+        /*
+          بعد از زوم، کندل وسط محدوده قرار می‌گیرد.
+        */
 
-      if(
-        now-lastTap<330 &&
-        index>=0
-      ){
+        focusCandle(index);
 
-        focusCandle(
-          index
-        );
+      }else{
 
-      }else if(
-        index>=0
-      ){
+        selectedCandle=index;
 
-        selectedCandle=
-          index;
-
-        draw();
-
+        scheduleDraw();
       }
 
       lastTap=now;
-
+      lastTapIndex=index;
     }
-
-    dragging=false;
-
-    if(
-      pointers.size<2
-    ){
-
-      pinchStartDistance=0;
-
-    }
-
   }
+
+  dragging=false;
+  dragMoved=false;
+
+  if(
+    pointers.size<2
+  ){
+    pinchStartDistance=0;
+  }
+}
+
+canvas.addEventListener(
+  "pointerup",
+  finishPointer,
+  {passive:false}
 );
 
 canvas.addEventListener(
@@ -5129,9 +4938,16 @@ canvas.addEventListener(
     );
 
     dragging=false;
-
-  }
+    dragMoved=false;
+    pinchStartDistance=0;
+  },
+  {passive:false}
 );
+
+
+/* =====================================================
+   WHEEL ZOOM
+===================================================== */
 
 canvas.addEventListener(
   "wheel",
@@ -5146,25 +4962,24 @@ canvas.addEventListener(
       e.clientX-
       rect.left;
 
-    const ratio=
-      Math.max(
-        0,
-        Math.min(
+    const ratio=Math.max(
+      0,
+      Math.min(
+        1,
+        (
+          x-55
+        )/
+        Math.max(
           1,
-          (
-            x-55
-          )/
-          Math.max(
-            1,
-            rect.width-180
-          )
+          rect.width-185
         )
-      );
+      )
+    );
 
     zoomAt(
       e.deltaY<0
-      ? .72
-      : 1.38,
+      ? .70
+      : 1.42,
       ratio
     );
 
@@ -5173,6 +4988,11 @@ canvas.addEventListener(
     passive:false
   }
 );
+
+
+/* =====================================================
+   CROSSHAIR
+===================================================== */
 
 canvas.addEventListener(
   "pointermove",
@@ -5193,25 +5013,11 @@ canvas.addEventListener(
       !data?.candles?.length
     ){
 
-      crosshairInfo.textContent=
-        "—";
-
+      crosshairInfo.textContent="—";
       return;
-
     }
 
-    const left=55;
-    const right=
-      rect.width-125;
-
-    const top=20;
-    const bottom=
-      rect.height-
-      (
-        layers.delta
-        ? 115
-        : 25
-      );
+    const g=chartGeometry();
 
     const visible=
       getVisible();
@@ -5221,61 +5027,59 @@ canvas.addEventListener(
         visible
       );
 
-    const price=
-      y2p(
-        y,
-        range.low,
-        range.high,
-        top,
-        bottom
-      );
+    const price=y2p(
+      y,
+      range.low,
+      range.high,
+      g.top,
+      g.bottom
+    );
 
     const index=
       candleAtX(x);
 
-    if(index>=0){
+    if(index<0)
+      return;
 
-      const c=
-        data.candles[index];
+    const c=
+      data.candles[index];
 
-      const fp=
-        getFP(index);
+    const fp=
+      getFP(index);
 
-      const levels=
-        getLevels(fp);
+    const levels=
+      getLevels(fp);
 
-      let levelText="";
+    const values=
+      candleFlowValues(index);
 
-      if(levels.length){
+    let levelText="";
 
-        let closest=
-          levels[0];
+    if(levels.length){
 
-        let best=
+      let closest=null;
+      let best=Infinity;
+
+      for(
+        const l of levels
+      ){
+
+        const d=
           Math.abs(
-            closest.price-price
+            l.price-price
           );
 
-        for(
-          const l of levels
-        ){
+        if(d<best){
 
-          const d=
-            Math.abs(
-              l.price-price
-            );
-
-          if(d<best){
-
-            best=d;
-            closest=l;
-
-          }
-
+          best=d;
+          closest=l;
         }
+      }
+
+      if(closest){
 
         levelText=
-          " | L "+
+          " | "+
           priceFmt(
             closest.price
           )+
@@ -5291,22 +5095,37 @@ canvas.addEventListener(
           fmt(
             closest.delta
           );
-
       }
-
-      crosshairInfo.innerHTML=
-        "Candle "+
-        index+
-        " · "+
-        priceFmt(price)+
-        levelText;
-
     }
 
-  }
+    crosshairInfo.innerHTML=
+      "<b>"+selectedTF+
+      "m #"+index+
+      "</b>"+
+      " · P "+
+      priceFmt(price)+
+      " · V "+
+      fmt(values.volume)+
+      " · Δ "+
+      fmt(values.deltaValue)+
+      levelText;
+  },
+  {passive:true}
 );
 
+
+/* =====================================================
+   INITIAL
+===================================================== */
+
 resizeCanvas();
+
+setTimeout(
+  ()=>{
+    resizeCanvas();
+  },
+  100
+);
 
 </script>
 
