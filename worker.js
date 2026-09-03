@@ -1,5 +1,5 @@
 const BYBIT = "https://api.bybit.com";
-const VERSION = "ABSORPTION-ORDERFLOW-MAP-V1";
+const VERSION = "ABSORPTION-ORDERFLOW-MAP-V2";
 
 const TF = "5";
 const TF15 = "15";
@@ -11,6 +11,10 @@ const TRADE_LIMIT = 1000;
 const ORDERBOOK_LIMIT = 50;
 const SCAN_BATCH = 20;
 const MAX_SYMBOLS = 200;
+
+const CHART_LIMIT = 180;
+const FOOTPRINT_MAX_LEVELS = 80;
+const HEATMAP_LEVELS = 50;
 
 const json = (data, status=200) => new Response(JSON.stringify(data), {
   status,
@@ -34,7 +38,13 @@ const avg = a => a.length
   ? a.reduce((s,x)=>s+x,0)/a.length
   : 0;
 
+const sum = a => a.reduce((s,x)=>s+n(x),0);
+
+const finitePositive = x =>
+  Number.isFinite(Number(x)) && Number(x)>0;
+
 async function bybit(path, params={}) {
+
   const u = new URL(BYBIT + path);
 
   Object.entries(params).forEach(([k,v]) => {
@@ -44,7 +54,7 @@ async function bybit(path, params={}) {
   });
 
   const r = await fetch(u.toString(), {
-    headers: {
+    headers:{
       "accept":"application/json"
     }
   });
@@ -73,6 +83,7 @@ async function kline(
   interval=TF,
   limit=KLINE_LIMIT
 ) {
+
   const d = await bybit(
     "/v5/market/kline",
     {
@@ -93,6 +104,11 @@ async function kline(
       volume:n(x[5]),
       turnover:n(x[6])
     }))
+    .filter(x=>
+      x.time>0 &&
+      x.high>0 &&
+      x.low>0
+    )
     .sort((a,b)=>a.time-b.time);
 }
 
@@ -111,20 +127,16 @@ async function ticker(category,symbol) {
     }
   );
 
-  const x = d.result?.list?.[0] || {};
+  const x=d.result?.list?.[0]||{};
 
   return {
     lastPrice:n(x.lastPrice),
     markPrice:n(x.markPrice),
     indexPrice:n(x.indexPrice),
-
     turnover24h:n(x.turnover24h),
     volume24h:n(x.volume24h),
-
     price24hPcnt:n(x.price24hPcnt)*100,
-
     openInterest:n(x.openInterest),
-
     fundingRate:n(x.fundingRate)*100
   };
 }
@@ -140,7 +152,7 @@ async function trades(
   limit=TRADE_LIMIT
 ) {
 
-  const d = await bybit(
+  const d=await bybit(
     "/v5/market/recent-trade",
     {
       category,
@@ -151,14 +163,40 @@ async function trades(
 
   return (d.result?.list||[])
     .map(x=>({
-      id:String(x.execId||x.id||""),
+
+      id:String(
+        x.execId ||
+        x.id ||
+        ""
+      ),
+
       time:n(x.time),
+
       price:n(x.price),
-      size:n(x.size),
-      side:String(x.side||"").toLowerCase(),
-      isBuyerMaker:Boolean(x.isBuyerMaker)
+
+      size:n(
+        x.size ||
+        x.qty ||
+        x.volume
+      ),
+
+      side:String(
+        x.side||""
+      ).toLowerCase(),
+
+      isBuyerMaker:
+        Boolean(
+          x.isBuyerMaker
+        )
     }))
-    .sort((a,b)=>a.time-b.time);
+    .filter(x=>
+      x.time>0 &&
+      x.price>0 &&
+      x.size>0
+    )
+    .sort(
+      (a,b)=>a.time-b.time
+    );
 }
 
 
@@ -172,7 +210,7 @@ async function orderbook(
   limit=ORDERBOOK_LIMIT
 ) {
 
-  const d = await bybit(
+  const d=await bybit(
     "/v5/market/orderbook",
     {
       category,
@@ -189,7 +227,11 @@ async function orderbook(
       size:n(x[1]),
       value:n(x[0])*n(x[1])
     }))
-    .filter(x=>x.price>0&&x.size>0);
+    .filter(x=>
+      x.price>0 &&
+      x.size>0 &&
+      x.value>0
+    );
 
   const asks=(r.a||[])
     .map(x=>({
@@ -197,7 +239,11 @@ async function orderbook(
       size:n(x[1]),
       value:n(x[0])*n(x[1])
     }))
-    .filter(x=>x.price>0&&x.size>0);
+    .filter(x=>
+      x.price>0 &&
+      x.size>0 &&
+      x.value>0
+    );
 
   return {
     bids,
@@ -217,7 +263,7 @@ async function oiFunding(symbol) {
     t,
     oi,
     f
-  ] = await Promise.all([
+  ]=await Promise.all([
 
     ticker(
       "linear",
@@ -239,7 +285,7 @@ async function oiFunding(symbol) {
       {
         category:"linear",
         symbol,
-        limit:2
+        limit:10
       }
     )
   ]);
@@ -249,6 +295,7 @@ async function oiFunding(symbol) {
       time:n(x.timestamp),
       value:n(x.openInterest)
     }))
+    .filter(x=>x.time>0)
     .sort((a,b)=>a.time-b.time);
 
   const fl=(f.result?.list||[])
@@ -256,14 +303,15 @@ async function oiFunding(symbol) {
       time:n(x.fundingRateTimestamp),
       rate:n(x.fundingRate)*100
     }))
+    .filter(x=>x.time>0)
     .sort((a,b)=>a.time-b.time);
 
-  const current =
+  const current=
     t.openInterest ||
     o.at(-1)?.value ||
     0;
 
-  const previous =
+  const previous=
     o.at(-2)?.value ||
     current;
 
@@ -271,14 +319,16 @@ async function oiFunding(symbol) {
 
     openInterest:current,
 
-    previousOpenInterest:previous,
+    previousOpenInterest:
+      previous,
 
     changePercent:
       previous
         ? pct(current,previous)
         : 0,
 
-    fundingRate:t.fundingRate,
+    fundingRate:
+      t.fundingRate,
 
     previousFundingRate:
       fl.at(-2)?.rate ??
@@ -314,8 +364,9 @@ function ema(values,p) {
     i<values.length;
     i++
   ) {
-    e =
-      values[i]*k +
+
+    e=
+      values[i]*k+
       e*(1-k);
   }
 
@@ -360,11 +411,9 @@ function atr(c,p=14) {
     tr.push(
       Math.max(
         c[i].high-c[i].low,
-
         Math.abs(
           c[i].high-c[i-1].close
         ),
-
         Math.abs(
           c[i].low-c[i-1].close
         )
@@ -397,8 +446,8 @@ function rsi(c,p=14) {
     i++
   ) {
 
-    const d =
-      c[i].close -
+    const d=
+      c[i].close-
       c[i-1].close;
 
     if(d>=0) {
@@ -417,19 +466,19 @@ function rsi(c,p=14) {
     i++
   ) {
 
-    const d =
-      c[i].close -
+    const d=
+      c[i].close-
       c[i-1].close;
 
-    ag =
+    ag=
       (
-        ag*(p-1) +
+        ag*(p-1)+
         Math.max(d,0)
       )/p;
 
-    al =
+    al=
       (
-        al*(p-1) +
+        al*(p-1)+
         Math.max(-d,0)
       )/p;
   }
@@ -441,7 +490,7 @@ function rsi(c,p=14) {
 
 
 /* =========================================================
-   CANDLE
+   CANDLE STATS
 ========================================================= */
 
 function candleStats(c) {
@@ -520,15 +569,35 @@ function candleStats(c) {
 
 
 /* =========================================================
+   AGGRESSOR SIDE
+========================================================= */
+
+function aggressorSide(x) {
+
+  if(
+    x.isBuyerMaker===false
+  ) {
+    return "BUY";
+  }
+
+  if(
+    x.isBuyerMaker===true
+  ) {
+    return "SELL";
+  }
+
+  if(
+    x.side==="buy"
+  ) {
+    return "BUY";
+  }
+
+  return "SELL";
+}
+
+
+/* =========================================================
    REAL ORDER FLOW
-
-   Bybit:
-   isBuyerMaker=true
-   یعنی خریدار Maker است
-   بنابراین فروشنده Aggressor است.
-
-   isBuyerMaker=false
-   یعنی خریدار Aggressor است.
 ========================================================= */
 
 function flowFromTrades(
@@ -537,12 +606,11 @@ function flowFromTrades(
   end=Infinity
 ) {
 
-  const t=
-    list.filter(
-      x=>
-        x.time>=start &&
-        x.time<=end
-    );
+  const t=list.filter(
+    x=>
+      x.time>=start &&
+      x.time<=end
+  );
 
   let buyVol=0;
   let sellVol=0;
@@ -555,7 +623,9 @@ function flowFromTrades(
 
   let largest=0;
 
-  for(const x of t) {
+  for(
+    const x of t
+  ) {
 
     const value=
       x.price*x.size;
@@ -566,27 +636,19 @@ function flowFromTrades(
         value
       );
 
-    const buyAgg =
-      !x.isBuyerMaker &&
-      x.side!=="sell";
+    const side=
+      aggressorSide(x);
 
-    if(
-      buyAgg ||
-      x.side==="buy"
-    ) {
+    if(side==="BUY") {
 
       buyVol+=x.size;
-
       buyValue+=value;
-
       buyTrades++;
 
     } else {
 
       sellVol+=x.size;
-
       sellValue+=value;
-
       sellTrades++;
     }
   }
@@ -655,14 +717,378 @@ function flowFromTrades(
 
 
 /* =========================================================
-   BLOCK TRADES
+   FOOTPRINT ENGINE
+   BID / ASK واقعی در هر Price Level
 ========================================================= */
 
-function blockTrades(
+function createFootprintLevel(
+  price
+) {
+
+  return {
+    price,
+    bidVolume:0,
+    askVolume:0,
+    bidValue:0,
+    askValue:0,
+    bidTrades:0,
+    askTrades:0,
+    totalVolume:0,
+    totalValue:0,
+    delta:0,
+    deltaValue:0,
+    imbalance:0,
+    side:"NEUTRAL",
+    largestTradeValue:0
+  };
+}
+
+
+function footprintForCandle(
+  candle,
   list
 ) {
 
+  const start=candle.time;
+  const end=
+    start+
+    5*60*1000-
+    1;
+
+  const levels=new Map();
+
+  const inside=list.filter(
+    x=>
+      x.time>=start &&
+      x.time<=end
+  );
+
+  for(
+    const x of inside
+  ) {
+
+    const price=
+      Number(
+        x.price
+      );
+
+    if(!finitePositive(price)) {
+      continue;
+    }
+
+    if(!levels.has(price)) {
+      levels.set(
+        price,
+        createFootprintLevel(price)
+      );
+    }
+
+    const z=
+      levels.get(price);
+
+    const value=
+      x.price*x.size;
+
+    const side=
+      aggressorSide(x);
+
+    if(side==="BUY") {
+
+      z.askVolume+=x.size;
+      z.askValue+=value;
+      z.askTrades++;
+
+    } else {
+
+      z.bidVolume+=x.size;
+      z.bidValue+=value;
+      z.bidTrades++;
+    }
+
+    z.totalVolume=
+      z.bidVolume+
+      z.askVolume;
+
+    z.totalValue=
+      z.bidValue+
+      z.askValue;
+
+    z.delta=
+      z.askVolume-
+      z.bidVolume;
+
+    z.deltaValue=
+      z.askValue-
+      z.bidValue;
+
+    z.largestTradeValue=
+      Math.max(
+        z.largestTradeValue,
+        value
+      );
+
+    if(
+      z.bidVolume>0 &&
+      z.askVolume>0
+    ) {
+
+      const small=
+        Math.min(
+          z.bidVolume,
+          z.askVolume
+        );
+
+      const large=
+        Math.max(
+          z.bidVolume,
+          z.askVolume
+        );
+
+      z.imbalance=
+        small>0
+          ? large/small
+          : 999;
+
+      z.side=
+        z.askVolume>
+        z.bidVolume
+          ? "BUY"
+          : z.bidVolume>
+            z.askVolume
+              ? "SELL"
+              : "NEUTRAL";
+
+    } else if(
+      z.askVolume>0
+    ) {
+
+      z.side="BUY";
+      z.imbalance=999;
+
+    } else if(
+      z.bidVolume>0
+    ) {
+
+      z.side="SELL";
+      z.imbalance=999;
+    }
+  }
+
+  const rows=
+    Array.from(
+      levels.values()
+    )
+    .sort(
+      (a,b)=>b.price-a.price
+    );
+
+  const buyValue=
+    sum(
+      rows.map(x=>x.askValue)
+    );
+
+  const sellValue=
+    sum(
+      rows.map(x=>x.bidValue)
+    );
+
+  const deltaValue=
+    buyValue-sellValue;
+
+  const delta=
+    sum(
+      rows.map(x=>x.delta)
+    );
+
+  const totalValue=
+    buyValue+sellValue;
+
+  return {
+
+    candleTime:start,
+
+    startTime:start,
+
+    endTime:end,
+
+    tradeCount:
+      inside.length,
+
+    buyVolume:
+      sum(
+        rows.map(x=>x.askVolume)
+      ),
+
+    sellVolume:
+      sum(
+        rows.map(x=>x.bidVolume)
+      ),
+
+    buyValue,
+
+    sellValue,
+
+    totalValue,
+
+    delta,
+
+    deltaValue,
+
+    deltaPercent:
+      totalValue
+        ? deltaValue/totalValue*100
+        : 0,
+
+    levels:
+      rows.slice(
+        0,
+        FOOTPRINT_MAX_LEVELS
+      )
+  };
+}
+
+
+/* =========================================================
+   FOOTPRINT ALL CANDLES
+========================================================= */
+
+function buildFootprints(
+  candles,
+  list
+) {
+
+  const result=[];
+
+  let cumulative=0;
+
+  for(
+    const candle of candles
+  ) {
+
+    const fp=
+      footprintForCandle(
+        candle,
+        list
+      );
+
+    cumulative+=
+      fp.deltaValue;
+
+    fp.cumulativeDeltaValue=
+      cumulative;
+
+    fp.cumulativeDelta=
+      cumulative;
+
+    result.push(fp);
+  }
+
+  return result;
+}
+
+
+/* =========================================================
+   CANDLE DELTA SUMMARY
+========================================================= */
+
+function candleDeltaSeries(
+  candles,
+  list
+) {
+
+  return candles.map(
+    candle=>{
+
+      const fp=
+        footprintForCandle(
+          candle,
+          list
+        );
+
+      return {
+
+        time:candle.time,
+
+        buy:fp.buyValue,
+
+        sell:fp.sellValue,
+
+        delta:fp.deltaValue,
+
+        deltaPercent:
+          fp.deltaPercent,
+
+        trades:
+          fp.tradeCount
+      };
+    }
+  );
+}
+
+
+/* =========================================================
+   IMBALANCE DETECTION
+========================================================= */
+
+function detectImbalances(
+  footprint
+) {
+
+  const levels=[];
+
+  for(
+    const x of footprint.levels
+  ) {
+
+    if(
+      x.imbalance>=3
+    ) {
+
+      levels.push({
+
+        price:x.price,
+
+        ratio:
+          x.imbalance,
+
+        direction:
+          x.side==="BUY"
+            ? "BUY"
+            : "SELL",
+
+        bidVolume:
+          x.bidVolume,
+
+        askVolume:
+          x.askVolume,
+
+        bidValue:
+          x.bidValue,
+
+        askValue:
+          x.askValue,
+
+        deltaValue:
+          x.deltaValue
+      });
+    }
+  }
+
+  return levels.slice(
+    0,
+    30
+  );
+}
+
+
+/* =========================================================
+   BLOCK TRADES
+========================================================= */
+
+function blockTrades(list) {
+
   if(!list.length) {
+
     return {
       threshold:0,
       trades:[]
@@ -689,7 +1115,7 @@ function blockTrades(
       Math.floor(
         values.length*.95
       )
-    ] || 0;
+    ]||0;
 
   const threshold=
     Math.max(
@@ -705,15 +1131,14 @@ function blockTrades(
       )
       .map(
         x=>({
+
           ...x,
-          value:x.price*x.size,
+
+          value:
+            x.price*x.size,
+
           aggressor:
-            (
-              !x.isBuyerMaker &&
-              x.side!=="sell"
-            )
-              ? "BUY"
-              : "SELL"
+            aggressorSide(x)
         })
       )
       .sort(
@@ -721,8 +1146,14 @@ function blockTrades(
       );
 
   return {
+
     threshold,
-    trades:blocks.slice(0,50)
+
+    trades:
+      blocks.slice(
+        0,
+        50
+      )
   };
 }
 
@@ -755,6 +1186,7 @@ function wallAnalysis(
   const values=
     all
       .map(x=>x.value)
+      .filter(x=>x>0)
       .sort(
         (a,b)=>a-b
       );
@@ -782,7 +1214,9 @@ function wallAnalysis(
       )
       .map(
         x=>({
+
           ...x,
+
           distancePercent:
             Math.abs(
               pct(
@@ -804,7 +1238,9 @@ function wallAnalysis(
       )
       .map(
         x=>({
+
           ...x,
+
           distancePercent:
             Math.abs(
               pct(
@@ -871,6 +1307,8 @@ function wallAnalysis(
           )/total*100
         : 0,
 
+    threshold,
+
     buyWalls:
       buyWalls.slice(0,12),
 
@@ -893,6 +1331,119 @@ function wallAnalysis(
 
 
 /* =========================================================
+   LIQUIDITY HEATMAP
+========================================================= */
+
+function liquidityHeatmap(
+  ob,
+  price
+) {
+
+  const all=[];
+
+  for(
+    const x of ob.bids.slice(
+      0,
+      HEATMAP_LEVELS
+    )
+  ) {
+
+    all.push({
+
+      price:x.price,
+
+      size:x.size,
+
+      value:x.value,
+
+      side:"BUY",
+
+      distancePercent:
+        Math.abs(
+          pct(
+            x.price,
+            price
+          )
+        )
+    });
+  }
+
+  for(
+    const x of ob.asks.slice(
+      0,
+      HEATMAP_LEVELS
+    )
+  ) {
+
+    all.push({
+
+      price:x.price,
+
+      size:x.size,
+
+      value:x.value,
+
+      side:"SELL",
+
+      distancePercent:
+        Math.abs(
+          pct(
+            x.price,
+            price
+          )
+        )
+    });
+  }
+
+  const maxValue=
+    Math.max(
+      ...all.map(
+        x=>x.value
+      ),
+      1
+    );
+
+  return {
+
+    generatedAt:
+      Date.now(),
+
+    currentPrice:
+      price,
+
+    maxValue,
+
+    levels:
+      all
+        .sort(
+          (a,b)=>
+            a.price-b.price
+        )
+        .map(
+          x=>({
+
+            ...x,
+
+            intensity:
+              clamp(
+                x.value/maxValue,
+                0,
+                1
+              ),
+
+            intensityPercent:
+              clamp(
+                x.value/maxValue*100,
+                0,
+                100
+              )
+          })
+        )
+  };
+}
+
+
+/* =========================================================
    LIQUIDITY ZONES
 ========================================================= */
 
@@ -909,6 +1460,7 @@ function liquidityZones(
   ) {
 
     levels.push({
+
       price:x.price,
       value:x.value,
       side:"BUY",
@@ -921,6 +1473,7 @@ function liquidityZones(
   ) {
 
     levels.push({
+
       price:x.price,
       value:x.value,
       side:"SELL",
@@ -936,52 +1489,60 @@ function liquidityZones(
     c.slice(-80)
       .map(x=>x.high);
 
-  const zones=[
+  const zones=[];
 
-    {
+  if(lows.length) {
+
+    zones.push({
+
       price:
-        Math.min(
-          ...lows.slice(-20)
-        ),
+        Math.min(...lows.slice(-20)),
+
       side:"BUY",
+
       source:"PRICE_LOW",
-      value:0
-    },
 
-    {
+      value:0
+    });
+  }
+
+  if(highs.length) {
+
+    zones.push({
+
       price:
-        Math.max(
-          ...highs.slice(-20)
-        ),
-      side:"SELL",
-      source:"PRICE_HIGH",
-      value:0
-    }
-  ];
+        Math.max(...highs.slice(-20)),
 
-  const merged=[
+      side:"SELL",
+
+      source:"PRICE_HIGH",
+
+      value:0
+    });
+  }
+
+  return [
     ...levels,
     ...zones
   ]
-    .sort(
-      (a,b)=>
-        b.value-a.value
-    );
+  .sort(
+    (a,b)=>b.value-a.value
+  )
+  .slice(0,30)
+  .map(
+    x=>({
 
-  return merged
-    .slice(0,30)
-    .map(
-      x=>({
-        ...x,
-        distancePercent:
-          Math.abs(
-            pct(
-              x.price,
-              price
-            )
+      ...x,
+
+      distancePercent:
+        Math.abs(
+          pct(
+            x.price,
+            price
           )
-      })
-    );
+        )
+    })
+  );
 }
 
 
@@ -994,8 +1555,11 @@ function detectSweep(c) {
   if(c.length<8) {
 
     return {
+
       detected:false,
+
       direction:"NONE",
+
       strength:0
     };
   }
@@ -1062,6 +1626,7 @@ function detectSweep(c) {
   }
 
   return {
+
     detected:
       direction!=="NONE",
 
@@ -1070,7 +1635,85 @@ function detectSweep(c) {
     strength,
 
     priorHigh:ph,
+
     priorLow:pl
+  };
+}
+
+
+/* =========================================================
+   SWEEP + TRADE LIQUIDITY CONFIRMATION
+========================================================= */
+
+function detectTradeSweep(
+  candles,
+  tradeList
+) {
+
+  const sweep=
+    detectSweep(candles);
+
+  if(!sweep.detected) {
+    return sweep;
+  }
+
+  const x=candles.at(-1);
+
+  const start=x.time;
+
+  const end=
+    start+
+    5*60*1000-
+    1;
+
+  const tfTrades=
+    tradeList.filter(
+      t=>
+        t.time>=start &&
+        t.time<=end
+    );
+
+  const flow=
+    flowFromTrades(
+      tfTrades
+    );
+
+  let confirmation=0;
+
+  if(
+    sweep.direction==="LONG" &&
+    flow.sellValue>flow.buyValue
+  ) {
+    confirmation=30;
+  }
+
+  if(
+    sweep.direction==="SHORT" &&
+    flow.buyValue>flow.sellValue
+  ) {
+    confirmation=30;
+  }
+
+  return {
+
+    ...sweep,
+
+    tradeCount:
+      flow.tradeCount,
+
+    buyValue:
+      flow.buyValue,
+
+    sellValue:
+      flow.sellValue,
+
+    deltaValue:
+      flow.deltaValue,
+
+    confirmation,
+
+    confirmed:
+      confirmation>=30
   };
 }
 
@@ -1087,9 +1730,13 @@ function detectAbsorption(
   if(c.length<20) {
 
     return {
+
       detected:false,
+
       direction:"NONE",
+
       score:0,
+
       real:false
     };
   }
@@ -1101,12 +1748,10 @@ function detectAbsorption(
 
   const recentVol=
     avg(
-      c.slice(
-        -21,
-        -1
-      ).map(
-        z=>z.volume
-      )
+      c.slice(-21,-1)
+        .map(
+          z=>z.volume
+        )
     );
 
   const volumeRatio=
@@ -1135,17 +1780,11 @@ function detectAbsorption(
     buyAgg+sellAgg;
 
   let direction="NONE";
-
   let score=0;
 
   const reason=[];
 
   if(total>0) {
-
-    /* BUYER ABSORPTION
-       aggressive sellers hit bids,
-       but price does not continue lower.
-    */
 
     if(
       sellAgg>buyAgg*1.35 &&
@@ -1161,12 +1800,6 @@ function detectAbsorption(
         "فشار فروش واقعی با واکنش مثبت قیمت"
       );
     }
-
-
-    /* SELLER ABSORPTION
-       aggressive buyers hit asks,
-       but price does not continue higher.
-    */
 
     if(
       buyAgg>sellAgg*1.35 &&
@@ -1212,7 +1845,6 @@ function detectAbsorption(
     direction==="LONG" &&
     s.lowerWickRatio>=0.35
   ) {
-
     score+=15;
   }
 
@@ -1220,7 +1852,6 @@ function detectAbsorption(
     direction==="SHORT" &&
     s.upperWickRatio>=0.35
   ) {
-
     score+=15;
   }
 
@@ -1230,7 +1861,6 @@ function detectAbsorption(
     total>0;
 
   if(real) {
-
     score+=20;
   }
 
@@ -1256,11 +1886,9 @@ function detectAbsorption(
     tradeCount:
       flow.tradeCount,
 
-    buyValue:
-      buyAgg,
+    buyValue:buyAgg,
 
-    sellValue:
-      sellAgg,
+    sellValue:sellAgg,
 
     buyVolume:
       flow.buyVolume,
@@ -1325,10 +1953,7 @@ function structure(c) {
 
   const ph=
     Math.max(
-      ...highs.slice(
-        -20,
-        -10
-      )
+      ...highs.slice(-20,-10)
     );
 
   const rl=
@@ -1338,10 +1963,7 @@ function structure(c) {
 
   const pl=
     Math.min(
-      ...lows.slice(
-        -20,
-        -10
-      )
+      ...lows.slice(-20,-10)
     );
 
   const trend=
@@ -1362,6 +1984,7 @@ function structure(c) {
     trend,
 
     ema8:e8,
+
     ema20:e20,
 
     higherHigh:
@@ -1371,6 +1994,7 @@ function structure(c) {
       rl>pl,
 
     recentHigh:rh,
+
     recentLow:rl
   };
 }
@@ -1423,7 +2047,6 @@ function entry1m(
 
   const bearish=
     x.close<x.open;
-
 
   if(
     direction==="LONG"
@@ -1483,8 +2106,7 @@ function entry1m(
       trigger:
         x.high+a*.08,
 
-      stopLoss:
-        sl,
+      stopLoss:sl,
 
       target1:
         x.close+risk,
@@ -1496,6 +2118,7 @@ function entry1m(
         risk/x.close*100,
 
       ema8:e8,
+
       ema20:e20,
 
       reason:
@@ -1504,7 +2127,6 @@ function entry1m(
           : "منتظر تأیید ۱ دقیقه"
     };
   }
-
 
   const ready=
     x.close<e8 &&
@@ -1560,8 +2182,7 @@ function entry1m(
     trigger:
       x.low-a*.08,
 
-    stopLoss:
-      sl,
+    stopLoss:sl,
 
     target1:
       x.close-risk,
@@ -1573,6 +2194,7 @@ function entry1m(
       risk/x.close*100,
 
     ema8:e8,
+
     ema20:e20,
 
     reason:
@@ -1600,20 +2222,268 @@ function supportResistance(c) {
   return {
 
     resistance:
-      Math.max(...highs),
+      highs.length
+        ? Math.max(...highs)
+        : 0,
 
     support:
-      Math.min(...lows),
+      lows.length
+        ? Math.min(...lows)
+        : 0,
 
     recentResistance:
-      Math.max(
-        ...highs.slice(-20)
-      ),
+      highs.length
+        ? Math.max(...highs.slice(-20))
+        : 0,
 
     recentSupport:
-      Math.min(
-        ...lows.slice(-20)
-      )
+      lows.length
+        ? Math.min(...lows.slice(-20))
+        : 0
+  };
+}
+
+
+/* =========================================================
+   CHART DATA
+   برای 1M / 3M / 5M / 15M / 30M / 60M
+========================================================= */
+
+const ALLOWED_INTERVALS=[
+  "1",
+  "3",
+  "5",
+  "15",
+  "30",
+  "60"
+];
+
+function normalizeInterval(v) {
+
+  const x=
+    String(v||"5");
+
+  return ALLOWED_INTERVALS.includes(x)
+    ? x
+    : "5";
+}
+
+
+function intervalMs(interval) {
+
+  return (
+    Number(interval)*
+    60*
+    1000
+  );
+}
+
+
+async function buildChartData(
+  symbol,
+  interval="5"
+) {
+
+  symbol=
+    String(symbol)
+      .toUpperCase()
+      .replace(
+        /[^A-Z0-9]/g,
+        ""
+      );
+
+  interval=
+    normalizeInterval(
+      interval
+    );
+
+  const [
+    candles,
+    t,
+    ob,
+    tr
+  ]=await Promise.all([
+
+    kline(
+      "linear",
+      symbol,
+      interval,
+      CHART_LIMIT
+    ),
+
+    ticker(
+      "linear",
+      symbol
+    ),
+
+    orderbook(
+      "linear",
+      symbol,
+      ORDERBOOK_LIMIT
+    ),
+
+    trades(
+      "linear",
+      symbol,
+      TRADE_LIMIT
+    )
+  ]);
+
+  const visible=
+    candles.slice(
+      -CHART_LIMIT
+    );
+
+  const footprints=
+    buildFootprints(
+      visible,
+      tr
+    );
+
+  const deltas=
+    candleDeltaSeries(
+      visible,
+      tr
+    );
+
+  let cumulative=0;
+
+  const candlesWithFlow=
+    visible.map(
+      (c,i)=>{
+
+        const fp=
+          footprints[i];
+
+        cumulative+=
+          fp.deltaValue;
+
+        return {
+
+          ...c,
+
+          buyValue:
+            fp.buyValue,
+
+          sellValue:
+            fp.sellValue,
+
+          delta:
+            fp.delta,
+
+          deltaValue:
+            fp.deltaValue,
+
+          deltaPercent:
+            fp.deltaPercent,
+
+          tradeCount:
+            fp.tradeCount,
+
+          cumulativeDelta:
+            cumulative,
+
+          footprint:
+            fp.levels,
+
+          imbalances:
+            detectImbalances(fp)
+        };
+      }
+    );
+
+  const flow=
+    flowFromTrades(
+      tr
+    );
+
+  const wall=
+    wallAnalysis(
+      ob,
+      t.lastPrice
+    );
+
+  const heatmap=
+    liquidityHeatmap(
+      ob,
+      t.lastPrice
+    );
+
+  const zones=
+    liquidityZones(
+      visible,
+      ob,
+      t.lastPrice
+    );
+
+  const sweep=
+    detectTradeSweep(
+      visible,
+      tr
+    );
+
+  const absorption=
+    detectAbsorption(
+      visible,
+      flow
+    );
+
+  const blocks=
+    blockTrades(tr);
+
+  return {
+
+    ok:true,
+
+    version:VERSION,
+
+    category:"linear",
+
+    symbol,
+
+    interval,
+
+    intervalMs:
+      intervalMs(interval),
+
+    serverTime:
+      Date.now(),
+
+    price:
+      t.lastPrice,
+
+    ticker:t,
+
+    candles:
+      candlesWithFlow,
+
+    footprints,
+
+    candleDelta:
+      deltas,
+
+    cumulativeDelta:
+      cumulative,
+
+    currentFlow:
+      flow,
+
+    orderbook:ob,
+
+    wall,
+
+    heatmap,
+
+    liquidityZones:zones,
+
+    sweep,
+
+    absorption,
+
+    blocks,
+
+    trades:
+      tr.slice(-250)
   };
 }
 
@@ -1633,17 +2503,14 @@ async function analyze(symbol) {
       );
 
   const [
-
     c5,
     c15,
     c3,
     c1,
-
     t,
     ob,
     of
-
-  ] = await Promise.all([
+  ]=await Promise.all([
 
     kline(
       "linear",
@@ -1691,7 +2558,6 @@ async function analyze(symbol) {
     )
   ]);
 
-
   const x=c5.at(-1);
 
   const start=
@@ -1702,19 +2568,12 @@ async function analyze(symbol) {
     5*60*1000-
     1;
 
-
-  /* تلاش برای تطبیق معاملات واقعی
-     با همان کندل */
-
   const historical=
     flowFromTrades(
       of,
       start,
       end
     );
-
-
-  /* فشار لحظه‌ای */
 
   const current=
     flowFromTrades(
@@ -1723,16 +2582,13 @@ async function analyze(symbol) {
       Infinity
     );
 
-
   const flow=
     historical.tradeCount>=8
       ? historical
       : current;
 
-
   const historicalMatched=
     historical.tradeCount>=8;
-
 
   const wall=
     wallAnalysis(
@@ -1740,37 +2596,49 @@ async function analyze(symbol) {
       x.close
     );
 
-
   const absorption=
     detectAbsorption(
       c5,
       flow
     );
 
-
   const sweep=
-    detectSweep(
-      c5
+    detectTradeSweep(
+      c5,
+      of
     );
-
 
   const st=
     structure(c5);
-
 
   const zone=
     absorption.detected
 
       ? {
+
           low:x.low,
+
           high:
             Math.max(
               x.open,
               x.close
-            )
+            ),
+
+          center:
+            (
+              x.low+
+              Math.max(
+                x.open,
+                x.close
+              )
+            )/2,
+
+          source:
+            "ABSORPTION"
         }
 
       : {
+
           low:
             Math.min(
               ...c5
@@ -1783,9 +2651,25 @@ async function analyze(symbol) {
               ...c5
                 .slice(-12)
                 .map(z=>z.high)
-            )
-        };
+            ),
 
+          center:
+            (
+              Math.min(
+                ...c5
+                  .slice(-12)
+                  .map(z=>z.low)
+              )+
+              Math.max(
+                ...c5
+                  .slice(-12)
+                  .map(z=>z.high)
+              )
+            )/2,
+
+          source:
+            "STRUCTURAL"
+        };
 
   const f15=
     structure(c15);
@@ -1796,14 +2680,12 @@ async function analyze(symbol) {
   const f1=
     structure(c1);
 
-
   const pressure=
     current.deltaValue>0
       ? "BUY"
       : current.deltaValue<0
         ? "SELL"
         : "NEUTRAL";
-
 
   const movement=
 
@@ -1819,22 +2701,12 @@ async function analyze(symbol) {
 
         : "WAIT";
 
-
-  /* =====================================================
-     SMART MONEY SCORE
-  ===================================================== */
-
   let score=0;
 
-
-  if(
-    absorption.detected
-  ) {
-
+  if(absorption.detected) {
     score+=
       absorption.score*.40;
   }
-
 
   score+=
     clamp(
@@ -1845,7 +2717,6 @@ async function analyze(symbol) {
       15
     );
 
-
   score+=
     clamp(
       Math.abs(
@@ -1855,14 +2726,12 @@ async function analyze(symbol) {
       12
     );
 
-
   score+=
     f15.trend==="BULLISH"
       ? 8
       : f15.trend==="BEARISH"
         ? 0
         : 4;
-
 
   score+=
     f3.trend==="BULLISH"
@@ -1871,13 +2740,9 @@ async function analyze(symbol) {
         ? 0
         : 3;
 
-
-  if(
-    sweep.detected
-  ) {
+  if(sweep.detected) {
     score+=8;
   }
-
 
   if(
     (
@@ -1889,10 +2754,8 @@ async function analyze(symbol) {
       absorption.direction==="SHORT"
     )
   ) {
-
     score+=10;
   }
-
 
   score=
     clamp(
@@ -1900,7 +2763,6 @@ async function analyze(symbol) {
       0,
       100
     );
-
 
   const direction=
     score>=70
@@ -1912,7 +2774,6 @@ async function analyze(symbol) {
         )
 
       : "WAIT";
-
 
   const signal=
     score>=85
@@ -1926,7 +2787,6 @@ async function analyze(symbol) {
 
           : "NO_SIGNAL";
 
-
   const entry=
     entry1m(
       c1,
@@ -1934,24 +2794,70 @@ async function analyze(symbol) {
       direction
     );
 
-
   const oiFundingData=
     await oiFunding(
       symbol
     );
-
 
   const blocks=
     blockTrades(
       of
     );
 
-
   const sr=
     supportResistance(
       c5
     );
 
+  const footprints=
+    buildFootprints(
+      c5.slice(-100),
+      of
+    );
+
+  const chartCandles=
+    c5.slice(-100).map(
+      (c,i)=>{
+
+        const fp=
+          footprints[i];
+
+        return {
+
+          ...c,
+
+          buyValue:
+            fp.buyValue,
+
+          sellValue:
+            fp.sellValue,
+
+          delta:
+            fp.delta,
+
+          deltaValue:
+            fp.deltaValue,
+
+          deltaPercent:
+            fp.deltaPercent,
+
+          tradeCount:
+            fp.tradeCount,
+
+          footprint:
+            fp.levels,
+
+          imbalances:
+            detectImbalances(fp)
+        };
+      }
+    );
+
+  const heatmap=
+    liquidityHeatmap(
+      ob,
+      x.close
+    );
 
   return {
 
@@ -1971,11 +2877,10 @@ async function analyze(symbol) {
 
     ticker:t,
 
-
     candles:{
 
       tf5:
-        c5.slice(-100),
+        chartCandles,
 
       tf15:
         c15.slice(-80),
@@ -1987,11 +2892,23 @@ async function analyze(symbol) {
         c1.slice(-120)
     },
 
+    footprint:{
+
+      timeframe:"5",
+
+      candles:
+        chartCandles,
+
+      cumulativeDelta:
+        chartCandles.at(-1)
+          ?.deltaValue||0
+    },
 
     orderbook:ob,
 
     wall,
 
+    heatmap,
 
     liquidityZones:
       liquidityZones(
@@ -2000,14 +2917,11 @@ async function analyze(symbol) {
         x.close
       ),
 
-
     trades:
       of.slice(-250),
 
-
     currentFlow:
       current,
-
 
     historicalFlow:{
 
@@ -2019,7 +2933,6 @@ async function analyze(symbol) {
         historicalMatched
     },
 
-
     absorption:{
 
       ...absorption,
@@ -2030,26 +2943,22 @@ async function analyze(symbol) {
           : "STRUCTURAL_CANDLE_ONLY"
     },
 
-
     blocks,
-
 
     sweep,
 
-
     structure:st,
 
-
     supportResistance:sr,
-
 
     timeframes:{
 
       "15m":f15,
+
       "3m":f3,
+
       "1m":f1
     },
-
 
     movement:{
 
@@ -2065,27 +2974,19 @@ async function analyze(symbol) {
             : "خنثی/نامشخص"
     },
 
-
     pressure,
-
 
     oiFunding:
       oiFundingData,
 
-
-    entry1m:
-      entry,
-
+    entry1m:entry,
 
     zone,
-
 
     score:
       Math.round(score),
 
-
     signal,
-
 
     signalLabel:
 
@@ -2103,19 +3004,20 @@ async function analyze(symbol) {
 
             : "بدون سیگنال",
 
-
     reasons:[
 
       ...(absorption.reason||[]),
 
       sweep.detected
-
         ? (
             sweep.direction==="LONG"
               ? "جمع‌آوری نقدینگی زیر کف"
               : "جمع‌آوری نقدینگی بالای سقف"
           )
+        : null,
 
+      sweep.confirmed
+        ? "Sweep با معاملات واقعی تأیید شد"
         : null,
 
       `فشار لحظه‌ای: ${
@@ -2157,26 +3059,22 @@ async function getSymbols() {
       }
     );
 
-
   return (
     d.result?.list||[]
   )
-
-    .filter(
-      x=>
-        x.status==="Trading" &&
-        x.quoteCoin==="USDT" &&
-        x.contractType==="LinearPerpetual"
-    )
-
-    .map(
-      x=>x.symbol
-    )
-
-    .slice(
-      0,
-      MAX_SYMBOLS
-    );
+  .filter(
+    x=>
+      x.status==="Trading" &&
+      x.quoteCoin==="USDT" &&
+      x.contractType==="LinearPerpetual"
+  )
+  .map(
+    x=>x.symbol
+  )
+  .slice(
+    0,
+    MAX_SYMBOLS
+  );
 }
 
 
@@ -2195,11 +3093,10 @@ async function scan(
 
   for(
     let i=0;
-    i<
-      Math.min(
-        SCAN_BATCH,
-        symbols.length
-      );
+    i<Math.min(
+      SCAN_BATCH,
+      symbols.length
+    );
     i++
   ) {
 
@@ -2216,9 +3113,7 @@ async function scan(
           symbol
         );
 
-      if(
-        a.score>=55
-      ) {
+      if(a.score>=55) {
 
         batch.push({
 
@@ -2230,8 +3125,7 @@ async function scan(
 
           signal:a.signal,
 
-          movement:
-            a.movement,
+          movement:a.movement,
 
           absorption:
             a.absorption,
@@ -2248,12 +3142,10 @@ async function scan(
     } catch(e) {}
   }
 
-
   batch.sort(
     (a,b)=>
       b.score-a.score
   );
-
 
   return {
 
@@ -2299,7 +3191,6 @@ export default {
     const p=
       u.pathname;
 
-
     try {
 
       if(
@@ -2319,6 +3210,10 @@ export default {
       }
 
 
+      /* =====================================================
+         HEALTH
+      ===================================================== */
+
       if(
         p==="/api/health"
       ) {
@@ -2328,7 +3223,7 @@ export default {
           ok:true,
 
           service:
-            "Bybit Order Flow Map",
+            "Bybit Live Order Flow Map",
 
           version:VERSION,
 
@@ -2337,29 +3232,45 @@ export default {
 
           features:[
 
-            "کندل",
+            "Candles",
 
-            "عمق سفارش",
+            "1M",
 
-            "Buy Wall",
+            "3M",
 
-            "Sell Wall",
+            "5M",
 
-            "نقدینگی",
+            "15M",
 
-            "معاملات واقعی",
+            "30M",
 
-            "حجم",
+            "1H",
 
-            "ارزش معاملات",
+            "Real Trades",
 
-            "Delta",
+            "Footprint",
 
-            "Buy Pressure",
+            "Bid x Ask",
 
-            "Sell Pressure",
+            "Delta Per Candle",
+
+            "Cumulative Delta",
+
+            "Imbalance",
+
+            "Order Book",
+
+            "Liquidity Heatmap",
+
+            "Buy Walls",
+
+            "Sell Walls",
+
+            "Liquidity Zones",
 
             "Liquidity Sweep",
+
+            "Hunt",
 
             "Absorption",
 
@@ -2369,15 +3280,19 @@ export default {
 
             "Funding",
 
-            "حمایت",
+            "Support",
 
-            "مقاومت",
+            "Resistance",
 
             "Smart Money Score"
           ]
         });
       }
 
+
+      /* =====================================================
+         FULL ANALYSIS
+      ===================================================== */
 
       if(
         p==="/api/analyze"
@@ -2400,7 +3315,6 @@ export default {
           );
         }
 
-
         return json(
           await analyze(
             symbol
@@ -2409,8 +3323,12 @@ export default {
       }
 
 
+      /* =====================================================
+         NEW LIVE CHART API
+      ===================================================== */
+
       if(
-        p==="/api/live"
+        p==="/api/chart"
       ) {
 
         const symbol=
@@ -2418,6 +3336,12 @@ export default {
             "symbol"
           );
 
+        const interval=
+          normalizeInterval(
+            u.searchParams.get(
+              "interval"
+            )
+          );
 
         if(!symbol) {
 
@@ -2431,16 +3355,61 @@ export default {
           );
         }
 
+        return json(
+          await buildChartData(
+            symbol,
+            interval
+          )
+        );
+      }
+
+
+      /* =====================================================
+         LIVE
+      ===================================================== */
+
+      if(
+        p==="/api/live"
+      ) {
+
+        const symbol=
+          u.searchParams.get(
+            "symbol"
+          );
+
+        const interval=
+          normalizeInterval(
+            u.searchParams.get(
+              "interval"
+            )
+          );
+
+        if(!symbol) {
+
+          return json(
+            {
+              ok:false,
+              error:
+                "نماد وارد نشده است."
+            },
+            400
+          );
+        }
 
         const s=
-          symbol.toUpperCase();
-
+          symbol
+            .toUpperCase()
+            .replace(
+              /[^A-Z0-9]/g,
+              ""
+            );
 
         const [
           t,
           ob,
-          tr
-        ] =
+          tr,
+          candles
+        ]=
           await Promise.all([
 
             ticker(
@@ -2458,15 +3427,101 @@ export default {
               "linear",
               s,
               TRADE_LIMIT
+            ),
+
+            kline(
+              "linear",
+              s,
+              interval,
+              CHART_LIMIT
             )
           ]);
-
 
         const flow=
           flowFromTrades(
             tr
           );
 
+        const wall=
+          wallAnalysis(
+            ob,
+            t.lastPrice
+          );
+
+        const heatmap=
+          liquidityHeatmap(
+            ob,
+            t.lastPrice
+          );
+
+        const visible=
+          candles.slice(
+            -CHART_LIMIT
+          );
+
+        const footprints=
+          buildFootprints(
+            visible,
+            tr
+          );
+
+        let cumulative=0;
+
+        const candleFlow=
+          visible.map(
+            (c,i)=>{
+
+              const fp=
+                footprints[i];
+
+              cumulative+=
+                fp.deltaValue;
+
+              return {
+
+                ...c,
+
+                buyValue:
+                  fp.buyValue,
+
+                sellValue:
+                  fp.sellValue,
+
+                delta:
+                  fp.delta,
+
+                deltaValue:
+                  fp.deltaValue,
+
+                deltaPercent:
+                  fp.deltaPercent,
+
+                cumulativeDelta:
+                  cumulative,
+
+                tradeCount:
+                  fp.tradeCount,
+
+                footprint:
+                  fp.levels,
+
+                imbalances:
+                  detectImbalances(fp)
+              };
+            }
+          );
+
+        const sweep=
+          detectTradeSweep(
+            visible,
+            tr
+          );
+
+        const absorption=
+          detectAbsorption(
+            visible,
+            flow
+          );
 
         return json({
 
@@ -2476,6 +3531,11 @@ export default {
 
           symbol:s,
 
+          interval,
+
+          intervalMs:
+            intervalMs(interval),
+
           serverTime:
             Date.now(),
 
@@ -2484,24 +3544,72 @@ export default {
 
           ticker:t,
 
+          candles:
+            candleFlow,
+
+          footprints,
+
+          candleDelta:
+            candleFlow.map(
+              x=>({
+
+                time:x.time,
+
+                buy:x.buyValue,
+
+                sell:x.sellValue,
+
+                delta:
+                  x.deltaValue,
+
+                deltaPercent:
+                  x.deltaPercent,
+
+                cumulativeDelta:
+                  x.cumulativeDelta,
+
+                trades:
+                  x.tradeCount
+              })
+            ),
+
+          cumulativeDelta:
+            cumulative,
+
           orderbook:ob,
 
-          wall:
-            wallAnalysis(
+          wall,
+
+          heatmap,
+
+          liquidityZones:
+            liquidityZones(
+              visible,
               ob,
               t.lastPrice
             ),
+
+          sweep,
+
+          absorption,
 
           trades:
             tr.slice(-250),
 
           flow,
 
+          currentFlow:
+            flow,
+
           blocks:
             blockTrades(tr)
         });
       }
 
+
+      /* =====================================================
+         SCAN
+      ===================================================== */
 
       if(
         p==="/api/scan"
@@ -2520,6 +3628,10 @@ export default {
       }
 
 
+      /* =====================================================
+         SYMBOLS
+      ===================================================== */
+
       if(
         p==="/api/symbols"
       ) {
@@ -2533,6 +3645,10 @@ export default {
         });
       }
 
+
+      /* =====================================================
+         TEST BYBIT
+      ===================================================== */
 
       if(
         p==="/api/test-bybit"
@@ -2551,7 +3667,6 @@ export default {
         request
       );
 
-
     } catch(e) {
 
       return json(
@@ -2566,7 +3681,7 @@ export default {
               e.stack||""
             ).slice(
               0,
-              1600
+              2000
             )
         },
 
