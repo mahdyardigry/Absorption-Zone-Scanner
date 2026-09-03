@@ -2,262 +2,422 @@
 <html lang="fa" dir="rtl">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Bybit Absorption Order Flow Map</title>
+<meta name="viewport"
+      content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+
+<title>Bybit Smart Money Order Flow</title>
 
 <style>
-*{box-sizing:border-box}
 
-body{
+*{
+  box-sizing:border-box;
+  -webkit-tap-highlight-color:transparent;
+}
+
+html,body{
   margin:0;
-  background:#070b12;
-  color:#e8edf5;
+  padding:0;
+  width:100%;
+  min-height:100%;
+  background:#05080d;
+  color:#e7edf5;
   font-family:Tahoma,Arial,sans-serif;
 }
 
-button,input,select{
-  font:inherit;
+body{
+  overflow-x:hidden;
+}
+
+button,
+input,
+select{
+  font-family:inherit;
+}
+
+button{
+  cursor:pointer;
+  border:1px solid #29384b;
+  background:#101925;
+  color:#dce7f3;
+  border-radius:8px;
+  padding:8px 11px;
+}
+
+button:active{
+  transform:scale(.97);
+}
+
+button.active{
+  background:#18344d;
+  border-color:#398bc0;
 }
 
 .container{
-  width:min(1600px,100%);
+  width:100%;
+  max-width:1800px;
   margin:auto;
-  padding:14px;
+  padding:8px;
 }
 
 .header{
-  background:#0d131d;
-  border:1px solid #202b3a;
-  border-radius:14px;
-  padding:16px;
-  margin-bottom:12px;
+  background:#0b1119;
+  border:1px solid #1d2938;
+  border-radius:12px;
+  padding:12px;
+  margin-bottom:8px;
 }
 
-h1{
-  margin:0 0 7px;
-  font-size:22px;
+.header h1{
+  margin:0 0 5px;
+  font-size:19px;
 }
 
-.sub{
-  color:#8997aa;
-  font-size:13px;
+.header small{
+  color:#718096;
+  font-size:11px;
 }
 
 .toolbar{
   display:flex;
   flex-wrap:wrap;
-  gap:8px;
   align-items:center;
-  background:#0d131d;
-  border:1px solid #202b3a;
-  border-radius:14px;
-  padding:10px;
-  margin-bottom:12px;
+  gap:6px;
+  padding:8px;
+  margin-bottom:8px;
+  background:#0b1119;
+  border:1px solid #1d2938;
+  border-radius:12px;
 }
 
-input,select{
-  background:#080d15;
-  color:#fff;
-  border:1px solid #29374a;
-  border-radius:8px;
-  padding:9px 11px;
-  outline:none;
-}
-
-input{
-  width:150px;
+#symbol{
+  width:135px;
   direction:ltr;
   text-align:center;
-}
-
-button{
-  background:#111b29;
-  color:#dce7f5;
-  border:1px solid #29374a;
+  background:#070c13;
+  color:white;
+  border:1px solid #2b394b;
   border-radius:8px;
-  padding:8px 12px;
-  cursor:pointer;
-  transition:.15s;
-}
-
-button:hover{
-  background:#192638;
-}
-
-button.active{
-  background:#1d334d;
-  border-color:#5a8fc4;
-}
-
-button.main{
-  background:#153a2b;
-  border-color:#287b57;
-}
-
-button.stop{
-  background:#3a1820;
-  border-color:#803847;
+  padding:9px;
+  outline:none;
 }
 
 .tf{
   display:flex;
-  gap:5px;
+  gap:4px;
   direction:ltr;
+}
+
+.tf button{
+  min-width:43px;
+}
+
+.main{
+  background:#123c29;
+  border-color:#287a54;
+}
+
+.stop{
+  background:#3b1720;
+  border-color:#793543;
+}
+
+.status{
+  margin-right:auto;
+  font-size:11px;
+  color:#8291a4;
+  background:#080d14;
+  border:1px solid #1c2735;
+  border-radius:8px;
+  padding:8px 10px;
+}
+
+.scan-panel{
+  display:flex;
+  flex-wrap:wrap;
+  gap:7px;
+  align-items:center;
+}
+
+.scan-status{
+  color:#9aabc0;
+  font-size:11px;
+}
+
+.volume-box{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  font-size:11px;
+}
+
+#volume{
+  width:90px;
+  accent-color:#35d07f;
 }
 
 .layers{
   display:flex;
   flex-wrap:wrap;
-  gap:6px;
-  direction:rtl;
+  gap:5px;
 }
 
 .layer{
+  font-size:10px;
+  padding:6px 8px;
   display:flex;
   align-items:center;
-  gap:6px;
-  padding:7px 9px;
-  font-size:12px;
+  gap:5px;
 }
 
 .dot{
-  width:9px;
-  height:9px;
-  border-radius:50%;
+  width:8px;
+  height:8px;
   display:inline-block;
+  border-radius:50%;
 }
 
-.status{
-  padding:8px 11px;
-  border-radius:8px;
-  background:#111923;
-  color:#93a4b8;
-  font-size:12px;
-  margin-right:auto;
-}
-
-.panel{
-  background:#0d131d;
-  border:1px solid #202b3a;
-  border-radius:14px;
-  padding:10px;
-  margin-bottom:12px;
+.chart-panel{
+  background:#080d14;
+  border:1px solid #1d2938;
+  border-radius:12px;
+  padding:6px;
+  margin-bottom:8px;
 }
 
 .chart-head{
   display:flex;
   justify-content:space-between;
   align-items:center;
-  gap:8px;
-  padding:4px 5px 10px;
+  gap:5px;
+  padding:4px;
 }
 
 .chart-title{
-  font-size:14px;
+  font-size:12px;
   font-weight:bold;
 }
 
 .chart-tools{
   display:flex;
-  gap:5px;
+  gap:4px;
   direction:ltr;
 }
 
 .chart-tools button{
-  min-width:36px;
+  min-width:35px;
+  padding:7px;
 }
 
-.canvas-wrap{
+.canvas-box{
+  position:relative;
   width:100%;
   height:760px;
-  position:relative;
   overflow:hidden;
-  background:#05090f;
-  border:1px solid #1b2635;
-  border-radius:10px;
+  border:1px solid #182332;
+  border-radius:8px;
+  background:#03070c;
+  touch-action:none;
 }
 
-canvas{
-  display:block;
+#chart{
   width:100%;
   height:100%;
-  cursor:crosshair;
+  display:block;
+  touch-action:none;
 }
 
-.help{
-  color:#718096;
-  font-size:11px;
-  padding:8px 4px 0;
+.crosshair-info{
+  position:absolute;
+  left:8px;
+  top:8px;
+  z-index:5;
+  background:rgba(4,8,13,.82);
+  border:1px solid #253346;
+  border-radius:7px;
+  padding:7px 9px;
+  font-size:10px;
+  pointer-events:none;
+  direction:ltr;
+  text-align:left;
+  min-width:120px;
+}
+
+.mode{
+  display:flex;
+  gap:5px;
+}
+
+.mode button{
+  font-size:10px;
 }
 
 .cards{
   display:grid;
-  grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
-  gap:8px;
+  grid-template-columns:
+    repeat(auto-fit,minmax(145px,1fr));
+  gap:6px;
 }
 
 .card{
-  background:#0b1119;
-  border:1px solid #202b3a;
-  border-radius:10px;
-  padding:10px;
+  background:#0a1018;
+  border:1px solid #1d2938;
+  border-radius:9px;
+  padding:9px;
 }
 
 .card-title{
-  font-size:11px;
-  color:#8291a6;
-  margin-bottom:6px;
+  color:#75859a;
+  font-size:10px;
+  margin-bottom:5px;
 }
 
 .card-value{
-  font-size:17px;
+  font-size:15px;
   font-weight:bold;
 }
 
-.buy{color:#35d07f}
-.sell{color:#ff5268}
-.cyan{color:#28d7ff}
-.yellow{color:#ffd34d}
-.orange{color:#ff9f43}
-.purple{color:#b875ff}
-.magenta{color:#ff55d8}
+.buy{
+  color:#35d07f;
+}
+
+.sell{
+  color:#ff5268;
+}
+
+.cyan{
+  color:#28d7ff;
+}
+
+.orange{
+  color:#ff9f43;
+}
+
+.purple{
+  color:#b875ff;
+}
+
+.magenta{
+  color:#ff55d8;
+}
+
+.yellow{
+  color:#ffd34d;
+}
+
+.scan-results{
+  display:grid;
+  grid-template-columns:
+    repeat(auto-fit,minmax(190px,1fr));
+  gap:7px;
+}
+
+.signal-card{
+  background:#0a1018;
+  border:1px solid #263548;
+  border-radius:9px;
+  padding:9px;
+  cursor:pointer;
+}
+
+.signal-card:hover{
+  border-color:#4d8fc0;
+}
+
+.signal-symbol{
+  font-weight:bold;
+  font-size:14px;
+}
+
+.signal-meta{
+  color:#8291a6;
+  font-size:10px;
+  margin-top:4px;
+}
+
+.signal-score{
+  margin-top:6px;
+  font-size:13px;
+}
+
+.signal-reason{
+  margin-top:4px;
+  color:#b7c3d1;
+  font-size:10px;
+  line-height:1.6;
+}
 
 .table-wrap{
   overflow:auto;
+  max-height:350px;
 }
 
 table{
   width:100%;
   border-collapse:collapse;
-  font-size:11px;
+  font-size:10px;
 }
 
-th,td{
-  padding:7px;
-  border-bottom:1px solid #1a2431;
+th,
+td{
+  padding:6px;
+  border-bottom:1px solid #17212e;
   text-align:center;
   white-space:nowrap;
 }
 
 th{
-  color:#8190a4;
-  background:#0a1018;
+  color:#77879b;
+  background:#080e16;
   position:sticky;
   top:0;
 }
 
-pre{
-  white-space:pre-wrap;
-  word-break:break-word;
+.legend{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  padding:7px;
+  color:#738398;
+  font-size:10px;
+}
+
+.legend span{
+  display:flex;
+  align-items:center;
+  gap:4px;
+}
+
+.help{
+  color:#617086;
+  font-size:10px;
+  padding:6px;
 }
 
 @media(max-width:700px){
-  .container{padding:7px}
-  .canvas-wrap{height:620px}
-  .status{width:100%;margin:0}
-  .toolbar{align-items:stretch}
-  input{width:120px}
+
+  .container{
+    padding:5px;
+  }
+
+  .header h1{
+    font-size:16px;
+  }
+
+  .canvas-box{
+    height:620px;
+  }
+
+  .status{
+    width:100%;
+    margin:0;
+  }
+
+  #symbol{
+    width:120px;
+  }
+
 }
+
 </style>
 </head>
 
@@ -266,29 +426,89 @@ pre{
 <div class="container">
 
   <div class="header">
-    <h1>📊 Bybit Absorption / Order Flow Map</h1>
-    <div class="sub">
-      نمودار ترکیبی قیمت + Footprint + Delta + Order Book + Heatmap + Liquidity + Absorption + Sweep + Blocks
-    </div>
+    <h1>📊 Bybit Smart Money · Absorption Order Flow</h1>
+    <small>
+      Footprint واقعی · Bid/Ask · Delta · Heatmap · Liquidity · Absorption · Sweep · Blocks · Pump Scanner
+    </small>
   </div>
 
   <div class="toolbar">
 
-    <input id="symbol" value="BTCUSDT" placeholder="BTCUSDT">
+    <input
+      id="symbol"
+      value="BTCUSDT"
+      placeholder="BTCUSDT"
+      autocomplete="off"
+    >
 
     <div class="tf">
+
       <button data-tf="1">1m</button>
       <button data-tf="3">3m</button>
       <button data-tf="5" class="active">5m</button>
       <button data-tf="15">15m</button>
+
     </div>
 
-    <button id="analyzeBtn" class="main">🔎 تحلیل</button>
-    <button id="liveBtn" class="main">🟢 Live</button>
-    <button id="stopBtn" class="stop">⛔ توقف</button>
+    <button id="analyzeBtn" class="main">
+      🔎 تحلیل
+    </button>
+
+    <button id="liveBtn" class="main">
+      🟢 LIVE
+    </button>
+
+    <button id="stopBtn" class="stop">
+      ⛔ توقف
+    </button>
 
     <div id="status" class="status">
       ⚪ آماده
+    </div>
+
+  </div>
+
+  <div class="toolbar scan-panel">
+
+    <button id="scanStart" class="main">
+      🚀 شروع اسکن پامپ
+    </button>
+
+    <button id="scanStop" class="stop">
+      ⛔ توقف اسکن
+    </button>
+
+    <button id="scanOnce">
+      🔎 اسکن فوری
+    </button>
+
+    <div class="volume-box">
+
+      🔊 هشدار
+
+      <input
+        id="volume"
+        type="range"
+        min="0"
+        max="100"
+        value="35"
+      >
+
+      <span id="volumeText">
+        35%
+      </span>
+
+    </div>
+
+    <button id="soundTest">
+      🔔 تست صدا
+    </button>
+
+    <div
+      id="scanStatus"
+      class="scan-status"
+    >
+      اسکنر خاموش است
     </div>
 
   </div>
@@ -297,53 +517,113 @@ pre{
 
     <div class="layers">
 
-      <button class="layer active" data-layer="candles">
-        <span class="dot" style="background:#ffffff"></span>
+      <button
+        class="layer active"
+        data-layer="candles"
+      >
+        <span
+          class="dot"
+          style="background:#fff"
+        ></span>
         کندل
       </button>
 
-      <button class="layer active" data-layer="footprint">
-        <span class="dot" style="background:#35d07f"></span>
+      <button
+        class="layer active"
+        data-layer="footprint"
+      >
+        <span
+          class="dot"
+          style="background:#35d07f"
+        ></span>
         Footprint
       </button>
 
-      <button class="layer active" data-layer="heatmap">
-        <span class="dot" style="background:#28d7ff"></span>
+      <button
+        class="layer active"
+        data-layer="heatmap"
+      >
+        <span
+          class="dot"
+          style="background:#28d7ff"
+        ></span>
         Heatmap
       </button>
 
-      <button class="layer active" data-layer="walls">
-        <span class="dot" style="background:#ff5268"></span>
+      <button
+        class="layer active"
+        data-layer="walls"
+      >
+        <span
+          class="dot"
+          style="background:#ff5268"
+        ></span>
         Walls
       </button>
 
-      <button class="layer active" data-layer="liquidity">
-        <span class="dot" style="background:#b875ff"></span>
+      <button
+        class="layer active"
+        data-layer="liquidity"
+      >
+        <span
+          class="dot"
+          style="background:#b875ff"
+        ></span>
         Liquidity
       </button>
 
-      <button class="layer active" data-layer="absorption">
-        <span class="dot" style="background:#ff55d8"></span>
+      <button
+        class="layer active"
+        data-layer="absorption"
+      >
+        <span
+          class="dot"
+          style="background:#ff55d8"
+        ></span>
         Absorption
       </button>
 
-      <button class="layer active" data-layer="sweep">
-        <span class="dot" style="background:#ff9f43"></span>
+      <button
+        class="layer active"
+        data-layer="sweep"
+      >
+        <span
+          class="dot"
+          style="background:#ff9f43"
+        ></span>
         Sweep
       </button>
 
-      <button class="layer active" data-layer="blocks">
-        <span class="dot" style="background:#ffd34d"></span>
+      <button
+        class="layer active"
+        data-layer="blocks"
+      >
+        <span
+          class="dot"
+          style="background:#ffd34d"
+        ></span>
         Blocks
       </button>
 
-      <button class="layer active" data-layer="delta">
-        <span class="dot" style="background:#7cff8a"></span>
+      <button
+        class="layer active"
+        data-layer="delta"
+      >
+        <span
+          class="dot"
+          style="background:#7cff8a"
+        ></span>
         Delta
       </button>
 
-      <button class="layer active" data-layer="bidask">
-        <span class="dot" style="background:#28d7ff"></span>
+      <button
+        class="layer active"
+        data-layer="bidask"
+      >
+        <span
+          class="dot"
+          style="background:#28d7ff"
+        ></span>
         Bid/Ask
       </button>
 
@@ -351,86 +631,273 @@ pre{
 
   </div>
 
-  <div class="panel">
+  <div class="chart-panel">
 
     <div class="chart-head">
 
-      <div class="chart-title" id="chartTitle">
-        Order Flow Chart
+      <div
+        id="chartTitle"
+        class="chart-title"
+      >
+        Order Flow
       </div>
 
       <div class="chart-tools">
+
         <button id="zoomIn">＋</button>
         <button id="zoomOut">−</button>
-        <button id="leftBtn">←</button>
-        <button id="rightBtn">→</button>
-        <button id="resetBtn">⟳</button>
+
+        <button id="moveLeft">
+          ←
+        </button>
+
+        <button id="moveRight">
+          →
+        </button>
+
+        <button id="reset">
+          ⟳
+        </button>
+
       </div>
 
     </div>
 
-    <div class="canvas-wrap">
+    <div class="canvas-box">
+
       <canvas id="chart"></canvas>
+
+      <div
+        id="crosshairInfo"
+        class="crosshair-info"
+      >
+        —
+      </div>
+
+    </div>
+
+    <div class="mode">
+
+      <button
+        id="modeBidAsk"
+        class="active"
+      >
+        Bid × Ask
+      </button>
+
+      <button id="modeDelta">
+        Delta
+      </button>
+
+    </div>
+
+    <div class="legend">
+
+      <span>
+        <i
+          class="dot"
+          style="background:#35d07f"
+        ></i>
+        Buy
+      </span>
+
+      <span>
+        <i
+          class="dot"
+          style="background:#ff5268"
+        ></i>
+        Sell
+      </span>
+
+      <span>
+        <i
+          class="dot"
+          style="background:#28d7ff"
+        ></i>
+        Heatmap
+      </span>
+
+      <span>
+        <i
+          class="dot"
+          style="background:#b875ff"
+        ></i>
+        Liquidity
+      </span>
+
+      <span>
+        <i
+          class="dot"
+          style="background:#ff55d8"
+        ></i>
+        Absorption
+      </span>
+
+      <span>
+        <i
+          class="dot"
+          style="background:#ff9f43"
+        ></i>
+        Sweep
+      </span>
+
+      <span>
+        <i
+          class="dot"
+          style="background:#ffd34d"
+        ></i>
+        Block
+      </span>
+
     </div>
 
     <div class="help">
-      🖱 اسکرول = بزرگ/کوچک · Drag = حرکت نمودار · دابل‌کلیک = Reset
+
+      👆 لمس و Drag = حرکت
+      ·
+      🤏 دو انگشت = زوم
+      ·
+      👆 یک ضربه روی کندل = انتخاب
+      ·
+      👆👆 دابل‌تپ = زوم روی کندل
+      ·
+      🖱 Wheel = زوم
+      ·
+      ⟳ = بازگشت
+
     </div>
 
   </div>
 
-  <div class="panel">
+  <div class="toolbar">
 
     <div class="cards">
 
       <div class="card">
-        <div class="card-title">قیمت</div>
-        <div id="price" class="card-value">—</div>
+        <div class="card-title">
+          قیمت
+        </div>
+        <div
+          id="price"
+          class="card-value"
+        >
+          —
+        </div>
       </div>
 
       <div class="card">
-        <div class="card-title">Buy Volume</div>
-        <div id="buyVolume" class="card-value buy">—</div>
+        <div class="card-title">
+          Buy
+        </div>
+        <div
+          id="buy"
+          class="card-value buy"
+        >
+          —
+        </div>
       </div>
 
       <div class="card">
-        <div class="card-title">Sell Volume</div>
-        <div id="sellVolume" class="card-value sell">—</div>
+        <div class="card-title">
+          Sell
+        </div>
+        <div
+          id="sell"
+          class="card-value sell"
+        >
+          —
+        </div>
       </div>
 
       <div class="card">
-        <div class="card-title">Delta</div>
-        <div id="delta" class="card-value">—</div>
+        <div class="card-title">
+          Delta
+        </div>
+        <div
+          id="delta"
+          class="card-value"
+        >
+          —
+        </div>
       </div>
 
       <div class="card">
-        <div class="card-title">Order Book</div>
-        <div id="bookPressure" class="card-value cyan">—</div>
+        <div class="card-title">
+          Bid / Ask
+        </div>
+        <div
+          id="bidask"
+          class="card-value cyan"
+        >
+          —
+        </div>
       </div>
 
       <div class="card">
-        <div class="card-title">Absorption</div>
-        <div id="absorption" class="card-value magenta">—</div>
+        <div class="card-title">
+          Absorption
+        </div>
+        <div
+          id="abs"
+          class="card-value magenta"
+        >
+          —
+        </div>
       </div>
 
       <div class="card">
-        <div class="card-title">Score</div>
-        <div id="score" class="card-value yellow">—</div>
+        <div class="card-title">
+          Score
+        </div>
+        <div
+          id="score"
+          class="card-value yellow"
+        >
+          —
+        </div>
       </div>
 
       <div class="card">
-        <div class="card-title">Signal</div>
-        <div id="signal" class="card-value">—</div>
+        <div class="card-title">
+          Signal
+        </div>
+        <div
+          id="signal"
+          class="card-value"
+        >
+          —
+        </div>
       </div>
 
     </div>
 
   </div>
 
-  <div class="panel">
+  <div class="chart-panel">
 
     <div class="chart-head">
-      <div class="chart-title">📌 اطلاعات Order Flow</div>
+
+      <div class="chart-title">
+        🚀 Pump / Absorption Scanner
+      </div>
+
+    </div>
+
+    <div
+      id="scanResults"
+      class="scan-results"
+    ></div>
+
+  </div>
+
+  <div class="chart-panel">
+
+    <div class="chart-head">
+
+      <div class="chart-title">
+        🧱 معاملات اخیر
+      </div>
+
     </div>
 
     <div class="table-wrap">
@@ -438,14 +905,16 @@ pre{
       <table>
 
         <thead>
+
           <tr>
-            <th>Time</th>
-            <th>Price</th>
+            <th>زمان</th>
+            <th>قیمت</th>
             <th>Side</th>
-            <th>Volume</th>
+            <th>حجم</th>
             <th>Value</th>
             <th>نوع</th>
           </tr>
+
         </thead>
 
         <tbody id="tradesBody"></tbody>
@@ -460,27 +929,67 @@ pre{
 
 <script>
 
-const API = location.origin;
+const API=location.origin;
 
-const canvas = document.getElementById("chart");
-const ctx = canvas.getContext("2d");
+const canvas=
+  document.getElementById("chart");
 
-let data = null;
+const ctx=
+  canvas.getContext("2d");
 
-let selectedTF = "5";
+const crosshairInfo=
+  document.getElementById(
+    "crosshairInfo"
+  );
 
-let liveTimer = null;
+let data=null;
 
-let heatHistory = [];
+let selectedTF="5";
 
-let dragging = false;
-let dragStartX = 0;
-let dragStartStart = 0;
+let liveTimer=null;
 
-let viewStart = 0;
-let viewEnd = 0;
+let scanTimer=null;
 
-const layers = {
+let scanning=false;
+
+let selectedCandle=-1;
+
+let footprintMode="bidask";
+
+let heatHistory=[];
+
+let viewStart=0;
+
+let viewEnd=0;
+
+let dragging=false;
+
+let dragStartX=0;
+
+let dragStartView=0;
+
+let pinchStartDistance=0;
+
+let pinchStartCount=0;
+
+let pointers=new Map();
+
+let lastTap=0;
+
+let audioContext=null;
+
+let masterVolume=
+  Number(
+    localStorage.getItem(
+      "of_volume"
+    ) ?? 35
+  );
+
+let alertLevel=0;
+
+let lastAlertKey="";
+
+const layers={
 
   candles:true,
   footprint:true,
@@ -495,17 +1004,28 @@ const layers = {
 
 };
 
-const COLORS = {
+const COLORS={
 
-  candleUp:"#35d07f",
-  candleDown:"#ff5268",
+  bg:"#03070c",
+
+  grid:"#15202d",
+
+  text:"#718096",
+
+  white:"#ffffff",
 
   buy:"#35d07f",
+
   sell:"#ff5268",
+
+  bid:"#28d7ff",
+
+  ask:"#ff9f43",
 
   heat:"#28d7ff",
 
   wallBuy:"#3288ff",
+
   wallSell:"#ff4260",
 
   liquidity:"#b875ff",
@@ -514,45 +1034,49 @@ const COLORS = {
 
   sweep:"#ff9f43",
 
-  blocks:"#ffd34d",
+  block:"#ffd34d",
 
   delta:"#7cff8a",
 
-  bid:"#28d7ff",
-  ask:"#ff9f43",
-
-  grid:"#14202d",
-  text:"#8291a6",
-
-  white:"#ffffff"
+  selected:"#ffffff"
 
 };
 
 function $(id){
+
   return document.getElementById(id);
+
 }
 
 function num(v,d=0){
 
-  const x = Number(v);
+  const x=Number(v);
 
-  return Number.isFinite(x) ? x : d;
+  return Number.isFinite(x)
+    ? x
+    : d;
 
 }
 
 function fmt(v){
 
-  if(!Number.isFinite(Number(v))) return "—";
+  const x=Number(v);
 
-  const x = Number(v);
+  if(!Number.isFinite(x))
+    return "—";
 
-  if(Math.abs(x)>=1000000)
-    return (x/1000000).toFixed(2)+"M";
+  const a=Math.abs(x);
 
-  if(Math.abs(x)>=1000)
+  if(a>=1000000000)
+    return (x/1e9).toFixed(2)+"B";
+
+  if(a>=1000000)
+    return (x/1e6).toFixed(2)+"M";
+
+  if(a>=1000)
     return (x/1000).toFixed(2)+"K";
 
-  if(Math.abs(x)>=1)
+  if(a>=1)
     return x.toFixed(2);
 
   return x.toPrecision(4);
@@ -561,70 +1085,89 @@ function fmt(v){
 
 function priceFmt(v){
 
-  const x = Number(v);
+  const x=Number(v);
 
-  if(!Number.isFinite(x)) return "—";
+  if(!Number.isFinite(x))
+    return "—";
 
-  if(x >= 1000) return x.toFixed(2);
+  if(x>=1000)
+    return x.toFixed(2);
 
-  if(x >= 1) return x.toFixed(4);
+  if(x>=1)
+    return x.toFixed(4);
 
-  if(x >= .01) return x.toFixed(5);
+  if(x>=.01)
+    return x.toFixed(5);
 
   return x.toPrecision(7);
 
 }
 
-function escapeHtml(s){
-
-  return String(s ?? "")
-    .replaceAll("&","&amp;")
-    .replaceAll("<","&lt;")
-    .replaceAll(">","&gt;")
-    .replaceAll('"',"&quot;");
-
-}
-
 function normalizeSymbol(s){
 
-  s = String(s || "")
+  s=String(s||"")
     .toUpperCase()
     .replace(/[^A-Z0-9]/g,"");
 
   if(
     s &&
-    !s.endsWith("USDT") &&
-    /^[A-Z0-9]+$/.test(s)
+    !s.endsWith("USDT")
   ){
-    s += "USDT";
+    s+="USDT";
   }
 
   return s;
 
 }
 
-function setStatus(text){
+function setStatus(s){
 
-  $("status").textContent = text;
-
-}
-
-function resizeCanvas(){
-
-  const r = canvas.getBoundingClientRect();
-
-  const dpr = window.devicePixelRatio || 1;
-
-  canvas.width = Math.max(1,Math.floor(r.width*dpr));
-  canvas.height = Math.max(1,Math.floor(r.height*dpr));
-
-  ctx.setTransform(dpr,0,0,dpr,0,0);
-
-  draw();
+  $("status").textContent=s;
 
 }
 
-window.addEventListener("resize",resizeCanvas);
+function setScanStatus(s){
+
+  $("scanStatus").textContent=s;
+
+}
+
+async function api(path){
+
+  const r=
+    await fetch(
+      API+path,
+      {
+        cache:"no-store"
+      }
+    );
+
+  const text=
+    await r.text();
+
+  let j;
+
+  try{
+    j=JSON.parse(text);
+  }catch{
+    throw new Error(
+      text||"Invalid API response"
+    );
+  }
+
+  if(!r.ok || j.ok===false){
+
+    throw new Error(
+      j.error ||
+      j.message ||
+      "API error"
+    );
+
+  }
+
+  return j;
+
+}
 
 function normalizeCandle(c){
 
@@ -645,7 +1188,11 @@ function normalizeCandle(c){
 
   return {
 
-    time:num(c?.time ?? c?.startTime),
+    time:num(
+      c?.time ??
+      c?.startTime
+    ),
+
     open:num(c?.open),
     high:num(c?.high),
     low:num(c?.low),
@@ -658,41 +1205,44 @@ function normalizeCandle(c){
 
 function normalizeData(){
 
-  if(!data) return;
+  if(!data)
+    return;
 
-  if(Array.isArray(data.candles)){
-
-    data.candles = data.candles
+  data.candles=
+    Array.isArray(data.candles)
+    ? data.candles
       .map(normalizeCandle)
-      .filter(x =>
-        x.time &&
-        Number.isFinite(x.open) &&
-        Number.isFinite(x.high) &&
-        Number.isFinite(x.low) &&
-        Number.isFinite(x.close)
+      .filter(c =>
+        c.time &&
+        c.open>0 &&
+        c.high>0 &&
+        c.low>0 &&
+        c.close>0
       )
-      .sort((a,b)=>a.time-b.time);
+      .sort(
+        (a,b)=>a.time-b.time
+      )
+    : [];
 
-  }else{
-
-    data.candles=[];
-
-  }
-
-  if(!Array.isArray(data.footprint))
+  if(
+    !Array.isArray(data.footprint)
+  )
     data.footprint=[];
 
-  if(!Array.isArray(data.heatmap))
-    data.heatmap=[];
-
-  if(!Array.isArray(data.liquidityZones))
+  if(
+    !Array.isArray(data.liquidityZones)
+  )
     data.liquidityZones=[];
 
-  if(!Array.isArray(data.trades))
-    data.trades=[];
-
-  if(!Array.isArray(data.blocks))
+  if(
+    !Array.isArray(data.blocks)
+  )
     data.blocks=[];
+
+  if(
+    !Array.isArray(data.trades)
+  )
+    data.trades=[];
 
   if(
     viewEnd<=viewStart ||
@@ -703,56 +1253,260 @@ function normalizeData(){
 
     viewStart=Math.max(
       0,
-      viewEnd-80
+      viewEnd-70
     );
 
   }
 
 }
 
-function candleTime(c){
+function resizeCanvas(){
 
-  return num(c?.time);
+  const r=
+    canvas.getBoundingClientRect();
+
+  const dpr=
+    window.devicePixelRatio||1;
+
+  canvas.width=
+    Math.max(
+      1,
+      Math.floor(r.width*dpr)
+    );
+
+  canvas.height=
+    Math.max(
+      1,
+      Math.floor(r.height*dpr)
+    );
+
+  ctx.setTransform(
+    dpr,
+    0,
+    0,
+    dpr,
+    0,
+    0
+  );
+
+  draw();
 
 }
 
-function candleFootprint(index){
+window.addEventListener(
+  "resize",
+  resizeCanvas
+);
 
-  if(!data?.footprint?.length)
-    return null;
+function resetView(){
 
-  const c=data.candles[index];
+  if(!data?.candles?.length)
+    return;
 
-  if(!c) return null;
+  viewEnd=
+    data.candles.length;
 
-  return data.footprint.find(x =>
-    num(x.time)===num(c.time)
-  ) || null;
+  viewStart=
+    Math.max(
+      0,
+      viewEnd-70
+    );
 
 }
 
-function visibleRange(){
+function zoomAt(
+  factor,
+  centerRatio=.5
+){
 
-  normalizeData();
+  if(!data?.candles?.length)
+    return;
+
+  const total=
+    viewEnd-viewStart;
+
+  let next=
+    Math.round(
+      total*factor
+    );
+
+  next=Math.max(
+    5,
+    Math.min(
+      data.candles.length,
+      next
+    )
+  );
+
+  const center=
+    viewStart+
+    total*centerRatio;
+
+  viewStart=
+    Math.round(
+      center-next*centerRatio
+    );
+
+  viewEnd=
+    viewStart+next;
+
+  if(viewStart<0){
+
+    viewStart=0;
+    viewEnd=next;
+
+  }
+
+  if(
+    viewEnd>
+    data.candles.length
+  ){
+
+    viewEnd=
+      data.candles.length;
+
+    viewStart=
+      Math.max(
+        0,
+        viewEnd-next
+      );
+
+  }
+
+  draw();
+
+}
+
+function moveChart(percent){
+
+  if(!data?.candles?.length)
+    return;
+
+  const count=
+    viewEnd-viewStart;
+
+  const step=
+    Math.max(
+      1,
+      Math.round(
+        count*percent
+      )
+    );
+
+  viewStart+=step;
+  viewEnd+=step;
+
+  if(viewStart<0){
+
+    viewStart=0;
+    viewEnd=count;
+
+  }
+
+  if(
+    viewEnd>
+    data.candles.length
+  ){
+
+    viewEnd=
+      data.candles.length;
+
+    viewStart=
+      Math.max(
+        0,
+        viewEnd-count
+      );
+
+  }
+
+  draw();
+
+}
+
+function candleAtX(x){
+
+  const r=
+    canvas.getBoundingClientRect();
+
+  const left=55;
+  const right=
+    r.width-125;
+
+  const count=
+    viewEnd-viewStart;
+
+  if(
+    x<left ||
+    x>right ||
+    count<=0
+  )
+    return -1;
+
+  const gap=
+    (right-left)/count;
+
+  const i=
+    Math.floor(
+      (x-left)/gap
+    );
+
+  const idx=
+    viewStart+i;
+
+  if(
+    idx<0 ||
+    idx>=data.candles.length
+  )
+    return -1;
+
+  return idx;
+
+}
+
+function focusCandle(index){
+
+  if(
+    !data?.candles?.length ||
+    index<0
+  )
+    return;
+
+  selectedCandle=index;
+
+  const target=22;
+
+  viewStart=
+    Math.max(
+      0,
+      index-Math.floor(target/2)
+    );
+
+  viewEnd=
+    Math.min(
+      data.candles.length,
+      viewStart+target
+    );
+
+  if(
+    viewEnd-viewStart<target
+  ){
+
+    viewStart=
+      Math.max(
+        0,
+        viewEnd-target
+      );
+
+  }
+
+  draw();
+
+}
+
+function getVisible(){
 
   if(!data?.candles?.length)
     return [];
-
-  viewStart=Math.max(
-    0,
-    Math.min(
-      viewStart,
-      data.candles.length-1
-    )
-  );
-
-  viewEnd=Math.max(
-    viewStart+1,
-    Math.min(
-      viewEnd,
-      data.candles.length
-    )
-  );
 
   return data.candles.slice(
     viewStart,
@@ -761,34 +1515,59 @@ function visibleRange(){
 
 }
 
-function getPriceRange(candles){
+function getRange(candles){
 
   let lo=Infinity;
   let hi=-Infinity;
 
-  for(const c of candles){
+  for(
+    const c of candles
+  ){
 
-    lo=Math.min(lo,c.low);
-    hi=Math.max(hi,c.high);
+    lo=Math.min(
+      lo,
+      c.low
+    );
+
+    hi=Math.max(
+      hi,
+      c.high
+    );
 
   }
 
-  const price=num(data?.price);
+  if(data?.price){
 
-  if(price>0){
+    lo=Math.min(
+      lo,
+      Number(data.price)
+    );
 
-    lo=Math.min(lo,price);
-    hi=Math.max(hi,price);
+    hi=Math.max(
+      hi,
+      Number(data.price)
+    );
 
   }
 
   const p=hi-lo;
 
-  if(!Number.isFinite(p)||p<=0){
+  if(
+    !Number.isFinite(p) ||
+    p<=0
+  ){
+
+    const center=
+      num(
+        data?.price,
+        1
+      );
 
     return {
-      low:price*.999,
-      high:price*1.001
+
+      low:center*.999,
+      high:center*1.001
+
     };
 
   }
@@ -802,224 +1581,256 @@ function getPriceRange(candles){
 
 }
 
-function priceToY(price,low,high,top,bottom){
-
-  if(high===low) return (top+bottom)/2;
+function p2y(
+  price,
+  low,
+  high,
+  top,
+  bottom
+){
 
   return bottom-
-    ((price-low)/(high-low))*
+    (
+      (price-low)/
+      (high-low)
+    )*
     (bottom-top);
 
 }
 
-function yToPrice(y,low,high,top,bottom){
+function y2p(
+  y,
+  low,
+  high,
+  top,
+  bottom
+){
 
   return low+
-    ((bottom-y)/(bottom-top))*
+    (
+      (bottom-y)/
+      (bottom-top)
+    )*
     (high-low);
 
 }
 
-function timeToX(time,candles,left,right){
+function t2x(
+  time,
+  candles,
+  left,
+  right
+){
 
-  if(!candles.length) return left;
+  if(!candles.length)
+    return left;
 
-  const first=candles[0].time;
-  const last=candles[candles.length-1].time;
+  if(candles.length===1)
+    return (left+right)/2;
 
-  if(last===first) return (left+right)/2;
+  const a=
+    candles[0].time;
+
+  const b=
+    candles[candles.length-1].time;
+
+  if(a===b)
+    return (left+right)/2;
 
   return left+
-    ((time-first)/(last-first))*
+    (
+      (time-a)/
+      (b-a)
+    )*
     (right-left);
 
 }
 
-function drawBackground(w,h){
+function draw(){
 
-  ctx.fillStyle="#05090f";
-  ctx.fillRect(0,0,w,h);
+  const r=
+    canvas.getBoundingClientRect();
 
-}
+  const w=r.width;
+  const h=r.height;
 
-function drawGrid(w,h,left,right,top,bottom,low,high){
+  if(!w||!h)
+    return;
 
-  ctx.strokeStyle=COLORS.grid;
-  ctx.lineWidth=1;
-
-  const rows=10;
-
-  for(let i=0;i<=rows;i++){
-
-    const y=top+
-      i*(bottom-top)/rows;
-
-    ctx.beginPath();
-    ctx.moveTo(left,y);
-    ctx.lineTo(right,y);
-    ctx.stroke();
-
-    const p=yToPrice(
-      y,
-      low,
-      high,
-      top,
-      bottom
-    );
-
-    ctx.fillStyle=COLORS.text;
-    ctx.font="10px Arial";
-    ctx.textAlign="left";
-
-    ctx.fillText(
-      priceFmt(p),
-      right+6,
-      y+3
-    );
-
-  }
-
-  const count=Math.min(
-    12,
-    Math.max(3,viewEnd-viewStart)
+  ctx.clearRect(
+    0,
+    0,
+    w,
+    h
   );
 
-  for(let i=0;i<=count;i++){
+  ctx.fillStyle=
+    COLORS.bg;
 
-    const x=left+
-      i*(right-left)/count;
+  ctx.fillRect(
+    0,
+    0,
+    w,
+    h
+  );
 
-    ctx.beginPath();
-    ctx.moveTo(x,top);
-    ctx.lineTo(x,bottom);
-    ctx.stroke();
+  if(
+    !data?.candles?.length
+  ){
+
+    ctx.fillStyle=
+      COLORS.text;
+
+    ctx.font="14px Arial";
+
+    ctx.textAlign="center";
+
+    ctx.fillText(
+      "ابتدا نماد را تحلیل کنید",
+      w/2,
+      h/2
+    );
+
+    return;
 
   }
 
-}
+  const candles=
+    getVisible();
 
-function drawHeatmap(candles,left,right,top,bottom,low,high){
+  const left=55;
+  const right=w-125;
+  const top=20;
 
-  if(!layers.heatmap) return;
+  const deltaHeight=
+    layers.delta
+    ? 90
+    : 0;
 
-  if(!heatHistory.length) return;
+  const bottom=
+    h-25-deltaHeight;
 
-  for(const snapshot of heatHistory){
+  const range=
+    getRange(candles);
 
-    if(!snapshot?.time) continue;
+  drawGrid(
+    w,
+    h,
+    left,
+    right,
+    top,
+    bottom,
+    range.low,
+    range.high
+  );
 
-    const x=timeToX(
-      snapshot.time,
+  drawHeatmap(
+    candles,
+    left,
+    right,
+    top,
+    bottom,
+    range.low,
+    range.high
+  );
+
+  drawLiquidity(
+    left,
+    right,
+    top,
+    bottom,
+    range.low,
+    range.high
+  );
+
+  drawAbsorption(
+    left,
+    right,
+    top,
+    bottom,
+    range.low,
+    range.high
+  );
+
+  drawCandles(
+    candles,
+    left,
+    right,
+    top,
+    bottom,
+    range.low,
+    range.high
+  );
+
+  drawWalls(
+    left,
+    right,
+    top,
+    bottom,
+    range.low,
+    range.high
+  );
+
+  drawSweep(
+    left,
+    right,
+    top,
+    bottom,
+    range.low,
+    range.high
+  );
+
+  drawBlocks(
+    candles,
+    left,
+    right,
+    top,
+    bottom,
+    range.low,
+    range.high
+  );
+
+  drawOrderBook(
+    left,
+    right,
+    top,
+    bottom,
+    range.low,
+    range.high
+  );
+
+  drawPrice(
+    left,
+    right,
+    top,
+    bottom,
+    range.low,
+    range.high
+  );
+
+  if(layers.delta){
+
+    drawDelta(
       candles,
       left,
-      right
+      right,
+      h-25
     );
-
-    if(x<left-20 || x>right+20)
-      continue;
-
-    const levels=[];
-
-    if(Array.isArray(snapshot.bids)){
-
-      for(const b of snapshot.bids){
-
-        const price=num(b.price);
-        const value=num(
-          b.value ??
-          b.notional ??
-          price*num(b.size)
-        );
-
-        if(price>0 && value>0){
-
-          levels.push({
-            price,
-            value,
-            side:"BUY"
-          });
-
-        }
-
-      }
-
-    }
-
-    if(Array.isArray(snapshot.asks)){
-
-      for(const a of snapshot.asks){
-
-        const price=num(a.price);
-        const value=num(
-          a.value ??
-          a.notional ??
-          price*num(a.size)
-        );
-
-        if(price>0 && value>0){
-
-          levels.push({
-            price,
-            value,
-            side:"SELL"
-          });
-
-        }
-
-      }
-
-    }
-
-    if(!levels.length) continue;
-
-    const max=Math.max(
-      ...levels.map(x=>x.value)
-    );
-
-    for(const l of levels){
-
-      const y=priceToY(
-        l.price,
-        low,
-        high,
-        top,
-        bottom
-      );
-
-      if(y<top-5 || y>bottom+5)
-        continue;
-
-      const intensity=Math.max(
-        .04,
-        Math.min(
-          .45,
-          l.value/max*.45
-        )
-      );
-
-      ctx.globalAlpha=intensity;
-
-      ctx.fillStyle=
-        l.side==="BUY"
-        ? COLORS.bid
-        : COLORS.ask;
-
-      ctx.fillRect(
-        x-7,
-        y-3,
-        14,
-        6
-      );
-
-    }
-
-    ctx.globalAlpha=1;
 
   }
 
+  drawTime(
+    candles,
+    left,
+    right,
+    bottom
+  );
+
 }
 
-function drawCurrentOrderbook(
+function drawGrid(
+  w,
+  h,
   left,
   right,
   top,
@@ -1028,121 +1839,178 @@ function drawCurrentOrderbook(
   high
 ){
 
-  if(!layers.bidask) return;
+  ctx.strokeStyle=
+    COLORS.grid;
 
-  const ob=data?.orderbook;
+  ctx.lineWidth=1;
 
-  if(!ob) return;
+  for(let i=0;i<=10;i++){
 
-  let bids=
-    ob.bids ||
-    ob.bid ||
-    [];
+    const y=
+      top+
+      i*(bottom-top)/10;
 
-  let asks=
-    ob.asks ||
-    ob.ask ||
-    [];
+    ctx.beginPath();
 
-  bids=bids
-    .map(x=>({
-      price:num(x.price ?? x[0]),
-      size:num(x.size ?? x.qty ?? x[1]),
-      value:num(
-        x.value ??
-        x.notional ??
-        num(x.price ?? x[0])*num(x.size ?? x.qty ?? x[1])
-      )
-    }))
-    .filter(x=>x.price>0);
+    ctx.moveTo(left,y);
+    ctx.lineTo(right,y);
 
-  asks=asks
-    .map(x=>({
-      price:num(x.price ?? x[0]),
-      size:num(x.size ?? x.qty ?? x[1]),
-      value:num(
-        x.value ??
-        x.notional ??
-        num(x.price ?? x[0])*num(x.size ?? x.qty ?? x[1])
-      )
-    }))
-    .filter(x=>x.price>0);
+    ctx.stroke();
 
-  const all=[
-    ...bids,
-    ...asks
-  ];
+    ctx.fillStyle=
+      COLORS.text;
 
-  if(!all.length) return;
+    ctx.font="9px Arial";
 
-  const max=Math.max(
-    ...all.map(x=>x.value),
-    1
-  );
+    ctx.textAlign="left";
 
-  for(const x of bids){
-
-    const y=priceToY(
-      x.price,
-      low,
-      high,
-      top,
-      bottom
-    );
-
-    if(y<top||y>bottom) continue;
-
-    const width=
-      Math.min(
-        110,
-        12+(x.value/max)*110
-      );
-
-    ctx.globalAlpha=.45;
-
-    ctx.fillStyle=COLORS.bid;
-
-    ctx.fillRect(
-      right-width,
-      y-2,
-      width,
-      4
+    ctx.fillText(
+      priceFmt(
+        y2p(
+          y,
+          low,
+          high,
+          top,
+          bottom
+        )
+      ),
+      right+7,
+      y+3
     );
 
   }
 
-  for(const x of asks){
-
-    const y=priceToY(
-      x.price,
-      low,
-      high,
-      top,
-      bottom
+  const count=
+    Math.min(
+      12,
+      data.candles.length
     );
 
-    if(y<top||y>bottom) continue;
+  for(let i=0;i<=count;i++){
 
-    const width=
-      Math.min(
-        110,
-        12+(x.value/max)*110
-      );
+    const x=
+      left+
+      i*(right-left)/count;
 
-    ctx.globalAlpha=.45;
+    ctx.beginPath();
 
-    ctx.fillStyle=COLORS.ask;
+    ctx.moveTo(x,top);
+    ctx.lineTo(x,bottom);
 
-    ctx.fillRect(
-      right,
-      y-2,
-      width,
-      4
-    );
+    ctx.stroke();
 
   }
 
-  ctx.globalAlpha=1;
+}
+
+function getFP(index){
+
+  const c=
+    data.candles[index];
+
+  if(!c)
+    return null;
+
+  const f=
+    data.footprint?.find(
+      x =>
+        num(x.time)===
+        num(c.time)
+    );
+
+  return f||null;
+
+}
+
+function getLevels(fp){
+
+  if(!fp)
+    return [];
+
+  let levels=
+    fp.levels ||
+    fp.rows ||
+    fp.priceLevels ||
+    [];
+
+  if(
+    !Array.isArray(levels)
+  )
+    return [];
+
+  return levels
+    .map(x=>{
+
+      if(Array.isArray(x)){
+
+        return {
+
+          price:num(x[0]),
+          bid:num(x[1]),
+          ask:num(x[2]),
+          delta:num(
+            x[3],
+            num(x[2])-num(x[1])
+          )
+
+        };
+
+      }
+
+      const bid=num(
+        x.bid ??
+        x.bidVolume ??
+        x.buy ??
+        x.buyVolume ??
+        x.buyValue
+      );
+
+      const ask=num(
+        x.ask ??
+        x.askVolume ??
+        x.sell ??
+        x.sellVolume ??
+        x.sellValue
+      );
+
+      return {
+
+        price:num(
+          x.price ??
+          x.level
+        ),
+
+        bid,
+
+        ask,
+
+        delta:num(
+          x.delta,
+          bid-ask
+        ),
+
+        buyValue:num(
+          x.buyValue ??
+          x.buyNotional
+        ),
+
+        sellValue:num(
+          x.sellValue ??
+          x.sellNotional
+        )
+
+      };
+
+    })
+    .filter(
+      x =>
+        x.price>0 &&
+        (
+          x.bid>0 ||
+          x.ask>0 ||
+          x.delta!==0
+        )
+    );
 
 }
 
@@ -1156,183 +2024,419 @@ function drawCandles(
   high
 ){
 
-  if(!layers.candles) return;
+  if(!layers.candles)
+    return;
 
-  if(!candles.length) return;
+  const count=
+    candles.length;
 
   const gap=
     (right-left)/
-    Math.max(1,candles.length);
+    Math.max(
+      1,
+      count
+    );
 
   const bodyWidth=
     Math.max(
       2,
       Math.min(
-        14,
-        gap*.62
+        18,
+        gap*.55
       )
     );
 
-  candles.forEach((c,i)=>{
+  candles.forEach(
+    (c,i)=>{
 
-    const x=
-      left+
-      (i+.5)*gap;
+      const globalIndex=
+        viewStart+i;
 
-    const yo=priceToY(
-      c.open,
-      low,
-      high,
-      top,
-      bottom
+      const x=
+        left+
+        (i+.5)*gap;
+
+      const yo=
+        p2y(
+          c.open,
+          low,
+          high,
+          top,
+          bottom
+        );
+
+      const yc=
+        p2y(
+          c.close,
+          low,
+          high,
+          top,
+          bottom
+        );
+
+      const yh=
+        p2y(
+          c.high,
+          low,
+          high,
+          top,
+          bottom
+        );
+
+      const yl=
+        p2y(
+          c.low,
+          low,
+          high,
+          top,
+          bottom
+        );
+
+      const up=
+        c.close>=c.open;
+
+      ctx.strokeStyle=
+        up
+        ? COLORS.buy
+        : COLORS.sell;
+
+      ctx.fillStyle=
+        up
+        ? COLORS.buy
+        : COLORS.sell;
+
+      ctx.lineWidth=1;
+
+      ctx.beginPath();
+
+      ctx.moveTo(x,yh);
+      ctx.lineTo(x,yl);
+
+      ctx.stroke();
+
+      ctx.fillRect(
+        x-bodyWidth/2,
+        Math.min(yo,yc),
+        bodyWidth,
+        Math.max(
+          1,
+          Math.abs(yc-yo)
+        )
+      );
+
+      if(
+        selectedCandle===
+        globalIndex
+      ){
+
+        ctx.strokeStyle=
+          COLORS.selected;
+
+        ctx.lineWidth=2;
+
+        ctx.strokeRect(
+          x-bodyWidth/2-3,
+          Math.min(yo,yc)-3,
+          bodyWidth+6,
+          Math.max(
+            7,
+            Math.abs(yc-yo)+6
+          )
+        );
+
+      }
+
+      if(
+        layers.footprint
+      ){
+
+        drawFootprint(
+          globalIndex,
+          c,
+          x,
+          gap,
+          top,
+          bottom,
+          low,
+          high
+        );
+
+      }
+
+    }
+  );
+
+}
+
+function drawFootprint(
+  index,
+  candle,
+  x,
+  gap,
+  top,
+  bottom,
+  low,
+  high
+){
+
+  const fp=
+    getFP(index);
+
+  if(!fp)
+    return;
+
+  const levels=
+    getLevels(fp);
+
+  if(!levels.length)
+    return;
+
+  const priceRange=
+    Math.max(
+      candle.high-candle.low,
+      candle.close*.0005
     );
 
-    const yc=priceToY(
-      c.close,
-      low,
-      high,
-      top,
-      bottom
+  const rowHeight=
+    Math.max(
+      5,
+      Math.min(
+        17,
+        (
+          bottom-top
+        )/
+        Math.max(
+          25,
+          data.candles.length>0
+          ? 25
+          : 25
+        )
+      )
     );
 
-    const yh=priceToY(
-      c.high,
-      low,
-      high,
-      top,
-      bottom
-    );
+  let max=Math.max(
+    1,
+    ...levels.map(
+      l =>
+        Math.max(
+          l.bid,
+          l.ask,
+          Math.abs(l.delta)
+        )
+    )
+  );
 
-    const yl=priceToY(
-      c.low,
-      low,
-      high,
-      top,
-      bottom
-    );
+  for(
+    const l of levels
+  ){
 
-    const up=c.close>=c.open;
-
-    ctx.strokeStyle=
-      up
-      ? COLORS.candleUp
-      : COLORS.candleDown;
-
-    ctx.fillStyle=
-      up
-      ? COLORS.candleUp
-      : COLORS.candleDown;
-
-    ctx.lineWidth=1;
-
-    ctx.beginPath();
-    ctx.moveTo(x,yh);
-    ctx.lineTo(x,yl);
-    ctx.stroke();
-
-    const bh=Math.max(
-      1,
-      Math.abs(yc-yo)
-    );
-
-    ctx.fillRect(
-      x-bodyWidth/2,
-      Math.min(yo,yc),
-      bodyWidth,
-      bh
-    );
-
-    const fp=
-      candleFootprint(
-        viewStart+i
+    const y=
+      p2y(
+        l.price,
+        low,
+        high,
+        top,
+        bottom
       );
 
     if(
-      layers.footprint &&
-      fp
+      y<top ||
+      y>bottom
+    )
+      continue;
+
+    const bid=
+      num(l.bid);
+
+    const ask=
+      num(l.ask);
+
+    const delta=
+      num(
+        l.delta,
+        bid-ask
+      );
+
+    const maxWidth=
+      Math.max(
+        18,
+        Math.min(
+          gap*1.8,
+          110
+        )
+      );
+
+    if(
+      footprintMode===
+      "bidask"
     ){
 
-      const buy=num(
-        fp.buyValue ??
-        fp.buyNotional ??
-        fp.buyVolume
-      );
-
-      const sell=num(
-        fp.sellValue ??
-        fp.sellNotional ??
-        fp.sellVolume
-      );
-
-      const total=Math.max(
-        buy+sell,
-        1
-      );
-
-      const maxBar=
-        Math.min(
-          gap*.85,
-          35
+      const bidW=
+        maxWidth*
+        (
+          bid/
+          Math.max(
+            max,
+            1
+          )
         );
 
-      const buyW=
-        maxBar*(buy/total);
+      const askW=
+        maxWidth*
+        (
+          ask/
+          Math.max(
+            max,
+            1
+          )
+        );
 
-      const sellW=
-        maxBar*(sell/total);
+      ctx.globalAlpha=.85;
 
-      ctx.globalAlpha=.70;
-
-      ctx.fillStyle=COLORS.buy;
+      ctx.fillStyle=
+        COLORS.buy;
 
       ctx.fillRect(
-        x-bodyWidth/2-buyW-2,
-        yc-2,
-        buyW,
-        4
+        x-maxWidth*.15-bidW,
+        y-rowHeight/2,
+        bidW,
+        Math.max(
+          3,
+          rowHeight-1
+        )
       );
 
-      ctx.fillStyle=COLORS.sell;
+      ctx.fillStyle=
+        COLORS.sell;
 
       ctx.fillRect(
-        x+bodyWidth/2+2,
-        yc-2,
-        sellW,
-        4
+        x+maxWidth*.15,
+        y-rowHeight/2,
+        askW,
+        Math.max(
+          3,
+          rowHeight-1
+        )
       );
 
       ctx.globalAlpha=1;
 
-      const delta=num(
-        fp.deltaValue ??
-        fp.delta ??
-        (buy-sell)
+      ctx.font=
+        "bold 8px Arial";
+
+      ctx.textAlign="right";
+
+      ctx.fillStyle=
+        COLORS.buy;
+
+      ctx.fillText(
+        fmt(bid),
+        x-3,
+        y+3
       );
+
+      ctx.textAlign="left";
+
+      ctx.fillStyle=
+        COLORS.sell;
+
+      ctx.fillText(
+        fmt(ask),
+        x+3,
+        y+3
+      );
+
+    }else{
+
+      const intensity=
+        Math.min(
+          1,
+          Math.abs(delta)/
+          Math.max(
+            1,
+            max
+          )
+        );
+
+      ctx.globalAlpha=
+        .25+
+        intensity*.7;
 
       ctx.fillStyle=
         delta>=0
         ? COLORS.buy
         : COLORS.sell;
 
-      ctx.font="9px Arial";
+      ctx.fillRect(
+        x-maxWidth/2,
+        y-rowHeight/2,
+        maxWidth,
+        Math.max(
+          4,
+          rowHeight-1
+        )
+      );
+
+      ctx.globalAlpha=1;
+
+      ctx.fillStyle=
+        delta>=0
+        ? COLORS.buy
+        : COLORS.sell;
+
+      ctx.font=
+        "bold 9px Arial";
+
       ctx.textAlign="center";
 
       ctx.fillText(
-        fmt(delta),
+        "Δ "+fmt(delta),
         x,
-        Math.max(
-          top+10,
-          yh-5
-        )
+        y+3
       );
 
     }
 
-  });
+  }
+
+  const totalDelta=
+    num(
+      fp.deltaValue ??
+      fp.delta ??
+      (
+        num(fp.buyValue)-
+        num(fp.sellValue)
+      )
+    );
+
+  ctx.font=
+    "bold 9px Arial";
+
+  ctx.textAlign="center";
+
+  ctx.fillStyle=
+    totalDelta>=0
+    ? COLORS.buy
+    : COLORS.sell;
+
+  ctx.fillText(
+    "Δ "+fmt(totalDelta),
+    x,
+    Math.max(
+      top+10,
+      p2y(
+        candle.high,
+        low,
+        high,
+        top,
+        bottom
+      )-7
+    )
+  );
 
 }
 
-function drawLiquidity(
+function drawHeatmap(
   candles,
   left,
   right,
@@ -1342,12 +2446,500 @@ function drawLiquidity(
   high
 ){
 
-  if(!layers.liquidity) return;
+  if(!layers.heatmap)
+    return;
 
-  const zones=
-    data?.liquidityZones || [];
+  if(!heatHistory.length)
+    return;
 
-  for(const z of zones){
+  for(
+    const snap of heatHistory
+  ){
+
+    const t=num(
+      snap.time
+    );
+
+    if(!t)
+      continue;
+
+    const x=
+      t2x(
+        t,
+        candles,
+        left,
+        right
+      );
+
+    if(
+      x<left-20 ||
+      x>right+20
+    )
+      continue;
+
+    const levels=[];
+
+    for(
+      const b of
+      (snap.bids||[])
+    ){
+
+      const p=num(
+        b.price ??
+        b[0]
+      );
+
+      const size=num(
+        b.size ??
+        b.qty ??
+        b[1]
+      );
+
+      const value=num(
+        b.value ??
+        b.notional ??
+        p*size
+      );
+
+      if(
+        p>0 &&
+        value>0
+      ){
+
+        levels.push({
+          price:p,
+          value,
+          side:"BUY"
+        });
+
+      }
+
+    }
+
+    for(
+      const a of
+      (snap.asks||[])
+    ){
+
+      const p=num(
+        a.price ??
+        a[0]
+      );
+
+      const size=num(
+        a.size ??
+        a.qty ??
+        a[1]
+      );
+
+      const value=num(
+        a.value ??
+        a.notional ??
+        p*size
+      );
+
+      if(
+        p>0 &&
+        value>0
+      ){
+
+        levels.push({
+          price:p,
+          value,
+          side:"SELL"
+        });
+
+      }
+
+    }
+
+    if(!levels.length)
+      continue;
+
+    const max=Math.max(
+      1,
+      ...levels.map(
+        x=>x.value
+      )
+    );
+
+    for(
+      const l of levels
+    ){
+
+      const y=
+        p2y(
+          l.price,
+          low,
+          high,
+          top,
+          bottom
+        );
+
+      if(
+        y<top ||
+        y>bottom
+      )
+        continue;
+
+      const alpha=
+        Math.min(
+          .42,
+          .04+
+          (
+            l.value/
+            max
+          )*.38
+        );
+
+      ctx.globalAlpha=alpha;
+
+      ctx.fillStyle=
+        l.side==="BUY"
+        ? COLORS.bid
+        : COLORS.ask;
+
+      ctx.fillRect(
+        x-8,
+        y-3,
+        16,
+        6
+      );
+
+    }
+
+    ctx.globalAlpha=1;
+
+  }
+
+}
+
+function drawOrderBook(
+  left,
+  right,
+  top,
+  bottom,
+  low,
+  high
+){
+
+  if(!layers.bidask)
+    return;
+
+  const ob=
+    data?.orderbook;
+
+  if(!ob)
+    return;
+
+  const bids=
+    Array.isArray(ob.bids)
+    ? ob.bids
+    : [];
+
+  const asks=
+    Array.isArray(ob.asks)
+    ? ob.asks
+    : [];
+
+  const all=[];
+
+  for(
+    const b of bids
+  ){
+
+    const p=num(
+      b.price ??
+      b[0]
+    );
+
+    const s=num(
+      b.size ??
+      b.qty ??
+      b[1]
+    );
+
+    if(p>0){
+
+      all.push({
+        price:p,
+        value:num(
+          b.value ??
+          b.notional ??
+          p*s
+        ),
+        side:"BUY"
+      });
+
+    }
+
+  }
+
+  for(
+    const a of asks
+  ){
+
+    const p=num(
+      a.price ??
+      a[0]
+    );
+
+    const s=num(
+      a.size ??
+      a.qty ??
+      a[1]
+    );
+
+    if(p>0){
+
+      all.push({
+        price:p,
+        value:num(
+          a.value ??
+          a.notional ??
+          p*s
+        ),
+        side:"SELL"
+      });
+
+    }
+
+  }
+
+  if(!all.length)
+    return;
+
+  const max=Math.max(
+    1,
+    ...all.map(
+      x=>x.value
+    )
+  );
+
+  for(
+    const l of all
+  ){
+
+    const y=
+      p2y(
+        l.price,
+        low,
+        high,
+        top,
+        bottom
+      );
+
+    if(
+      y<top ||
+      y>bottom
+    )
+      continue;
+
+    const width=
+      Math.min(
+        90,
+        8+
+        (
+          l.value/
+          max
+        )*90
+      );
+
+    ctx.globalAlpha=.38;
+
+    ctx.fillStyle=
+      l.side==="BUY"
+      ? COLORS.bid
+      : COLORS.ask;
+
+    if(
+      l.side==="BUY"
+    ){
+
+      ctx.fillRect(
+        right-width,
+        y-2,
+        width,
+        4
+      );
+
+    }else{
+
+      ctx.fillRect(
+        right,
+        y-2,
+        width,
+        4
+      );
+
+    }
+
+  }
+
+  ctx.globalAlpha=1;
+
+}
+
+function drawWalls(
+  left,
+  right,
+  top,
+  bottom,
+  low,
+  high
+){
+
+  if(!layers.walls)
+    return;
+
+  const wall=
+    data?.wall;
+
+  if(!wall)
+    return;
+
+  const buyWalls=
+    wall.buyWalls ||
+    wall.bids ||
+    [];
+
+  const sellWalls=
+    wall.sellWalls ||
+    wall.asks ||
+    [];
+
+  function price(x){
+
+    return num(
+      x.price ??
+      x.level ??
+      x[0]
+    );
+
+  }
+
+  for(
+    const w of buyWalls
+  ){
+
+    const p=price(w);
+
+    if(!p)
+      continue;
+
+    const y=
+      p2y(
+        p,
+        low,
+        high,
+        top,
+        bottom
+      );
+
+    if(
+      y<top ||
+      y>bottom
+    )
+      continue;
+
+    ctx.strokeStyle=
+      COLORS.wallBuy;
+
+    ctx.lineWidth=2;
+
+    ctx.beginPath();
+
+    ctx.moveTo(left,y);
+    ctx.lineTo(right,y);
+
+    ctx.stroke();
+
+    ctx.fillStyle=
+      COLORS.wallBuy;
+
+    ctx.font=
+      "9px Arial";
+
+    ctx.textAlign="right";
+
+    ctx.fillText(
+      "BUY WALL "+priceFmt(p),
+      right-5,
+      y-5
+    );
+
+  }
+
+  for(
+    const w of sellWalls
+  ){
+
+    const p=price(w);
+
+    if(!p)
+      continue;
+
+    const y=
+      p2y(
+        p,
+        low,
+        high,
+        top,
+        bottom
+      );
+
+    if(
+      y<top ||
+      y>bottom
+    )
+      continue;
+
+    ctx.strokeStyle=
+      COLORS.wallSell;
+
+    ctx.lineWidth=2;
+
+    ctx.beginPath();
+
+    ctx.moveTo(left,y);
+    ctx.lineTo(right,y);
+
+    ctx.stroke();
+
+    ctx.fillStyle=
+      COLORS.wallSell;
+
+    ctx.font=
+      "9px Arial";
+
+    ctx.textAlign="right";
+
+    ctx.fillText(
+      "SELL WALL "+priceFmt(p),
+      right-5,
+      y+11
+    );
+
+  }
+
+}
+
+function drawLiquidity(
+  left,
+  right,
+  top,
+  bottom,
+  low,
+  high
+){
+
+  if(!layers.liquidity)
+    return;
+
+  for(
+    const z of
+    data?.liquidityZones || []
+  ){
 
     const center=num(
       z.center ??
@@ -1365,167 +2957,66 @@ function drawLiquidity(
       center
     );
 
-    if(!center && !zl && !zh)
+    if(
+      !zl &&
+      !zh &&
+      !center
+    )
       continue;
 
-    const y1=priceToY(
-      zh,
-      low,
-      high,
-      top,
-      bottom
-    );
+    const y1=
+      p2y(
+        zh,
+        low,
+        high,
+        top,
+        bottom
+      );
 
-    const y2=priceToY(
-      zl,
-      low,
-      high,
-      top,
-      bottom
-    );
+    const y2=
+      p2y(
+        zl,
+        low,
+        high,
+        top,
+        bottom
+      );
 
-    if(
-      Math.max(y1,y2)<top ||
-      Math.min(y1,y2)>bottom
-    ) continue;
+    ctx.globalAlpha=.13;
 
-    ctx.globalAlpha=.16;
-
-    ctx.fillStyle=COLORS.liquidity;
+    ctx.fillStyle=
+      COLORS.liquidity;
 
     ctx.fillRect(
       left,
       Math.min(y1,y2),
       right-left,
       Math.max(
-        3,
+        4,
         Math.abs(y2-y1)
       )
     );
 
-    ctx.globalAlpha=.8;
+    ctx.globalAlpha=.7;
 
-    ctx.strokeStyle=COLORS.liquidity;
+    ctx.strokeStyle=
+      COLORS.liquidity;
 
     ctx.beginPath();
 
-    ctx.moveTo(left,Math.min(y1,y2));
-    ctx.lineTo(right,Math.min(y1,y2));
+    ctx.moveTo(
+      left,
+      Math.min(y1,y2)
+    );
+
+    ctx.lineTo(
+      right,
+      Math.min(y1,y2)
+    );
 
     ctx.stroke();
 
     ctx.globalAlpha=1;
-
-  }
-
-}
-
-function drawWalls(
-  left,
-  right,
-  top,
-  bottom,
-  low,
-  high
-){
-
-  if(!layers.walls) return;
-
-  const wall=data?.wall;
-
-  if(!wall) return;
-
-  const buyWalls=
-    wall.buyWalls ||
-    wall.bids ||
-    [];
-
-  const sellWalls=
-    wall.sellWalls ||
-    wall.asks ||
-    [];
-
-  function wallPrice(x){
-
-    return num(
-      x.price ??
-      x.level ??
-      x[0]
-    );
-
-  }
-
-  for(const w of buyWalls){
-
-    const p=wallPrice(w);
-
-    if(!p) continue;
-
-    const y=priceToY(
-      p,
-      low,
-      high,
-      top,
-      bottom
-    );
-
-    if(y<top||y>bottom)
-      continue;
-
-    ctx.strokeStyle=COLORS.wallBuy;
-    ctx.lineWidth=2;
-
-    ctx.beginPath();
-    ctx.moveTo(left,y);
-    ctx.lineTo(right,y);
-    ctx.stroke();
-
-    ctx.fillStyle=COLORS.wallBuy;
-    ctx.font="10px Arial";
-    ctx.textAlign="right";
-
-    ctx.fillText(
-      "BUY WALL "+priceFmt(p),
-      right-5,
-      y-4
-    );
-
-  }
-
-  for(const w of sellWalls){
-
-    const p=wallPrice(w);
-
-    if(!p) continue;
-
-    const y=priceToY(
-      p,
-      low,
-      high,
-      top,
-      bottom
-    );
-
-    if(y<top||y>bottom)
-      continue;
-
-    ctx.strokeStyle=COLORS.wallSell;
-    ctx.lineWidth=2;
-
-    ctx.beginPath();
-    ctx.moveTo(left,y);
-    ctx.lineTo(right,y);
-    ctx.stroke();
-
-    ctx.fillStyle=COLORS.wallSell;
-    ctx.font="10px Arial";
-    ctx.textAlign="right";
-
-    ctx.fillText(
-      "SELL WALL "+priceFmt(p),
-      right-5,
-      y+12
-    );
 
   }
 
@@ -1540,11 +3031,14 @@ function drawAbsorption(
   high
 ){
 
-  if(!layers.absorption) return;
+  if(!layers.absorption)
+    return;
 
-  const a=data?.absorption;
+  const a=
+    data?.absorption;
 
-  if(!a) return;
+  if(!a)
+    return;
 
   const zl=num(
     a.low ??
@@ -1556,45 +3050,56 @@ function drawAbsorption(
     data?.zone?.high
   );
 
-  if(!zl||!zh) return;
-
-  const y1=priceToY(
-    zh,
-    low,
-    high,
-    top,
-    bottom
-  );
-
-  const y2=priceToY(
-    zl,
-    low,
-    high,
-    top,
-    bottom
-  );
-
   if(
-    Math.max(y1,y2)<top ||
-    Math.min(y1,y2)>bottom
-  ) return;
+    !zl ||
+    !zh
+  )
+    return;
+
+  const y1=
+    p2y(
+      zh,
+      low,
+      high,
+      top,
+      bottom
+    );
+
+  const y2=
+    p2y(
+      zl,
+      low,
+      high,
+      top,
+      bottom
+    );
 
   ctx.globalAlpha=.12;
-  ctx.fillStyle=COLORS.absorption;
+
+  ctx.fillStyle=
+    COLORS.absorption;
 
   ctx.fillRect(
     left,
     Math.min(y1,y2),
     right-left,
     Math.max(
-      4,
+      5,
       Math.abs(y2-y1)
     )
   );
 
   ctx.globalAlpha=.8;
-  ctx.strokeStyle=COLORS.absorption;
+
+  ctx.strokeStyle=
+    COLORS.absorption;
+
   ctx.lineWidth=1.5;
+
+  ctx.setLineDash([
+    5,
+    4
+  ]);
 
   ctx.beginPath();
 
@@ -1620,22 +3125,27 @@ function drawAbsorption(
 
   ctx.stroke();
 
+  ctx.setLineDash([]);
+
   ctx.globalAlpha=1;
 
-  ctx.fillStyle=COLORS.absorption;
-  ctx.font="11px Arial";
+  ctx.fillStyle=
+    COLORS.absorption;
+
+  ctx.font=
+    "10px Arial";
+
   ctx.textAlign="left";
 
   ctx.fillText(
     "ABSORPTION",
-    left+8,
-    Math.min(y1,y2)-6
+    left+6,
+    Math.min(y1,y2)-5
   );
 
 }
 
 function drawSweep(
-  candles,
   left,
   right,
   top,
@@ -1644,52 +3154,71 @@ function drawSweep(
   high
 ){
 
-  if(!layers.sweep) return;
+  if(!layers.sweep)
+    return;
 
-  const s=data?.sweep;
+  const s=
+    data?.sweep;
 
-  if(!s) return;
+  if(!s)
+    return;
 
-  let price=num(
+  const p=num(
     s.price ??
     s.level ??
     s.high ??
     s.low
   );
 
-  if(!price) return;
-
-  const y=priceToY(
-    price,
-    low,
-    high,
-    top,
-    bottom
-  );
-
-  if(y<top||y>bottom)
+  if(!p)
     return;
 
-  ctx.strokeStyle=COLORS.sweep;
+  const y=
+    p2y(
+      p,
+      low,
+      high,
+      top,
+      bottom
+    );
+
+  if(
+    y<top ||
+    y>bottom
+  )
+    return;
+
+  ctx.strokeStyle=
+    COLORS.sweep;
+
   ctx.lineWidth=2;
 
-  ctx.setLineDash([6,4]);
+  ctx.setLineDash([
+    7,
+    4
+  ]);
 
   ctx.beginPath();
+
   ctx.moveTo(left,y);
   ctx.lineTo(right,y);
+
   ctx.stroke();
 
   ctx.setLineDash([]);
 
-  ctx.fillStyle=COLORS.sweep;
-  ctx.font="11px Arial";
+  ctx.fillStyle=
+    COLORS.sweep;
+
+  ctx.font=
+    "10px Arial";
+
   ctx.textAlign="left";
 
   ctx.fillText(
     "LIQUIDITY SWEEP",
-    left+8,
-    y-7
+    left+7,
+    y-6
   );
 
 }
@@ -1704,96 +3233,92 @@ function drawBlocks(
   high
 ){
 
-  if(!layers.blocks) return;
+  if(!layers.blocks)
+    return;
 
-  const blocks=
-    data?.blocks || [];
-
-  if(!blocks.length) return;
-
-  const first=
-    candles[0]?.time || 0;
-
-  const last=
-    candles[candles.length-1]?.time || 0;
-
-  for(const b of blocks){
+  for(
+    const b of
+    data?.blocks || []
+  ){
 
     const p=num(
       b.price ??
       b.tradePrice
     );
 
-    if(!p) continue;
+    if(!p)
+      continue;
 
     const t=num(
       b.time ??
       b.timestamp
     );
 
-    let x;
+    const x=
+      t
+      ? t2x(
+          t,
+          candles,
+          left,
+          right
+        )
+      : right-20;
 
-    if(t){
-
-      x=timeToX(
-        t,
-        candles,
-        left,
-        right
+    const y=
+      p2y(
+        p,
+        low,
+        high,
+        top,
+        bottom
       );
 
-    }else{
-
-      x=right-30;
-
-    }
-
-    if(x<left||x>right)
+    if(
+      x<left ||
+      x>right ||
+      y<top ||
+      y>bottom
+    )
       continue;
 
-    const y=priceToY(
-      p,
-      low,
-      high,
-      top,
-      bottom
+    const value=num(
+      b.value ??
+      b.notional ??
+      b.volume
     );
 
-    if(y<top||y>bottom)
-      continue;
+    const radius=
+      Math.max(
+        4,
+        Math.min(
+          13,
+          Math.sqrt(
+            Math.max(
+              1,
+              value
+            )
+          )/9
+        )
+      );
 
-    const side=String(
-      b.side ??
-      b.type ??
-      ""
-    ).toLowerCase();
+    const side=
+      String(
+        b.side||
+        b.type||
+        ""
+      ).toLowerCase();
 
     ctx.fillStyle=
       side.includes("sell")
       ? COLORS.sell
-      : COLORS.blocks;
+      : COLORS.block;
 
     ctx.beginPath();
 
     ctx.arc(
       x,
       y,
-      Math.max(
-        4,
-        Math.min(
-          11,
-          Math.sqrt(
-            Math.max(
-              1,
-              num(
-                b.value ??
-                b.notional ??
-                b.volume
-              )
-            )
-          )/10
-        )
-      ),
+      radius,
       0,
       Math.PI*2
     );
@@ -1804,20 +3329,83 @@ function drawBlocks(
 
 }
 
-function drawDeltaPanel(
+function drawPrice(
+  left,
+  right,
+  top,
+  bottom,
+  low,
+  high
+){
+
+  const p=num(
+    data?.price
+  );
+
+  if(!p)
+    return;
+
+  const y=
+    p2y(
+      p,
+      low,
+      high,
+      top,
+      bottom
+    );
+
+  if(
+    y<top ||
+    y>bottom
+  )
+    return;
+
+  ctx.strokeStyle=
+    COLORS.white;
+
+  ctx.setLineDash([
+    3,
+    3
+  ]);
+
+  ctx.beginPath();
+
+  ctx.moveTo(left,y);
+  ctx.lineTo(right,y);
+
+  ctx.stroke();
+
+  ctx.setLineDash([]);
+
+  ctx.fillStyle=
+    COLORS.white;
+
+  ctx.font=
+    "10px Arial";
+
+  ctx.textAlign="right";
+
+  ctx.fillText(
+    priceFmt(p),
+    right-4,
+    y-5
+  );
+
+}
+
+function drawDelta(
   candles,
   left,
   right,
   bottom
 ){
 
-  if(!layers.delta) return;
-
   const h=85;
 
-  const top=bottom-h;
+  const top=
+    bottom-h;
 
-  ctx.fillStyle="#080e16";
+  ctx.fillStyle="#070d14";
 
   ctx.fillRect(
     left,
@@ -1826,21 +3414,33 @@ function drawDeltaPanel(
     h
   );
 
-  ctx.strokeStyle="#1d2938";
+  ctx.strokeStyle=
+    COLORS.grid;
 
   ctx.beginPath();
 
-  ctx.moveTo(left,top+h/2);
-  ctx.lineTo(right,top+h/2);
+  ctx.moveTo(
+    left,
+    top+h/2
+  );
+
+  ctx.lineTo(
+    right,
+    top+h/2
+  );
 
   ctx.stroke();
 
   const values=[];
 
-  for(let i=0;i<candles.length;i++){
+  for(
+    let i=0;
+    i<candles.length;
+    i++
+  ){
 
     const fp=
-      candleFootprint(
+      getFP(
         viewStart+i
       );
 
@@ -1863,347 +3463,391 @@ function drawDeltaPanel(
 
   }
 
-  if(!values.length) return;
-
   const max=Math.max(
     1,
-    ...values.map(x=>Math.abs(x))
+    ...values.map(
+      x=>Math.abs(x)
+    )
   );
 
   const gap=
     (right-left)/
-    Math.max(1,candles.length);
+    Math.max(
+      1,
+      candles.length
+    );
 
-  values.forEach((v,i)=>{
+  values.forEach(
+    (v,i)=>{
 
-    const x=
-      left+
-      (i+.5)*gap;
+      const x=
+        left+
+        (i+.5)*gap;
 
-    const bh=
-      (Math.abs(v)/max)*
-      (h/2-7);
+      const bh=
+        (
+          Math.abs(v)/
+          max
+        )*
+        (
+          h/2-8
+        );
 
-    ctx.fillStyle=
-      v>=0
-      ? COLORS.buy
-      : COLORS.sell;
+      ctx.fillStyle=
+        v>=0
+        ? COLORS.buy
+        : COLORS.sell;
 
-    if(v>=0){
+      if(v>=0){
 
-      ctx.fillRect(
-        x-gap*.32,
-        top+h/2-bh,
-        gap*.64,
-        bh
-      );
+        ctx.fillRect(
+          x-gap*.32,
+          top+h/2-bh,
+          gap*.64,
+          bh
+        );
 
-    }else{
+      }else{
 
-      ctx.fillRect(
-        x-gap*.32,
-        top+h/2,
-        gap*.64,
-        bh
-      );
+        ctx.fillRect(
+          x-gap*.32,
+          top+h/2,
+          gap*.64,
+          bh
+        );
+
+      }
 
     }
+  );
 
-  });
+  ctx.fillStyle=
+    COLORS.delta;
 
-  ctx.fillStyle=COLORS.delta;
-  ctx.font="10px Arial";
+  ctx.font=
+    "9px Arial";
+
   ctx.textAlign="left";
 
   ctx.fillText(
     "DELTA",
     left+5,
-    top+12
+    top+11
   );
 
 }
 
-function drawCurrentPrice(
-  left,
-  right,
-  top,
-  bottom,
-  low,
-  high
-){
-
-  const p=num(data?.price);
-
-  if(!p) return;
-
-  const y=priceToY(
-    p,
-    low,
-    high,
-    top,
-    bottom
-  );
-
-  if(y<top||y>bottom)
-    return;
-
-  ctx.strokeStyle=COLORS.white;
-  ctx.lineWidth=1;
-
-  ctx.setLineDash([3,3]);
-
-  ctx.beginPath();
-  ctx.moveTo(left,y);
-  ctx.lineTo(right,y);
-  ctx.stroke();
-
-  ctx.setLineDash([]);
-
-  ctx.fillStyle=COLORS.white;
-  ctx.font="11px Arial";
-  ctx.textAlign="right";
-
-  ctx.fillText(
-    priceFmt(p),
-    right-5,
-    y-6
-  );
-
-}
-
-function draw(){
-
-  const rect=canvas.getBoundingClientRect();
-
-  const w=rect.width;
-  const h=rect.height;
-
-  if(!w||!h) return;
-
-  drawBackground(w,h);
-
-  if(!data?.candles?.length){
-
-    ctx.fillStyle=COLORS.text;
-    ctx.font="14px Arial";
-    ctx.textAlign="center";
-
-    ctx.fillText(
-      "داده‌ای برای نمایش وجود ندارد",
-      w/2,
-      h/2
-    );
-
-    return;
-
-  }
-
-  const left=55;
-  const right=w-125;
-  const top=25;
-  const deltaHeight=
-    layers.delta ? 85 : 0;
-
-  const bottom=h-25-deltaHeight;
-
-  const candles=visibleRange();
-
-  const range=getPriceRange(candles);
-
-  const low=range.low;
-  const high=range.high;
-
-  drawGrid(
-    w,
-    h,
-    left,
-    right,
-    top,
-    bottom,
-    low,
-    high
-  );
-
-  drawHeatmap(
-    candles,
-    left,
-    right,
-    top,
-    bottom,
-    low,
-    high
-  );
-
-  drawLiquidity(
-    candles,
-    left,
-    right,
-    top,
-    bottom,
-    low,
-    high
-  );
-
-  drawAbsorption(
-    left,
-    right,
-    top,
-    bottom,
-    low,
-    high
-  );
-
-  drawCandles(
-    candles,
-    left,
-    right,
-    top,
-    bottom,
-    low,
-    high
-  );
-
-  drawWalls(
-    left,
-    right,
-    top,
-    bottom,
-    low,
-    high
-  );
-
-  drawSweep(
-    candles,
-    left,
-    right,
-    top,
-    bottom,
-    low,
-    high
-  );
-
-  drawBlocks(
-    candles,
-    left,
-    right,
-    top,
-    bottom,
-    low,
-    high
-  );
-
-  drawCurrentOrderbook(
-    left,
-    right,
-    top,
-    bottom,
-    low,
-    high
-  );
-
-  drawCurrentPrice(
-    left,
-    right,
-    top,
-    bottom,
-    low,
-    high
-  );
-
-  drawDeltaPanel(
-    candles,
-    left,
-    right,
-    h-25
-  );
-
-  drawTimeLabels(
-    candles,
-    left,
-    right,
-    bottom
-  );
-
-}
-
-function drawTimeLabels(
+function drawTime(
   candles,
   left,
   right,
   bottom
 ){
 
-  if(!candles.length) return;
+  if(!candles.length)
+    return;
 
   const gap=
     (right-left)/
-    Math.max(1,candles.length);
-
-  ctx.fillStyle=COLORS.text;
-  ctx.font="9px Arial";
-  ctx.textAlign="center";
+    candles.length;
 
   const step=
     Math.max(
       1,
-      Math.ceil(candles.length/10)
+      Math.ceil(
+        candles.length/10
+      )
     );
 
-  candles.forEach((c,i)=>{
+  ctx.fillStyle=
+    COLORS.text;
 
-    if(i%step!==0) return;
+  ctx.font=
+    "8px Arial";
 
-    const x=
-      left+(i+.5)*gap;
+  ctx.textAlign="center";
 
-    const d=new Date(c.time);
+  candles.forEach(
+    (c,i)=>{
 
-    const hh=
-      String(d.getHours()).padStart(2,"0");
+      if(
+        i%step!==0
+      )
+        return;
 
-    const mm=
-      String(d.getMinutes()).padStart(2,"0");
+      const x=
+        left+
+        (i+.5)*gap;
 
-    ctx.fillText(
-      hh+":"+mm,
-      x,
-      bottom+16
-    );
+      const d=
+        new Date(c.time);
 
-  });
+      const hh=
+        String(
+          d.getHours()
+        ).padStart(2,"0");
 
-}
+      const mm=
+        String(
+          d.getMinutes()
+        ).padStart(2,"0");
 
-async function api(path){
+      ctx.fillText(
+        hh+":"+mm,
+        x,
+        bottom+15
+      );
 
-  const res=await fetch(
-    API+path,
-    {
-      cache:"no-store"
     }
   );
 
-  const text=await res.text();
+}
 
-  let json;
+function addHeatSnapshot(){
 
-  try{
-    json=JSON.parse(text);
-  }catch{
-    throw new Error(text||"Invalid response");
+  const ob=
+    data?.orderbook;
+
+  if(!ob)
+    return;
+
+  heatHistory.push({
+
+    time:Date.now(),
+
+    bids:
+      Array.isArray(ob.bids)
+      ? ob.bids
+      : [],
+
+    asks:
+      Array.isArray(ob.asks)
+      ? ob.asks
+      : []
+
+  });
+
+  if(
+    heatHistory.length>180
+  ){
+
+    heatHistory.shift();
+
   }
 
-  if(!res.ok || json.ok===false){
+}
 
-    throw new Error(
-      json.error ||
-      json.message ||
-      "API Error"
+function renderCards(){
+
+  if(!data)
+    return;
+
+  const price=
+    num(
+      data.price ??
+      data.ticker?.lastPrice
     );
 
+  $("price").textContent=
+    priceFmt(price);
+
+  const flow=
+    data.currentFlow ||
+    data.flow ||
+    {};
+
+  const buy=num(
+    flow.buyValue ??
+    flow.buyNotional ??
+    flow.buyVolume
+  );
+
+  const sell=num(
+    flow.sellValue ??
+    flow.sellNotional ??
+    flow.sellVolume
+  );
+
+  const delta=num(
+    flow.deltaValue ??
+    flow.delta ??
+    buy-sell
+  );
+
+  $("buy").textContent=
+    fmt(buy);
+
+  $("sell").textContent=
+    fmt(sell);
+
+  $("delta").textContent=
+    fmt(delta);
+
+  $("delta").className=
+    "card-value "+
+    (
+      delta>=0
+      ? "buy"
+      : "sell"
+    );
+
+  const ob=
+    data.orderbook;
+
+  if(ob){
+
+    const b=num(
+      ob.buyShare ??
+      ob.bidShare ??
+      ob.bidPercent
+    );
+
+    const a=num(
+      ob.sellShare ??
+      ob.askShare ??
+      ob.askPercent
+    );
+
+    if(
+      Number.isFinite(b) &&
+      Number.isFinite(a)
+    ){
+
+      $("bidask").textContent=
+        b.toFixed(1)+
+        "% / "+
+        a.toFixed(1)+"%";
+
+    }else{
+
+      $("bidask").textContent=
+        "Bid "+fmt(
+          ob.buyLiquidity
+        )+
+        " · Ask "+fmt(
+          ob.sellLiquidity
+        );
+
+    }
+
   }
 
-  return json;
+  const absorption=
+    data.absorption;
+
+  $("abs").textContent=
+    absorption
+    ? (
+        absorption.type ||
+        absorption.signal ||
+        absorption.direction ||
+        "Detected"
+      )
+    : "—";
+
+  $("score").textContent=
+    data.score!=null
+    ? data.score
+    : "—";
+
+  $("signal").textContent=
+    data.signal ||
+    "—";
+
+}
+
+function renderTrades(){
+
+  const body=
+    $("tradesBody");
+
+  body.innerHTML="";
+
+  const trades=
+    Array.isArray(data?.trades)
+    ? data.trades
+      .slice(-100)
+      .reverse()
+    : [];
+
+  for(
+    const t of trades
+  ){
+
+    const price=num(
+      t.price
+    );
+
+    const size=num(
+      t.size ??
+      t.qty ??
+      t.volume
+    );
+
+    const value=num(
+      t.value ??
+      t.notional ??
+      price*size
+    );
+
+    const side=
+      t.isBuyerMaker===true
+      ? "SELL"
+      : t.isBuyerMaker===false
+      ? "BUY"
+      : String(
+          t.side||
+          ""
+        ).toUpperCase();
+
+    const tr=
+      document.createElement("tr");
+
+    tr.innerHTML=`
+
+      <td>
+        ${new Date(
+          num(
+            t.time ??
+            t.timestamp
+          )
+        ).toLocaleTimeString("fa-IR")}
+      </td>
+
+      <td>
+        ${priceFmt(price)}
+      </td>
+
+      <td class="${
+        side==="BUY"
+        ? "buy"
+        : "sell"
+      }">
+        ${side}
+      </td>
+
+      <td>
+        ${fmt(size)}
+      </td>
+
+      <td>
+        ${fmt(value)}
+      </td>
+
+      <td>
+        ${
+          t.isBlock ||
+          t.block
+          ? "BLOCK"
+          : "TRADE"
+        }
+      </td>
+
+    `;
+
+    body.appendChild(tr);
+
+  }
 
 }
 
@@ -2216,34 +3860,42 @@ async function analyze(){
       $("symbol").value
     );
 
-  $("symbol").value=symbol;
+  $("symbol").value=
+    symbol;
 
   if(!symbol){
 
-    setStatus("🔴 نماد وارد نشده");
+    setStatus(
+      "🔴 نماد وارد نشده"
+    );
+
     return;
 
   }
 
   setStatus(
-    "🟡 دریافت داده واقعی Bybit..."
+    "🟡 دریافت داده Bybit..."
   );
 
   try{
 
-    const result=
+    const d=
       await api(
         "/api/analyze?symbol="+
         encodeURIComponent(symbol)+
         "&interval="+
-        encodeURIComponent(selectedTF)
+        encodeURIComponent(
+          selectedTF
+        )
       );
 
-    data=result;
+    data=d;
 
     normalizeData();
 
     resetView();
+
+    heatHistory=[];
 
     addHeatSnapshot();
 
@@ -2252,10 +3904,13 @@ async function analyze(){
     renderTrades();
 
     $("chartTitle").textContent=
-      symbol+" · "+selectedTF+"m · Order Flow";
+      symbol+
+      " · "+
+      selectedTF+
+      "m · Order Flow";
 
     setStatus(
-      "🟢 داده واقعی Bybit دریافت شد"
+      "🟢 اتصال Bybit برقرار است"
     );
 
     draw();
@@ -2279,9 +3934,8 @@ async function live(){
       $("symbol").value
     );
 
-  $("symbol").value=symbol;
-
-  if(!symbol) return;
+  if(!symbol)
+    return;
 
   try{
 
@@ -2290,7 +3944,9 @@ async function live(){
         "/api/live?symbol="+
         encodeURIComponent(symbol)+
         "&interval="+
-        encodeURIComponent(selectedTF)
+        encodeURIComponent(
+          selectedTF
+        )
       );
 
     if(!data){
@@ -2299,10 +3955,11 @@ async function live(){
 
     }else{
 
-      data.price=num(
-        d.price,
-        data.price
-      );
+      data.price=
+        num(
+          d.price,
+          data.price
+        );
 
       data.ticker=
         d.ticker ||
@@ -2320,35 +3977,49 @@ async function live(){
         d.trades ||
         data.trades;
 
-      data.currentFlow=
-        d.flow ||
-        data.currentFlow;
-
       data.flow=
         d.flow ||
         data.flow;
+
+      data.currentFlow=
+        d.flow ||
+        data.currentFlow;
 
       data.blocks=
         d.blocks ||
         data.blocks;
 
-      if(Array.isArray(d.candles))
-        data.candles=d.candles;
+      if(
+        Array.isArray(
+          d.candles
+        )
+      )
+        data.candles=
+          d.candles;
 
-      if(Array.isArray(d.footprint))
-        data.footprint=d.footprint;
+      if(
+        Array.isArray(
+          d.footprint
+        )
+      )
+        data.footprint=
+          d.footprint;
 
-      if(Array.isArray(d.heatmap))
-        data.heatmap=d.heatmap;
-
-      if(Array.isArray(d.liquidityZones))
-        data.liquidityZones=d.liquidityZones;
+      if(
+        Array.isArray(
+          d.liquidityZones
+        )
+      )
+        data.liquidityZones=
+          d.liquidityZones;
 
       if(d.absorption)
-        data.absorption=d.absorption;
+        data.absorption=
+          d.absorption;
 
       if(d.sweep)
-        data.sweep=d.sweep;
+        data.sweep=
+          d.sweep;
 
     }
 
@@ -2364,7 +4035,10 @@ async function live(){
 
     setStatus(
       "🟢 LIVE · "+
-      new Date().toLocaleTimeString("fa-IR")
+      new Date()
+      .toLocaleTimeString(
+        "fa-IR"
+      )
     );
 
   }catch(e){
@@ -2372,7 +4046,8 @@ async function live(){
     console.error(e);
 
     setStatus(
-      "🔴 LIVE Error: "+e.message
+      "🔴 LIVE: "+
+      e.message
     );
 
   }
@@ -2385,10 +4060,11 @@ function startLive(){
 
   live();
 
-  liveTimer=setInterval(
-    live,
-    2000
-  );
+  liveTimer=
+    setInterval(
+      live,
+      2000
+    );
 
 }
 
@@ -2396,526 +4072,620 @@ function stopLive(){
 
   if(liveTimer){
 
-    clearInterval(liveTimer);
+    clearInterval(
+      liveTimer
+    );
+
     liveTimer=null;
 
   }
 
 }
 
-function addHeatSnapshot(){
+async function scanOnce(){
 
-  if(!data?.orderbook)
-    return;
-
-  const ob=data.orderbook;
-
-  const bids=
-    (ob.bids||[])
-      .map(x=>{
-
-        const price=num(
-          x.price ?? x[0]
-        );
-
-        const size=num(
-          x.size ??
-          x.qty ??
-          x[1]
-        );
-
-        return {
-
-          price,
-          size,
-          value:num(
-            x.value ??
-            x.notional ??
-            price*size
-          )
-
-        };
-
-      })
-      .filter(x=>x.price>0);
-
-  const asks=
-    (ob.asks||[])
-      .map(x=>{
-
-        const price=num(
-          x.price ?? x[0]
-        );
-
-        const size=num(
-          x.size ??
-          x.qty ??
-          x[1]
-        );
-
-        return {
-
-          price,
-          size,
-          value:num(
-            x.value ??
-            x.notional ??
-            price*size
-          )
-
-        };
-
-      })
-      .filter(x=>x.price>0);
-
-  heatHistory.push({
-
-    time:Date.now(),
-
-    bids,
-
-    asks
-
-  });
-
-  if(heatHistory.length>180)
-    heatHistory.shift();
-
-}
-
-function renderCards(){
-
-  if(!data) return;
-
-  $("price").textContent=
-    priceFmt(
-      num(
-        data.price ??
-        data.ticker?.lastPrice
-      )
-    );
-
-  const flow=
-    data.currentFlow ||
-    data.flow ||
-    {};
-
-  const buy=num(
-    flow.buyValue ??
-    flow.buyNotional ??
-    flow.buyVolume
+  setScanStatus(
+    "🟡 در حال اسکن بازار..."
   );
 
-  const sell=num(
-    flow.sellValue ??
-    flow.sellNotional ??
-    flow.sellVolume
-  );
+  try{
 
-  $("buyVolume").textContent=
-    fmt(buy);
+    const d=
+      await api(
+        "/api/scan?offset=0"
+      );
 
-  $("sellVolume").textContent=
-    fmt(sell);
+    renderScanResults(d);
 
-  const delta=num(
-    flow.deltaValue ??
-    flow.delta ??
-    (buy-sell)
-  );
+    const found=
+      extractSignals(d);
 
-  $("delta").textContent=
-    fmt(delta);
+    if(found.length){
 
-  $("delta").className=
-    "card-value "+
-    (
-      delta>=0
-      ? "buy"
-      : "sell"
-    );
+      const strongest=
+        found
+          .slice()
+          .sort(
+            (a,b)=>
+              Number(b.score||0)-
+              Number(a.score||0)
+          )[0];
 
-  const ob=data.orderbook;
-
-  if(ob){
-
-    const bidShare=num(
-      ob.buyShare ??
-      ob.bidShare ??
-      ob.bidPercent
-    );
-
-    const askShare=num(
-      ob.sellShare ??
-      ob.askShare ??
-      ob.askPercent
-    );
-
-    if(
-      Number.isFinite(bidShare) &&
-      Number.isFinite(askShare)
-    ){
-
-      $("bookPressure").textContent=
-        bidShare.toFixed(1)+
-        "% Bid / "+
-        askShare.toFixed(1)+
-        "% Ask";
-
-    }else{
-
-      $("bookPressure").textContent=
-        "Bid "+fmt(
-          ob.buyLiquidity
-        )+
-        " / Ask "+
-        fmt(
-          ob.sellLiquidity
-        );
+      await handleScannerAlert(
+        strongest
+      );
 
     }
 
+    setScanStatus(
+      "🟢 آخرین اسکن: "+
+      new Date()
+      .toLocaleTimeString(
+        "fa-IR"
+      )+
+      " · "+
+      found.length+
+      " مورد"
+    );
+
+  }catch(e){
+
+    console.error(e);
+
+    setScanStatus(
+      "🔴 خطای اسکن: "+
+      e.message
+    );
+
   }
-
-  const a=data.absorption;
-
-  if(a){
-
-    $("absorption").textContent=
-      String(
-        a.type ??
-        a.signal ??
-        a.direction ??
-        "Detected"
-      );
-
-  }else{
-
-    $("absorption").textContent="—";
-
-  }
-
-  $("score").textContent=
-    data.score!=null
-    ? String(data.score)
-    : "—";
-
-  $("signal").textContent=
-    data.signal ??
-    "—";
 
 }
 
-function renderTrades(){
+function extractSignals(d){
 
-  const body=$("tradesBody");
+  let list=[];
 
-  body.innerHTML="";
+  if(
+    Array.isArray(d)
+  ){
 
-  const trades=
-    Array.isArray(data?.trades)
-    ? data.trades.slice(-100).reverse()
-    : [];
+    list=d;
 
-  for(const t of trades){
+  }else if(
+    Array.isArray(
+      d.results
+    )
+  ){
 
-    const price=num(
-      t.price
-    );
+    list=d.results;
 
-    const volume=num(
-      t.size ??
-      t.qty ??
-      t.volume
-    );
+  }else if(
+    Array.isArray(
+      d.signals
+    )
+  ){
 
-    const value=num(
-      t.value ??
-      t.notional ??
-      price*volume
-    );
+    list=d.signals;
 
-    const maker=
-      t.isBuyerMaker;
+  }else if(
+    Array.isArray(
+      d.items
+    )
+  ){
 
-    const side=
-      maker===true
-      ? "SELL"
-      : maker===false
-      ? "BUY"
-      : String(
-          t.side||
+    list=d.items;
+
+  }
+
+  return list.filter(
+    x => {
+
+      const score=
+        num(
+          x.score ??
+          x.smartMoneyScore
+        );
+
+      const signal=
+        String(
+          x.signal ??
+          x.type ??
+          x.status ??
           ""
         ).toUpperCase();
 
-    const tr=
-      document.createElement("tr");
+      const absorption=
+        x.absorption;
 
-    tr.innerHTML=`
+      const hasAbsorption=
+        !!absorption ||
+        signal.includes(
+          "ABSORB"
+        );
 
-      <td>
-        ${new Date(
-          num(t.time ?? t.timestamp)
-        ).toLocaleTimeString("fa-IR")}
-      </td>
+      const pump=
+        num(
+          x.pumpPercent ??
+          x.changePercent ??
+          x.priceChangePercent ??
+          x.movement?.percent
+        );
 
-      <td>
-        ${priceFmt(price)}
-      </td>
+      return (
+        hasAbsorption &&
+        (
+          pump>0 ||
+          score>=50 ||
+          signal.includes("BUY") ||
+          signal.includes("LONG")
+        )
+      );
 
-      <td class="${side==="BUY"?"buy":"sell"}">
-        ${side}
-      </td>
+    }
+  );
 
-      <td>
-        ${fmt(volume)}
-      </td>
+}
 
-      <td>
-        ${fmt(value)}
-      </td>
+function renderScanResults(d){
 
-      <td>
-        ${t.isBlock || t.block ? "BLOCK" : "TRADE"}
-      </td>
+  const box=
+    $("scanResults");
+
+  box.innerHTML="";
+
+  let list=[];
+
+  if(
+    Array.isArray(d)
+  )
+    list=d;
+
+  else if(
+    Array.isArray(d.results)
+  )
+    list=d.results;
+
+  else if(
+    Array.isArray(d.signals)
+  )
+    list=d.signals;
+
+  else if(
+    Array.isArray(d.items)
+  )
+    list=d.items;
+
+  list=
+    list
+      .slice(0,30);
+
+  if(!list.length){
+
+    box.innerHTML=
+      `<div class="scan-status">
+        موردی در این اسکن پیدا نشد.
+      </div>`;
+
+    return;
+
+  }
+
+  for(
+    const x of list
+  ){
+
+    const symbol=
+      normalizeSymbol(
+        x.symbol ||
+        x.ticker?.symbol ||
+        ""
+      );
+
+    const score=
+      num(
+        x.score ??
+        x.smartMoneyScore
+      );
+
+    const pump=
+      num(
+        x.pumpPercent ??
+        x.changePercent ??
+        x.priceChangePercent ??
+        x.movement?.percent
+      );
+
+    const signal=
+      x.signal ||
+      x.type ||
+      "WATCH";
+
+    const abs=
+      x.absorption;
+
+    const card=
+      document.createElement(
+        "div"
+      );
+
+    card.className=
+      "signal-card";
+
+    card.innerHTML=`
+
+      <div class="signal-symbol">
+        ${symbol||"UNKNOWN"}
+      </div>
+
+      <div class="signal-meta">
+        Pump:
+        ${pump.toFixed(2)}%
+      </div>
+
+      <div class="signal-score">
+        Score:
+        <b>${score}</b>
+        ·
+        ${String(signal)}
+      </div>
+
+      <div class="signal-reason">
+        ${
+          abs
+          ? (
+              abs.type ||
+              abs.signal ||
+              abs.direction ||
+              "Absorption"
+            )
+          : "بدون جذب"
+        }
+      </div>
 
     `;
 
-    body.appendChild(tr);
+    card.onclick=()=>{
+
+      $("symbol").value=
+        symbol;
+
+      analyze();
+
+    };
+
+    box.appendChild(card);
 
   }
 
 }
 
-function resetView(){
+function startScanner(){
 
-  if(!data?.candles?.length)
+  if(scanning)
     return;
 
-  viewEnd=data.candles.length;
+  scanning=true;
 
-  viewStart=Math.max(
-    0,
-    viewEnd-80
+  setScanStatus(
+    "🟢 اسکن خودکار بازار فعال است"
+  );
+
+  scanOnce();
+
+  scanTimer=
+    setInterval(
+      scanOnce,
+      15000
+    );
+
+}
+
+function stopScanner(){
+
+  scanning=false;
+
+  if(scanTimer){
+
+    clearInterval(
+      scanTimer
+    );
+
+    scanTimer=null;
+
+  }
+
+  setScanStatus(
+    "⚪ اسکنر متوقف شد"
   );
 
 }
 
-function zoom(factor){
+function initAudio(){
 
-  if(!data?.candles?.length)
+  if(
+    !audioContext
+  ){
+
+    audioContext=
+      new (
+        window.AudioContext ||
+        window.webkitAudioContext
+      )();
+
+  }
+
+  if(
+    audioContext.state===
+    "suspended"
+  ){
+
+    audioContext.resume();
+
+  }
+
+}
+
+function playTone(
+  frequency,
+  duration,
+  volume
+){
+
+  initAudio();
+
+  const now=
+    audioContext.currentTime;
+
+  const osc=
+    audioContext.createOscillator();
+
+  const gain=
+    audioContext.createGain();
+
+  osc.type=
+    "sine";
+
+  osc.frequency.setValueAtTime(
+    frequency,
+    now
+  );
+
+  gain.gain.setValueAtTime(
+    0.0001,
+    now
+  );
+
+  gain.gain.exponentialRampToValueAtTime(
+    Math.max(
+      .0001,
+      volume
+    ),
+    now+.025
+  );
+
+  gain.gain.exponentialRampToValueAtTime(
+    .0001,
+    now+duration
+  );
+
+  osc.connect(gain);
+  gain.connect(
+    audioContext.destination
+  );
+
+  osc.start(now);
+
+  osc.stop(
+    now+duration+.03
+  );
+
+}
+
+async function handleScannerAlert(
+  signal
+){
+
+  if(!signal)
     return;
 
-  const count=
-    viewEnd-viewStart;
-
-  const center=
-    (viewStart+viewEnd)/2;
-
-  let next=
-    Math.round(
-      count*factor
+  const symbol=
+    normalizeSymbol(
+      signal.symbol ||
+      signal.ticker?.symbol
     );
 
-  next=Math.max(
-    8,
-    Math.min(
-      data.candles.length,
-      next
-    )
-  );
-
-  viewStart=Math.round(
-    center-next/2
-  );
-
-  viewEnd=
-    viewStart+next;
-
-  if(viewStart<0){
-
-    viewStart=0;
-    viewEnd=next;
-
-  }
-
-  if(viewEnd>data.candles.length){
-
-    viewEnd=data.candles.length;
-    viewStart=
-      Math.max(
-        0,
-        viewEnd-next
-      );
-
-  }
-
-  draw();
-
-}
-
-function move(amount){
-
-  if(!data?.candles?.length)
+  if(!symbol)
     return;
 
-  const count=
-    viewEnd-viewStart;
-
-  const step=Math.max(
-    1,
-    Math.round(
-      count*amount
-    )
-  );
-
-  viewStart+=step;
-  viewEnd+=step;
-
-  if(viewStart<0){
-
-    viewStart=0;
-    viewEnd=count;
-
-  }
-
-  if(viewEnd>data.candles.length){
-
-    viewEnd=data.candles.length;
-
-    viewStart=
-      Math.max(
-        0,
-        viewEnd-count
-      );
-
-  }
-
-  draw();
-
-}
-
-canvas.addEventListener(
-  "wheel",
-  e=>{
-
-    e.preventDefault();
-
-    zoom(
-      e.deltaY<0
-      ? .78
-      : 1.28
-    );
-
-  },
-  {
-    passive:false
-  }
-);
-
-canvas.addEventListener(
-  "pointerdown",
-  e=>{
-
-    dragging=true;
-
-    dragStartX=e.clientX;
-
-    dragStartStart=viewStart;
-
-    canvas.setPointerCapture(
-      e.pointerId
-    );
-
-  }
-);
-
-canvas.addEventListener(
-  "pointermove",
-  e=>{
-
-    if(!dragging) return;
-
-    if(!data?.candles?.length)
-      return;
-
-    const width=
-      canvas.getBoundingClientRect().width;
-
-    const count=
-      viewEnd-viewStart;
-
-    const dx=
-      e.clientX-dragStartX;
-
-    const shift=Math.round(
-      -dx/Math.max(
-        1,
-        width
-      )*
-      count
-    );
-
-    let start=
-      dragStartStart+shift;
-
-    start=Math.max(
+  const score=
+    Math.max(
       0,
       Math.min(
-        data.candles.length-count,
-        start
+        100,
+        num(
+          signal.score ??
+          signal.smartMoneyScore
+        )
       )
     );
 
-    viewStart=start;
-    viewEnd=start+count;
+  const absorption=
+    signal.absorption;
 
-    draw();
+  const pump=
+    num(
+      signal.pumpPercent ??
+      signal.changePercent ??
+      signal.priceChangePercent ??
+      signal.movement?.percent
+    );
+
+  const alertKey=
+    symbol+
+    "_"+
+    Math.round(score)+
+    "_"+
+    Math.round(pump);
+
+  if(
+    alertKey===
+    lastAlertKey
+  )
+    return;
+
+  lastAlertKey=
+    alertKey;
+
+  if(
+    masterVolume<=0
+  )
+    return;
+
+  alertLevel=
+    Math.min(
+      100,
+      Math.max(
+        alertLevel+10,
+        score
+      )
+    );
+
+  const volume=
+    (
+      masterVolume/100
+    )*
+    (
+      .025+
+      alertLevel/100*.10
+    );
+
+  playTone(
+    520+
+    score*5,
+    .14,
+    volume
+  );
+
+  setTimeout(
+    ()=>{
+      playTone(
+        760+
+        score*4,
+        .18,
+        volume*.8
+      );
+    },
+    170
+  );
+
+  if(score>=70){
+
+    setTimeout(
+      ()=>{
+        playTone(
+          980,
+          .24,
+          volume*.75
+        );
+      },
+      400
+    );
 
   }
-);
 
-canvas.addEventListener(
-  "pointerup",
-  ()=>{
-    dragging=false;
-  }
-);
+  $("symbol").value=
+    symbol;
 
-canvas.addEventListener(
-  "pointercancel",
-  ()=>{
-    dragging=false;
-  }
-);
+  try{
 
-canvas.addEventListener(
-  "dblclick",
-  ()=>{
+    const d=
+      await api(
+        "/api/analyze?symbol="+
+        encodeURIComponent(symbol)+
+        "&interval="+
+        encodeURIComponent(selectedTF)
+      );
+
+    data=d;
+
+    normalizeData();
+
     resetView();
+
+    heatHistory=[];
+
+    addHeatSnapshot();
+
+    renderCards();
+
+    renderTrades();
+
     draw();
+
+    setStatus(
+      "🚨 سیگنال پیدا شد: "+
+      symbol+
+      " · Score "+
+      score
+    );
+
+  }catch(e){
+
+    console.error(e);
+
+  }
+
+}
+
+$("volume").value=
+  masterVolume;
+
+$("volumeText").textContent=
+  masterVolume+"%";
+
+$("volume").addEventListener(
+  "input",
+  e=>{
+
+    masterVolume=
+      Number(e.target.value);
+
+    localStorage.setItem(
+      "of_volume",
+      masterVolume
+    );
+
+    $("volumeText").textContent=
+      masterVolume+"%";
+
   }
 );
 
-$("zoomIn").onclick=()=>{
-  zoom(.78);
-};
+$("soundTest").onclick=()=>{
 
-$("zoomOut").onclick=()=>{
-  zoom(1.28);
-};
+  initAudio();
 
-$("leftBtn").onclick=()=>{
-  move(-.55);
-};
+  playTone(
+    650,
+    .16,
+    (
+      masterVolume/100
+    )*.12
+  );
 
-$("rightBtn").onclick=()=>{
-  move(.55);
-};
+  setTimeout(
+    ()=>{
+      playTone(
+        900,
+        .2,
+        (
+          masterVolume/100
+        )*.1
+      );
+    },
+    180
+  );
 
-$("resetBtn").onclick=()=>{
-  resetView();
-  draw();
 };
 
 $("analyzeBtn").onclick=
@@ -2925,57 +4695,142 @@ $("liveBtn").onclick=
   startLive;
 
 $("stopBtn").onclick=
+  stopLive;
+
+$("scanStart").onclick=
+  startScanner;
+
+$("scanStop").onclick=
+  stopScanner;
+
+$("scanOnce").onclick=
+  scanOnce;
+
+$("zoomIn").onclick=
   ()=>{
-    stopLive();
-    setStatus("⚪ LIVE متوقف شد");
+    zoomAt(.72);
   };
 
-document.querySelectorAll(
-  "[data-tf]"
-).forEach(btn=>{
-
-  btn.onclick=async()=>{
-
-    document
-      .querySelectorAll("[data-tf]")
-      .forEach(x =>
-        x.classList.remove("active")
-      );
-
-    btn.classList.add("active");
-
-    selectedTF=
-      btn.dataset.tf;
-
-    stopLive();
-
-    await analyze();
-
+$("zoomOut").onclick=
+  ()=>{
+    zoomAt(1.35);
   };
 
-});
+$("moveLeft").onclick=
+  ()=>{
+    moveChart(-.55);
+  };
 
-document.querySelectorAll(
-  "[data-layer]"
-).forEach(btn=>{
+$("moveRight").onclick=
+  ()=>{
+    moveChart(.55);
+  };
 
-  btn.onclick=()=>{
+$("reset").onclick=
+  ()=>{
+    resetView();
+    draw();
+  };
 
-    const key=
-      btn.dataset.layer;
+document
+  .querySelectorAll(
+    "[data-tf]"
+  )
+  .forEach(
+    button=>{
 
-    layers[key]=!layers[key];
+      button.onclick=
+        async()=>{
 
-    btn.classList.toggle(
-      "active",
-      layers[key]
+          document
+            .querySelectorAll(
+              "[data-tf]"
+            )
+            .forEach(
+              x=>
+                x.classList.remove(
+                  "active"
+                )
+            );
+
+          button.classList.add(
+            "active"
+          );
+
+          selectedTF=
+            button.dataset.tf;
+
+          await analyze();
+
+        };
+
+    }
+  );
+
+document
+  .querySelectorAll(
+    "[data-layer]"
+  )
+  .forEach(
+    button=>{
+
+      button.onclick=()=>{
+
+        const key=
+          button.dataset.layer;
+
+        layers[key]=
+          !layers[key];
+
+        button.classList.toggle(
+          "active",
+          layers[key]
+        );
+
+        draw();
+
+      };
+
+    }
+  );
+
+$("modeBidAsk").onclick=()=>{
+
+  footprintMode=
+    "bidask";
+
+  $("modeBidAsk")
+    .classList.add(
+      "active"
     );
 
-    draw();
+  $("modeDelta")
+    .classList.remove(
+      "active"
+    );
 
-  };
+  draw();
 
-});
+};
+
+$("modeDelta").onclick=()=>{
+
+  footprintMode=
+    "delta";
+
+  $("modeDelta")
+    .classList.add(
+      "active"
+    );
+
+  $("modeBidAsk")
+    .classList.remove(
+      "active"
+    );
+
+  draw();
+
+};
 
 $("symbol").addEventListener(
   "keydown",
@@ -2983,6 +4838,470 @@ $("symbol").addEventListener(
 
     if(e.key==="Enter")
       analyze();
+
+  }
+);
+
+/* =========================
+   TOUCH / POINTER
+========================= */
+
+canvas.addEventListener(
+  "pointerdown",
+  e=>{
+
+    pointers.set(
+      e.pointerId,
+      {
+        x:e.clientX,
+        y:e.clientY
+      }
+    );
+
+    canvas.setPointerCapture(
+      e.pointerId
+    );
+
+    if(
+      pointers.size===1
+    ){
+
+      dragging=true;
+
+      dragStartX=
+        e.clientX;
+
+      dragStartView=
+        viewStart;
+
+    }
+
+    if(
+      pointers.size===2
+    ){
+
+      const pts=
+        [...pointers.values()];
+
+      pinchStartDistance=
+        Math.hypot(
+          pts[0].x-pts[1].x,
+          pts[0].y-pts[1].y
+        );
+
+      pinchStartCount=
+        viewEnd-viewStart;
+
+      dragging=false;
+
+    }
+
+  }
+);
+
+canvas.addEventListener(
+  "pointermove",
+  e=>{
+
+    if(
+      !pointers.has(
+        e.pointerId
+      )
+    )
+      return;
+
+    pointers.set(
+      e.pointerId,
+      {
+        x:e.clientX,
+        y:e.clientY
+      }
+    );
+
+    if(
+      pointers.size===2
+    ){
+
+      const pts=
+        [...pointers.values()];
+
+      const distance=
+        Math.hypot(
+          pts[0].x-pts[1].x,
+          pts[0].y-pts[1].y
+        );
+
+      if(
+        pinchStartDistance>0 &&
+        data?.candles?.length
+      ){
+
+        const factor=
+          pinchStartDistance/
+          distance;
+
+        let next=
+          Math.round(
+            pinchStartCount*
+            factor
+          );
+
+        next=Math.max(
+          5,
+          Math.min(
+            data.candles.length,
+            next
+          )
+        );
+
+        const center=
+          (
+            viewStart+
+            viewEnd
+          )/2;
+
+        viewStart=
+          Math.round(
+            center-next/2
+          );
+
+        viewEnd=
+          viewStart+next;
+
+        if(viewStart<0){
+
+          viewStart=0;
+          viewEnd=next;
+
+        }
+
+        if(
+          viewEnd>
+          data.candles.length
+        ){
+
+          viewEnd=
+            data.candles.length;
+
+          viewStart=
+            Math.max(
+              0,
+              viewEnd-next
+            );
+
+        }
+
+        draw();
+
+      }
+
+      return;
+
+    }
+
+    if(
+      dragging &&
+      pointers.size===1
+    ){
+
+      if(!data?.candles?.length)
+        return;
+
+      const rect=
+        canvas.getBoundingClientRect();
+
+      const count=
+        viewEnd-viewStart;
+
+      const dx=
+        e.clientX-
+        dragStartX;
+
+      const shift=
+        Math.round(
+          -dx/
+          Math.max(
+            1,
+            rect.width
+          )*
+          count
+        );
+
+      let start=
+        dragStartView+
+        shift;
+
+      start=Math.max(
+        0,
+        Math.min(
+          data.candles.length-count,
+          start
+        )
+      );
+
+      viewStart=start;
+      viewEnd=
+        start+count;
+
+      draw();
+
+    }
+
+  }
+);
+
+canvas.addEventListener(
+  "pointerup",
+  e=>{
+
+    const wasSingle=
+      pointers.size===1;
+
+    const x=e.clientX;
+
+    pointers.delete(
+      e.pointerId
+    );
+
+    if(
+      wasSingle &&
+      !dragging
+    ){
+
+      const rect=
+        canvas.getBoundingClientRect();
+
+      const localX=
+        x-
+        rect.left;
+
+      const index=
+        candleAtX(
+          localX
+        );
+
+      const now=
+        Date.now();
+
+      if(
+        now-lastTap<330 &&
+        index>=0
+      ){
+
+        focusCandle(
+          index
+        );
+
+      }else if(
+        index>=0
+      ){
+
+        selectedCandle=
+          index;
+
+        draw();
+
+      }
+
+      lastTap=now;
+
+    }
+
+    dragging=false;
+
+    if(
+      pointers.size<2
+    ){
+
+      pinchStartDistance=0;
+
+    }
+
+  }
+);
+
+canvas.addEventListener(
+  "pointercancel",
+  e=>{
+
+    pointers.delete(
+      e.pointerId
+    );
+
+    dragging=false;
+
+  }
+);
+
+canvas.addEventListener(
+  "wheel",
+  e=>{
+
+    e.preventDefault();
+
+    const rect=
+      canvas.getBoundingClientRect();
+
+    const x=
+      e.clientX-
+      rect.left;
+
+    const ratio=
+      Math.max(
+        0,
+        Math.min(
+          1,
+          (
+            x-55
+          )/
+          Math.max(
+            1,
+            rect.width-180
+          )
+        )
+      );
+
+    zoomAt(
+      e.deltaY<0
+      ? .72
+      : 1.38,
+      ratio
+    );
+
+  },
+  {
+    passive:false
+  }
+);
+
+canvas.addEventListener(
+  "pointermove",
+  e=>{
+
+    const rect=
+      canvas.getBoundingClientRect();
+
+    const x=
+      e.clientX-
+      rect.left;
+
+    const y=
+      e.clientY-
+      rect.top;
+
+    if(
+      !data?.candles?.length
+    ){
+
+      crosshairInfo.textContent=
+        "—";
+
+      return;
+
+    }
+
+    const left=55;
+    const right=
+      rect.width-125;
+
+    const top=20;
+    const bottom=
+      rect.height-
+      (
+        layers.delta
+        ? 115
+        : 25
+      );
+
+    const visible=
+      getVisible();
+
+    const range=
+      getRange(
+        visible
+      );
+
+    const price=
+      y2p(
+        y,
+        range.low,
+        range.high,
+        top,
+        bottom
+      );
+
+    const index=
+      candleAtX(x);
+
+    if(index>=0){
+
+      const c=
+        data.candles[index];
+
+      const fp=
+        getFP(index);
+
+      const levels=
+        getLevels(fp);
+
+      let levelText="";
+
+      if(levels.length){
+
+        let closest=
+          levels[0];
+
+        let best=
+          Math.abs(
+            closest.price-price
+          );
+
+        for(
+          const l of levels
+        ){
+
+          const d=
+            Math.abs(
+              l.price-price
+            );
+
+          if(d<best){
+
+            best=d;
+            closest=l;
+
+          }
+
+        }
+
+        levelText=
+          " | L "+
+          priceFmt(
+            closest.price
+          )+
+          " B "+
+          fmt(
+            closest.bid
+          )+
+          " A "+
+          fmt(
+            closest.ask
+          )+
+          " Δ "+
+          fmt(
+            closest.delta
+          );
+
+      }
+
+      crosshairInfo.innerHTML=
+        "Candle "+
+        index+
+        " · "+
+        priceFmt(price)+
+        levelText;
+
+    }
 
   }
 );
