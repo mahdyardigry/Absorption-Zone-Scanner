@@ -1,0 +1,1948 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+
+<title>Absorption Zone Scanner</title>
+
+<style>
+*{
+  box-sizing:border-box;
+}
+
+html{
+  scroll-behavior:smooth;
+}
+
+body{
+  margin:0;
+  font-family:
+    Tahoma,
+    Arial,
+    sans-serif;
+  background:
+    radial-gradient(
+      circle at top,
+      #172033 0,
+      #080b12 42%,
+      #05070b 100%
+    );
+  color:#eef2f7;
+  min-height:100vh;
+}
+
+button,
+input{
+  font:inherit;
+}
+
+button{
+  cursor:pointer;
+}
+
+.container{
+  width:min(1400px,96%);
+  margin:auto;
+  padding:18px 0 40px;
+}
+
+/* =========================
+   HEADER
+========================= */
+
+.header{
+  background:rgba(16,22,34,.94);
+  border:1px solid #283449;
+  border-radius:20px;
+  padding:20px;
+  margin-bottom:16px;
+  box-shadow:0 15px 40px rgba(0,0,0,.25);
+}
+
+.header h1{
+  margin:0 0 8px;
+  font-size:25px;
+}
+
+.header p{
+  margin:0;
+  color:#9ca9bb;
+  line-height:1.8;
+}
+
+.status-row{
+  display:flex;
+  flex-wrap:wrap;
+  gap:10px;
+  margin-top:16px;
+}
+
+.badge{
+  padding:8px 12px;
+  border-radius:999px;
+  background:#111827;
+  border:1px solid #2c394e;
+  color:#b9c5d5;
+  font-size:13px;
+}
+
+.badge.online{
+  color:#5ee7a2;
+  border-color:#1e6d4b;
+}
+
+/* =========================
+   CONTROL
+========================= */
+
+.panel{
+  background:rgba(13,18,29,.94);
+  border:1px solid #263248;
+  border-radius:18px;
+  padding:16px;
+  margin-bottom:16px;
+}
+
+.controls{
+  display:grid;
+  grid-template-columns:
+    minmax(180px,1fr)
+    auto
+    auto;
+  gap:10px;
+}
+
+input{
+  width:100%;
+  background:#080d16;
+  color:#fff;
+  border:1px solid #334158;
+  border-radius:12px;
+  padding:13px 14px;
+  outline:none;
+}
+
+input:focus{
+  border-color:#5b8cff;
+}
+
+button{
+  border:0;
+  border-radius:12px;
+  padding:12px 18px;
+  color:white;
+  background:#243149;
+}
+
+button:hover{
+  filter:brightness(1.15);
+}
+
+button.primary{
+  background:#1769d2;
+}
+
+button.scan{
+  background:#148b57;
+}
+
+button.stop{
+  background:#8d2835;
+}
+
+button:disabled{
+  opacity:.5;
+  cursor:not-allowed;
+}
+
+.scan-info{
+  margin-top:12px;
+  color:#8f9bad;
+  font-size:13px;
+}
+
+/* =========================
+   SETTINGS
+========================= */
+
+.settings{
+  display:grid;
+  grid-template-columns:
+    repeat(5,minmax(120px,1fr));
+  gap:10px;
+}
+
+.setting{
+  background:#0a101b;
+  border:1px solid #202d42;
+  border-radius:12px;
+  padding:12px;
+}
+
+.setting .label{
+  color:#8997aa;
+  font-size:12px;
+  margin-bottom:6px;
+}
+
+.setting .value{
+  font-weight:bold;
+}
+
+/* =========================
+   SUMMARY
+========================= */
+
+.summary{
+  display:grid;
+  grid-template-columns:
+    repeat(4,minmax(150px,1fr));
+  gap:10px;
+  margin-bottom:16px;
+}
+
+.stat{
+  background:#0d1421;
+  border:1px solid #263349;
+  border-radius:15px;
+  padding:15px;
+}
+
+.stat .title{
+  color:#8997aa;
+  font-size:12px;
+}
+
+.stat .number{
+  margin-top:7px;
+  font-size:22px;
+  font-weight:bold;
+}
+
+/* =========================
+   RESULTS
+========================= */
+
+.results{
+  display:grid;
+  grid-template-columns:
+    repeat(auto-fill,minmax(330px,1fr));
+  gap:14px;
+}
+
+.card{
+  background:
+    linear-gradient(
+      145deg,
+      rgba(17,25,40,.98),
+      rgba(8,12,20,.98)
+    );
+  border:1px solid #2a3850;
+  border-radius:18px;
+  overflow:hidden;
+  transition:.2s;
+}
+
+.card:hover{
+  transform:translateY(-2px);
+  border-color:#435675;
+}
+
+.card-head{
+  padding:15px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:10px;
+  border-bottom:1px solid #222e42;
+}
+
+.symbol{
+  font-size:19px;
+  font-weight:bold;
+}
+
+.signal{
+  font-size:11px;
+  padding:6px 9px;
+  border-radius:999px;
+  background:#202b3d;
+  color:#b7c4d6;
+}
+
+.signal.strong{
+  background:#103f2b;
+  color:#61f0a7;
+}
+
+.signal.long{
+  background:#173b60;
+  color:#70b4ff;
+}
+
+.signal.watch{
+  background:#473813;
+  color:#ffd96a;
+}
+
+.score{
+  padding:16px;
+  text-align:center;
+  border-bottom:1px solid #222e42;
+}
+
+.score-number{
+  font-size:39px;
+  font-weight:900;
+}
+
+.score-label{
+  color:#8997aa;
+  font-size:12px;
+}
+
+.score-bar{
+  margin-top:12px;
+  height:7px;
+  background:#202a3a;
+  border-radius:10px;
+  overflow:hidden;
+}
+
+.score-fill{
+  height:100%;
+  width:0%;
+  background:#51d994;
+  transition:.4s;
+}
+
+.card-body{
+  padding:15px;
+}
+
+.zone{
+  background:#151f2f;
+  border:1px solid #31435e;
+  border-radius:12px;
+  padding:12px;
+  margin-bottom:12px;
+}
+
+.zone-title{
+  color:#ffbd5c;
+  font-size:12px;
+  margin-bottom:6px;
+}
+
+.zone-price{
+  font-size:18px;
+  font-weight:bold;
+}
+
+.grid{
+  display:grid;
+  grid-template-columns:
+    1fr 1fr;
+  gap:8px;
+}
+
+.metric{
+  background:#0a101a;
+  border:1px solid #1e2a3d;
+  border-radius:10px;
+  padding:9px;
+}
+
+.metric-title{
+  font-size:11px;
+  color:#78869a;
+}
+
+.metric-value{
+  margin-top:4px;
+  font-weight:bold;
+}
+
+.positive{
+  color:#54e49a;
+}
+
+.negative{
+  color:#ff6f7e;
+}
+
+.neutral{
+  color:#c5cfdd;
+}
+
+.card-foot{
+  padding:12px 15px;
+  border-top:1px solid #222e42;
+  color:#7f8da1;
+  font-size:11px;
+}
+
+/* =========================
+   DETAIL
+========================= */
+
+.detail{
+  display:none;
+  margin-top:16px;
+}
+
+.detail.active{
+  display:block;
+}
+
+.detail h2{
+  margin-top:0;
+}
+
+.detail-grid{
+  display:grid;
+  grid-template-columns:
+    repeat(3,minmax(180px,1fr));
+  gap:10px;
+}
+
+.detail-box{
+  background:#0a1019;
+  border:1px solid #26344a;
+  border-radius:12px;
+  padding:13px;
+}
+
+.detail-box h3{
+  font-size:13px;
+  margin:0 0 10px;
+  color:#b7c3d3;
+}
+
+.detail-row{
+  display:flex;
+  justify-content:space-between;
+  gap:10px;
+  padding:5px 0;
+  border-bottom:1px solid #172131;
+  font-size:12px;
+}
+
+.detail-row:last-child{
+  border-bottom:0;
+}
+
+/* =========================
+   EMPTY / LOADING
+========================= */
+
+.empty{
+  text-align:center;
+  padding:45px 15px;
+  color:#7f8da1;
+  background:#0c121d;
+  border:1px dashed #29374d;
+  border-radius:16px;
+}
+
+.loading{
+  display:none;
+  text-align:center;
+  padding:25px;
+  color:#aab6c7;
+}
+
+.loading.active{
+  display:block;
+}
+
+.spinner{
+  width:30px;
+  height:30px;
+  border:3px solid #29364a;
+  border-top-color:#6da6ff;
+  border-radius:50%;
+  margin:0 auto 12px;
+  animation:spin .8s linear infinite;
+}
+
+@keyframes spin{
+  to{
+    transform:rotate(360deg);
+  }
+}
+
+.error{
+  display:none;
+  background:#351820;
+  border:1px solid #713341;
+  color:#ff9cab;
+  border-radius:12px;
+  padding:12px;
+  margin-bottom:14px;
+}
+
+.error.active{
+  display:block;
+}
+
+/* =========================
+   RESPONSIVE
+========================= */
+
+@media(max-width:900px){
+
+  .controls{
+    grid-template-columns:1fr 1fr;
+  }
+
+  .controls input{
+    grid-column:1/-1;
+  }
+
+  .settings{
+    grid-template-columns:
+      repeat(3,1fr);
+  }
+
+  .summary{
+    grid-template-columns:
+      repeat(2,1fr);
+  }
+
+  .detail-grid{
+    grid-template-columns:1fr 1fr;
+  }
+}
+
+@media(max-width:600px){
+
+  .container{
+    width:94%;
+    padding-top:10px;
+  }
+
+  .header{
+    padding:16px;
+    border-radius:16px;
+  }
+
+  .header h1{
+    font-size:21px;
+  }
+
+  .controls{
+    grid-template-columns:1fr;
+  }
+
+  .controls input{
+    grid-column:auto;
+  }
+
+  .settings{
+    grid-template-columns:
+      repeat(2,1fr);
+  }
+
+  .summary{
+    grid-template-columns:
+      repeat(2,1fr);
+  }
+
+  .results{
+    grid-template-columns:1fr;
+  }
+
+  .detail-grid{
+    grid-template-columns:1fr;
+  }
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+  <section class="header">
+
+    <h1>🔥 Absorption Zone Scanner</h1>
+
+    <p>
+      شناسایی ناحیه جذب سفارش در Bybit Futures
+      با تمرکز اصلی روی 5 دقیقه و تأیید
+      15M / 3M / 1M
+    </p>
+
+    <div class="status-row">
+
+      <div
+        id="connectionBadge"
+        class="badge"
+      >
+        🔴 در حال اتصال...
+      </div>
+
+      <div class="badge">
+        Bybit Futures
+      </div>
+
+      <div class="badge">
+        Main TF: 5M
+      </div>
+
+      <div class="badge">
+        Absorption + Retest
+      </div>
+
+    </div>
+
+  </section>
+
+
+  <div
+    id="errorBox"
+    class="error"
+  ></div>
+
+
+  <section class="panel">
+
+    <div class="controls">
+
+      <input
+        id="symbolInput"
+        type="text"
+        placeholder="مثلاً BTCUSDT یا PEPEUSDT"
+        autocomplete="off"
+      >
+
+      <button
+        id="analyzeBtn"
+        class="primary"
+      >
+        🔎 تحلیل ارز
+      </button>
+
+      <button
+        id="scanBtn"
+        class="scan"
+      >
+        🚀 شروع اسکن
+      </button>
+
+    </div>
+
+    <div class="scan-info">
+      اسکنر به‌دنبال ساختار
+      Pump → Weak Candle → Absorption → Retest
+      می‌گردد.
+    </div>
+
+  </section>
+
+
+  <section class="panel">
+
+    <div class="settings">
+
+      <div class="setting">
+        <div class="label">
+          تایم‌فریم اصلی
+        </div>
+        <div class="value">
+          5M
+        </div>
+      </div>
+
+      <div class="setting">
+        <div class="label">
+          تأیید روند
+        </div>
+        <div class="value">
+          15M
+        </div>
+      </div>
+
+      <div class="setting">
+        <div class="label">
+          تأیید سریع
+        </div>
+        <div class="value">
+          3M
+        </div>
+      </div>
+
+      <div class="setting">
+        <div class="label">
+          ورود دقیق
+        </div>
+        <div class="value">
+          1M
+        </div>
+      </div>
+
+      <div class="setting">
+        <div class="label">
+          حداقل Volume
+        </div>
+        <div class="value">
+          1.5×
+        </div>
+      </div>
+
+    </div>
+
+  </section>
+
+
+  <section class="summary">
+
+    <div class="stat">
+      <div class="title">
+        نواحی شناسایی‌شده
+      </div>
+      <div
+        id="totalResults"
+        class="number"
+      >
+        0
+      </div>
+    </div>
+
+    <div class="stat">
+      <div class="title">
+        سیگنال قوی
+      </div>
+      <div
+        id="strongResults"
+        class="number"
+      >
+        0
+      </div>
+    </div>
+
+    <div class="stat">
+      <div class="title">
+        میانگین امتیاز
+      </div>
+      <div
+        id="averageScore"
+        class="number"
+      >
+        0
+      </div>
+    </div>
+
+    <div class="stat">
+      <div class="title">
+        آخرین بروزرسانی
+      </div>
+      <div
+        id="lastUpdate"
+        class="number"
+        style="font-size:15px"
+      >
+        —
+      </div>
+    </div>
+
+  </section>
+
+
+  <div
+    id="loading"
+    class="loading"
+  >
+    <div class="spinner"></div>
+    <div>
+      در حال بررسی بازار Bybit...
+    </div>
+  </div>
+
+
+  <section
+    id="results"
+    class="results"
+  ></section>
+
+
+  <section
+    id="detail"
+    class="detail panel"
+  >
+
+    <h2>
+      🔬 جزئیات تحلیل
+    </h2>
+
+    <div
+      id="detailContent"
+      class="detail-grid"
+    ></div>
+
+  </section>
+
+</div>
+
+
+<script>
+
+/* =========================================================
+   STATE
+========================================================= */
+
+let scanning = false;
+
+
+/* =========================================================
+   ELEMENTS
+========================================================= */
+
+const connectionBadge =
+  document.getElementById(
+    "connectionBadge"
+  );
+
+const errorBox =
+  document.getElementById(
+    "errorBox"
+  );
+
+const symbolInput =
+  document.getElementById(
+    "symbolInput"
+  );
+
+const analyzeBtn =
+  document.getElementById(
+    "analyzeBtn"
+  );
+
+const scanBtn =
+  document.getElementById(
+    "scanBtn"
+  );
+
+const loading =
+  document.getElementById(
+    "loading"
+  );
+
+const results =
+  document.getElementById(
+    "results"
+  );
+
+const detail =
+  document.getElementById(
+    "detail"
+  );
+
+const detailContent =
+  document.getElementById(
+    "detailContent"
+  );
+
+
+/* =========================================================
+   HELPERS
+========================================================= */
+
+function esc(value){
+
+  return String(
+    value ?? ""
+  )
+  .replaceAll("&","&amp;")
+  .replaceAll("<","&lt;")
+  .replaceAll(">","&gt;")
+  .replaceAll('"',"&quot;")
+  .replaceAll("'","&#039;");
+}
+
+
+function number(
+  value,
+  digits = 2
+){
+
+  const n =
+    Number(value);
+
+  if(
+    !Number.isFinite(n)
+  ){
+    return "—";
+  }
+
+  return n.toLocaleString(
+    "en-US",
+    {
+      maximumFractionDigits:
+        digits
+    }
+  );
+}
+
+
+function price(value){
+
+  const n =
+    Number(value);
+
+  if(
+    !Number.isFinite(n)
+  ){
+    return "—";
+  }
+
+  if(n >= 1000){
+    return n.toLocaleString(
+      "en-US",
+      {
+        maximumFractionDigits:2
+      }
+    );
+  }
+
+  if(n >= 1){
+    return n.toFixed(4);
+  }
+
+  if(n >= .01){
+    return n.toFixed(6);
+  }
+
+  return n.toPrecision(6);
+}
+
+
+function timeText(timestamp){
+
+  if(!timestamp){
+    return "—";
+  }
+
+  const d =
+    new Date(
+      Number(timestamp)
+    );
+
+  return d.toLocaleString(
+    "fa-IR",
+    {
+      month:"2-digit",
+      day:"2-digit",
+      hour:"2-digit",
+      minute:"2-digit"
+    }
+  );
+}
+
+
+function signed(
+  value,
+  digits=2
+){
+
+  const n =
+    Number(value);
+
+  if(
+    !Number.isFinite(n)
+  ){
+    return "—";
+  }
+
+  return (
+    n >= 0 ? "+" : ""
+  ) +
+  n.toFixed(digits) +
+  "%";
+}
+
+
+/* =========================================================
+   ERROR
+========================================================= */
+
+function showError(message){
+
+  errorBox.textContent =
+    message || "خطای نامشخص";
+
+  errorBox.classList.add(
+    "active"
+  );
+}
+
+
+function hideError(){
+
+  errorBox.classList.remove(
+    "active"
+  );
+
+  errorBox.textContent = "";
+}
+
+
+/* =========================================================
+   API
+========================================================= */
+
+async function api(
+  endpoint
+){
+
+  const response =
+    await fetch(endpoint,{
+      cache:"no-store"
+    });
+
+  const data =
+    await response.json();
+
+  if(
+    !response.ok ||
+    data.ok === false
+  ){
+
+    throw new Error(
+      data.error ||
+      `HTTP ${response.status}`
+    );
+  }
+
+  return data;
+}
+
+
+/* =========================================================
+   HEALTH
+========================================================= */
+
+async function checkHealth(){
+
+  try{
+
+    const data =
+      await api(
+        "/api/health"
+      );
+
+    connectionBadge.textContent =
+      "🟢 Bybit Worker آنلاین";
+
+    connectionBadge.classList.add(
+      "online"
+    );
+
+  }catch(e){
+
+    connectionBadge.textContent =
+      "🔴 Worker آفلاین";
+
+    connectionBadge.classList.remove(
+      "online"
+    );
+
+  }
+
+}
+
+
+/* =========================================================
+   LOADING
+========================================================= */
+
+function setLoading(
+  state
+){
+
+  if(state){
+
+    loading.classList.add(
+      "active"
+    );
+
+  }else{
+
+    loading.classList.remove(
+      "active"
+    );
+
+  }
+
+}
+
+
+/* =========================================================
+   SIGNAL
+========================================================= */
+
+function signalClass(
+  signal
+){
+
+  if(
+    signal ===
+    "STRONG_LONG"
+  ){
+    return "strong";
+  }
+
+  if(
+    signal === "LONG"
+  ){
+    return "long";
+  }
+
+  return "watch";
+}
+
+
+function signalText(
+  signal
+){
+
+  const map = {
+
+    STRONG_LONG:
+      "🟢 STRONG LONG",
+
+    LONG:
+      "🟢 LONG",
+
+    ABSORPTION_WATCH:
+      "🔥 ABSORPTION",
+
+    WATCH:
+      "👀 WATCH"
+
+  };
+
+  return map[signal] ||
+    signal ||
+    "WATCH";
+}
+
+
+/* =========================================================
+   CARD
+========================================================= */
+
+function createCard(
+  item,
+  index
+){
+
+  const score =
+    Number(item.score || 0);
+
+  const delta =
+    Number(
+      item.delta?.deltaPercent || 0
+    );
+
+  const oi =
+    Number(
+      item.openInterest?.changePercent || 0
+    );
+
+  const volumeRatio =
+    Number(
+      item.absorption?.volumeRatio || 0
+    );
+
+  const imbalance =
+    Number(
+      item.orderBook?.imbalance || 0
+    );
+
+  const retest =
+    item.retest || {};
+
+  const zone =
+    item.zone || {};
+
+  return `
+
+  <article
+    class="card"
+    data-index="${index}"
+  >
+
+    <div class="card-head">
+
+      <div class="symbol">
+        ${esc(item.symbol)}
+      </div>
+
+      <div
+        class="signal ${signalClass(
+          item.signal
+        )}"
+      >
+        ${esc(
+          signalText(
+            item.signal
+          )
+        )}
+      </div>
+
+    </div>
+
+
+    <div class="score">
+
+      <div class="score-number">
+        ${number(score,0)}
+      </div>
+
+      <div class="score-label">
+        Absorption Score
+      </div>
+
+      <div class="score-bar">
+        <div
+          class="score-fill"
+          style="width:${Math.min(
+            100,
+            score
+          )}%"
+        ></div>
+      </div>
+
+    </div>
+
+
+    <div class="card-body">
+
+      <div class="zone">
+
+        <div class="zone-title">
+          🔥 ناحیه جذب
+        </div>
+
+        <div class="zone-price">
+          ${price(zone.low)}
+          —
+          ${price(zone.high)}
+        </div>
+
+      </div>
+
+
+      <div class="grid">
+
+        <div class="metric">
+
+          <div class="metric-title">
+            قیمت فعلی
+          </div>
+
+          <div class="metric-value">
+            ${price(
+              item.currentPrice
+            )}
+          </div>
+
+        </div>
+
+
+        <div class="metric">
+
+          <div class="metric-title">
+            Pump
+          </div>
+
+          <div class="metric-value positive">
+            +${number(
+              item.pump?.percent || 0,
+              2
+            )}%
+          </div>
+
+        </div>
+
+
+        <div class="metric">
+
+          <div class="metric-title">
+            Volume
+          </div>
+
+          <div class="metric-value">
+            ${number(
+              volumeRatio,
+              2
+            )}×
+          </div>
+
+        </div>
+
+
+        <div class="metric">
+
+          <div class="metric-title">
+            Delta
+          </div>
+
+          <div
+            class="metric-value ${
+              delta < 0
+                ? "negative"
+                : "positive"
+            }"
+          >
+            ${signed(
+              delta,
+              1
+            )}
+          </div>
+
+        </div>
+
+
+        <div class="metric">
+
+          <div class="metric-title">
+            OI
+          </div>
+
+          <div
+            class="metric-value ${
+              oi >= 0
+                ? "positive"
+                : "negative"
+            }"
+          >
+            ${signed(
+              oi,
+              2
+            )}
+          </div>
+
+        </div>
+
+
+        <div class="metric">
+
+          <div class="metric-title">
+            Order Book
+          </div>
+
+          <div
+            class="metric-value ${
+              imbalance >= 0
+                ? "positive"
+                : "negative"
+            }"
+          >
+            ${signed(
+              imbalance,
+              1
+            )}
+          </div>
+
+        </div>
+
+
+        <div class="metric">
+
+          <div class="metric-title">
+            Retest
+          </div>
+
+          <div
+            class="metric-value ${
+              retest.success
+                ? "positive"
+                : "neutral"
+            }"
+          >
+            ${
+              retest.success
+                ? "✅ موفق"
+                : retest.found
+                  ? "🟡 لمس"
+                  : "—"
+            }
+          </div>
+
+        </div>
+
+
+        <div class="metric">
+
+          <div class="metric-title">
+            Absorption
+          </div>
+
+          <div class="metric-value">
+            ${number(
+              item.absorption?.score || 0,
+              0
+            )}/100
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+
+
+    <div class="card-foot">
+
+      5M Absorption ·
+      15M / 3M / 1M Confirmation ·
+      ${timeText(
+        item.absorption?.time
+      )}
+
+      <br><br>
+
+      <button
+        onclick="showDetails(${index})"
+        style="width:100%"
+      >
+        🔬 مشاهده جزئیات
+      </button>
+
+    </div>
+
+  </article>
+
+  `;
+}
+
+
+/* =========================================================
+   RENDER
+========================================================= */
+
+let currentResults = [];
+
+
+function renderResults(
+  list
+){
+
+  currentResults =
+    Array.isArray(list)
+      ? list
+      : [];
+
+  results.innerHTML = "";
+
+  if(
+    !currentResults.length
+  ){
+
+    results.innerHTML = `
+
+      <div class="empty">
+
+        🔍
+        هنوز ناحیه جذب معتبر
+        پیدا نشده است.
+
+        <br><br>
+
+        اسکنر به‌دنبال ترکیب
+        Volume + Delta + Price Reaction
+        + Retest است.
+
+      </div>
+
+    `;
+
+    updateSummary([]);
+
+    return;
+  }
+
+  currentResults.forEach(
+    (item,index) => {
+
+      results.insertAdjacentHTML(
+        "beforeend",
+        createCard(
+          item,
+          index
+        )
+      );
+
+    }
+  );
+
+  updateSummary(
+    currentResults
+  );
+}
+
+
+/* =========================================================
+   SUMMARY
+========================================================= */
+
+function updateSummary(
+  list
+){
+
+  const total =
+    list.length;
+
+  const strong =
+    list.filter(
+      x =>
+        x.signal ===
+        "STRONG_LONG"
+    ).length;
+
+  const average =
+    total
+      ? Math.round(
+          list.reduce(
+            (a,b) =>
+              a +
+              Number(
+                b.score || 0
+              ),
+            0
+          ) / total
+        )
+      : 0;
+
+  document.getElementById(
+    "totalResults"
+  ).textContent =
+    total;
+
+  document.getElementById(
+    "strongResults"
+  ).textContent =
+    strong;
+
+  document.getElementById(
+    "averageScore"
+  ).textContent =
+    average;
+
+  document.getElementById(
+    "lastUpdate"
+  ).textContent =
+    total
+      ? new Date()
+          .toLocaleTimeString(
+            "fa-IR",
+            {
+              hour:"2-digit",
+              minute:"2-digit",
+              second:"2-digit"
+            }
+          )
+      : "—";
+}
+
+
+/* =========================================================
+   DETAILS
+========================================================= */
+
+function showDetails(
+  index
+){
+
+  const item =
+    currentResults[index];
+
+  if(!item) return;
+
+  const confirmations =
+    item.confirmations || [];
+
+  detailContent.innerHTML = `
+
+    <div class="detail-box">
+
+      <h3>
+        🔥 Absorption
+      </h3>
+
+      <div class="detail-row">
+        <span>Score</span>
+        <b>
+          ${number(
+            item.absorption?.score,
+            0
+          )}/100
+        </b>
+      </div>
+
+      <div class="detail-row">
+        <span>Open</span>
+        <b>${price(
+          item.absorption?.open
+        )}</b>
+      </div>
+
+      <div class="detail-row">
+        <span>High</span>
+        <b>${price(
+          item.absorption?.high
+        )}</b>
+      </div>
+
+      <div class="detail-row">
+        <span>Low</span>
+        <b>${price(
+          item.absorption?.low
+        )}</b>
+      </div>
+
+      <div class="detail-row">
+        <span>Close</span>
+        <b>${price(
+          item.absorption?.close
+        )}</b>
+      </div>
+
+      <div class="detail-row">
+        <span>Body Ratio</span>
+        <b>${number(
+          Number(
+            item.absorption?.bodyRatio || 0
+          ) * 100,
+          1
+        )}%</b>
+      </div>
+
+      <div class="detail-row">
+        <span>Volume Ratio</span>
+        <b>${number(
+          item.absorption?.volumeRatio,
+          2
+        )}×</b>
+      </div>
+
+    </div>
+
+
+    <div class="detail-box">
+
+      <h3>
+        📊 Order Flow
+      </h3>
+
+      <div class="detail-row">
+        <span>Buy Volume</span>
+        <b>${number(
+          item.delta?.buyVolume,
+          2
+        )}</b>
+      </div>
+
+      <div class="detail-row">
+        <span>Sell Volume</span>
+        <b>${number(
+          item.delta?.sellVolume,
+          2
+        )}</b>
+      </div>
+
+      <div class="detail-row">
+        <span>Delta</span>
+        <b>${signed(
+          item.delta?.deltaPercent,
+          1
+        )}</b>
+      </div>
+
+      <div class="detail-row">
+        <span>CVD Change</span>
+        <b>${number(
+          item.cvd?.change,
+          2
+        )}</b>
+      </div>
+
+      <div class="detail-row">
+        <span>Order Book</span>
+        <b>${signed(
+          item.orderBook?.imbalance,
+          1
+        )}</b>
+      </div>
+
+    </div>
+
+
+    <div class="detail-box">
+
+      <h3>
+        📈 تایید تایم‌فریم‌ها
+      </h3>
+
+      ${
+        confirmations.map(
+          c => `
+
+            <div class="detail-row">
+
+              <span>
+                ${esc(
+                  c.interval
+                )}M
+              </span>
+
+              <b class="${
+                c.bullish
+                  ? "positive"
+                  : "negative"
+              }">
+
+                ${
+                  c.bullish
+                    ? "🟢 Bullish"
+                    : "🔴 Weak"
+                }
+
+                ·
+
+                ${number(
+                  c.score,
+                  0
+                )}
+
+              </b>
+
+            </div>
+
+          `
+        ).join("")
+      }
+
+      <div class="detail-row">
+        <span>Retest</span>
+        <b class="${
+          item.retest?.success
+            ? "positive"
+            : "neutral"
+        }">
+
+          ${
+            item.retest?.success
+              ? "✅ موفق"
+              : item.retest?.found
+                ? "🟡 لمس"
+                : "⏳ هنوز نشده"
+          }
+
+        </b>
+      </div>
+
+      <div class="detail-row">
+        <span>OI Change</span>
+        <b>${signed(
+          item.openInterest?.changePercent,
+          2
+        )}</b>
+      </div>
+
+    </div>
+
+  `;
+
+  detail.classList.add(
+    "active"
+  );
+
+  detail.scrollIntoView({
+    behavior:"smooth",
+    block:"start"
+  });
+}
+
+
+/* =========================================================
+   ANALYZE SYMBOL
+========================================================= */
+
+async function analyzeSymbol(){
+
+  hideError();
+
+  let symbol =
+    symbolInput.value
+      .trim()
+      .toUpperCase();
+
+  if(!symbol){
+
+    showError(
+      "نام ارز را وارد کنید."
+    );
+
+    symbolInput.focus();
+
+    return;
+  }
+
+  if(
+    !symbol.endsWith("USDT")
+  ){
+    symbol += "USDT";
+  }
+
+  symbolInput.value =
+    symbol;
+
+  setLoading(true);
+
+  try{
+
+    const data =
+      await api(
+        "/api/analyze?symbol=" +
+        encodeURIComponent(
+          symbol
+        )
+      );
+
+    if(
+      !data.found
+    ){
+
+      renderResults([]);
+
+      showError(
+        `${symbol} در داده فعلی ناحیه جذب معتبر پیدا نکرد.`
+      );
+
+      return;
+    }
+
+    hideError();
+
+    renderResults([
+      data
+    ]);
+
+  }catch(e){
+
+    showError(
+      e.message
+    );
+
+  }finally{
+
+    setLoading(false);
+
+  }
+
+}
+
+
+/* =========================================================
+   SCAN
+========================================================= */
+
+async function startScan(){
+
+  if(scanning) return;
+
+  scanning = true;
+
+  scanBtn.disabled =
+    true;
+
+  scanBtn.textContent =
+    "⏳ در حال اسکن...";
+
+  analyzeBtn.disabled =
+    true;
+
+  hideError();
+
+  setLoading(true);
+
+  try{
+
+    const data =
+      await api(
+        "/api/scan"
+      );
+
+    renderResults(
+      data.results || []
+    );
+
+  }catch(e){
+
+    showError(
+      e.message
+    );
+
+  }finally{
+
+    setLoading(false);
+
+    scanning = false;
+
+    scanBtn.disabled =
+      false;
+
+    analyzeBtn.disabled =
+      false;
+
+    scanBtn.textContent =
+      "🚀 شروع اسکن";
+
+  }
+
+}
+
+
+/* =========================================================
+   EVENTS
+========================================================= */
+
+analyzeBtn.addEventListener(
+  "click",
+  analyzeSymbol
+);
+
+scanBtn.addEventListener(
+  "click",
+  startScan
+);
+
+symbolInput.addEventListener(
+  "keydown",
+  e => {
+
+    if(
+      e.key === "Enter"
+    ){
+      analyzeSymbol();
+    }
+
+  }
+);
+
+
+/* =========================================================
+   INIT
+========================================================= */
+
+checkHealth();
+
+</script>
+
+</body>
+</html>
