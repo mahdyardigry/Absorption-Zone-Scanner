@@ -1,11 +1,11 @@
 const BYBIT = "https://api.bybit.com";
 
-const VERSION = "ABSORPTION-ZONE-SCANNER-V3";
+const VERSION = "ABSORPTION-ZONE-SCANNER-V4";
 
 const MAIN_TF = "5";
-const CONFIRM_TF_15M = "15";
-const CONFIRM_TF_3M = "3";
-const CONFIRM_TF_1M = "1";
+const TF_15M = "15";
+const TF_3M = "3";
+const TF_1M = "1";
 
 const KLINE_LIMIT = 200;
 const TRADE_LIMIT = 1000;
@@ -30,66 +30,94 @@ const sleep = ms =>
 ========================================================= */
 
 async function bybit(path, params = {}) {
-  const url = new URL(BYBIT + path);
 
-  for (const [key, value] of Object.entries(params)) {
+  const url =
+    new URL(
+      BYBIT + path
+    );
+
+  for (
+    const [key, value]
+    of Object.entries(params)
+  ) {
+
     if (
       value !== undefined &&
       value !== null &&
       value !== ""
     ) {
-      url.searchParams.set(key, String(value));
+
+      url.searchParams.set(
+        key,
+        String(value)
+      );
+
     }
+
   }
 
-  const response = await fetch(
-    url.toString(),
-    {
-      method: "GET",
-      redirect: "follow",
-      headers: {
-        "Accept": "application/json",
-        "User-Agent":
-          "Mozilla/5.0 (compatible; AbsorptionZoneScanner/3.0)",
-        "Cache-Control": "no-cache"
+  const response =
+    await fetch(
+      url.toString(),
+      {
+        method: "GET",
+        redirect: "follow",
+        headers: {
+          "Accept":
+            "application/json",
+          "User-Agent":
+            "Mozilla/5.0 AbsorptionZoneScanner",
+          "Cache-Control":
+            "no-cache"
+        }
       }
-    }
-  );
+    );
 
-  const text = await response.text();
+  const text =
+    await response.text();
 
   let data;
 
   try {
-    data = JSON.parse(text);
+
+    data =
+      JSON.parse(text);
+
   } catch {
+
     throw new Error(
-      `Bybit HTTP ${response.status}: ${text.slice(0, 300)}`
+      `Bybit HTTP ${response.status}: ${text.slice(0,300)}`
     );
+
   }
 
   if (!response.ok) {
+
     throw new Error(
       `Bybit HTTP ${response.status}: ${
         data?.retMsg ||
-        data?.message ||
-        text.slice(0, 300)
+        text.slice(0,300)
       }`
     );
+
   }
 
   if (
     data.retCode !== undefined &&
     data.retCode !== 0
   ) {
+
     throw new Error(
       `Bybit API ${data.retCode}: ${
-        data.retMsg || "Unknown Bybit API error"
+        data.retMsg ||
+        "خطای Bybit"
       }`
     );
+
   }
 
   return data.result;
+
 }
 
 
@@ -97,65 +125,139 @@ async function bybit(path, params = {}) {
    UTILS
 ========================================================= */
 
-function num(v, fallback = 0) {
-  const n = Number(v);
-  return Number.isFinite(n) ? n : fallback;
+function num(
+  value,
+  fallback = 0
+) {
+
+  const n =
+    Number(value);
+
+  return Number.isFinite(n)
+    ? n
+    : fallback;
+
 }
 
-function clamp(v, min = 0, max = 100) {
-  return Math.max(min, Math.min(max, num(v)));
+
+function clamp(
+  value,
+  min = 0,
+  max = 100
+) {
+
+  return Math.max(
+    min,
+    Math.min(
+      max,
+      num(value)
+    )
+  );
+
 }
+
 
 function avg(arr) {
-  if (!Array.isArray(arr) || !arr.length) return 0;
+
+  if (
+    !Array.isArray(arr) ||
+    !arr.length
+  ) {
+    return 0;
+  }
 
   return (
     arr.reduce(
-      (a, b) => a + num(b),
+      (a,b) =>
+        a + num(b),
       0
-    ) / arr.length
+    ) /
+    arr.length
   );
+
 }
+
 
 function sum(arr) {
-  if (!Array.isArray(arr) || !arr.length) return 0;
+
+  if (
+    !Array.isArray(arr) ||
+    !arr.length
+  ) {
+    return 0;
+  }
 
   return arr.reduce(
-    (a, b) => a + num(b),
+    (a,b) =>
+      a + num(b),
     0
   );
+
 }
 
-function pctChange(from, to) {
+
+function pctChange(
+  from,
+  to
+) {
+
   from = num(from);
   to = num(to);
 
-  if (!from) return 0;
+  if (!from) {
+    return 0;
+  }
 
-  return ((to - from) / from) * 100;
+  return (
+    (to - from) /
+    from
+  ) * 100;
+
 }
 
+
 function last(arr) {
+
   return arr?.length
     ? arr[arr.length - 1]
     : null;
+
 }
+
 
 function median(arr) {
-  if (!arr?.length) return 0;
 
-  const a = arr
-    .map(num)
-    .sort((x, y) => x - y);
+  if (!arr?.length) {
+    return 0;
+  }
 
-  const mid = Math.floor(a.length / 2);
+  const values =
+    arr
+      .map(num)
+      .sort(
+        (a,b) => a-b
+      );
 
-  return a.length % 2
-    ? a[mid]
-    : (a[mid - 1] + a[mid]) / 2;
+  const middle =
+    Math.floor(
+      values.length / 2
+    );
+
+  return values.length % 2
+    ? values[middle]
+    : (
+        values[middle - 1] +
+        values[middle]
+      ) / 2;
+
 }
 
-function ema(values, period) {
+
+function ema(
+  values,
+  period
+) {
+
   if (
     !Array.isArray(values) ||
     values.length < period
@@ -164,26 +266,35 @@ function ema(values, period) {
   }
 
   const multiplier =
-    2 / (period + 1);
+    2 /
+    (period + 1);
 
   let result =
-    avg(values.slice(0, period));
+    avg(
+      values.slice(
+        0,
+        period
+      )
+    );
 
   for (
     let i = period;
     i < values.length;
     i++
   ) {
+
     result =
       (
         values[i] -
         result
       ) *
-        multiplier +
+      multiplier +
       result;
+
   }
 
   return result;
+
 }
 
 
@@ -192,86 +303,110 @@ function ema(values, period) {
 ========================================================= */
 
 async function getSymbols() {
-  const result = await bybit(
-    "/v5/market/instruments-info",
-    {
-      category: "linear",
-      status: "Trading",
-      limit: 1000
-    }
-  );
+
+  const result =
+    await bybit(
+      "/v5/market/instruments-info",
+      {
+        category:"linear",
+        status:"Trading",
+        limit:1000
+      }
+    );
 
   const list =
-    Array.isArray(result?.list)
+    Array.isArray(
+      result?.list
+    )
       ? result.list
       : [];
 
   const symbols =
-    list
-      .filter(
-        x =>
-          x &&
-          x.symbol &&
-          x.quoteCoin === "USDT" &&
-          x.contractType ===
-            "LinearPerpetual"
-      )
-      .map(
-        x => ({
-          symbol: x.symbol,
-          baseCoin: x.baseCoin,
-          quoteCoin: x.quoteCoin,
-          status: x.status
-        })
-      );
+    list.filter(
+      x =>
+        x &&
+        x.symbol &&
+        x.quoteCoin === "USDT" &&
+        x.contractType ===
+          "LinearPerpetual"
+    );
 
   let tickerMap = {};
 
   try {
-    const tickerResult =
+
+    const ticker =
       await bybit(
         "/v5/market/tickers",
         {
-          category: "linear"
+          category:"linear"
         }
       );
 
     for (
-      const t of tickerResult?.list || []
+      const t
+      of ticker?.list || []
     ) {
-      tickerMap[t.symbol] = {
+
+      tickerMap[
+        t.symbol
+      ] = {
+
         lastPrice:
           num(t.lastPrice),
+
         volume24h:
           num(t.volume24h),
+
         turnover24h:
           num(t.turnover24h),
+
         price24hPcnt:
-          num(t.price24hPcnt) * 100
+          num(t.price24hPcnt) *
+          100
+
       };
+
     }
+
   } catch {
+
     tickerMap = {};
+
   }
 
   return symbols
     .map(
       s => ({
-        ...s,
-        ...(tickerMap[s.symbol] || {})
+        symbol:
+          s.symbol,
+        baseCoin:
+          s.baseCoin,
+        quoteCoin:
+          s.quoteCoin,
+        status:
+          s.status,
+        ...(tickerMap[
+          s.symbol
+        ] || {})
       })
     )
     .sort(
-      (a, b) =>
+      (a,b) =>
         num(b.turnover24h) -
         num(a.turnover24h)
     )
-    .slice(0, MAX_SYMBOLS);
+    .slice(
+      0,
+      MAX_SYMBOLS
+    );
+
 }
 
-async function findSymbol(input) {
-  const symbols =
-    await getSymbols();
+
+async function findSymbol(
+  input
+) {
 
   const raw =
     String(input || "")
@@ -282,11 +417,17 @@ async function findSymbol(input) {
         ""
       );
 
-  if (!raw) return null;
+  if (!raw) {
+    return null;
+  }
+
+  const symbols =
+    await getSymbols();
 
   return (
     symbols.find(
-      x => x.symbol === raw
+      x =>
+        x.symbol === raw
     ) ||
     symbols.find(
       x =>
@@ -295,6 +436,7 @@ async function findSymbol(input) {
     ) ||
     null
   );
+
 }
 
 
@@ -304,42 +446,52 @@ async function findSymbol(input) {
 
 async function getKlines(
   symbol,
-  interval = MAIN_TF,
+  interval,
   limit = KLINE_LIMIT
 ) {
+
   const result =
     await bybit(
       "/v5/market/kline",
       {
-        category: "linear",
+        category:"linear",
         symbol,
         interval,
         limit
       }
     );
 
-  const rows =
-    Array.isArray(result?.list)
+  return (
+    Array.isArray(
+      result?.list
+    )
       ? result.list
-      : [];
-
-  return rows
+      : []
+  )
     .map(
       row => ({
-        startTime: num(row[0]),
-        open: num(row[1]),
-        high: num(row[2]),
-        low: num(row[3]),
-        close: num(row[4]),
-        volume: num(row[5]),
-        turnover: num(row[6])
+        startTime:
+          num(row[0]),
+        open:
+          num(row[1]),
+        high:
+          num(row[2]),
+        low:
+          num(row[3]),
+        close:
+          num(row[4]),
+        volume:
+          num(row[5]),
+        turnover:
+          num(row[6])
       })
     )
     .sort(
-      (a, b) =>
+      (a,b) =>
         a.startTime -
         b.startTime
     );
+
 }
 
 
@@ -348,10 +500,18 @@ async function getKlines(
 ========================================================= */
 
 function candleStats(c) {
-  const open = num(c.open);
-  const high = num(c.high);
-  const low = num(c.low);
-  const close = num(c.close);
+
+  const open =
+    num(c.open);
+
+  const high =
+    num(c.high);
+
+  const low =
+    num(c.low);
+
+  const close =
+    num(c.close);
 
   const range =
     Math.max(
@@ -377,44 +537,51 @@ function candleStats(c) {
       close
     ) - low;
 
-  const bodyRatio =
-    range > 0
-      ? body / range
-      : 0;
-
-  const upperWickRatio =
-    range > 0
-      ? upperWick / range
-      : 0;
-
-  const lowerWickRatio =
-    range > 0
-      ? lowerWick / range
-      : 0;
-
   const change =
     open > 0
-      ? ((close - open) / open) *
-        100
+      ? (
+          (close - open) /
+          open
+        ) * 100
       : 0;
 
   return {
+
     range,
     body,
+
     upperWick,
     lowerWick,
-    bodyRatio,
-    upperWickRatio,
-    lowerWickRatio,
+
+    bodyRatio:
+      range
+        ? body / range
+        : 0,
+
+    upperWickRatio:
+      range
+        ? upperWick / range
+        : 0,
+
+    lowerWickRatio:
+      range
+        ? lowerWick / range
+        : 0,
+
     change,
+
     bullish:
       close > open,
+
     bearish:
       close < open,
+
     neutral:
       Math.abs(change) <=
       0.15
+
   };
+
 }
 
 
@@ -426,19 +593,17 @@ function volumeAnalysis(
   candles,
   index
 ) {
+
   const current =
     candles[index];
-
-  const start =
-    Math.max(
-      0,
-      index - 20
-    );
 
   const previous =
     candles
       .slice(
-        start,
+        Math.max(
+          0,
+          index - 20
+        ),
         index
       )
       .map(
@@ -455,14 +620,20 @@ function volumeAnalysis(
       : 0;
 
   return {
+
     currentVolume:
       current.volume,
+
     averageVolume,
+
     ratio,
+
     spike:
       ratio >=
       MIN_VOLUME_RATIO
+
   };
+
 }
 
 
@@ -474,6 +645,7 @@ function detectPump(
   candles,
   index
 ) {
+
   if (
     !candles ||
     index < 6
@@ -484,16 +656,14 @@ function detectPump(
   const current =
     candles[index];
 
-  const lookbackStart =
+  const start =
     Math.max(
       0,
       index - 12
     );
 
   const base =
-    candles[
-      lookbackStart
-    ];
+    candles[start];
 
   const pumpPercent =
     pctChange(
@@ -503,34 +673,31 @@ function detectPump(
 
   const window =
     candles.slice(
-      lookbackStart,
+      start,
       index + 1
     );
 
-  const bullishCandles =
+  const green =
     window.filter(
       x =>
         x.close >
         x.open
     ).length;
 
-  const total =
-    window.length;
-
   const greenRatio =
-    total > 0
-      ? bullishCandles /
-        total
+    window.length
+      ? green /
+        window.length
       : 0;
 
-  const rangeHigh =
+  const high =
     Math.max(
       ...window.map(
         x => x.high
       )
     );
 
-  const rangeLow =
+  const low =
     Math.min(
       ...window.map(
         x => x.low
@@ -539,8 +706,8 @@ function detectPump(
 
   const rangeMove =
     pctChange(
-      rangeLow,
-      rangeHigh
+      low,
+      high
     );
 
   if (
@@ -550,30 +717,38 @@ function detectPump(
     return null;
   }
 
-  const score =
-    clamp(
-      pumpPercent * 8 +
-      greenRatio * 25 +
-      Math.min(
-        rangeMove * 2,
-        20
-      )
-    );
-
   return {
+
     startTime:
       base.startTime,
+
     endTime:
       current.startTime,
+
     startPrice:
       base.close,
+
     endPrice:
       current.close,
+
     pumpPercent,
+
     greenRatio,
+
     rangeMove,
-    score
+
+    score:
+      clamp(
+        pumpPercent * 8 +
+        greenRatio * 25 +
+        Math.min(
+          rangeMove * 2,
+          20
+        )
+      )
+
   };
+
 }
 
 
@@ -585,6 +760,7 @@ function detectAbsorption(
   candles,
   index
 ) {
+
   if (
     !candles ||
     index < 20
@@ -608,9 +784,11 @@ function detectAbsorption(
     candles[index - 1];
 
   const previousStats =
-    candleStats(previous);
+    candleStats(
+      previous
+    );
 
-  const pressure =
+  const previousFive =
     candles
       .slice(
         Math.max(
@@ -621,34 +799,40 @@ function detectAbsorption(
       )
       .map(candleStats);
 
-  const bullishPressure =
-    pressure.filter(
-      x => x.bullish
-    ).length;
+  const bullishContext =
+    previousFive.filter(
+      x =>
+        x.bullish
+    ).length >= 3 ||
+    previousStats.bullish;
 
-  const recentHigh =
-    Math.max(
-      ...candles
-        .slice(
-          Math.max(
-            0,
-            index - 8
-          ),
-          index
-        )
-        .map(
-          x => x.high
-        )
+  const recent =
+    candles.slice(
+      Math.max(
+        0,
+        index - 8
+      ),
+      index
     );
 
-  const nearHigh =
-    recentHigh > 0
-      ? (
-          (recentHigh -
-            c.high) /
-          recentHigh
-        ) * 100
-      : 0;
+  const recentHigh =
+    recent.length
+      ? Math.max(
+          ...recent.map(
+            x => x.high
+          )
+        )
+      : c.high;
+
+  const nearResistance =
+    recentHigh > 0 &&
+    (
+      (
+        recentHigh -
+        c.high
+      ) /
+      recentHigh
+    ) * 100 <= 1.5;
 
   const weakRed =
     stats.bearish &&
@@ -670,13 +854,6 @@ function detectAbsorption(
   const smallBody =
     stats.bodyRatio <=
     0.45;
-
-  const bullishContext =
-    bullishPressure >= 3 ||
-    previousStats.bullish;
-
-  const nearResistance =
-    nearHigh <= 1.5;
 
   let score = 0;
 
@@ -729,47 +906,67 @@ function detectAbsorption(
     c.low;
 
   return {
+
     index,
+
     time:
       c.startTime,
+
     open:
       c.open,
+
     high:
       c.high,
+
     low:
       c.low,
+
     close:
       c.close,
+
     volume:
       c.volume,
+
     volumeRatio:
       volume.ratio,
+
     change:
       stats.change,
+
     bodyRatio:
       stats.bodyRatio,
+
     lowerWickRatio:
       stats.lowerWickRatio,
+
     upperWickRatio:
       stats.upperWickRatio,
+
     weakRed,
     neutral,
+
     bullishContext,
+
     nearResistance,
+
     zoneHigh,
     zoneLow,
+
     score
+
   };
+
 }
 
 
 /* =========================================================
-   PUMP + ABSORPTION
+   SETUP
 ========================================================= */
 
 function findAbsorptionSetup(
   candles
 ) {
+
   if (
     !candles?.length
   ) {
@@ -778,24 +975,27 @@ function findAbsorptionSetup(
 
   let best = null;
 
-  const recentStart =
+  const start =
     Math.max(
       20,
       candles.length - 60
     );
 
   for (
-    let i = recentStart;
+    let i = start;
     i < candles.length;
     i++
   ) {
+
     const pump =
       detectPump(
         candles,
         i
       );
 
-    if (!pump) continue;
+    if (!pump) {
+      continue;
+    }
 
     const absorption =
       detectAbsorption(
@@ -807,30 +1007,37 @@ function findAbsorptionSetup(
       continue;
     }
 
-    const combinedScore =
+    const score =
       clamp(
         pump.score * 0.35 +
         absorption.score *
-          0.65
+        0.65
       );
 
     const candidate = {
+
       pump,
       absorption,
-      score:
-        combinedScore
+
+      score
+
     };
 
     if (
       !best ||
       candidate.score >
-        best.score
+      best.score
     ) {
-      best = candidate;
+
+      best =
+        candidate;
+
     }
+
   }
 
   return best;
+
 }
 
 
@@ -842,69 +1049,95 @@ async function getRecentTrades(
   symbol,
   limit = TRADE_LIMIT
 ) {
+
   const result =
     await bybit(
       "/v5/market/recent-trade",
       {
-        category: "linear",
+        category:"linear",
         symbol,
         limit
       }
     );
 
-  return Array.isArray(
-    result?.list
+  return (
+    Array.isArray(
+      result?.list
+    )
+      ? result.list
+      : []
   )
-    ? result.list.map(
-        t => ({
-          id:
-            t.execId,
-          price:
-            num(t.price),
-          size:
-            num(t.size),
-          side:
-            t.side,
-          time:
-            num(t.time)
-        })
-      )
-    : [];
+    .map(
+      t => ({
+
+        id:
+          t.execId,
+
+        price:
+          num(t.price),
+
+        size:
+          num(t.size),
+
+        side:
+          t.side,
+
+        time:
+          num(t.time)
+
+      })
+    );
+
 }
 
 
 /* =========================================================
    FOOTPRINT
-   IMPORTANT:
-   recent-trade is CURRENT recent data.
-   It is not historical footprint for old candle.
 ========================================================= */
 
 function makeFootprint(
   trades,
-  zone = null
+  zone
 ) {
+
   if (
     !trades?.length
   ) {
+
     return {
+
       source:
         "recent-trade",
+
       historicalMatched:
         false,
+
       historicalCandleTime:
         zone?.time || null,
+
       selectedWindowStart:
         null,
+
       selectedWindowEnd:
         null,
-      buyVolume: 0,
-      sellVolume: 0,
-      delta: 0,
-      deltaPercent: 0,
-      totalVolume: 0,
-      tradeCount: 0
+
+      buyVolume:0,
+      sellVolume:0,
+
+      buyNotional:0,
+      sellNotional:0,
+
+      delta:0,
+      deltaPercent:0,
+
+      totalVolume:0,
+      tradeCount:0,
+
+      pressure:
+        "neutral"
+
     };
+
   }
 
   let selected =
@@ -919,7 +1152,10 @@ function makeFootprint(
   let selectedWindowEnd =
     null;
 
-  if (zone?.time) {
+  if (
+    zone?.time
+  ) {
+
     selectedWindowStart =
       zone.time;
 
@@ -927,33 +1163,40 @@ function makeFootprint(
       zone.time +
       5 * 60 * 1000;
 
-    const filtered =
+    const matched =
       trades.filter(
         t =>
           t.time >=
-            selectedWindowStart &&
+          selectedWindowStart &&
           t.time <
-            selectedWindowEnd
+          selectedWindowEnd
       );
 
-    if (filtered.length) {
+    if (
+      matched.length
+    ) {
+
       selected =
-        filtered;
+        matched;
 
       historicalMatched =
         true;
+
     }
+
   }
 
   let buyVolume = 0;
   let sellVolume = 0;
 
   for (
-    const trade of selected
+    const trade
+    of selected
   ) {
+
     const value =
-      num(trade.size) *
-      num(trade.price);
+      num(trade.price) *
+      num(trade.size);
 
     if (
       String(
@@ -961,12 +1204,17 @@ function makeFootprint(
       ).toLowerCase() ===
       "buy"
     ) {
+
       buyVolume +=
         value;
+
     } else {
+
       sellVolume +=
         value;
+
     }
+
   }
 
   const totalVolume =
@@ -986,23 +1234,51 @@ function makeFootprint(
       : 0;
 
   return {
+
     source:
       historicalMatched
         ? "recent-trade-matched"
         : "recent-trade",
+
     historicalMatched,
+
     historicalCandleTime:
       zone?.time || null,
+
     selectedWindowStart,
+
     selectedWindowEnd,
+
     buyVolume,
+
     sellVolume,
+
+    buyNotional:
+      buyVolume,
+
+    sellNotional:
+      sellVolume,
+
     delta,
+
     deltaPercent,
+
     totalVolume,
+
     tradeCount:
-      selected.length
+      selected.length,
+
+    pressure:
+      deltaPercent >= 10
+        ? "buy"
+        :
+      deltaPercent <= -10
+        ? "sell"
+        :
+        "neutral"
+
   };
+
 }
 
 
@@ -1013,11 +1289,12 @@ function makeFootprint(
 async function getOrderbook(
   symbol
 ) {
+
   const result =
     await bybit(
       "/v5/market/orderbook",
       {
-        category: "linear",
+        category:"linear",
         symbol,
         limit:
           ORDERBOOK_LIMIT
@@ -1025,7 +1302,9 @@ async function getOrderbook(
     );
 
   const bids =
-    (result?.b || [])
+    (
+      result?.b || []
+    )
       .map(
         x => [
           num(x[0]),
@@ -1034,7 +1313,9 @@ async function getOrderbook(
       );
 
   const asks =
-    (result?.a || [])
+    (
+      result?.a || []
+    )
       .map(
         x => [
           num(x[0]),
@@ -1042,66 +1323,111 @@ async function getOrderbook(
         ]
       );
 
-  const bidValue =
+  const buyLiquidity =
     sum(
       bids.map(
         x =>
-          x[0] * x[1]
+          x[0] *
+          x[1]
       )
     );
 
-  const askValue =
+  const sellLiquidity =
     sum(
       asks.map(
         x =>
-          x[0] * x[1]
+          x[0] *
+          x[1]
       )
     );
 
   const total =
-    bidValue +
-    askValue;
+    buyLiquidity +
+    sellLiquidity;
 
-  const imbalance =
+  const buyShare =
     total > 0
       ? (
-          (bidValue -
-            askValue) /
+          buyLiquidity /
           total
         ) * 100
       : 0;
 
-  const strongestBid =
-    bids.length
-      ? Math.max(
-          ...bids.map(
-            x =>
-              x[0] * x[1]
-          )
-        )
+  const sellShare =
+    total > 0
+      ? (
+          sellLiquidity /
+          total
+        ) * 100
       : 0;
 
-  const strongestAsk =
-    asks.length
-      ? Math.max(
-          ...asks.map(
-            x =>
-              x[0] * x[1]
-          )
-        )
-      : 0;
+  const imbalance =
+    buyShare -
+    sellShare;
+
+  const values =
+    [
+      ...bids.map(
+        x => x[0] * x[1]
+      ),
+      ...asks.map(
+        x => x[0] * x[1]
+      )
+    ];
+
+  const wallThreshold =
+    median(values) * 4;
+
+  const buyWalls =
+    bids.filter(
+      x =>
+        x[0] * x[1] >=
+        wallThreshold
+    );
+
+  const sellWalls =
+    asks.filter(
+      x =>
+        x[0] * x[1] >=
+        wallThreshold
+    );
 
   return {
-    bidValue,
-    askValue,
+
+    buyLiquidity,
+    sellLiquidity,
+
+    totalLiquidity:
+      total,
+
+    buyShare,
+    sellShare,
+
     imbalance,
-    strongestBid,
-    strongestAsk,
-    bidCount:
-      bids.length,
-    askCount:
-      asks.length
+
+    pressure:
+      imbalance > 8
+        ? "buy"
+        :
+      imbalance < -8
+        ? "sell"
+        :
+        "neutral",
+
+    bestBid:
+      bids[0]?.[0] || 0,
+
+    bestAsk:
+      asks[0]?.[0] || 0,
+
+    buyWalls:
+      buyWalls.length,
+
+    sellWalls:
+      sellWalls.length
+
   };
+
 }
 
 
@@ -1112,73 +1438,50 @@ async function getOrderbook(
 async function getOpenInterest(
   symbol
 ) {
+
   const result =
     await bybit(
       "/v5/market/open-interest",
       {
-        category: "linear",
+        category:"linear",
         symbol,
-        intervalTime:
-          "5min",
-        limit: 20
+        intervalTime:"5min",
+        limit:2
       }
     );
 
   const list =
-    Array.isArray(
-      result?.list
-    )
-      ? result.list
-          .map(
-            x => ({
-              time:
-                num(
-                  x.timestamp
-                ),
-              oi:
-                num(
-                  x.openInterest
-                )
-            })
-          )
-          .sort(
-            (a, b) =>
-              a.time -
-              b.time
-          )
-      : [];
+    result?.list || [];
 
   const current =
-    last(list);
+    num(
+      list[0]?.openInterest
+    );
 
   const previous =
-    list.length >= 2
-      ? list[
-          list.length - 2
-        ]
-      : null;
-
-  const change =
-    previous &&
-    previous.oi
-      ? (
-          (
-            current.oi -
-            previous.oi
-          ) /
-          previous.oi
-        ) * 100
-      : 0;
+    num(
+      list[1]?.openInterest
+    );
 
   return {
-    current:
-      current?.oi || 0,
-    previous:
-      previous?.oi || 0,
-    change,
-    points:
-      list
+
+    current,
+
+    previous,
+
+    change:
+      previous > 0
+        ? (
+            (
+              current -
+              previous
+            ) /
+            previous
+          ) * 100
+        : 0
+
   };
+
 }
 
 
@@ -1190,28 +1493,50 @@ function detectRetest(
   candles,
   absorption
 ) {
+
   if (
     !absorption ||
     absorption.index >=
-      candles.length - 1
+    candles.length - 1
   ) {
+
     return {
-      detected: false,
-      confirmed: false,
-      index: -1,
-      barsSinceRetest: null,
+
+      detected:false,
+      confirmed:false,
+
+      index:-1,
+
+      barsSinceRetest:null,
+
       zoneHigh:
-        absorption?.zoneHigh || 0,
+        absorption?.zoneHigh ||
+        0,
+
       zoneLow:
-        absorption?.zoneLow || 0,
-      tolerance: 0,
-      distanceToZone: 0,
-      distancePercent: 0,
+        absorption?.zoneLow ||
+        0,
+
+      tolerance:0,
+
+      distanceToZone:0,
+
+      distancePercent:0,
+
+      rejection:false,
+
+      recent:false,
+
+      currentNear:false,
+
       reason:
-        "هنوز کندل کافی بعد از جذب وجود ندارد.",
+        "کندل کافی برای بازآزمایی وجود ندارد.",
+
       status:
         "NO_RETEST"
+
     };
+
   }
 
   const zoneHigh =
@@ -1227,7 +1552,7 @@ function detectRetest(
   const zoneWidth =
     Math.max(
       zoneHigh -
-        zoneLow,
+      zoneLow,
       0
     );
 
@@ -1241,31 +1566,70 @@ function detectRetest(
     Math.max(
       absorption.index + 1,
       candles.length -
-        RETEST_LOOKBACK_CANDLES
+      RETEST_LOOKBACK_CANDLES
     );
 
-  let retestIndex = -1;
+  let retestIndex =
+    -1;
+
+  let rejection =
+    false;
 
   for (
-    let i =
-      startIndex;
+    let i = startIndex;
     i < candles.length;
     i++
   ) {
+
     const c =
       candles[i];
 
     const touches =
       c.low <=
         zoneHigh +
-          tolerance &&
+        tolerance &&
       c.high >=
         zoneLow -
-          tolerance;
+        tolerance;
 
-    if (touches) {
-      retestIndex = i;
+    if (!touches) {
+      continue;
     }
+
+    retestIndex =
+      i;
+
+    const stats =
+      candleStats(c);
+
+    const bullishReaction =
+      c.close >
+      zoneHigh ||
+      (
+        stats.bullish &&
+        stats.lowerWickRatio >=
+        0.20
+      );
+
+    const bearishReaction =
+      c.close <
+      zoneLow ||
+      (
+        stats.bearish &&
+        stats.upperWickRatio >=
+        0.20
+      );
+
+    if (
+      bullishReaction ||
+      bearishReaction
+    ) {
+
+      rejection =
+        true;
+
+    }
+
   }
 
   const current =
@@ -1282,6 +1646,7 @@ function detectRetest(
     currentPrice >
     zoneHigh
   ) {
+
     distancePercent =
       (
         (
@@ -1290,10 +1655,12 @@ function detectRetest(
         ) /
         zoneHigh
       ) * 100;
+
   } else if (
     currentPrice <
     zoneLow
   ) {
+
     distancePercent =
       (
         (
@@ -1302,29 +1669,50 @@ function detectRetest(
         ) /
         zoneLow
       ) * 100;
+
   }
 
-  const distanceToZone =
-    distancePercent;
+  const currentNear =
+    distancePercent <=
+    RETEST_MAX_DISTANCE_PERCENT;
 
   if (
     retestIndex < 0
   ) {
+
     return {
-      detected: false,
-      confirmed: false,
-      index: -1,
-      barsSinceRetest: null,
+
+      detected:false,
+      confirmed:false,
+
+      index:-1,
+
+      barsSinceRetest:null,
+
       zoneHigh,
       zoneLow,
+
       tolerance,
-      distanceToZone,
+
+      distanceToZone:
+        distancePercent,
+
       distancePercent,
+
+      rejection:false,
+
+      recent:false,
+
+      currentNear,
+
       reason:
-        "در 18 کندل اخیر لمس معتبر ناحیه دیده نشد.",
+        "در کندل‌های اخیر بازآزمایی ناحیه دیده نشد.",
+
       status:
-        "NO_RECENT_RETEST"
+        "NO_RETEST"
+
     };
+
   }
 
   const barsSinceRetest =
@@ -1332,107 +1720,76 @@ function detectRetest(
     1 -
     retestIndex;
 
-  const retestCandle =
-    candles[
-      retestIndex
-    ];
-
-  let rejection = false;
-
-  if (
-    retestCandle.close >
-    zoneHigh
-  ) {
-    rejection = true;
-  }
-
-  if (
-    retestCandle.close >
-      retestCandle.open &&
-    retestCandle.lowerWickRatio >=
-      0.20
-  ) {
-    rejection = true;
-  }
-
-  for (
-    let j = 1;
-    j <=
-      RETEST_CONFIRMATION_BARS;
-    j++
-  ) {
-    const idx =
-      retestIndex + j;
-
-    if (
-      idx >=
-      candles.length
-    ) {
-      break;
-    }
-
-    if (
-      candles[idx].close >
-      retestCandle.close
-    ) {
-      rejection = true;
-      break;
-    }
-  }
-
-  const currentNear =
-    distancePercent <=
-    RETEST_MAX_DISTANCE_PERCENT;
-
   const recent =
     barsSinceRetest <=
     RETEST_CONFIRMATION_BARS;
 
   const confirmed =
+    recent &&
     rejection &&
-    currentNear &&
-    (
-      recent ||
-      currentPrice >
-        zoneHigh
-    );
+    currentNear;
 
-  let reason;
+  let reason =
+    "بازآزمایی دیده شده اما هنوز تأیید کامل نیست.";
 
   if (confirmed) {
+
     reason =
-      "لمس اخیر ناحیه + واکنش صعودی + قیمت همچنان نزدیک ناحیه است.";
-  } else if (!currentNear) {
+      "قیمت اخیراً به ناحیه برگشته، واکنش نشان داده و فاصله فعلی از ناحیه کم است.";
+
+  } else if (!recent) {
+
     reason =
-      "ری‌تست قدیمی یا قیمت فعلی بیش از حد از ناحیه فاصله گرفته است.";
+      "بازآزمایی قدیمی است و برای ورود فعلی کافی نیست.";
+
   } else if (!rejection) {
+
     reason =
-      "ناحیه لمس شده اما واکنش صعودی کافی تأیید نشده است.";
-  } else {
+      "قیمت ناحیه را لمس کرده اما واکنش واضح تأیید نشده است.";
+
+  } else if (!currentNear) {
+
     reason =
-      "لمس ناحیه ثبت شده ولی تأیید ری‌تست هنوز کامل نیست.";
+      "واکنش دیده شده ولی قیمت فعلی از ناحیه فاصله گرفته است.";
+
   }
 
   return {
-    detected: true,
+
+    detected:true,
+
     confirmed,
+
     index:
       retestIndex,
+
     barsSinceRetest,
+
     zoneHigh,
     zoneLow,
+
     tolerance,
-    distanceToZone,
+
+    distanceToZone:
+      distancePercent,
+
     distancePercent,
+
     rejection,
+
     recent,
+
     currentNear,
+
     reason,
+
     status:
       confirmed
         ? "CONFIRMED"
-        : "DETECTED"
+        : "TOUCHED"
+
   };
+
 }
 
 
@@ -1443,51 +1800,45 @@ function detectRetest(
 function structureAnalysis(
   candles
 ) {
+
   if (
     !candles ||
     candles.length < 10
   ) {
+
     return {
-      trend:
-        "unknown",
-      bos: false,
-      higherHigh: false,
-      higherLow: false
+      trend:"unknown",
+      bos:false,
+      higherHigh:false,
+      higherLow:false
     };
+
   }
 
   const recent =
     candles.slice(-10);
 
-  const highs =
-    recent.map(
-      x => x.high
-    );
-
-  const lows =
-    recent.map(
-      x => x.low
-    );
-
   const current =
     last(recent);
 
+  const previous =
+    recent.slice(
+      0,
+      -2
+    );
+
   const previousHigh =
     Math.max(
-      ...recent
-        .slice(0, -2)
-        .map(
-          x => x.high
-        )
+      ...previous.map(
+        x => x.high
+      )
     );
 
   const previousLow =
     Math.min(
-      ...recent
-        .slice(0, -2)
-        .map(
-          x => x.low
-        )
+      ...previous.map(
+        x => x.low
+      )
     );
 
   const higherHigh =
@@ -1505,28 +1856,47 @@ function structureAnalysis(
     higherHigh &&
     higherLow
   ) {
+
     trend =
       "bullish";
+
   } else if (
     current.close <
     previousLow
   ) {
+
     trend =
       "bearish";
+
   }
 
   return {
+
     trend,
+
     bos:
       current.close >
       previousHigh,
+
     higherHigh,
     higherLow,
+
     recentHigh:
-      Math.max(...highs),
+      Math.max(
+        ...recent.map(
+          x => x.high
+        )
+      ),
+
     recentLow:
-      Math.min(...lows)
+      Math.min(
+        ...recent.map(
+          x => x.low
+        )
+      )
+
   };
+
 }
 
 
@@ -1537,19 +1907,26 @@ function structureAnalysis(
 function timeframeConfirmation(
   candles
 ) {
+
   if (
     !candles ||
     candles.length < 25
   ) {
+
     return {
-      trend:
-        "unknown",
-      score: 0,
-      price: 0,
-      average: 0,
-      ema8: 0,
-      ema20: 0
+
+      trend:"unknown",
+
+      score:50,
+
+      price:0,
+
+      ema8:0,
+
+      ema20:0
+
     };
+
   }
 
   const closes =
@@ -1560,7 +1937,7 @@ function timeframeConfirmation(
   const current =
     last(candles);
 
-  const currentPrice =
+  const price =
     current.close;
 
   const ema8 =
@@ -1579,47 +1956,49 @@ function timeframeConfirmation(
     "neutral";
 
   if (
-    currentPrice >
-      ema8 &&
+    price >
+    ema8 &&
     ema8 >
-      ema20
+    ema20
   ) {
+
     trend =
       "bullish";
+
   } else if (
-    currentPrice <
-      ema8 &&
+    price <
+    ema8 &&
     ema8 <
-      ema20
+    ema20
   ) {
+
     trend =
       "bearish";
-  }
 
-  let score = 50;
-
-  if (
-    trend ===
-    "bullish"
-  ) {
-    score = 100;
-  } else if (
-    trend ===
-    "bearish"
-  ) {
-    score = 0;
   }
 
   return {
+
     trend,
-    score,
-    price:
-      currentPrice,
+
+    score:
+      trend === "bullish"
+        ? 100
+        :
+      trend === "bearish"
+        ? 0
+        : 50,
+
+    price,
+
     average:
       ema20,
+
     ema8,
     ema20
+
   };
+
 }
 
 
@@ -1627,20 +2006,17 @@ function timeframeConfirmation(
    SCORE
 ========================================================= */
 
-function calculateFinalScore({
+function calculateFinalScore(
   setup,
   footprint,
   orderbook,
   openInterest,
-  confirmation15,
-  confirmation3,
-  confirmation1,
+  confirmations,
   retest,
   structure
-}) {
-  let score = 0;
+) {
 
-  score +=
+  let score =
     setup.absorption.score *
     0.35;
 
@@ -1649,103 +2025,128 @@ function calculateFinalScore({
       20,
       Math.max(
         0,
-        setup.pump.pumpPercent *
-          2
+        setup.pump.pumpPercent * 2
       )
     );
 
-  /*
-    Recent trades are current pressure.
-    They are NOT historical absorption delta
-    unless timestamps actually matched.
-  */
   if (
     footprint.historicalMatched
   ) {
-    if (
-      footprint.delta >= 0
-    ) {
-      score += 5;
-    } else if (
-      footprint.deltaPercent >
-      -15
-    ) {
-      score += 2;
-    }
-  } else {
+
     if (
       footprint.deltaPercent >=
       10
     ) {
-      score += 4;
+
+      score += 6;
+
     } else if (
-      footprint.deltaPercent >
-      -10
+      footprint.deltaPercent >=
+      0
     ) {
-      score += 2;
+
+      score += 3;
+
     }
+
+  } else {
+
+    if (
+      footprint.deltaPercent >=
+      10
+    ) {
+
+      score += 3;
+
+    } else if (
+      footprint.deltaPercent > -15
+    ) {
+
+      score += 1;
+
+    }
+
   }
 
   if (
     orderbook.imbalance >
-    5
+    8
   ) {
+
     score += 8;
+
   } else if (
     orderbook.imbalance >
     0
   ) {
+
     score += 4;
+
   }
 
   if (
     openInterest.change >
     0
   ) {
+
     score += 4;
+
   }
 
   if (
-    confirmation15.trend ===
+    confirmations["15m"].trend ===
     "bullish"
   ) {
+
     score += 8;
+
   }
 
   if (
-    confirmation3.trend ===
+    confirmations["3m"].trend ===
     "bullish"
   ) {
+
     score += 5;
+
   }
 
   if (
-    confirmation1.trend ===
+    confirmations["1m"].trend ===
     "bullish"
   ) {
+
     score += 4;
+
   }
 
   if (
     structure.trend ===
     "bullish"
   ) {
+
     score += 5;
+
   }
 
   if (
     retest.detected
   ) {
+
     score += 5;
+
   }
 
   if (
     retest.confirmed
   ) {
+
     score += 8;
+
   }
 
   return clamp(score);
+
 }
 
 
@@ -1759,33 +2160,529 @@ function signalFromScore(
   retest,
   confirmations
 ) {
+
   if (!setup) {
     return "NO_SETUP";
   }
 
+  const bullish15 =
+    confirmations["15m"]?.trend ===
+    "bullish";
+
+  const bullishLower =
+    confirmations["3m"]?.trend ===
+    "bullish" ||
+    confirmations["1m"]?.trend ===
+    "bullish";
+
   if (
     score >= 80 &&
     retest.confirmed &&
-    confirmations
+    bullish15 &&
+    bullishLower
   ) {
+
     return "STRONG_LONG";
+
   }
 
   if (
     score >= 70 &&
     retest.confirmed &&
-    confirmations
+    bullish15 &&
+    bullishLower
   ) {
+
     return "LONG";
+
   }
 
   if (
     score >= 60
   ) {
+
     return "WATCH";
+
   }
 
   return "WEAK";
+
+}
+
+
+/* =========================================================
+   1M ENTRY
+========================================================= */
+
+function calculateEntry1M(
+  candles1,
+  zone,
+  retest,
+  confirmation1,
+  currentPrice
+) {
+
+  if (
+    !candles1?.length ||
+    !zone
+  ) {
+
+    return {
+
+      status:"WAIT",
+      direction:"unknown",
+
+      entryLow:0,
+      entryHigh:0,
+      entryPrice:0,
+
+      stopLoss:0,
+
+      target1:0,
+      target2:0,
+
+      rr1:0,
+      rr2:0,
+
+      reason:
+        "داده کافی برای محاسبه ورود وجود ندارد."
+
+    };
+
+  }
+
+  const price =
+    num(currentPrice);
+
+  const zoneHigh =
+    num(zone.zoneHigh);
+
+  const zoneLow =
+    num(zone.zoneLow);
+
+  const zoneWidth =
+    Math.max(
+      zoneHigh -
+      zoneLow,
+      0
+    );
+
+  const recent =
+    candles1.slice(-12);
+
+  const current =
+    last(recent);
+
+  const previous =
+    recent.length >= 2
+      ? recent[
+          recent.length - 2
+        ]
+      : null;
+
+  const recentHigh =
+    recent.length
+      ? Math.max(
+          ...recent.map(
+            x => x.high
+          )
+        )
+      : price;
+
+  const recentLow =
+    recent.length
+      ? Math.min(
+          ...recent.map(
+            x => x.low
+          )
+        )
+      : price;
+
+  const bullish1M =
+    confirmation1?.trend ===
+    "bullish";
+
+  const bearish1M =
+    confirmation1?.trend ===
+    "bearish";
+
+  const bullishBreak =
+    current &&
+    current.close >
+    Math.max(
+      zoneHigh,
+      previous?.high || 0
+    );
+
+  const bearishBreak =
+    current &&
+    current.close <
+    Math.min(
+      zoneLow,
+      previous?.low ||
+      zoneLow
+    );
+
+  const padding =
+    Math.max(
+      zoneWidth * 0.10,
+      price * 0.0005
+    );
+
+
+  /* ---------------------------------------------------------
+     BUY
+  --------------------------------------------------------- */
+
+  if (
+    bullish1M ||
+    (
+      retest?.confirmed &&
+      price >= zoneLow
+    ) ||
+    bullishBreak
+  ) {
+
+    let entryLow;
+    let entryHigh;
+
+    if (
+      price >=
+        zoneLow - padding &&
+      price <=
+        zoneHigh + padding
+    ) {
+
+      entryLow =
+        Math.max(
+          zoneLow,
+          price - padding
+        );
+
+      entryHigh =
+        Math.min(
+          zoneHigh + padding,
+          price + padding
+        );
+
+    } else if (
+      price >
+      zoneHigh
+    ) {
+
+      entryLow =
+        zoneHigh;
+
+      entryHigh =
+        zoneHigh +
+        padding;
+
+    } else {
+
+      entryLow =
+        zoneLow;
+
+      entryHigh =
+        zoneHigh;
+
+    }
+
+    const entryPrice =
+      (
+        entryLow +
+        entryHigh
+      ) / 2;
+
+    const stopBuffer =
+      Math.max(
+        zoneWidth * 0.20,
+        entryPrice * 0.001
+      );
+
+    const stopLoss =
+      Math.max(
+        0,
+        zoneLow -
+        stopBuffer
+      );
+
+    const risk =
+      Math.max(
+        entryPrice -
+        stopLoss,
+        entryPrice *
+        0.001
+      );
+
+    const target1 =
+      entryPrice +
+      risk * 1.5;
+
+    const target2 =
+      Math.max(
+        entryPrice +
+        risk * 2.5,
+        recentHigh
+      );
+
+    const rr1 =
+      (
+        target1 -
+        entryPrice
+      ) / risk;
+
+    const rr2 =
+      (
+        target2 -
+        entryPrice
+      ) / risk;
+
+    let status =
+      "WAIT";
+
+    if (
+      retest?.confirmed &&
+      bullish1M
+    ) {
+
+      status =
+        "READY";
+
+    } else if (
+      retest?.detected ||
+      bullish1M ||
+      bullishBreak
+    ) {
+
+      status =
+        "CONFIRM";
+
+    }
+
+    return {
+
+      status,
+
+      direction:
+        "long",
+
+      entryLow,
+      entryHigh,
+      entryPrice,
+
+      stopLoss,
+
+      target1,
+      target2,
+
+      risk,
+
+      rr1,
+      rr2,
+
+      currentPrice:
+        price,
+
+      zoneHigh,
+      zoneLow,
+
+      confirmation1M:
+        confirmation1?.trend ||
+        "unknown",
+
+      retestConfirmed:
+        !!retest?.confirmed,
+
+      bullishBreak:
+        !!bullishBreak,
+
+      bearishBreak:
+        !!bearishBreak,
+
+      recentHigh,
+      recentLow,
+
+      reason:
+        status === "READY"
+          ? "بازآزمایی ناحیه و حرکت 1 دقیقه‌ای هر دو به نفع خریداران تأیید شده‌اند."
+          :
+        status === "CONFIRM"
+          ? "شرایط ورود در حال شکل‌گیری است؛ برای ورود بهتر منتظر تأیید کامل 1 دقیقه بمان."
+          :
+            "هنوز تأیید کامل ورود در 1 دقیقه وجود ندارد."
+
+    };
+
+  }
+
+
+  /* ---------------------------------------------------------
+     SELL
+  --------------------------------------------------------- */
+
+  if (
+    bearish1M ||
+    bearishBreak
+  ) {
+
+    let entryLow =
+      zoneLow;
+
+    let entryHigh =
+      zoneHigh;
+
+    const entryPrice =
+      (
+        entryLow +
+        entryHigh
+      ) / 2;
+
+    const stopBuffer =
+      Math.max(
+        zoneWidth * 0.20,
+        entryPrice * 0.001
+      );
+
+    const stopLoss =
+      zoneHigh +
+      stopBuffer;
+
+    const risk =
+      Math.max(
+        stopLoss -
+        entryPrice,
+        entryPrice *
+        0.001
+      );
+
+    const target1 =
+      entryPrice -
+      risk * 1.5;
+
+    const target2 =
+      Math.min(
+        entryPrice -
+        risk * 2.5,
+        recentLow
+      );
+
+    return {
+
+      status:
+        bearish1M
+          ? "CONFIRM"
+          : "WAIT",
+
+      direction:
+        "short",
+
+      entryLow,
+      entryHigh,
+      entryPrice,
+
+      stopLoss,
+
+      target1,
+      target2,
+
+      risk,
+
+      rr1:
+        (
+          entryPrice -
+          target1
+        ) / risk,
+
+      rr2:
+        (
+          entryPrice -
+          target2
+        ) / risk,
+
+      currentPrice:
+        price,
+
+      zoneHigh,
+      zoneLow,
+
+      confirmation1M:
+        confirmation1?.trend ||
+        "unknown",
+
+      retestConfirmed:
+        !!retest?.confirmed,
+
+      bullishBreak:
+        !!bullishBreak,
+
+      bearishBreak:
+        !!bearishBreak,
+
+      recentHigh,
+      recentLow,
+
+      reason:
+        bearish1M
+          ? "تایم‌فریم 1 دقیقه نزولی است و مسیر کوتاه‌مدت فعلاً به سمت پایین است."
+          : "فشار نزولی دیده می‌شود اما تأیید کامل ورود وجود ندارد."
+
+    };
+
+  }
+
+
+  return {
+
+    status:
+      "WAIT",
+
+    direction:
+      "unknown",
+
+    entryLow:
+      zoneLow,
+
+    entryHigh:
+      zoneHigh,
+
+    entryPrice:
+      (
+        zoneLow +
+        zoneHigh
+      ) / 2,
+
+    stopLoss:0,
+
+    target1:0,
+    target2:0,
+
+    rr1:0,
+    rr2:0,
+
+    currentPrice:
+      price,
+
+    zoneHigh,
+    zoneLow,
+
+    confirmation1M:
+      confirmation1?.trend ||
+      "unknown",
+
+    retestConfirmed:
+      !!retest?.confirmed,
+
+    bullishBreak:false,
+    bearishBreak:false,
+
+    recentHigh,
+    recentLow,
+
+    reason:
+      "جهت 1 دقیقه هنوز مشخص نیست؛ فعلاً ورود انجام نشود."
+
+  };
+
 }
 
 
@@ -1796,6 +2693,7 @@ function signalFromScore(
 async function analyzeSymbol(
   symbol
 ) {
+
   const normalized =
     String(symbol || "")
       .trim()
@@ -1803,7 +2701,7 @@ async function analyzeSymbol(
 
   if (!normalized) {
     throw new Error(
-      "Symbol is required"
+      "نام ارز وارد نشده است."
     );
   }
 
@@ -1821,17 +2719,17 @@ async function analyzeSymbol(
       ),
       getKlines(
         normalized,
-        CONFIRM_TF_15M,
+        TF_15M,
         100
       ),
       getKlines(
         normalized,
-        CONFIRM_TF_3M,
+        TF_3M,
         100
       ),
       getKlines(
         normalized,
-        CONFIRM_TF_1M,
+        TF_1M,
         100
       )
     ]);
@@ -1839,47 +2737,79 @@ async function analyzeSymbol(
   if (
     !candles5.length
   ) {
+
     throw new Error(
-      "No 5m candle data"
+      "داده 5 دقیقه‌ای موجود نیست."
     );
+
   }
+
+  const current =
+    last(candles5);
 
   const setup =
     findAbsorptionSetup(
       candles5
     );
 
-  const current =
-    last(candles5);
+  const confirmation15 =
+    timeframeConfirmation(
+      candles15
+    );
+
+  const confirmation3 =
+    timeframeConfirmation(
+      candles3
+    );
+
+  const confirmation1 =
+    timeframeConfirmation(
+      candles1
+    );
 
   if (!setup) {
+
     return {
-      ok: true,
+
+      ok:true,
+
       symbol:
         normalized,
+
       version:
         VERSION,
+
       signal:
         "NO_SETUP",
-      score: 0,
-      detected:
-        false,
+
+      score:0,
+
+      detected:false,
+
       currentPrice:
         current?.close || 0,
+
       message:
-        "No absorption zone detected",
-      timeframe: {
-        primary:
-          MAIN_TF,
-        confirmations: [
-          CONFIRM_TF_15M,
-          CONFIRM_TF_3M,
-          CONFIRM_TF_1M
-        ]
+        "ناحیه جذب معتبر پیدا نشد.",
+
+      confirmations: {
+
+        "15m":
+          confirmation15,
+
+        "3m":
+          confirmation3,
+
+        "1m":
+          confirmation1
+
       },
+
       generatedAt:
         Date.now()
+
     };
+
   }
 
   const zone =
@@ -1909,20 +2839,18 @@ async function analyzeSymbol(
       zone
     );
 
-  const confirmation15 =
-    timeframeConfirmation(
-      candles15
-    );
+  const confirmations = {
 
-  const confirmation3 =
-    timeframeConfirmation(
-      candles3
-    );
+    "15m":
+      confirmation15,
 
-  const confirmation1 =
-    timeframeConfirmation(
-      candles1
-    );
+    "3m":
+      confirmation3,
+
+    "1m":
+      confirmation1
+
+  };
 
   const retest =
     detectRetest(
@@ -1935,27 +2863,24 @@ async function analyzeSymbol(
       candles5
     );
 
+  const entry1M =
+    calculateEntry1M(
+      candles1,
+      zone,
+      retest,
+      confirmation1,
+      current.close
+    );
+
   const score =
-    calculateFinalScore({
+    calculateFinalScore(
       setup,
       footprint,
       orderbook,
       openInterest,
-      confirmation15,
-      confirmation3,
-      confirmation1,
+      confirmations,
       retest,
       structure
-    });
-
-  const bullishConfirmations =
-    confirmation15.trend ===
-      "bullish" &&
-    (
-      confirmation3.trend ===
-        "bullish" ||
-      confirmation1.trend ===
-        "bullish"
     );
 
   const signal =
@@ -1963,227 +2888,150 @@ async function analyzeSymbol(
       score,
       setup,
       retest,
-      bullishConfirmations
+      confirmations
     );
 
-  const currentPrice =
-    current.close;
-
-  let distanceToZone = 0;
-
-  if (
-    currentPrice >
+  const distanceToZone =
+    current.close >
     zone.zoneHigh
-  ) {
-    distanceToZone =
-      (
-        (
-          currentPrice -
+      ? (
+          (
+            current.close -
+            zone.zoneHigh
+          ) /
           zone.zoneHigh
-        ) /
-        zone.zoneHigh
-      ) * 100;
-  } else if (
-    currentPrice <
+        ) * 100
+      :
+    current.close <
     zone.zoneLow
-  ) {
-    distanceToZone =
-      (
-        (
-          zone.zoneLow -
-          currentPrice
-        ) /
-        zone.zoneLow
-      ) * 100;
-  }
+      ? (
+          (
+            zone.zoneLow -
+            current.close
+          ) /
+          zone.zoneLow
+        ) * 100
+      : 0;
 
   return {
-    ok: true,
-    detected: true,
+
+    ok:true,
+
     symbol:
       normalized,
+
     version:
       VERSION,
 
     signal,
 
-    score:
-      Number(
-        score.toFixed(2)
-      ),
+    score,
 
-    currentPrice,
+    detected:true,
 
-    timeframe: {
-      primary:
-        MAIN_TF,
-      confirmations: [
-        CONFIRM_TF_15M,
-        CONFIRM_TF_3M,
-        CONFIRM_TF_1M
-      ]
-    },
+    currentPrice:
+      current.close,
 
-    setup: {
-      pump: {
-        startTime:
-          setup.pump.startTime,
-        endTime:
-          setup.pump.endTime,
-        startPrice:
-          setup.pump.startPrice,
-        endPrice:
-          setup.pump.endPrice,
-        pumpPercent:
-          setup.pump.pumpPercent,
-        greenRatio:
-          setup.pump.greenRatio,
-        rangeMove:
-          setup.pump.rangeMove,
-        score:
-          setup.pump.score
-      },
+    setup,
 
-      absorption: {
-        time:
-          zone.time,
-        open:
-          zone.open,
-        high:
-          zone.high,
-        low:
-          zone.low,
-        close:
-          zone.close,
-        change:
-          zone.change,
-        volume:
-          zone.volume,
-        volumeRatio:
-          zone.volumeRatio,
-        bodyRatio:
-          zone.bodyRatio,
-        lowerWickRatio:
-          zone.lowerWickRatio,
-        upperWickRatio:
-          zone.upperWickRatio,
-        weakRed:
-          zone.weakRed,
-        neutral:
-          zone.neutral,
-        bullishContext:
-          zone.bullishContext,
-        zoneHigh:
-          zone.zoneHigh,
-        zoneLow:
-          zone.zoneLow,
-        score:
-          zone.score
-      }
-    },
-
-    footprint: {
-      source:
-        footprint.source,
-      historicalMatched:
-        footprint.historicalMatched,
-      historicalCandleTime:
-        footprint.historicalCandleTime,
-      selectedWindowStart:
-        footprint.selectedWindowStart,
-      selectedWindowEnd:
-        footprint.selectedWindowEnd,
-      buyVolume:
-        footprint.buyVolume,
-      sellVolume:
-        footprint.sellVolume,
-      delta:
-        footprint.delta,
-      deltaPercent:
-        footprint.deltaPercent,
-      totalVolume:
-        footprint.totalVolume,
-      tradeCount:
-        footprint.tradeCount
-    },
+    footprint,
 
     orderbook,
 
-    openInterest: {
-      current:
-        openInterest.current,
-      previous:
-        openInterest.previous,
-      change:
-        openInterest.change
-    },
+    openInterest,
 
-    retest: {
-      detected:
-        retest.detected,
-      confirmed:
-        retest.confirmed,
-      index:
-        retest.index,
-      barsSinceRetest:
-        retest.barsSinceRetest,
-      zoneHigh:
-        retest.zoneHigh,
-      zoneLow:
-        retest.zoneLow,
-      tolerance:
-        retest.tolerance,
-      distanceToZone:
-        retest.distanceToZone,
-      distancePercent:
-        retest.distancePercent,
-      rejection:
-        retest.rejection,
-      recent:
-        retest.recent,
-      currentNear:
-        retest.currentNear,
-      reason:
-        retest.reason,
-      status:
-        retest.status
-    },
+    retest,
 
     structure,
 
-    confirmations: {
-      "15m":
-        confirmation15,
-      "3m":
-        confirmation3,
-      "1m":
-        confirmation1
-    },
+    confirmations,
 
-    analysisQuality: {
-      recentRetest:
-        retest.detected,
-      confirmedRetest:
-        retest.confirmed,
-      bullish15m:
-        confirmation15.trend ===
-        "bullish",
-      bullishLowerTF:
-        (
-          confirmation3.trend ===
-            "bullish" ||
-          confirmation1.trend ===
-            "bullish"
-        ),
-      currentTradePressure:
-        true
-    },
+    entry1M,
+
+    direction:
+
+      entry1M.direction !==
+      "unknown"
+
+        ? entry1M.direction
+
+        :
+      confirmation15.trend ===
+      "bullish"
+
+        ? "long"
+
+        :
+      confirmation15.trend ===
+      "bearish"
+
+        ? "short"
+
+        : "unknown",
+
+    marketPath:
+
+      entry1M.direction ===
+      "long"
+
+        ? "up"
+
+        :
+      entry1M.direction ===
+      "short"
+
+        ? "down"
+
+        : "unknown",
+
+    absorptionSide:
+
+      entry1M.direction ===
+      "long"
+
+        ? "buyer"
+
+        :
+      entry1M.direction ===
+      "short"
+
+        ? "seller"
+
+        : "unknown",
 
     distanceToZone,
 
+    analysisQuality: {
+
+      recentRetest:
+        retest.detected,
+
+      confirmedRetest:
+        retest.confirmed,
+
+      bullish15m:
+        confirmation15.trend ===
+        "bullish",
+
+      bullishLowerTF:
+        confirmation3.trend ===
+        "bullish" ||
+        confirmation1.trend ===
+        "bullish",
+
+      currentTradePressure:
+        footprint.pressure,
+
+      entry1M:
+        entry1M.status
+
+    },
+
     generatedAt:
       Date.now()
+
   };
+
 }
 
 
@@ -2192,6 +3040,7 @@ async function analyzeSymbol(
 ========================================================= */
 
 async function scanMarkets() {
+
   const symbols =
     await getSymbols();
 
@@ -2204,110 +3053,113 @@ async function scanMarkets() {
   const results = [];
 
   for (
-    const item of selected
+    const item
+    of selected
   ) {
+
     try {
+
       const result =
         await analyzeSymbol(
           item.symbol
         );
 
       if (
+        result &&
         result.detected &&
-        result.score >=
-          MIN_ABSORPTION_SCORE
+        Number(
+          result.score
+        ) >= 60
       ) {
+
         results.push({
+
           ...result,
 
           volume24h:
-            item.volume24h ||
-            0,
+            item.volume24h,
 
           turnover24h:
-            item.turnover24h ||
-            0,
+            item.turnover24h,
 
           price24hPcnt:
-            item.price24hPcnt ||
-            0
+            item.price24hPcnt
+
         });
+
       }
-    } catch (error) {
-      results.push({
-        ok: false,
-        symbol:
-          item.symbol,
-        error:
-          error?.message ||
-          String(error)
-      });
+
+    } catch {
+
     }
 
     await sleep(30);
+
   }
 
   results.sort(
-    (a, b) =>
+    (a,b) =>
       num(b.score) -
       num(a.score)
   );
 
   return {
-    ok: true,
-    version:
-      VERSION,
+
+    ok:true,
+
     count:
-      results.filter(
-        x => x.ok
-      ).length,
+      results.length,
+
     signals:
-      results.filter(
-        x =>
-          x.ok &&
-          x.detected
-      ).length,
+      results.length,
+
     results,
+
     timestamp:
       Date.now()
+
   };
+
 }
 
 
 /* =========================================================
-   RESPONSE
+   JSON
 ========================================================= */
 
 function json(
   data,
   status = 200
 ) {
+
   return new Response(
     JSON.stringify(
-      data,
-      null,
-      2
+      data
     ),
     {
       status,
       headers: {
-        "content-type":
-          "application/json; charset=UTF-8",
 
-        "cache-control":
-          "no-store, no-cache, must-revalidate",
+        "Content-Type":
+          "application/json; charset=utf-8",
 
-        "access-control-allow-origin":
+        "Access-Control-Allow-Origin":
           "*",
 
-        "access-control-allow-methods":
-          "GET, OPTIONS",
+        "Access-Control-Allow-Methods":
+          "GET,OPTIONS",
 
-        "access-control-allow-headers":
-          "*"
+        "Access-Control-Allow-Headers":
+          "Content-Type",
+
+        "Cache-Control":
+          "no-store"
+
       }
+
     }
   );
+
 }
 
 
@@ -2318,305 +3170,353 @@ function json(
 async function router(
   request
 ) {
+
   const url =
     new URL(
       request.url
     );
 
-  const path =
-    url.pathname;
-
   if (
     request.method ===
     "OPTIONS"
   ) {
-    return new Response(
-      null,
-      {
-        status: 204,
-        headers: {
-          "access-control-allow-origin":
-            "*",
-          "access-control-allow-methods":
-            "GET, OPTIONS",
-          "access-control-allow-headers":
-            "*"
-        }
-      }
-    );
+
+    return json({
+      ok:true
+    });
+
   }
 
-  if (
-    path === "/" ||
-    path === ""
-  ) {
-    return new Response(
-      `<!doctype html>
-<html lang="fa" dir="rtl">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Absorption Zone Scanner</title>
-</head>
-<body>
-<h2>🔥 Absorption Zone Scanner</h2>
-<p>Worker آنلاین است.</p>
-<p>Version: ${VERSION}</p>
-</body>
-</html>`,
-      {
-        headers: {
-          "content-type":
-            "text/html; charset=UTF-8"
-        }
-      }
-    );
-  }
 
   if (
-    path ===
+    url.pathname ===
     "/api/health"
   ) {
+
     return json({
-      ok: true,
-      online: true,
-      version:
-        VERSION,
+
+      ok:true,
+
+      worker:
+        "online",
+
       exchange:
         "Bybit",
+
       market:
         "USDT Perpetual Futures",
-      primaryTimeframe:
-        MAIN_TF,
-      confirmationTimeframes: [
-        CONFIRM_TF_15M,
-        CONFIRM_TF_3M,
-        CONFIRM_TF_1M
-      ],
-      retest: {
-        lookbackCandles:
-          RETEST_LOOKBACK_CANDLES,
-        maxDistancePercent:
-          RETEST_MAX_DISTANCE_PERCENT
-      },
+
+      version:
+        VERSION,
+
       timestamp:
         Date.now()
+
     });
+
   }
 
+
   if (
-    path ===
+    url.pathname ===
     "/api/config"
   ) {
+
     return json({
-      ok: true,
+
+      ok:true,
+
       version:
         VERSION,
+
       exchange:
         "Bybit",
+
       market:
         "USDT Perpetual Futures",
+
       mainTimeframe:
         MAIN_TF,
-      confirmations: [
-        CONFIRM_TF_15M,
-        CONFIRM_TF_3M,
-        CONFIRM_TF_1M
-      ],
-      limits: {
-        kline:
-          KLINE_LIMIT,
-        trades:
-          TRADE_LIMIT,
-        orderbook:
-          ORDERBOOK_LIMIT,
-        scanBatch:
-          SCAN_BATCH,
-        maxSymbols:
-          MAX_SYMBOLS
-      },
+
+      confirmations:
+        [
+          TF_15M,
+          TF_3M,
+          TF_1M
+        ],
+
       thresholds: {
+
         minVolumeRatio:
           MIN_VOLUME_RATIO,
+
         minAbsorptionScore:
           MIN_ABSORPTION_SCORE,
-        retestLookbackCandles:
+
+        retestLookback:
           RETEST_LOOKBACK_CANDLES,
-        retestMaxDistancePercent:
+
+        retestMaxDistance:
           RETEST_MAX_DISTANCE_PERCENT
+
       }
+
     });
+
   }
 
-  if (
-    path ===
-    "/api/symbols"
-  ) {
-    try {
-      const symbols =
-        await getSymbols();
-
-      return json({
-        ok: true,
-        count:
-          symbols.length,
-        symbols,
-        timestamp:
-          Date.now()
-      });
-    } catch (error) {
-      return json(
-        {
-          ok: false,
-          error:
-            error?.message ||
-            String(error),
-          timestamp:
-            Date.now()
-        },
-        502
-      );
-    }
-  }
 
   if (
-    path ===
+    url.pathname ===
     "/api/test-bybit"
   ) {
+
     try {
+
       const result =
         await bybit(
           "/v5/market/time"
         );
 
       return json({
-        ok: true,
-        bybit: true,
+
+        ok:true,
+
+        bybit:true,
+
         result,
+
         timestamp:
           Date.now()
+
       });
-    } catch (error) {
-      return json(
-        {
-          ok: false,
-          bybit: false,
-          error:
-            error?.message ||
-            String(error),
-          timestamp:
-            Date.now()
-        },
-        502
-      );
+
+    } catch(error) {
+
+      return json({
+
+        ok:false,
+
+        bybit:false,
+
+        error:
+          error.message,
+
+        timestamp:
+          Date.now()
+
+      },502);
+
     }
+
   }
 
+
   if (
-    path ===
+    url.pathname ===
+    "/api/symbols"
+  ) {
+
+    try {
+
+      const symbols =
+        await getSymbols();
+
+      return json({
+
+        ok:true,
+
+        count:
+          symbols.length,
+
+        symbols,
+
+        timestamp:
+          Date.now()
+
+      });
+
+    } catch(error) {
+
+      return json({
+
+        ok:false,
+
+        error:
+          error.message
+
+      },502);
+
+    }
+
+  }
+
+
+  if (
+    url.pathname ===
     "/api/analyze"
   ) {
-    const symbol =
-      url.searchParams.get(
-        "symbol"
-      );
-
-    if (!symbol) {
-      return json(
-        {
-          ok: false,
-          error:
-            "symbol is required"
-        },
-        400
-      );
-    }
 
     try {
+
+      const input =
+        url.searchParams.get(
+          "symbol"
+        );
+
+      const found =
+        await findSymbol(
+          input
+        );
+
+      if (!found) {
+
+        return json({
+
+          ok:false,
+
+          error:
+            "ارز موردنظر در Bybit Futures پیدا نشد."
+
+        },404);
+
+      }
+
       return json(
         await analyzeSymbol(
-          symbol
+          found.symbol
         )
       );
-    } catch (error) {
-      return json(
-        {
-          ok: false,
-          symbol,
-          error:
-            error?.message ||
-            String(error),
-          timestamp:
-            Date.now()
-        },
-        502
-      );
+
+    } catch(error) {
+
+      return json({
+
+        ok:false,
+
+        error:
+          error?.message ||
+          String(error),
+
+        timestamp:
+          Date.now()
+
+      },502);
+
     }
+
   }
 
+
   if (
-    path ===
+    url.pathname ===
     "/api/scan"
   ) {
+
     try {
+
       return json(
         await scanMarkets()
       );
-    } catch (error) {
-      return json(
-        {
-          ok: false,
-          error:
-            error?.message ||
-            String(error),
-          timestamp:
-            Date.now()
-        },
-        502
-      );
+
+    } catch(error) {
+
+      return json({
+
+        ok:false,
+
+        error:
+          error?.message ||
+          String(error),
+
+        timestamp:
+          Date.now()
+
+      },502);
+
     }
+
   }
 
-  return json(
-    {
-      ok: false,
-      error:
-        "Not Found",
-      path
-    },
-    404
-  );
+
+  if (
+    url.pathname === "/"
+  ) {
+
+    return new Response(
+      `
+      <!DOCTYPE html>
+      <html lang="fa" dir="rtl">
+      <head>
+      <meta charset="UTF-8">
+      <title>Absorption Zone Scanner</title>
+      </head>
+      <body style="
+        background:#07111f;
+        color:white;
+        font-family:tahoma;
+        text-align:center;
+        padding:50px;
+      ">
+      <h1>🔥 Absorption Zone Scanner</h1>
+      <p>Worker آنلاین است.</p>
+      <p>Bybit Futures</p>
+      </body>
+      </html>
+      `,
+      {
+        headers:{
+          "Content-Type":
+            "text/html; charset=utf-8"
+        }
+      }
+    );
+
+  }
+
+
+  return json({
+
+    ok:false,
+
+    error:
+      "Not Found"
+
+  },404);
+
 }
 
 
 /* =========================================================
-   WORKER
+   EXPORT
 ========================================================= */
 
 export default {
+
   async fetch(
-    request,
-    env,
-    ctx
+    request
   ) {
+
     try {
+
       return await router(
         request
       );
-    } catch (error) {
-      return json(
-        {
-          ok: false,
-          error:
-            error?.message ||
-            String(error),
-          version:
-            VERSION,
-          timestamp:
-            Date.now()
-        },
-        500
-      );
+
+    } catch(error) {
+
+      return json({
+
+        ok:false,
+
+        error:
+          error?.message ||
+          String(error)
+
+      },500);
+
     }
+
   }
+
 };
