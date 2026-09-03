@@ -7,11 +7,11 @@
 
 <meta
   name="viewport"
-  content="width=device-width,initial-scale=1"
-/>
+  content="width=device-width,initial-scale=1,maximum-scale=1"
+>
 
 <title>
-Absorption Zone Scanner
+Bybit Order Flow Map
 </title>
 
 <style>
@@ -20,259 +20,64 @@ Absorption Zone Scanner
   box-sizing:border-box;
 }
 
-html{
-  scroll-behavior:smooth;
-}
-
 body{
 
   margin:0;
 
-  background:#07111f;
+  background:#080b10;
 
-  color:#eaf2ff;
+  color:#e8edf5;
 
   font-family:
     Tahoma,
     Arial,
     sans-serif;
-
 }
 
-.container{
+.app{
 
-  width:
-    min(1100px,94%);
+  max-width:1500px;
 
-  margin:
-    20px auto 50px;
+  margin:auto;
 
+  padding:12px;
+}
+
+.header,
+.card{
+
+  background:#111720;
+
+  border:
+    1px solid
+    #202a38;
+
+  border-radius:16px;
+
+  box-shadow:
+    0 8px 30px #0005;
 }
 
 .header{
 
-  background:
-    linear-gradient(
-      135deg,
-      #0c1c31,
-      #102943
-    );
+  padding:16px;
 
-  border:
-    1px solid #203a59;
-
-  border-radius:
-    20px;
-
-  padding:
-    22px;
-
+  margin-bottom:12px;
 }
 
 h1{
 
   margin:
-    0 0 8px;
+    0 0 6px;
 
-  font-size:
-    26px;
-
+  font-size:24px;
 }
 
-.subtitle{
+.muted{
 
-  color:#9db4ce;
+  color:#8d9aae;
 
-  font-size:
-    14px;
-
-  line-height:
-    1.9;
-
-}
-
-.status-row{
-
-  display:flex;
-
-  flex-wrap:wrap;
-
-  gap:8px;
-
-  margin-top:
-    16px;
-
-}
-
-.badge{
-
-  padding:
-    8px 12px;
-
-  border-radius:
-    999px;
-
-  background:
-    #10243b;
-
-  border:
-    1px solid #284664;
-
-  font-size:
-    12px;
-
-}
-
-.badge.online{
-
-  color:#61ff9a;
-
-  border-color:#226d45;
-
-}
-
-.badge.scanning{
-
-  color:#ffd76a;
-
-  border-color:#806728;
-
-}
-
-.badge.offline{
-
-  color:#ff7373;
-
-  border-color:#743535;
-
-}
-
-.card{
-
-  margin-top:
-    16px;
-
-  background:
-    #0c1929;
-
-  border:
-    1px solid #20364e;
-
-  border-radius:
-    18px;
-
-  padding:
-    18px;
-
-}
-
-.section-title{
-
-  font-weight:
-    bold;
-
-  margin-bottom:
-    14px;
-
-  font-size:
-    16px;
-
-}
-
-.input-row{
-
-  display:grid;
-
-  grid-template-columns:
-    minmax(0,1fr)
-    auto;
-
-  gap:10px;
-
-}
-
-input,
-select{
-
-  width:100%;
-
-  border:
-    1px solid #29445f;
-
-  background:
-    #081522;
-
-  color:white;
-
-  border-radius:
-    12px;
-
-  padding:
-    13px;
-
-  outline:none;
-
-  font-size:
-    14px;
-
-}
-
-button{
-
-  border:0;
-
-  border-radius:
-    12px;
-
-  padding:
-    12px 18px;
-
-  cursor:pointer;
-
-  font-weight:bold;
-
-  color:white;
-
-  background:
-    #155b92;
-
-}
-
-button:hover{
-
-  filter:
-    brightness(1.12);
-
-}
-
-button:disabled{
-
-  opacity:.5;
-
-  cursor:not-allowed;
-
-}
-
-.btn-green{
-  background:#167344;
-}
-
-.btn-red{
-  background:#873434;
-}
-
-.btn-dark{
-  background:#1b3045;
-}
-
-.btn-analysis{
-  background:#155b92;
-  padding:9px 14px;
-  font-size:12px;
-}
-
-.btn-analysis:hover{
-  transform:translateY(-1px);
+  font-size:13px;
 }
 
 .controls{
@@ -280,238 +85,70 @@ button:disabled{
   display:grid;
 
   grid-template-columns:
-    repeat(
-      3,
-      minmax(0,1fr)
-    );
+    1.4fr
+    .7fr
+    .7fr
+    .7fr;
 
-  gap:12px;
+  gap:8px;
 
+  margin-top:14px;
 }
 
-.control{
+input,
+button{
 
-  background:#091624;
+  height:46px;
+
+  border-radius:11px;
 
   border:
-    1px solid #20384f;
+    1px solid
+    #293546;
 
-  border-radius:
-    14px;
+  background:#0b1119;
 
-  padding:
-    14px;
-
-}
-
-.control label{
-
-  display:block;
-
-  color:#a7bdd4;
-
-  font-size:
-    12px;
-
-  margin-bottom:
-    9px;
-
-}
-
-.range-wrap{
-
-  display:flex;
-
-  align-items:center;
-
-  gap:10px;
-
-}
-
-input[type="range"]{
-
-  padding:0;
-
-}
-
-.range-value{
-
-  min-width:
-    52px;
-
-  text-align:
-    center;
-
-  color:#73d6ff;
-
-  font-weight:
-    bold;
-
-}
-
-.actions{
-
-  display:flex;
-
-  flex-wrap:wrap;
-
-  gap:10px;
-
-  margin-top:
-    14px;
-
-}
-
-.summary{
-
-  display:grid;
-
-  grid-template-columns:
-    repeat(
-      4,
-      minmax(0,1fr)
-    );
-
-  gap:10px;
-
-}
-
-.stat{
-
-  background:#091624;
-
-  border:
-    1px solid #20384f;
-
-  border-radius:
-    14px;
+  color:#fff;
 
   padding:
-    14px;
+    0 13px;
 
+  font-size:15px;
 }
 
-.stat-title{
+button{
 
-  color:#8ea8c1;
+  cursor:pointer;
 
-  font-size:
-    11px;
-
-  margin-bottom:
-    8px;
-
+  font-weight:bold;
 }
 
-.stat-value{
+.primary{
 
-  font-size:
-    20px;
-
-  font-weight:
-    bold;
-
+  background:#126b4f;
 }
 
-.results{
+.danger{
 
-  display:grid;
-
-  gap:12px;
-
+  background:#762f38;
 }
 
-.signal-card{
+.blue{
 
-  background:#091624;
-
-  border:
-    1px solid #28445d;
-
-  border-radius:
-    16px;
-
-  padding:
-    16px;
-
+  background:#194c7c;
 }
 
-.signal-card.strong{
+.status{
 
-  border-color:#31b66a;
+  margin-top:10px;
 
-}
+  padding:9px;
 
-.signal-head{
+  border-radius:10px;
 
-  display:flex;
+  background:#0c121a;
 
-  align-items:center;
-
-  justify-content:space-between;
-
-  gap:10px;
-
-  flex-wrap:wrap;
-
-}
-
-.symbol{
-
-  font-size:
-    19px;
-
-  font-weight:
-    bold;
-
-}
-
-.signal{
-
-  padding:
-    7px 10px;
-
-  border-radius:
-    999px;
-
-  font-size:
-    11px;
-
-  font-weight:
-    bold;
-
-}
-
-.signal.strong{
-
-  background:#145b39;
-
-  color:#8dffb6;
-
-}
-
-.signal.long{
-
-  background:#174b65;
-
-  color:#8bdfff;
-
-}
-
-.signal.watch{
-
-  background:#594719;
-
-  color:#ffe18a;
-
-}
-
-.signal.weak{
-
-  background:#3d2930;
-
-  color:#ffadb8;
-
+  color:#9fe4bf;
 }
 
 .grid{
@@ -519,472 +156,268 @@ input[type="range"]{
   display:grid;
 
   grid-template-columns:
-    repeat(
-      4,
-      minmax(0,1fr)
-    );
+    1fr
+    330px;
 
-  gap:8px;
-
-  margin-top:
-    14px;
-
+  gap:12px;
 }
 
-.metric{
+.card{
 
-  background:#0d2033;
+  padding:12px;
 
-  border-radius:
-    10px;
-
-  padding:
-    10px;
-
+  margin-bottom:12px;
 }
 
-.metric span{
+.chartWrap{
+
+  position:relative;
+
+  height:700px;
+
+  overflow:hidden;
+
+  background:#070a0e;
+
+  border-radius:12px;
+
+  border:
+    1px solid
+    #1d2733;
+}
+
+canvas{
+
+  width:100%;
+
+  height:100%;
 
   display:block;
-
-  color:#819ab3;
-
-  font-size:
-    10px;
-
-  margin-bottom:
-    5px;
-
 }
 
-.metric strong{
+.chartInfo{
 
-  font-size:
-    13px;
+  position:absolute;
 
-}
+  top:10px;
 
-.zone{
+  right:10px;
 
-  margin-top:
-    12px;
-
-  background:#101e2e;
+  background:#080c12dd;
 
   border:
-    1px dashed #356080;
+    1px solid
+    #263244;
 
-  border-radius:
-    12px;
+  border-radius:10px;
 
-  padding:
-    12px;
+  padding:9px;
 
+  line-height:1.8;
+
+  font-size:12px;
+
+  pointer-events:none;
 }
 
-.zone-title{
+.side{
 
-  color:#8dd7ff;
+  display:grid;
 
-  font-size:
-    12px;
+  gap:10px;
 
-  margin-bottom:
-    7px;
-
+  align-content:start;
 }
 
-.analysis-section{
-
-  margin-top:
-    12px;
-
-  background:#081522;
-
-  border:
-    1px solid #1c344b;
-
-  border-radius:
-    12px;
-
-  padding:
-    12px;
-
-}
-
-.analysis-section-title{
-
-  color:#8dd7ff;
-
-  font-size:
-    12px;
-
-  font-weight:
-    bold;
-
-  margin-bottom:
-    9px;
-
-}
-
-.analysis-grid{
+.statgrid{
 
   display:grid;
 
   grid-template-columns:
-    repeat(
-      3,
-      minmax(0,1fr)
-    );
+    1fr
+    1fr;
 
-  gap:8px;
-
+  gap:7px;
 }
 
-.analysis-item{
+.stat{
 
-  background:#0b1c2c;
+  background:#0b1118;
 
-  border-radius:
-    9px;
+  border:
+    1px solid
+    #202b39;
 
-  padding:
-    9px;
+  border-radius:10px;
 
+  padding:9px;
 }
 
-.analysis-item span{
+.stat b{
 
   display:block;
 
-  color:#718ba5;
+  font-size:17px;
 
-  font-size:
-    10px;
-
-  margin-bottom:
-    5px;
-
+  margin-top:3px;
 }
 
-.analysis-item strong{
+.green{
 
-  font-size:
-    12px;
-
+  color:#42df9a;
 }
 
-.entry-ready{
+.red{
 
-  color:#8dffb6;
-
-  background:#103c29;
-
-  border:
-    1px solid #287b50;
-
+  color:#ff6570;
 }
 
-.entry-confirm{
+.yellow{
 
-  color:#ffe18a;
-
-  background:#403516;
-
-  border:
-    1px solid #705e28;
-
+  color:#ffd166;
 }
 
-.entry-wait{
+.cyan{
 
-  color:#ffb5b5;
-
-  background:#3a2025;
-
-  border:
-    1px solid #68363e;
-
+  color:#55d8ff;
 }
 
-.reason-box{
+.sectionTitle{
 
-  margin-top:
-    10px;
+  font-weight:bold;
 
-  padding:
-    11px;
-
-  background:#0b1c2c;
-
-  border-radius:
-    10px;
-
-  color:#aec4d8;
-
-  font-size:
-    11px;
-
-  line-height:
-    1.9;
-
+  margin-bottom:9px;
 }
 
-.info-box{
+.bar{
 
-  margin-top:
-    10px;
+  height:9px;
 
-  padding:
-    11px;
+  background:#1a2330;
 
-  background:#0b1c2c;
+  border-radius:10px;
 
-  border:
-    1px solid #1d3a53;
+  overflow:hidden;
 
-  border-radius:
-    10px;
-
-  color:#a9c0d4;
-
-  font-size:
-    11px;
-
-  line-height:
-    1.9;
-
+  margin:6px 0;
 }
 
-.warning-box{
+.bar i{
 
-  margin-top:
-    10px;
+  display:block;
 
-  padding:
-    10px;
-
-  background:#2b2113;
-
-  border:
-    1px solid #5b4724;
-
-  border-radius:
-    10px;
-
-  color:#e8ca83;
-
-  font-size:
-    11px;
-
-  line-height:
-    1.8;
-
+  height:100%;
 }
 
-.alert-list{
+.rows{
 
-  display:grid;
-
-  gap:8px;
-
-  max-height:
-    600px;
+  max-height:300px;
 
   overflow:auto;
-
 }
 
-.alert{
-
-  background:#0a1826;
-
-  border:
-    1px solid #29465e;
-
-  border-radius:
-    12px;
-
-  padding:
-    12px;
-
-}
-
-.alert.new{
-
-  border-color:#39bd73;
-
-}
-
-.alert-top{
+.row{
 
   display:flex;
 
   justify-content:space-between;
 
-  gap:8px;
+  padding:6px 4px;
 
-  flex-wrap:wrap;
+  border-bottom:
+    1px solid
+    #1b2430;
 
+  font-size:12px;
 }
 
-.alert-symbol{
+table{
 
-  font-weight:bold;
+  width:100%;
 
-  color:#8bdfff;
+  border-collapse:collapse;
 
+  font-size:12px;
 }
 
-.alert-time{
+td,
+th{
 
-  color:#7e9ab3;
+  padding:7px;
 
-  font-size:
-    11px;
+  border-bottom:
+    1px solid
+    #1b2430;
 
+  text-align:center;
 }
 
-.alert-text{
+.notice{
 
-  margin-top:
-    7px;
+  padding:10px;
 
-  font-size:
-    12px;
+  border-radius:10px;
 
-  color:#bdd0e2;
-
-  line-height:
-    1.8;
-
-}
-
-.alert-actions{
-
-  display:flex;
-
-  gap:8px;
-
-  margin-top:
-    10px;
-
-}
-
-.log{
-
-  background:#06101a;
+  background:#101a14;
 
   border:
-    1px solid #1d3245;
+    1px solid
+    #244331;
 
-  border-radius:
-    12px;
+  line-height:1.8;
 
-  padding:
-    12px;
-
-  font-size:
-    11px;
-
-  color:#8ca7bf;
-
-  max-height:
-    220px;
-
-  overflow:auto;
-
-  direction:ltr;
-
-  text-align:left;
-
+  font-size:13px;
 }
 
-.empty{
+.small{
 
-  color:#829ab1;
+  font-size:11px;
 
-  text-align:center;
-
-  padding:
-    20px;
-
-  line-height:
-    1.9;
-
+  color:#8995a7;
 }
 
-.loading{
+hr{
 
-  text-align:center;
+  border:0;
 
-  padding:
-    20px;
-
-  color:#8dd7ff;
-
+  border-top:
+    1px solid
+    #1d2733;
 }
 
-.status-good{
-  color:#61ff9a;
-}
+@media(max-width:950px){
 
-.status-bad{
-  color:#ff7777;
-}
+  .grid{
 
-.status-neutral{
-  color:#ffd76a;
-}
-
-@media(max-width:800px){
-
-  .summary{
     grid-template-columns:
-      repeat(2,minmax(0,1fr));
+      1fr;
   }
 
   .controls{
-    grid-template-columns:1fr;
-  }
 
-  .grid{
     grid-template-columns:
-      repeat(2,minmax(0,1fr));
+      1fr
+      1fr;
   }
 
-  .analysis-grid{
-    grid-template-columns:
-      repeat(2,minmax(0,1fr));
-  }
+  .chartWrap{
 
+    height:620px;
+  }
 }
 
-@media(max-width:520px){
+@media(max-width:550px){
 
-  .input-row{
-    grid-template-columns:1fr;
-  }
+  .controls{
 
-  .summary{
     grid-template-columns:
-      1fr 1fr;
+      1fr;
   }
 
-  .grid{
-    grid-template-columns:
-      1fr 1fr;
-  }
+  .chartWrap{
 
-  .analysis-grid{
-    grid-template-columns:
-      1fr 1fr;
+    height:560px;
   }
-
-  .actions button{
-    width:100%;
-  }
-
 }
 
 </style>
@@ -994,3004 +427,2692 @@ input[type="range"]{
 
 <body>
 
-<div class="container">
+<div class="app">
 
 
 <div class="header">
 
 <h1>
-🔥 اسکنر ناحیه جذب Bybit
+📊 نقشه Order Flow بای‌بیت
 </h1>
 
-<div class="subtitle">
+<div class="muted">
 
-شناسایی جذب سفارش در Bybit Futures
-با تمرکز اصلی روی 5 دقیقه،
-تأیید روند 15 دقیقه،
-تأیید سریع 3 دقیقه
-و نقطه ورود 1 دقیقه
+داده واقعی Bybit · کندل · Heatmap · عمق سفارش · معاملات واقعی · نقدینگی · جذب سفارش
 
 </div>
 
-<div class="status-row">
-
-<div
-  id="workerStatus"
-  class="badge"
->
-⏳ اتصال به Worker
-</div>
-
-<div class="badge">
-Bybit Futures
-</div>
-
-<div class="badge">
-تایم‌فریم اصلی: 5 دقیقه
-</div>
-
-<div class="badge">
-جذب + بازآزمایی
-</div>
-
-<div
-  id="scanStatus"
-  class="badge"
->
-⏸️ اسکن متوقف است
-</div>
-
-</div>
-
-</div>
-
-
-<div class="card">
-
-<div class="section-title">
-🔎 تحلیل ارز
-</div>
-
-<div class="input-row">
-
-<input
-  id="symbolInput"
-  value="BTCUSDT"
-  placeholder="مثلاً BTCUSDT"
-  autocomplete="off"
-/>
-
-<button id="analyzeBtn">
-🔎 تحلیل
-</button>
-
-</div>
-
-<div class="actions">
-
-<button
-  id="startBtn"
-  class="btn-green"
->
-🚀 شروع اسکن خودکار
-</button>
-
-<button
-  id="stopBtn"
-  class="btn-red"
-  disabled
->
-⏹️ توقف اسکن
-</button>
-
-<button
-  id="soundTestBtn"
-  class="btn-dark"
->
-🔊 تست صدا
-</button>
-
-</div>
-
-</div>
-
-
-<div class="card">
-
-<div class="section-title">
-⚙️ تنظیمات اسکن و هشدار
-</div>
 
 <div class="controls">
 
-<div class="control">
+<input
+  id="symbol"
+  value="BTCUSDT"
+  placeholder="مثلاً BTCUSDT"
+>
 
-<label>
-فاصله اسکن
-</label>
+<button
+  class="primary"
+  onclick="analyze()"
+>
+تحلیل کامل
+</button>
 
-<select id="scanInterval">
+<button
+  class="blue"
+  onclick="startLive()"
+>
+شروع زنده
+</button>
 
-<option value="15">
-هر 15 ثانیه
-</option>
-
-<option value="30" selected>
-هر 30 ثانیه
-</option>
-
-<option value="60">
-هر 1 دقیقه
-</option>
-
-<option value="120">
-هر 2 دقیقه
-</option>
-
-</select>
+<button
+  class="danger"
+  onclick="stopLive()"
+>
+توقف
+</button>
 
 </div>
 
-
-<div class="control">
-
-<label>
-🔊 صدای هشدار
-</label>
-
-<div class="range-wrap">
-
-<input
-  id="volumeRange"
-  type="range"
-  min="0"
-  max="100"
-  value="70"
-/>
 
 <div
-  id="volumeValue"
-  class="range-value"
+  id="status"
+  class="status"
 >
-70%
+🟡 آماده
 </div>
 
 </div>
 
-</div>
 
 
-<div class="control">
+<div class="grid">
 
-<label>
-حداقل امتیاز هشدار
-</label>
 
-<div class="range-wrap">
-
-<input
-  id="scoreRange"
-  type="range"
-  min="50"
-  max="95"
-  value="60"
-/>
-
-<div
-  id="scoreValue"
-  class="range-value"
->
-60
-</div>
-
-</div>
-
-</div>
-
-</div>
-
-</div>
+<main>
 
 
 <div class="card">
 
-<div class="section-title">
-🎯 ساختار تحلیل
-</div>
+<div class="chartWrap">
 
-<div class="summary">
+<canvas id="chart"></canvas>
 
-<div class="stat">
-<div class="stat-title">
-تایم‌فریم اصلی
-</div>
-<div class="stat-value">
-5M
-</div>
-</div>
-
-<div class="stat">
-<div class="stat-title">
-تأیید روند
-</div>
-<div class="stat-value">
-15M
-</div>
-</div>
-
-<div class="stat">
-<div class="stat-title">
-تأیید سریع
-</div>
-<div class="stat-value">
-3M
-</div>
-</div>
-
-<div class="stat">
-<div class="stat-title">
-ورود دقیق
-</div>
-<div class="stat-value">
-1M
-</div>
+<div
+  id="chartInfo"
+  class="chartInfo"
+>
+در انتظار داده...
 </div>
 
 </div>
 
 </div>
+
 
 
 <div class="card">
 
-<div class="section-title">
-📊 وضعیت اسکن
-</div>
+<div class="sectionTitle">
 
-<div class="summary">
+🧾 معاملات واقعی
 
-<div class="stat">
-
-<div class="stat-title">
-ناحیه شناسایی‌شده
 </div>
 
 <div
-  id="zonesCount"
-  class="stat-value"
->
-0
-</div>
+  class="rows"
+  id="trades"
+></div>
 
 </div>
 
-<div class="stat">
 
-<div class="stat-title">
-سیگنال قوی
-</div>
 
-<div
-  id="strongCount"
-  class="stat-value"
->
-0
-</div>
+<div class="card">
 
-</div>
+<div class="sectionTitle">
 
-<div class="stat">
+🧱 Order Book / دیوارهای نقدینگی
 
-<div class="stat-title">
-میانگین امتیاز
 </div>
 
 <div
-  id="avgScore"
-  class="stat-value"
->
-0
-</div>
+  id="book"
+></div>
 
 </div>
 
-<div class="stat">
 
-<div class="stat-title">
-آخرین بروزرسانی
+
+<div class="card">
+
+<div class="sectionTitle">
+
+🐋 معاملات بزرگ
+
 </div>
 
 <div
-  id="lastUpdate"
-  class="stat-value"
-  style="font-size:14px"
+  id="blocks"
+></div>
+
+</div>
+
+
+</main>
+
+
+
+<aside class="side">
+
+
+
+<div class="card">
+
+<div class="sectionTitle">
+
+🎯 وضعیت هوشمند
+
+</div>
+
+
+<div class="statgrid">
+
+
+<div class="stat">
+
+امتیاز Smart Money
+
+<b
+  id="score"
 >
 —
+</b>
+
 </div>
+
+
+<div class="stat">
+
+قدرت سیگنال
+
+<b
+  id="signal"
+>
+—
+</b>
+
+</div>
+
+
+<div class="stat">
+
+مسیر بازار
+
+<b
+  id="movement"
+>
+—
+</b>
+
+</div>
+
+
+<div class="stat">
+
+جذب سفارش
+
+<b
+  id="abs"
+>
+—
+</b>
+
+</div>
+
+
+<div class="stat">
+
+فشار خرید / فروش
+
+<b
+  id="pressure"
+>
+—
+</b>
+
+</div>
+
+
+<div class="stat">
+
+Delta
+
+<b
+  id="delta"
+>
+—
+</b>
+
+</div>
+
 
 </div>
 
 </div>
 
-</div>
 
 
 <div class="card">
 
-<div class="section-title">
-🔥 تحلیل‌های پیدا شده
-</div>
+<div class="sectionTitle">
 
-<div
-  id="results"
-  class="results"
->
-
-<div class="empty">
-🔍 هنوز ناحیه جذب معتبر پیدا نشده است.
-<br>
-اسکنر همچنان بازار را بررسی می‌کند.
-</div>
+⚖️ فشار معاملات واقعی
 
 </div>
 
+<div id="pressureBox"></div>
+
 </div>
+
 
 
 <div class="card">
 
-<div class="section-title">
-🔔 تاریخچه هشدارها
-</div>
+<div class="sectionTitle">
 
-<div
-  id="alerts"
-  class="alert-list"
->
-
-<div class="empty">
-هنوز هشداری ثبت نشده است.
-</div>
+🧲 جذب سفارش
 
 </div>
 
+<div id="absBox"></div>
+
 </div>
+
 
 
 <div class="card">
 
-<div class="section-title">
-🧾 لاگ اسکن
+<div class="sectionTitle">
+
+💧 نقدینگی و Sweep
+
 </div>
 
-<div
-  id="log"
-  class="log"
->
-Scanner ready...
-</div>
+<div id="liqBox"></div>
 
 </div>
 
 
+
+<div class="card">
+
+<div class="sectionTitle">
+
+📈 Open Interest و Funding
+
 </div>
+
+<div id="oiBox"></div>
+
+</div>
+
+
+
+<div class="card">
+
+<div class="sectionTitle">
+
+📍 حمایت و مقاومت
+
+</div>
+
+<div id="srBox"></div>
+
+</div>
+
+
+
+<div class="card">
+
+<div class="sectionTitle">
+
+🎯 ورود ۱ دقیقه
+
+</div>
+
+<div id="entryBox"></div>
+
+</div>
+
+
+
+<div class="card">
+
+<div class="sectionTitle">
+
+🧠 دلایل تحلیل
+
+</div>
+
+<div id="reasons"></div>
+
+</div>
+
+
+
+</aside>
+
+</div>
+
+</div>
+
 
 
 <script>
 
-/* =========================================================
-   STATE
-========================================================= */
+const API="";
 
-const WORKER_BASE =
-  window.location.origin;
+let data=null;
 
-let scanning =
-  false;
+let liveTimer=null;
 
-let scanTimer =
-  null;
+let candles=[];
 
-let scanningNow =
-  false;
-
-let audioContext =
-  null;
-
-let lastAlerts =
-  JSON.parse(
-    localStorage.getItem(
-      "absorption_alerts"
-    ) || "[]"
-  );
-
-let seenSignals =
-  new Set(
-    JSON.parse(
-      localStorage.getItem(
-        "absorption_seen_signals"
-      ) || "[]"
-    )
-  );
+let liveTrades=[];
 
 
-/* =========================================================
-   ELEMENTS
-========================================================= */
 
-const workerStatus =
-  document.getElementById(
-    "workerStatus"
-  );
-
-const scanStatus =
-  document.getElementById(
-    "scanStatus"
-  );
-
-const symbolInput =
-  document.getElementById(
-    "symbolInput"
-  );
-
-const analyzeBtn =
-  document.getElementById(
-    "analyzeBtn"
-  );
-
-const startBtn =
-  document.getElementById(
-    "startBtn"
-  );
-
-const stopBtn =
-  document.getElementById(
-    "stopBtn"
-  );
-
-const soundTestBtn =
-  document.getElementById(
-    "soundTestBtn"
-  );
-
-const scanInterval =
-  document.getElementById(
-    "scanInterval"
-  );
-
-const volumeRange =
-  document.getElementById(
-    "volumeRange"
-  );
-
-const volumeValue =
-  document.getElementById(
-    "volumeValue"
-  );
-
-const scoreRange =
-  document.getElementById(
-    "scoreRange"
-  );
-
-const scoreValue =
-  document.getElementById(
-    "scoreValue"
-  );
-
-const results =
-  document.getElementById(
-    "results"
-  );
-
-const alerts =
-  document.getElementById(
-    "alerts"
-  );
-
-const zonesCount =
-  document.getElementById(
-    "zonesCount"
-  );
-
-const strongCount =
-  document.getElementById(
-    "strongCount"
-  );
-
-const avgScore =
-  document.getElementById(
-    "avgScore"
-  );
-
-const lastUpdate =
-  document.getElementById(
-    "lastUpdate"
-  );
-
-const logBox =
-  document.getElementById(
-    "log"
-  );
+const $=
+  id=>
+    document.getElementById(id);
 
 
-/* =========================================================
-   SETTINGS
-========================================================= */
 
-const savedVolume =
-  localStorage.getItem(
-    "absorption_volume"
-  );
-
-const savedInterval =
-  localStorage.getItem(
-    "absorption_interval"
-  );
-
-const savedScore =
-  localStorage.getItem(
-    "absorption_score"
-  );
-
-if (
-  savedVolume !== null
-) {
-
-  volumeRange.value =
-    savedVolume;
-
-}
-
-if (
-  savedInterval !== null
-) {
-
-  scanInterval.value =
-    savedInterval;
-
-}
-
-if (
-  savedScore !== null
-) {
-
-  scoreRange.value =
-    savedScore;
-
-}
-
-
-function updateSettings(){
-
-  volumeValue.textContent =
-    volumeRange.value +
-    "%";
-
-  scoreValue.textContent =
-    scoreRange.value;
-
-  localStorage.setItem(
-    "absorption_volume",
-    volumeRange.value
-  );
-
-  localStorage.setItem(
-    "absorption_interval",
-    scanInterval.value
-  );
-
-  localStorage.setItem(
-    "absorption_score",
-    scoreRange.value
-  );
-
-}
-
-volumeRange.addEventListener(
-  "input",
-  updateSettings
-);
-
-scoreRange.addEventListener(
-  "input",
-  updateSettings
-);
-
-scanInterval.addEventListener(
-  "change",
-  () => {
-
-    updateSettings();
-
-    if (scanning) {
-      restartTimer();
-    }
-
-  }
-);
-
-updateSettings();
-
-
-/* =========================================================
-   LOG
-========================================================= */
-
-function log(
-  message
+function fmt(
+  x,
+  d=2
 ){
 
-  const time =
-    new Date()
-      .toLocaleTimeString(
-        "fa-IR",
-        {
-          hour:"2-digit",
-          minute:"2-digit",
-          second:"2-digit"
-        }
-      );
+  return Number.isFinite(
+    Number(x)
+  )
 
-  logBox.innerHTML =
-    `[${time}] ${escapeHtml(message)}<br>` +
-    logBox.innerHTML;
+    ? Number(x)
+        .toLocaleString(
+          "en-US",
+          {
+            maximumFractionDigits:d
+          }
+        )
 
+    : "—";
 }
+
+
+
+function fa(x){
+
+  if(x==="LONG")
+    return "صعودی";
+
+  if(x==="SHORT")
+    return "نزولی";
+
+  if(x==="BUY")
+    return "خرید";
+
+  if(x==="SELL")
+    return "فروش";
+
+  if(x==="WAIT")
+    return "انتظار";
+
+  if(x==="NONE")
+    return "—";
+
+  return x;
+}
+
+
+
+function setStatus(t){
+
+  $("status")
+    .textContent=t;
+}
+
 
 
 /* =========================================================
    API
 ========================================================= */
 
-async function api(
-  path
-){
+async function get(path){
 
-  const response =
+  const r=
     await fetch(
-      WORKER_BASE +
-      path,
+      API+path,
       {
         cache:"no-store"
       }
     );
 
-  const text =
-    await response.text();
+  const d=
+    await r.json();
 
-  let data;
-
-  try {
-
-    data =
-      JSON.parse(text);
-
-  } catch {
+  if(!d.ok){
 
     throw new Error(
-      "پاسخ Worker قابل خواندن نیست."
+      d.error||
+      "خطا"
     );
-
   }
 
-  if (
-    !response.ok ||
-    data.ok === false
-  ) {
-
-    throw new Error(
-      data.error ||
-      "خطای Worker"
-    );
-
-  }
-
-  return data;
-
+  return d;
 }
 
-
-/* =========================================================
-   HEALTH
-========================================================= */
-
-async function checkHealth(){
-
-  try {
-
-    const data =
-      await api(
-        "/api/health"
-      );
-
-    if (data.ok) {
-
-      workerStatus.textContent =
-        "🟢 Bybit Worker آنلاین";
-
-      workerStatus.className =
-        "badge online";
-
-    }
-
-  } catch(error){
-
-    workerStatus.textContent =
-      "🔴 Worker قطع است";
-
-    workerStatus.className =
-      "badge offline";
-
-    log(
-      "❌ " +
-      error.message
-    );
-
-  }
-
-}
-
-
-/* =========================================================
-   AUDIO
-========================================================= */
-
-function initAudio(){
-
-  if (
-    !audioContext
-  ) {
-
-    const AudioCtx =
-      window.AudioContext ||
-      window.webkitAudioContext;
-
-    if (!AudioCtx) {
-      return;
-    }
-
-    audioContext =
-      new AudioCtx();
-
-  }
-
-  if (
-    audioContext.state ===
-    "suspended"
-  ) {
-
-    audioContext.resume();
-
-  }
-
-}
-
-
-function beep(
-  frequency,
-  duration,
-  delay
-){
-
-  if (!audioContext) {
-    return;
-  }
-
-  const oscillator =
-    audioContext.createOscillator();
-
-  const gain =
-    audioContext.createGain();
-
-  oscillator.type =
-    "sine";
-
-  oscillator.frequency.value =
-    frequency;
-
-  const volume =
-    Number(
-      volumeRange.value
-    ) / 100;
-
-  const start =
-    audioContext.currentTime +
-    delay;
-
-  const end =
-    start +
-    duration;
-
-  gain.gain.setValueAtTime(
-    0,
-    start
-  );
-
-  gain.gain.linearRampToValueAtTime(
-    0.25 * volume,
-    start + 0.03
-  );
-
-  gain.gain.exponentialRampToValueAtTime(
-    0.001,
-    end
-  );
-
-  oscillator.connect(
-    gain
-  );
-
-  gain.connect(
-    audioContext.destination
-  );
-
-  oscillator.start(
-    start
-  );
-
-  oscillator.stop(
-    end + 0.03
-  );
-
-}
-
-
-function alertSound(){
-
-  initAudio();
-
-  if (!audioContext) {
-    return;
-  }
-
-  beep(
-    880,
-    0.18,
-    0
-  );
-
-  beep(
-    1175,
-    0.18,
-    0.22
-  );
-
-  beep(
-    880,
-    0.18,
-    0.44
-  );
-
-  beep(
-    1320,
-    0.3,
-    0.66
-  );
-
-}
-
-
-soundTestBtn.addEventListener(
-  "click",
-  () => {
-
-    initAudio();
-
-    alertSound();
-
-    log(
-      "🔊 صدای هشدار تست شد."
-    );
-
-  }
-);
 
 
 /* =========================================================
    ANALYZE
 ========================================================= */
 
-async function analyzeSymbol(){
+async function analyze(){
 
-  const symbol =
-    symbolInput.value
+  stopLive();
+
+  const s=
+    $("symbol")
+      .value
       .trim()
       .toUpperCase();
 
-  if (!symbol) {
 
-    alert(
-      "نام ارز را وارد کن."
-    );
-
+  if(!s)
     return;
 
-  }
 
-  initAudio();
+  setStatus(
+    "🟡 دریافت داده واقعی از Bybit..."
+  );
 
-  analyzeBtn.disabled =
-    true;
 
-  results.innerHTML =
-    `<div class="loading">
-      ⏳ در حال تحلیل ${escapeHtml(symbol)} ...
-    </div>`;
+  try{
 
-  results.scrollIntoView({
-    behavior:"smooth",
-    block:"start"
-  });
-
-  try {
-
-    log(
-      "🔎 تحلیل " +
-      symbol +
-      " ..."
-    );
-
-    const data =
-      await api(
-        "/api/analyze?symbol=" +
-        encodeURIComponent(
-          symbol
-        )
+    data=
+      await get(
+        "/api/analyze?symbol="+
+        encodeURIComponent(s)
       );
 
-    renderResults(
-      [data]
+
+    candles=
+      data.candles.tf5||
+      [];
+
+
+    liveTrades=
+      data.trades||
+      [];
+
+
+    renderAll();
+
+
+    setStatus(
+      "🟢 تحلیل با داده واقعی Bybit انجام شد"
     );
 
-    lastUpdate.textContent =
-      new Date()
-        .toLocaleTimeString(
-          "fa-IR"
-        );
 
-    if (
-      data.detected &&
-      Number(data.score || 0) >=
-      Number(scoreRange.value)
-    ) {
+    startLive();
 
-      processSignals(
-        [data]
-      );
 
-    }
+  }catch(e){
 
-    log(
-      "✅ تحلیل " +
-      symbol +
-      " انجام شد."
+    setStatus(
+      "🔴 "+e.message
     );
-
-  } catch(error){
-
-    results.innerHTML =
-      `<div class="empty">
-        ❌ ${escapeHtml(
-          error.message
-        )}
-      </div>`;
-
-    log(
-      "❌ " +
-      error.message
-    );
-
-  } finally {
-
-    analyzeBtn.disabled =
-      false;
-
   }
-
 }
 
 
+
 /* =========================================================
-   HISTORY ANALYSIS
+   LIVE
 ========================================================= */
 
-async function analyzeAlertSymbol(
-  symbol
-){
+async function startLive(){
 
-  const clean =
-    String(
-      symbol || ""
-    )
+  stopLive();
+
+
+  const s=
+    $("symbol")
+      .value
       .trim()
       .toUpperCase();
 
-  if (!clean) {
+
+  if(!s)
     return;
-  }
-
-  symbolInput.value =
-    clean;
-
-  results.scrollIntoView({
-    behavior:"smooth",
-    block:"start"
-  });
-
-  await analyzeSymbol();
-
-}
 
 
-/* =========================================================
-   SCAN
-========================================================= */
+  const tick=
+    async()=>{
 
-async function runScan(){
+      try{
 
-  if (
-    scanningNow
-  ) {
-    return;
-  }
+        const d=
+          await get(
+            "/api/live?symbol="+
+            encodeURIComponent(s)
+          );
 
-  scanningNow =
-    true;
 
-  scanStatus.textContent =
-    "🟡 در حال اسکن...";
+        liveTrades=
+          d.trades||[];
 
-  scanStatus.className =
-    "badge scanning";
 
-  try {
+        if(data){
 
-    log(
-      "🔄 اسکن جدید شروع شد..."
-    );
+          data.price=
+            d.price;
 
-    const data =
-      await api(
-        "/api/scan"
-      );
+          data.ticker=
+            d.ticker;
 
-    const list =
-      Array.isArray(
-        data.results
-      )
-        ? data.results
-        : [];
+          data.orderbook=
+            d.orderbook;
 
-    renderResults(
-      list
-    );
+          data.wall=
+            d.wall;
 
-    processSignals(
-      list
-    );
+          data.currentFlow=
+            d.flow;
 
-    lastUpdate.textContent =
-      new Date()
-        .toLocaleTimeString(
-          "fa-IR"
+          data.blocks=
+            d.blocks;
+
+
+          draw();
+
+          renderLive();
+        }
+
+
+        setStatus(
+          "🟢 زنده · "+
+          new Date()
+            .toLocaleTimeString(
+              "fa-IR"
+            )
         );
 
-    log(
-      "✅ اسکن پایان یافت — " +
-      list.length +
-      " ناحیه پیدا شد."
-    );
 
-  } catch(error){
+      }catch(e){
 
-    log(
-      "❌ خطای اسکن: " +
-      error.message
-    );
-
-  } finally {
-
-    scanningNow =
-      false;
-
-    if (scanning) {
-
-      scanStatus.textContent =
-        "🟢 اسکن خودکار فعال است";
-
-      scanStatus.className =
-        "badge scanning";
-
-    }
-
-  }
-
-}
-
-
-/* =========================================================
-   AUTO SCAN
-========================================================= */
-
-function restartTimer(){
-
-  if (scanTimer) {
-
-    clearInterval(
-      scanTimer
-    );
-
-  }
-
-  if (!scanning) {
-    return;
-  }
-
-  scanTimer =
-    setInterval(
-      runScan,
-      Number(
-        scanInterval.value
-      ) * 1000
-    );
-
-}
-
-
-async function startScanning(){
-
-  if (scanning) {
-    return;
-  }
-
-  initAudio();
-
-  scanning =
-    true;
-
-  startBtn.disabled =
-    true;
-
-  stopBtn.disabled =
-    false;
-
-  scanStatus.textContent =
-    "🟢 اسکن خودکار فعال است";
-
-  scanStatus.className =
-    "badge scanning";
-
-  log(
-    "🚀 اسکن خودکار فعال شد."
-  );
-
-  await runScan();
-
-  restartTimer();
-
-}
-
-
-function stopScanning(){
-
-  scanning =
-    false;
-
-  if (scanTimer) {
-
-    clearInterval(
-      scanTimer
-    );
-
-    scanTimer =
-      null;
-
-  }
-
-  startBtn.disabled =
-    false;
-
-  stopBtn.disabled =
-    true;
-
-  scanStatus.textContent =
-    "⏸️ اسکن متوقف است";
-
-  scanStatus.className =
-    "badge";
-
-  log(
-    "⏹️ اسکن خودکار متوقف شد."
-  );
-
-}
-
-
-startBtn.addEventListener(
-  "click",
-  startScanning
-);
-
-stopBtn.addEventListener(
-  "click",
-  stopScanning
-);
-
-analyzeBtn.addEventListener(
-  "click",
-  analyzeSymbol
-);
-
-symbolInput.addEventListener(
-  "keydown",
-  e => {
-
-    if (
-      e.key === "Enter"
-    ) {
-
-      analyzeSymbol();
-
-    }
-
-  }
-);
-
-
-/* =========================================================
-   SIGNAL KEY
-========================================================= */
-
-function signalKey(
-  item
-){
-
-  return (
-
-    (item.symbol || "") +
-    "|" +
-    (
-      item.setup?.absorption?.time ||
-      ""
-    ) +
-    "|" +
-    (
-      item.signal ||
-      ""
-    )
-
-  );
-
-}
-
-
-/* =========================================================
-   ALERT PROCESS
-========================================================= */
-
-function processSignals(
-  list
-){
-
-  const minimum =
-    Number(
-      scoreRange.value
-    );
-
-  for (
-    const item
-    of list || []
-  ) {
-
-    if (
-      !item ||
-      !item.detected
-    ) {
-      continue;
-    }
-
-    const score =
-      Number(
-        item.score || 0
-      );
-
-    if (
-      score <
-      minimum
-    ) {
-      continue;
-    }
-
-    const key =
-      signalKey(
-        item
-      );
-
-    if (
-      seenSignals.has(key)
-    ) {
-      continue;
-    }
-
-    seenSignals.add(
-      key
-    );
-
-    saveSeen();
-
-    const zone =
-      item.setup?.absorption;
-
-    const alert = {
-
-      symbol:
-        item.symbol,
-
-      score:
-        score.toFixed(1),
-
-      signal:
-        item.signal,
-
-      zoneLow:
-        zone?.zoneLow || 0,
-
-      zoneHigh:
-        zone?.zoneHigh || 0,
-
-      time:
-        new Date()
-          .toLocaleTimeString(
-            "fa-IR"
-          ),
-
-      timestamp:
-        Date.now()
-
+        setStatus(
+          "🟠 خطای اتصال زنده: "+
+          e.message
+        );
+      }
     };
 
-    lastAlerts.unshift(
-      alert
+
+  await tick();
+
+
+  liveTimer=
+    setInterval(
+      tick,
+      2500
     );
-
-    lastAlerts =
-      lastAlerts.slice(
-        0,
-        100
-      );
-
-    localStorage.setItem(
-      "absorption_alerts",
-      JSON.stringify(
-        lastAlerts
-      )
-    );
-
-    renderAlerts();
-
-    alertSound();
-
-    log(
-      "🔔 هشدار " +
-      item.symbol +
-      " | " +
-      signalLabel(
-        item.signal
-      ) +
-      " | " +
-      score.toFixed(1)
-    );
-
-  }
-
 }
 
 
-function saveSeen(){
 
-  localStorage.setItem(
-    "absorption_seen_signals",
-    JSON.stringify(
-      Array.from(
-        seenSignals
-      ).slice(-500)
+function stopLive(){
+
+  if(liveTimer){
+
+    clearInterval(
+      liveTimer
+    );
+
+    liveTimer=null;
+  }
+}
+
+
+
+/* =========================================================
+   RENDER ALL
+========================================================= */
+
+function renderAll(){
+
+  if(!data)
+    return;
+
+
+  $("score")
+    .textContent=
+      data.score;
+
+
+  $("score")
+    .className=
+      data.score>=70
+        ? "green"
+        : data.score>=55
+          ? "yellow"
+          : "red";
+
+
+  $("signal")
+    .textContent=
+      data.signalLabel||
+      "—";
+
+
+  $("movement")
+    .textContent=
+      data.movement?.label||
+      fa(
+        data.movement?.direction
+      );
+
+
+  $("abs")
+    .textContent=
+      data.absorption?.detected
+
+        ? (
+            data.absorption.real
+              ? "واقعی"
+              : "ساختاری"
+          )
+
+        : "ندارد";
+
+
+  $("pressure")
+    .textContent=
+
+      fmt(
+        data.currentFlow?.buyShare,
+        0
+      )+
+
+      "% / "+
+
+      fmt(
+        data.currentFlow?.sellShare,
+        0
+      )+"%";
+
+
+  $("delta")
+    .textContent=
+      fmt(
+        data.currentFlow?.deltaValue,
+        0
+      );
+
+
+
+  /* PRESSURE */
+
+  const f=
+    data.currentFlow||
+    {};
+
+
+  $("pressureBox")
+    .innerHTML=`
+
+<div>
+
+فشار خرید:
+
+<b class="green">
+
+${fmt(f.buyValue,0)}
+
+</b>
+
+</div>
+
+
+<div class="bar">
+
+<i
+style="
+width:${clamp(
+  f.buyShare||0,
+  0,
+  100
+)}%;
+background:#25d695
+"
+></i>
+
+</div>
+
+
+<div>
+
+فشار فروش:
+
+<b class="red">
+
+${fmt(f.sellValue,0)}
+
+</b>
+
+</div>
+
+
+<div class="bar">
+
+<i
+style="
+width:${clamp(
+  f.sellShare||0,
+  0,
+  100
+)}%;
+background:#ff5965
+"
+></i>
+
+</div>
+
+
+<div>
+
+Delta ارزش:
+
+<b>
+
+${fmt(
+  f.deltaValue,
+  0
+)}
+
+</b>
+
+</div>
+
+
+<div>
+
+Delta درصد:
+
+<b>
+
+${fmt(
+  f.deltaValuePercent,
+  2
+)}%
+
+</b>
+
+</div>
+
+`;
+
+
+
+  /* ABSORPTION */
+
+  const a=
+    data.absorption||
+    {};
+
+
+  $("absBox")
+    .innerHTML=`
+
+<div class="notice">
+
+
+<b>
+
+${
+  a.detected
+
+    ? (
+        a.direction==="LONG"
+
+          ? "🧲 جذب فروش توسط خریداران"
+
+          : "🧲 جذب خرید توسط فروشندگان"
+      )
+
+    : "⚪ جذب قطعی شناسایی نشد"
+}
+
+</b>
+
+
+<br>
+
+امتیاز جذب:
+
+${fmt(a.score,0)}
+
+
+<br>
+
+معاملات:
+
+${fmt(a.tradeCount,0)}
+
+
+<br>
+
+حجم خرید:
+
+${fmt(a.buyVolume,3)}
+
+
+<br>
+
+حجم فروش:
+
+${fmt(a.sellVolume,3)}
+
+
+<br>
+
+Delta:
+
+${fmt(a.deltaPercent,2)}%
+
+
+<br>
+
+
+${
+  a.real
+
+    ? "✅ شواهد بر اساس معاملات واقعی"
+
+    : "⚠️ شواهد بیشتر ساختاری/کندلی است"
+}
+
+
+<br>
+
+<span class="small">
+
+منبع:
+
+${
+  a.source==="REAL_BYBIT_TRADES"
+
+    ? "معاملات واقعی Bybit در بازه کندل"
+
+    : "ساختار کندل؛ معاملات تاریخی کافی نبود"
+}
+
+</span>
+
+
+</div>
+
+`;
+
+
+
+  /* LIQUIDITY */
+
+  const sw=
+    data.sweep||
+    {};
+
+
+  const zones=
+    data.liquidityZones||
+    [];
+
+
+  $("liqBox")
+    .innerHTML=`
+
+<div>
+
+جمع‌آوری نقدینگی:
+
+<b>
+
+${
+  sw.detected
+
+    ? (
+        sw.direction==="LONG"
+          ? "صعودی"
+          : "نزولی"
+      )
+
+    : "ندارد"
+}
+
+</b>
+
+</div>
+
+
+<div>
+
+قدرت Sweep:
+
+<b>
+
+${fmt(
+  sw.strength,
+  0
+)}
+
+</b>
+
+</div>
+
+
+<hr>
+
+
+${zones
+  .slice(0,10)
+  .map(
+    z=>`
+
+<div class="row">
+
+<span>
+
+${
+  z.side==="BUY"
+    ? "🟢"
+    : "🔴"
+}
+
+${fmt(
+  z.price,
+  8
+)}
+
+</span>
+
+
+<span>
+
+${fmt(
+  z.distancePercent,
+  3
+)}%
+
+</span>
+
+</div>
+
+`
+  )
+  .join("")
+}
+
+`;
+
+
+
+  /* OI */
+
+  const oi=
+    data.oiFunding||
+    {};
+
+
+  $("oiBox")
+    .innerHTML=`
+
+<div class="statgrid">
+
+
+<div class="stat">
+
+Open Interest
+
+<b>
+
+${fmt(
+  oi.openInterest,
+  0
+)}
+
+</b>
+
+</div>
+
+
+<div class="stat">
+
+تغییر OI
+
+<b>
+
+${fmt(
+  oi.changePercent,
+  2
+)}%
+
+</b>
+
+</div>
+
+
+<div class="stat">
+
+Funding
+
+<b>
+
+${fmt(
+  oi.fundingRate,
+  4
+)}%
+
+</b>
+
+</div>
+
+
+<div class="stat">
+
+Funding قبلی
+
+<b>
+
+${fmt(
+  oi.previousFundingRate,
+  4
+)}%
+
+</b>
+
+</div>
+
+
+</div>
+
+`;
+
+
+
+  /* SUPPORT RESISTANCE */
+
+  const sr=
+    data.supportResistance||
+    {};
+
+
+  $("srBox")
+    .innerHTML=`
+
+<div class="statgrid">
+
+
+<div class="stat">
+
+مقاومت
+
+<b class="red">
+
+${fmt(
+  sr.resistance,
+  8
+)}
+
+</b>
+
+</div>
+
+
+<div class="stat">
+
+حمایت
+
+<b class="green">
+
+${fmt(
+  sr.support,
+  8
+)}
+
+</b>
+
+</div>
+
+
+<div class="stat">
+
+مقاومت نزدیک
+
+<b>
+
+${fmt(
+  sr.recentResistance,
+  8
+)}
+
+</b>
+
+</div>
+
+
+<div class="stat">
+
+حمایت نزدیک
+
+<b>
+
+${fmt(
+  sr.recentSupport,
+  8
+)}
+
+</b>
+
+</div>
+
+
+</div>
+
+`;
+
+
+
+  /* ENTRY */
+
+  const e=
+    data.entry1m||
+    {};
+
+
+  $("entryBox")
+    .innerHTML=
+
+      e.status
+
+        ? `
+
+<div class="notice">
+
+
+وضعیت:
+
+<b>
+
+${
+  e.status==="READY"
+    ? "🟢 آماده"
+    : "🟡 انتظار"
+}
+
+</b>
+
+
+<br>
+
+جهت:
+
+${fa(e.direction)}
+
+
+<br>
+
+محدوده ورود:
+
+${fmt(
+  e.entryLow,
+  8
+)}
+
+تا
+
+${fmt(
+  e.entryHigh,
+  8
+)}
+
+
+<br>
+
+ماشۀ ورود:
+
+${fmt(
+  e.trigger,
+  8
+)}
+
+
+<br>
+
+حد ضرر:
+
+${fmt(
+  e.stopLoss,
+  8
+)}
+
+
+<br>
+
+هدف ۱:
+
+${fmt(
+  e.target1,
+  8
+)}
+
+
+<br>
+
+هدف ۲:
+
+${fmt(
+  e.target2,
+  8
+)}
+
+
+<br>
+
+ریسک:
+
+${fmt(
+  e.riskPercent,
+  2
+)}%
+
+
+<br>
+
+${e.reason||""}
+
+
+</div>
+
+`
+
+        : "—";
+
+
+
+  /* REASONS */
+
+  $("reasons")
+    .innerHTML=
+
+      (
+        data.reasons||
+        []
+      )
+      .map(
+        x=>`
+
+<div class="row">
+
+<span>
+
+• ${x}
+
+</span>
+
+</div>
+
+`
+      )
+      .join("");
+
+
+  renderTrades();
+
+  renderBook();
+
+  renderBlocks();
+
+  draw();
+}
+
+
+
+/* =========================================================
+   LIVE RENDER
+========================================================= */
+
+function renderLive(){
+
+  if(!data)
+    return;
+
+
+  const f=
+    data.currentFlow||
+    {};
+
+
+  $("pressure")
+    .textContent=
+
+      fmt(
+        f.buyShare,
+        0
+      )+
+
+      "% / "+
+
+      fmt(
+        f.sellShare,
+        0
+      )+"%";
+
+
+  $("delta")
+    .textContent=
+      fmt(
+        f.deltaValue,
+        0
+      );
+
+
+  renderTrades();
+
+  renderBook();
+
+  renderBlocks();
+}
+
+
+
+/* =========================================================
+   TRADES
+========================================================= */
+
+function renderTrades(){
+
+  const t=
+    (
+      liveTrades||
+      []
+    )
+    .slice(-80)
+    .reverse();
+
+
+  $("trades")
+    .innerHTML=
+
+`<table>
+
+<thead>
+
+<tr>
+
+<th>
+زمان
+</th>
+
+<th>
+قیمت
+</th>
+
+<th>
+ارزش
+</th>
+
+<th>
+طرف
+</th>
+
+</tr>
+
+</thead>
+
+<tbody>
+
+`+
+
+t.map(
+  x=>`
+
+<tr>
+
+<td>
+
+${new Date(
+  x.time
+)
+.toLocaleTimeString(
+  "fa-IR"
+)}
+
+</td>
+
+
+<td>
+
+${fmt(
+  x.price,
+  8
+)}
+
+</td>
+
+
+<td>
+
+${fmt(
+  x.price*x.size,
+  0
+)}
+
+</td>
+
+
+<td
+class="${
+  x.side==="buy"
+    ? "green"
+    : "red"
+}"
+>
+
+${
+  x.side==="buy"
+    ? "🟢 خرید"
+    : "🔴 فروش"
+}
+
+</td>
+
+</tr>
+
+`
+)
+.join("")
+
++
+
+`</tbody>
+
+</table>`;
+}
+
+
+
+/* =========================================================
+   ORDER BOOK
+========================================================= */
+
+function renderBook(){
+
+  const ob=
+    data?.orderbook;
+
+  const w=
+    data?.wall;
+
+
+  if(!ob)
+    return;
+
+
+  $("book")
+    .innerHTML=`
+
+<div class="statgrid">
+
+
+<div class="stat">
+
+سهم سفارش خرید
+
+<b class="green">
+
+${fmt(
+  w?.buyShare,
+  1
+)}%
+
+</b>
+
+</div>
+
+
+<div class="stat">
+
+سهم سفارش فروش
+
+<b class="red">
+
+${fmt(
+  w?.sellShare,
+  1
+)}%
+
+</b>
+
+</div>
+
+
+<div class="stat">
+
+بهترین خرید
+
+<b>
+
+${fmt(
+  w?.bestBid,
+  8
+)}
+
+</b>
+
+</div>
+
+
+<div class="stat">
+
+بهترین فروش
+
+<b>
+
+${fmt(
+  w?.bestAsk,
+  8
+)}
+
+</b>
+
+</div>
+
+
+</div>
+
+
+<table>
+
+<thead>
+
+<tr>
+
+<th>
+نوع
+</th>
+
+<th>
+قیمت
+</th>
+
+<th>
+ارزش
+</th>
+
+<th>
+فاصله
+</th>
+
+</tr>
+
+</thead>
+
+<tbody>
+
+
+${
+  (
+    w?.nearSell||
+    []
+  )
+  .slice(0,8)
+  .map(
+    x=>`
+
+<tr>
+
+<td class="red">
+🧱 فروش
+</td>
+
+<td>
+
+${fmt(
+  x.price,
+  8
+)}
+
+</td>
+
+<td>
+
+${fmt(
+  x.value,
+  0
+)}
+
+</td>
+
+<td>
+
+${fmt(
+  x.distancePercent,
+  2
+)}%
+
+</td>
+
+</tr>
+
+`
+  )
+  .join("")
+}
+
+
+${
+  (
+    w?.nearBuy||
+    []
+  )
+  .slice(0,8)
+  .map(
+    x=>`
+
+<tr>
+
+<td class="green">
+🧱 خرید
+</td>
+
+<td>
+
+${fmt(
+  x.price,
+  8
+)}
+
+</td>
+
+<td>
+
+${fmt(
+  x.value,
+  0
+)}
+
+</td>
+
+<td>
+
+${fmt(
+  x.distancePercent,
+  2
+)}%
+
+</td>
+
+</tr>
+
+`
+  )
+  .join("")
+}
+
+
+</tbody>
+
+</table>
+
+`;
+}
+
+
+
+/* =========================================================
+   BLOCK TRADES
+========================================================= */
+
+function renderBlocks(){
+
+  const blocks=
+    data?.blocks?.trades||
+    [];
+
+
+  $("blocks")
+    .innerHTML=
+
+      blocks.length
+
+        ? `
+
+<table>
+
+<thead>
+
+<tr>
+
+<th>
+زمان
+</th>
+
+<th>
+قیمت
+</th>
+
+<th>
+ارزش
+</th>
+
+<th>
+طرف
+</th>
+
+</tr>
+
+</thead>
+
+<tbody>
+
+${
+  blocks
+    .slice(0,20)
+    .map(
+      x=>`
+
+<tr>
+
+<td>
+
+${new Date(
+  x.time
+)
+.toLocaleTimeString(
+  "fa-IR"
+)}
+
+</td>
+
+<td>
+
+${fmt(
+  x.price,
+  8
+)}
+
+</td>
+
+<td>
+
+${fmt(
+  x.value,
+  0
+)}
+
+</td>
+
+<td class="${
+  x.aggressor==="BUY"
+    ? "green"
+    : "red"
+}">
+
+${
+  x.aggressor==="BUY"
+    ? "🐋 خرید"
+    : "🐋 فروش"
+}
+
+</td>
+
+</tr>
+
+`
+    )
+    .join("")
+}
+
+</tbody>
+
+</table>
+
+`
+
+        : `
+
+<div class="notice">
+
+معامله Block کافی شناسایی نشد.
+
+</div>
+
+`;
+}
+
+
+
+/* =========================================================
+   CLAMP
+========================================================= */
+
+function clamp(
+  x,
+  a,
+  b
+){
+
+  return Math.max(
+    a,
+    Math.min(
+      b,
+      x
+    )
+  );
+}
+
+
+
+/* =========================================================
+   CHART
+========================================================= */
+
+function draw(){
+
+  const c=
+    $("chart");
+
+  const ctx=
+    c.getContext(
+      "2d"
+    );
+
+
+  const r=
+    c.getBoundingClientRect();
+
+
+  const dpr=
+    devicePixelRatio||1;
+
+
+  c.width=
+    r.width*dpr;
+
+
+  c.height=
+    r.height*dpr;
+
+
+  ctx.setTransform(
+    dpr,
+    0,
+    0,
+    dpr,
+    0,
+    0
+  );
+
+
+  const W=r.width;
+
+  const H=r.height;
+
+
+  ctx.fillStyle=
+    "#070a0e";
+
+  ctx.fillRect(
+    0,
+    0,
+    W,
+    H
+  );
+
+
+  if(
+    !data ||
+    !candles.length
+  ) {
+
+    return;
+  }
+
+
+  const cs=
+    candles.slice(-70);
+
+
+  const bidPrices=
+    (
+      data.orderbook?.bids||
+      []
+    )
+    .slice(0,30)
+    .map(
+      x=>x.price
+    );
+
+
+  const askPrices=
+    (
+      data.orderbook?.asks||
+      []
+    )
+    .slice(0,30)
+    .map(
+      x=>x.price
+    );
+
+
+  const min=
+    Math.min(
+      ...cs.map(
+        x=>x.low
+      ),
+
+      ...bidPrices
+    );
+
+
+  const max=
+    Math.max(
+      ...cs.map(
+        x=>x.high
+      ),
+
+      ...askPrices
+    );
+
+
+  const pad=
+    (
+      max-min
+    )*.08||1;
+
+
+  const lo=
+    min-pad;
+
+
+  const hi=
+    max+pad;
+
+
+  const py=
+    p=>
+      H-
+      45-
+      (
+        (p-lo)/
+        (hi-lo)
+      )*
+      (
+        H-70
+      );
+
+
+  const step=
+    Math.max(
+      7,
+      W/cs.length
+    );
+
+
+  const bodyW=
+    Math.max(
+      3,
+      step*.58
+    );
+
+
+  /* =====================================================
+     GRID
+  ===================================================== */
+
+  ctx.globalAlpha=.18;
+
+  ctx.strokeStyle=
+    "#27303b";
+
+  ctx.lineWidth=1;
+
+
+  for(
+    let i=0;
+    i<8;
+    i++
+  ){
+
+    const y=
+      20+
+      i*
+      (
+        (H-70)/7
+      );
+
+
+    ctx.beginPath();
+
+    ctx.moveTo(
+      0,
+      y
+    );
+
+    ctx.lineTo(
+      W,
+      y
+    );
+
+    ctx.stroke();
+  }
+
+
+  ctx.globalAlpha=1;
+
+
+
+  /* =====================================================
+     ORDER BOOK HEATMAP
+  ===================================================== */
+
+  const ob=
+    data.orderbook||
+    {};
+
+
+  const bid=
+    ob.bids||
+    [];
+
+
+  const ask=
+    ob.asks||
+    [];
+
+
+  const maxVal=
+    Math.max(
+      ...bid.map(
+        x=>x.value
+      ),
+
+      ...ask.map(
+        x=>x.value
+      ),
+
+      1
+    );
+
+
+  for(
+    const q of [
+      ...bid,
+      ...ask
+    ]
+  ){
+
+    if(
+      q.price<lo ||
+      q.price>hi
+    ) {
+
+      continue;
+    }
+
+
+    const y=
+      py(q.price);
+
+
+    const strength=
+      Math.sqrt(
+        q.value/maxVal
+      );
+
+
+    const width=
+      Math.max(
+        15,
+        strength*W*.45
+      );
+
+
+    ctx.globalAlpha=
+      .08+
+      .24*strength;
+
+
+    ctx.fillStyle=
+      q.price<=data.price
+        ? "#00d98b"
+        : "#ff4d5d";
+
+
+    ctx.fillRect(
+
+      q.price<=data.price
+        ? W*.52-width
+        : W*.52,
+
+      y-3,
+
+      width,
+
+      6
+    );
+  }
+
+
+  ctx.globalAlpha=1;
+
+
+
+  /* =====================================================
+     LIQUIDITY WALL LINES
+  ===================================================== */
+
+  for(
+    const x of
+      (
+        data.wall?.buyWalls||
+        []
+      ).slice(0,8)
+  ){
+
+    if(
+      x.price<lo ||
+      x.price>hi
+    )
+      continue;
+
+
+    ctx.strokeStyle=
+      "#00e6a0";
+
+    ctx.globalAlpha=.45;
+
+    ctx.lineWidth=2;
+
+
+    ctx.beginPath();
+
+    ctx.moveTo(
+      0,
+      py(x.price)
+    );
+
+    ctx.lineTo(
+      W,
+      py(x.price)
+    );
+
+    ctx.stroke();
+  }
+
+
+  for(
+    const x of
+      (
+        data.wall?.sellWalls||
+        []
+      ).slice(0,8)
+  ){
+
+    if(
+      x.price<lo ||
+      x.price>hi
+    )
+      continue;
+
+
+    ctx.strokeStyle=
+      "#ff5362";
+
+    ctx.globalAlpha=.45;
+
+    ctx.lineWidth=2;
+
+
+    ctx.beginPath();
+
+    ctx.moveTo(
+      0,
+      py(x.price)
+    );
+
+    ctx.lineTo(
+      W,
+      py(x.price)
+    );
+
+    ctx.stroke();
+  }
+
+
+  ctx.globalAlpha=1;
+
+
+
+  /* =====================================================
+     CANDLES
+  ===================================================== */
+
+  cs.forEach(
+    (x,i)=>{
+
+      const xx=
+        20+
+        i*step+
+        step/2;
+
+
+      const yo=
+        py(x.open);
+
+      const yc=
+        py(x.close);
+
+      const yh=
+        py(x.high);
+
+      const yl=
+        py(x.low);
+
+
+      const up=
+        x.close>=x.open;
+
+
+      ctx.strokeStyle=
+        up
+          ? "#25d695"
+          : "#ff5965";
+
+
+      ctx.lineWidth=1.3;
+
+
+      ctx.beginPath();
+
+      ctx.moveTo(
+        xx,
+        yh
+      );
+
+      ctx.lineTo(
+        xx,
+        yl
+      );
+
+      ctx.stroke();
+
+
+      ctx.fillStyle=
+        up
+          ? "#25d695"
+          : "#ff5965";
+
+
+      ctx.fillRect(
+
+        xx-
+        bodyW/2,
+
+        Math.min(
+          yo,
+          yc
+        ),
+
+        bodyW,
+
+        Math.max(
+          1,
+          Math.abs(
+            yc-yo
+          )
+        )
+      );
+
+    }
+  );
+
+
+
+  /* =====================================================
+     REAL TRADE BUBBLES
+  ===================================================== */
+
+  for(
+    const t of
+      (
+        liveTrades||
+        []
+      ).slice(-120)
+  ){
+
+    if(
+      t.price<lo ||
+      t.price>hi
+    )
+      continue;
+
+
+    const idx=
+      cs.findIndex(
+        x=>
+          t.time>=x.time &&
+          t.time<
+            x.time+
+            5*60*1000
+      );
+
+
+    if(idx<0)
+      continue;
+
+
+    const xx=
+      20+
+      idx*step+
+      step/2+
+      (
+        Math.random()-.5
+      )*
+      step*.4;
+
+
+    const yy=
+      py(t.price);
+
+
+    const rad=
+      clamp(
+        Math.log10(
+          Math.max(
+            t.price*t.size,
+            1
+          )
+        )/2.2,
+        2,
+        10
+      );
+
+
+    ctx.globalAlpha=.65;
+
+
+    ctx.fillStyle=
+      t.side==="buy"
+        ? "#00e6a0"
+        : "#ff5362";
+
+
+    ctx.beginPath();
+
+    ctx.arc(
+      xx,
+      yy,
+      rad,
+      0,
+      Math.PI*2
+    );
+
+    ctx.fill();
+  }
+
+
+  ctx.globalAlpha=1;
+
+
+
+  /* =====================================================
+     BLOCK TRADE BUBBLES
+  ===================================================== */
+
+  const blockList=
+    data.blocks?.trades||
+    [];
+
+
+  for(
+    const t of blockList.slice(0,40)
+  ){
+
+    if(
+      t.price<lo ||
+      t.price>hi
+    )
+      continue;
+
+
+    const idx=
+      cs.findIndex(
+        x=>
+          t.time>=x.time &&
+          t.time<
+            x.time+
+            5*60*1000
+      );
+
+
+    if(idx<0)
+      continue;
+
+
+    const xx=
+      20+
+      idx*step+
+      step/2;
+
+
+    const yy=
+      py(t.price);
+
+
+    ctx.strokeStyle=
+      t.aggressor==="BUY"
+        ? "#55d8ff"
+        : "#ffb3ba";
+
+
+    ctx.lineWidth=2;
+
+
+    ctx.beginPath();
+
+    ctx.arc(
+      xx,
+      yy,
+      11,
+      0,
+      Math.PI*2
+    );
+
+    ctx.stroke();
+  }
+
+
+
+  /* =====================================================
+     ABSORPTION ZONE
+  ===================================================== */
+
+  if(
+    data.absorption?.detected
+  ){
+
+    const z=
+      data.zone;
+
+
+    if(
+      z &&
+      z.low>=lo &&
+      z.high<=hi
+    ){
+
+      const y1=
+        py(z.high);
+
+      const y2=
+        py(z.low);
+
+
+      ctx.globalAlpha=.10;
+
+
+      ctx.fillStyle=
+        data.absorption.direction==="LONG"
+          ? "#00e6a0"
+          : "#ff5362";
+
+
+      ctx.fillRect(
+        0,
+        Math.min(
+          y1,
+          y2
+        ),
+        W,
+        Math.abs(
+          y2-y1
+        )
+      );
+
+
+      ctx.globalAlpha=1;
+    }
+  }
+
+
+
+  /* =====================================================
+     PRICE LINE
+  ===================================================== */
+
+  ctx.strokeStyle=
+    "#ffd166";
+
+  ctx.setLineDash(
+    [5,5]
+  );
+
+  ctx.lineWidth=1;
+
+
+  ctx.beginPath();
+
+  ctx.moveTo(
+    0,
+    py(data.price)
+  );
+
+  ctx.lineTo(
+    W,
+    py(data.price)
+  );
+
+  ctx.stroke();
+
+
+  ctx.setLineDash([]);
+
+
+
+  /* =====================================================
+     CURRENT PRICE LABEL
+  ===================================================== */
+
+  ctx.fillStyle=
+    "#ffd166";
+
+  ctx.font=
+    "bold 12px Tahoma";
+
+
+  ctx.fillText(
+
+    fmt(
+      data.price,
+      8
+    ),
+
+    10,
+
+    Math.max(
+      18,
+      py(data.price)-6
     )
   );
 
+
+
+  $("chartInfo")
+    .innerHTML=`
+
+<b>
+
+${data.symbol}
+
+</b>
+
+<br>
+
+قیمت:
+
+${fmt(
+  data.price,
+  8
+)}
+
+<br>
+
+🟢 سفارش خرید:
+
+${fmt(
+  data.wall?.buyShare,
+  1
+)}%
+
+<br>
+
+🔴 سفارش فروش:
+
+${fmt(
+  data.wall?.sellShare,
+  1
+)}%
+
+<br>
+
+Delta:
+
+${fmt(
+  data.currentFlow?.deltaValue,
+  0
+)}
+
+<br>
+
+🧲 جذب:
+
+${
+  data.absorption?.detected
+
+    ? data.absorption.direction==="LONG"
+      ? "خرید"
+      : "فروش"
+
+    : "—"
 }
+
+<br>
+
+🧠 امتیاز:
+
+${data.score}
+
+`;
+}
+
 
 
 /* =========================================================
-   ALERT HISTORY
+   EVENTS
 ========================================================= */
 
-function renderAlerts(){
-
-  if (
-    !lastAlerts.length
-  ) {
-
-    alerts.innerHTML =
-      `<div class="empty">
-        هنوز هشداری ثبت نشده است.
-      </div>`;
-
-    return;
-
-  }
-
-  alerts.innerHTML =
-    lastAlerts
-      .map(
-        (a,index) => {
-
-          const symbol =
-            String(
-              a.symbol || ""
-            ).toUpperCase();
-
-          return `
-
-          <div class="alert ${
-            index === 0
-              ? "new"
-              : ""
-          }">
-
-            <div class="alert-top">
-
-              <div class="alert-symbol">
-                🔥 ${escapeHtml(
-                  symbol
-                )}
-              </div>
-
-              <div class="alert-time">
-                🕐 ${escapeHtml(
-                  a.time || "—"
-                )}
-              </div>
-
-            </div>
-
-
-            <div class="alert-text">
-
-              ${signalEmoji(
-                a.signal
-              )}
-
-              <strong>
-                ${escapeHtml(
-                  signalLabel(
-                    a.signal
-                  )
-                )}
-              </strong>
-
-              · امتیاز
-
-              <strong>
-                ${escapeHtml(
-                  a.score || "0"
-                )}
-              </strong>
-
-              · ناحیه جذب:
-
-              ${formatPrice(
-                a.zoneLow
-              )}
-
-              تا
-
-              ${formatPrice(
-                a.zoneHigh
-              )}
-
-            </div>
-
-
-            <div class="alert-actions">
-
-              <button
-                type="button"
-                class="btn-analysis"
-                onclick="analyzeAlertSymbol('${escapeJs(symbol)}')"
-              >
-                🔎 تحلیل ${escapeHtml(
-                  symbol
-                )}
-              </button>
-
-            </div>
-
-          </div>
-
-          `;
-
-        }
-      )
-      .join("");
-
-}
-
-
-/* =========================================================
-   RESULTS
-========================================================= */
-
-function renderResults(
-  list
-){
-
-  if (
-    !Array.isArray(list) ||
-    !list.length
-  ) {
-
-    results.innerHTML =
-      `<div class="empty">
-        🔍 ناحیه جذب معتبر پیدا نشد.
-        <br>
-        اسکنر همچنان بازار را بررسی می‌کند.
-      </div>`;
-
-    zonesCount.textContent =
-      "0";
-
-    strongCount.textContent =
-      "0";
-
-    avgScore.textContent =
-      "0";
-
-    return;
-
-  }
-
-  const sorted =
-    [...list]
-      .sort(
-        (a,b) =>
-          Number(b.score || 0) -
-          Number(a.score || 0)
-      );
-
-  const scores =
-    sorted.map(
-      x =>
-        Number(
-          x.score || 0
-        )
-    );
-
-  const average =
-    scores.length
-      ? (
-          scores.reduce(
-            (a,b) =>
-              a + b,
-            0
-          ) /
-          scores.length
-        ).toFixed(1)
-      : "0";
-
-  zonesCount.textContent =
-    sorted.length;
-
-  strongCount.textContent =
-    sorted.filter(
-      x =>
-        Number(
-          x.score || 0
-        ) >= 80
-    ).length;
-
-  avgScore.textContent =
-    average;
-
-  results.innerHTML =
-    sorted
-      .map(
-        renderSignalCard
-      )
-      .join("");
-
-}
-
-
-/* =========================================================
-   SIGNAL CARD
-========================================================= */
-
-function renderSignalCard(
-  item
-){
-
-  const score =
-    Number(
-      item.score || 0
-    );
-
-  const signal =
-    item.signal ||
-    "WATCH";
-
-  const setup =
-    item.setup ||
-    {};
-
-  const pump =
-    setup.pump ||
-    {};
-
-  const absorption =
-    setup.absorption ||
-    {};
-
-  const footprint =
-    item.footprint ||
-    {};
-
-  const orderbook =
-    item.orderbook ||
-    {};
-
-  const oi =
-    item.openInterest ||
-    {};
-
-  const retest =
-    item.retest ||
-    {};
-
-  const confirmations =
-    item.confirmations ||
-    {};
-
-  const structure =
-    item.structure ||
-    {};
-
-  const entry =
-    item.entry1M ||
-    {};
-
-  const direction =
-    item.direction ||
-    entry.direction ||
-    "unknown";
-
-  const signalClass =
-    signal ===
-      "STRONG_LONG"
-      ? "strong"
-      :
-    signal ===
-      "LONG"
-      ? "long"
-      :
-    signal ===
-      "WATCH"
-      ? "watch"
-      : "weak";
-
-
-  const absorptionSide =
-    item.absorptionSide ===
-      "buyer"
-      ? "🟢 جذب توسط خریداران"
-      :
-    item.absorptionSide ===
-      "seller"
-      ? "🔴 جذب توسط فروشندگان"
-      :
-      "🟡 طرف غالب هنوز مشخص نیست";
-
-
-  const marketPath =
-    item.marketPath ===
-      "up"
-      ? "🟢 مسیر احتمالی حرکت به سمت بالا"
-      :
-    item.marketPath ===
-      "down"
-      ? "🔴 مسیر احتمالی حرکت به سمت پایین"
-      :
-      "🟡 مسیر حرکت هنوز تأیید نشده";
-
-
-  const entryStatus =
-    entry.status ||
-    "WAIT";
-
-  const entryReady =
-    entryStatus ===
-    "READY";
-
-  const entryConfirm =
-    entryStatus ===
-    "CONFIRM";
-
-
-  return `
-
-  <div class="signal-card ${
-    signalClass === "strong"
-      ? "strong"
-      : ""
-  }">
-
-
-    <div class="signal-head">
-
-      <div class="symbol">
-        🔥 ${escapeHtml(
-          item.symbol ||
-          "UNKNOWN"
-        )}
-      </div>
-
-      <div class="signal ${
-        signalClass
-      }">
-
-        ${signalEmoji(
-          signal
-        )}
-
-        ${escapeHtml(
-          signalLabel(
-            signal
-          )
-        )}
-
-        ·
-
-        ${score.toFixed(1)}
-
-      </div>
-
-    </div>
-
-
-    <!-- مسیر -->
-
-    <div class="analysis-section">
-
-      <div class="analysis-section-title">
-        🧭 مسیر بازار
-      </div>
-
-      <div class="analysis-grid">
-
-        <div class="analysis-item">
-
-          <span>
-            جذب سفارش
-          </span>
-
-          <strong>
-            ${absorptionSide}
-          </strong>
-
-        </div>
-
-
-        <div class="analysis-item">
-
-          <span>
-            مسیر حرکت
-          </span>
-
-          <strong>
-            ${marketPath}
-          </strong>
-
-        </div>
-
-
-        <div class="analysis-item">
-
-          <span>
-            جهت کلی
-          </span>
-
-          <strong>
-
-            ${
-              direction ===
-              "long"
-                ? "🟢 صعودی"
-                :
-              direction ===
-              "short"
-                ? "🔴 نزولی"
-                :
-                "🟡 نامشخص"
-            }
-
-          </strong>
-
-        </div>
-
-      </div>
-
-    </div>
-
-
-    <!-- شاخص‌های اصلی -->
-
-    <div class="grid">
-
-      <div class="metric">
-
-        <span>
-          قیمت فعلی
-        </span>
-
-        <strong>
-          ${formatPrice(
-            item.currentPrice
-          )}
-        </strong>
-
-      </div>
-
-
-      <div class="metric">
-
-        <span>
-          قدرت حرکت قبل از جذب
-        </span>
-
-        <strong>
-          ${Number(
-            pump.pumpPercent || 0
-          ).toFixed(2)}%
-        </strong>
-
-      </div>
-
-
-      <div class="metric">
-
-        <span>
-          نسبت حجم
-        </span>
-
-        <strong>
-          ${Number(
-            absorption.volumeRatio || 0
-          ).toFixed(2)} برابر
-        </strong>
-
-      </div>
-
-
-      <div class="metric">
-
-        <span>
-          امتیاز جذب
-        </span>
-
-        <strong>
-          ${Number(
-            absorption.score || 0
-          ).toFixed(1)}
-          / 100
-        </strong>
-
-      </div>
-
-
-      <div class="metric">
-
-        <span>
-          فشار خرید و فروش
-        </span>
-
-        <strong>
-          ${Number(
-            footprint.deltaPercent || 0
-          ).toFixed(2)}%
-        </strong>
-
-      </div>
-
-
-      <div class="metric">
-
-        <span>
-          تغییر موقعیت‌های باز
-        </span>
-
-        <strong>
-          ${Number(
-            oi.change || 0
-          ).toFixed(2)}%
-        </strong>
-
-      </div>
-
-
-      <div class="metric">
-
-        <span>
-          فشار دفتر سفارشات
-        </span>
-
-        <strong>
-          ${Number(
-            orderbook.imbalance || 0
-          ).toFixed(2)}%
-        </strong>
-
-      </div>
-
-
-      <div class="metric">
-
-        <span>
-          بازآزمایی ناحیه
-        </span>
-
-        <strong>
-
-          ${
-            retest.confirmed
-              ? "✅ تأیید شده"
-              :
-            retest.detected
-              ? "🟡 لمس شده"
-              :
-              "❌ دیده نشده"
-          }
-
-        </strong>
-
-      </div>
-
-    </div>
-
-
-    <!-- توضیح جذب -->
-
-    <div class="analysis-section">
-
-      <div class="analysis-section-title">
-        🧠 معنی امتیاز جذب
-      </div>
-
-      <div class="info-box">
-
-        امتیاز جذب
-        <strong>
-          ${Number(
-            absorption.score || 0
-          ).toFixed(1)}
-        </strong>
-        از 100 است.
-
-        این عدد از ترکیب
-        ضعف بدنه کندل،
-        حجم بالا،
-        سایه کندل،
-        رفتار کندل‌های قبل
-        و نزدیکی به مقاومت محاسبه می‌شود.
-
-        <br><br>
-
-        عدد بالاتر یعنی شواهد تشکیل
-        ناحیه جذب بیشتر است؛
-        اما به‌تنهایی به معنی ورود قطعی نیست.
-
-      </div>
-
-    </div>
-
-
-    <!-- ناحیه -->
-
-    <div class="zone">
-
-      <div class="zone-title">
-        🎯 ناحیه جذب
-      </div>
-
-      <strong>
-
-        ${formatPrice(
-          absorption.zoneLow
-        )}
-
-        تا
-
-        ${formatPrice(
-          absorption.zoneHigh
-        )}
-
-      </strong>
-
-      <div class="reason-box">
-
-        این ناحیه محدوده‌ای است که
-        کندل جذب در تایم‌فریم 5 دقیقه
-        تشکیل شده است.
-
-      </div>
-
-    </div>
-
-
-    <!-- Retest -->
-
-    <div class="analysis-section">
-
-      <div class="analysis-section-title">
-        🔄 بازآزمایی ناحیه
-      </div>
-
-      <div class="analysis-grid">
-
-        <div class="analysis-item">
-
-          <span>
-            وضعیت
-          </span>
-
-          <strong>
-
-            ${
-              retest.confirmed
-                ? "🟢 بازآزمایی تأیید شده"
-                :
-              retest.detected
-                ? "🟡 ناحیه لمس شده"
-                :
-                "🔴 بازآزمایی معتبر ندارد"
-            }
-
-          </strong>
-
-        </div>
-
-
-        <div class="analysis-item">
-
-          <span>
-            فاصله فعلی از ناحیه
-          </span>
-
-          <strong>
-            ${Number(
-              retest.distancePercent ||
-              0
-            ).toFixed(2)}%
-          </strong>
-
-        </div>
-
-
-        <div class="analysis-item">
-
-          <span>
-            تعداد کندل بعد از بازآزمایی
-          </span>
-
-          <strong>
-            ${
-              retest.barsSinceRetest ??
-              "—"
-            }
-          </strong>
-
-        </div>
-
-      </div>
-
-
-      <div class="reason-box">
-
-        ${escapeHtml(
-          retest.reason ||
-          "توضیحی موجود نیست."
-        )}
-
-      </div>
-
-    </div>
-
-
-    <!-- ورود 1M -->
-
-    <div class="analysis-section">
-
-      <div class="analysis-section-title">
-        🎯 نقطه ورود در 1 دقیقه
-      </div>
-
-
-      <div class="${
-        entryReady
-          ? "entry-ready"
-          :
-        entryConfirm
-          ? "entry-confirm"
-          : "entry-wait"
-      }"
-      style="
-        padding:12px;
-        border-radius:10px;
-        margin-bottom:10px;
-        font-weight:bold;
-      ">
-
-        ${
-          entryReady
-            ? (
-                direction ===
-                "short"
-                  ? "🔴 نقطه ورود فروش تأیید شده"
-                  : "🟢 نقطه ورود خرید تأیید شده"
-              )
-            :
-          entryConfirm
-            ? "🟡 نقطه ورود در حال تأیید"
-            :
-              "⏳ هنوز نقطه ورود قطعی تأیید نشده است"
-        }
-
-      </div>
-
-
-      <div class="analysis-grid">
-
-
-        <div class="analysis-item">
-
-          <span>
-            جهت
-          </span>
-
-          <strong>
-
-            ${
-              entry.direction ===
-              "long"
-                ? "🟢 خرید"
-                :
-              entry.direction ===
-              "short"
-                ? "🔴 فروش"
-                :
-                "🟡 نامشخص"
-            }
-
-          </strong>
-
-        </div>
-
-
-        <div class="analysis-item">
-
-          <span>
-            نقطه ورود
-          </span>
-
-          <strong>
-            ${
-              entry.entryPrice
-                ? formatPrice(
-                    entry.entryPrice
-                  )
-                : "—"
-            }
-          </strong>
-
-        </div>
-
-
-        <div class="analysis-item">
-
-          <span>
-            محدوده ورود
-          </span>
-
-          <strong>
-
-            ${
-              entry.entryLow &&
-              entry.entryHigh
-                ?
-                  formatPrice(
-                    entry.entryLow
-                  ) +
-                  " تا " +
-                  formatPrice(
-                    entry.entryHigh
-                  )
-                : "—"
-            }
-
-          </strong>
-
-        </div>
-
-
-        <div class="analysis-item">
-
-          <span>
-            حد ضرر
-          </span>
-
-          <strong>
-
-            ${
-              entry.stopLoss
-                ? formatPrice(
-                    entry.stopLoss
-                  )
-                : "—"
-            }
-
-          </strong>
-
-        </div>
-
-
-        <div class="analysis-item">
-
-          <span>
-            هدف اول
-          </span>
-
-          <strong>
-
-            ${
-              entry.target1
-                ? formatPrice(
-                    entry.target1
-                  )
-                : "—"
-            }
-
-          </strong>
-
-        </div>
-
-
-        <div class="analysis-item">
-
-          <span>
-            هدف دوم
-          </span>
-
-          <strong>
-
-            ${
-              entry.target2
-                ? formatPrice(
-                    entry.target2
-                  )
-                : "—"
-            }
-
-          </strong>
-
-        </div>
-
-
-        <div class="analysis-item">
-
-          <span>
-            سود به ریسک هدف اول
-          </span>
-
-          <strong>
-
-            ${
-              entry.rr1
-                ? "1 : " +
-                  Number(
-                    entry.rr1
-                  ).toFixed(2)
-                : "—"
-            }
-
-          </strong>
-
-        </div>
-
-
-        <div class="analysis-item">
-
-          <span>
-            سود به ریسک هدف دوم
-          </span>
-
-          <strong>
-
-            ${
-              entry.rr2
-                ? "1 : " +
-                  Number(
-                    entry.rr2
-                  ).toFixed(2)
-                : "—"
-            }
-
-          </strong>
-
-        </div>
-
-
-        <div class="analysis-item">
-
-          <span>
-            تأیید 1 دقیقه
-          </span>
-
-          <strong>
-
-            ${
-              entry.confirmation1M ===
-              "bullish"
-                ? "🟢 صعودی"
-                :
-              entry.confirmation1M ===
-              "bearish"
-                ? "🔴 نزولی"
-                :
-                "🟡 خنثی"
-            }
-
-          </strong>
-
-        </div>
-
-      </div>
-
-
-      <div class="reason-box">
-
-        <strong>
-          🧠 دلیل نقطه ورود:
-        </strong>
-
-        <br>
-
-        ${escapeHtml(
-          entry.reason ||
-          "هنوز نقطه ورود تأیید نشده است."
-        )}
-
-      </div>
-
-
-      ${
-        !entryReady
-          ? `
-            <div class="warning-box">
-
-              ⚠️ نقطه ورود هنوز تأیید کامل ندارد.
-              منتظر تأیید کندل‌های 1 دقیقه‌ای بمان.
-
-            </div>
-          `
-          : `
-            <div class="info-box">
-
-              🎯 ورود بر اساس
-              ناحیه جذب 5 دقیقه،
-              بازآزمایی،
-              قیمت فعلی
-              و تأیید 1 دقیقه محاسبه شده است.
-
-            </div>
-          `
-      }
-
-    </div>
-
-
-    <!-- تایم‌فریم‌ها -->
-
-    <div class="analysis-section">
-
-      <div class="analysis-section-title">
-        📊 وضعیت تایم‌فریم‌ها
-      </div>
-
-      <div class="analysis-grid">
-
-        ${timeframe(
-          "15 دقیقه",
-          confirmations["15m"]
-        )}
-
-        ${timeframe(
-          "3 دقیقه",
-          confirmations["3m"]
-        )}
-
-        ${timeframe(
-          "1 دقیقه",
-          confirmations["1m"]
-        )}
-
-      </div>
-
-    </div>
-
-
-    <!-- فشار معاملات -->
-
-    <div class="analysis-section">
-
-      <div class="analysis-section-title">
-        📈 فشار خریدار و فروشنده
-      </div>
-
-      <div class="analysis-grid">
-
-        <div class="analysis-item">
-
-          <span>
-            فشار فعلی
-          </span>
-
-          <strong>
-
-            ${
-              footprint.pressure ===
-              "buy"
-                ? "🟢 خریداران"
-                :
-              footprint.pressure ===
-              "sell"
-                ? "🔴 فروشندگان"
-                :
-                "🟡 متعادل"
-            }
-
-          </strong>
-
-        </div>
-
-
-        <div class="analysis-item">
-
-          <span>
-            حجم خرید
-          </span>
-
-          <strong>
-            ${formatNumber(
-              footprint.buyVolume
-            )}
-          </strong>
-
-        </div>
-
-
-        <div class="analysis-item">
-
-          <span>
-            حجم فروش
-          </span>
-
-          <strong>
-            ${formatNumber(
-              footprint.sellVolume
-            )}
-          </strong>
-
-        </div>
-
-      </div>
-
-
-      <div class="info-box">
-
-        ${
-          footprint.historicalMatched
-            ? "اطلاعات معاملات با بازه زمانی ناحیه جذب تطبیق داده شده است."
-            : "این فشار معاملات مربوط به معاملات اخیر بازار است و به‌عنوان Delta تاریخی کندل جذب استفاده نشده است."
-        }
-
-      </div>
-
-    </div>
-
-
-    <!-- Order Book -->
-
-    <div class="analysis-section">
-
-      <div class="analysis-section-title">
-        📚 دفتر سفارشات
-      </div>
-
-      <div class="analysis-grid">
-
-        <div class="analysis-item">
-
-          <span>
-            سهم سفارش خرید
-          </span>
-
-          <strong>
-            ${Number(
-              orderbook.buyShare || 0
-            ).toFixed(2)}%
-          </strong>
-
-        </div>
-
-
-        <div class="analysis-item">
-
-          <span>
-            سهم سفارش فروش
-          </span>
-
-          <strong>
-            ${Number(
-              orderbook.sellShare || 0
-            ).toFixed(2)}%
-          </strong>
-
-        </div>
-
-
-        <div class="analysis-item">
-
-          <span>
-            فشار دفتر سفارشات
-          </span>
-
-          <strong>
-
-            ${
-              orderbook.pressure ===
-              "buy"
-                ? "🟢 به نفع خریداران"
-                :
-              orderbook.pressure ===
-              "sell"
-                ? "🔴 به نفع فروشندگان"
-                :
-                "🟡 متعادل"
-            }
-
-          </strong>
-
-        </div>
-
-      </div>
-
-    </div>
-
-
-    <!-- OI -->
-
-    <div class="analysis-section">
-
-      <div class="analysis-section-title">
-        📌 موقعیت‌های باز
-      </div>
-
-      <div class="info-box">
-
-        تغییر موقعیت‌های باز:
-
-        <strong>
-          ${Number(
-            oi.change || 0
-          ).toFixed(2)}%
-        </strong>
-
-        <br><br>
-
-        افزایش OI به‌تنهایی سیگنال خرید یا فروش نیست.
-        این مقدار همراه قیمت،
-        فشار معاملات
-        و ساختار بازار تفسیر می‌شود.
-
-      </div>
-
-    </div>
-
-
-    <!-- توضیح کلی -->
-
-    <div class="analysis-section">
-
-      <div class="analysis-section-title">
-        📖 جمع‌بندی قابل فهم
-      </div>
-
-      <div class="reason-box">
-
-        ${
-          direction ===
-          "long"
-
-            ? `
-              🟢 ساختار فعلی بیشتر به نفع خریداران است.
-              <br>
-              ناحیه جذب توسط رفتار قیمت و واکنش بازار بررسی شده
-              و مسیر احتمالی حرکت به سمت بالا است.
-            `
-
-            :
-          direction ===
-          "short"
-
-            ? `
-              🔴 ساختار فعلی بیشتر به نفع فروشندگان است.
-              <br>
-              فشار نزولی غالب است و مسیر احتمالی حرکت به سمت پایین است.
-            `
-
-            : `
-              🟡 بازار هنوز جهت مشخصی برای ورود ارائه نکرده است.
-              <br>
-              بهتر است تا تأیید 1 دقیقه و بازآزمایی معتبر صبر شود.
-            `
-        }
-
-      </div>
-
-    </div>
-
-
-  </div>
-
-  `;
-
-}
-
-
-/* =========================================================
-   TIMEFRAME
-========================================================= */
-
-function timeframe(
-  label,
-  data
-){
-
-  data =
-    data || {};
-
-  const trend =
-    data.trend ||
-    "unknown";
-
-  return `
-
-    <div class="analysis-item">
-
-      <span>
-        ${label}
-      </span>
-
-      <strong class="${
-        trend === "bullish"
-          ? "status-good"
-          :
-        trend === "bearish"
-          ? "status-bad"
-          : "status-neutral"
-      }">
-
-        ${
-          trend === "bullish"
-            ? "🟢 صعودی"
-            :
-          trend === "bearish"
-            ? "🔴 نزولی"
-            :
-            "🟡 خنثی"
-        }
-
-      </strong>
-
-      <div style="
-        margin-top:6px;
-        color:#718ba5;
-        font-size:10px;
-        line-height:1.8;
-      ">
-
-        EMA8:
-        ${formatPrice(
-          data.ema8
-        )}
-
-        <br>
-
-        EMA20:
-        ${formatPrice(
-          data.ema20
-        )}
-
-      </div>
-
-    </div>
-
-  `;
-
-}
-
-
-/* =========================================================
-   SIGNAL LABEL
-========================================================= */
-
-function signalLabel(
-  signal
-){
-
-  switch(
-    String(
-      signal || ""
-    ).toUpperCase()
-  ){
-
-    case "STRONG_LONG":
-      return "خرید قوی";
-
-    case "LONG":
-      return "تمایل به خرید";
-
-    case "WATCH":
-      return "در حال بررسی";
-
-    case "WEAK":
-      return "ضعیف";
-
-    case "NO_SETUP":
-      return "ناحیه جذب پیدا نشد";
-
-    default:
-      return signal ||
-        "سیگنال";
-
-  }
-
-}
-
-
-function signalEmoji(
-  signal
-){
-
-  const s =
-    String(
-      signal || ""
-    ).toUpperCase();
-
-  if (
-    s ===
-    "STRONG_LONG"
-  ) {
-    return "🟢";
-  }
-
-  if (
-    s ===
-    "LONG"
-  ) {
-    return "🟢";
-  }
-
-  if (
-    s ===
-    "WATCH"
-  ) {
-    return "🟡";
-  }
-
-  if (
-    s ===
-    "WEAK"
-  ) {
-    return "⚪";
-  }
-
-  return "🔥";
-
-}
-
-
-/* =========================================================
-   FORMAT
-========================================================= */
-
-function formatPrice(
-  value
-){
-
-  const n =
-    Number(value);
-
-  if (
-    !Number.isFinite(n)
-  ) {
-    return "0";
-  }
-
-  if (
-    n >= 1000
-  ) {
-
-    return n.toLocaleString(
-      "en-US",
-      {
-        maximumFractionDigits:2
-      }
-    );
-
-  }
-
-  if (
-    n >= 1
-  ) {
-
-    return n.toFixed(4);
-
-  }
-
-  if (
-    n >= 0.01
-  ) {
-
-    return n.toFixed(6);
-
-  }
-
-  return n.toPrecision(6);
-
-}
-
-
-function formatNumber(
-  value
-){
-
-  const n =
-    Number(value);
-
-  if (
-    !Number.isFinite(n)
-  ) {
-    return "0";
-  }
-
-  const abs =
-    Math.abs(n);
-
-  if (
-    abs >= 1000000000
-  ) {
-
-    return (
-      n / 1000000000
-    ).toFixed(2) +
-    "B";
-
-  }
-
-  if (
-    abs >= 1000000
-  ) {
-
-    return (
-      n / 1000000
-    ).toFixed(2) +
-    "M";
-
-  }
-
-  if (
-    abs >= 1000
-  ) {
-
-    return (
-      n / 1000
-    ).toFixed(2) +
-    "K";
-
-  }
-
-  return n.toFixed(2);
-
-}
-
-
-/* =========================================================
-   ESCAPE
-========================================================= */
-
-function escapeHtml(
-  value
-){
-
-  return String(
-    value ?? ""
-  )
-    .replaceAll(
-      "&",
-      "&amp;"
-    )
-    .replaceAll(
-      "<",
-      "&lt;"
-    )
-    .replaceAll(
-      ">",
-      "&gt;"
-    )
-    .replaceAll(
-      '"',
-      "&quot;"
-    )
-    .replaceAll(
-      "'",
-      "&#039;"
-    );
-
-}
-
-
-function escapeJs(
-  value
-){
-
-  return String(
-    value ?? ""
-  )
-    .replaceAll(
-      "\\",
-      "\\\\"
-    )
-    .replaceAll(
-      "'",
-      "\\'"
-    )
-    .replaceAll(
-      "\n",
-      "\\n"
-    )
-    .replaceAll(
-      "\r",
-      "\\r"
-    );
-
-}
-
-
-/* =========================================================
-   START
-========================================================= */
-
-renderAlerts();
-
-checkHealth();
-
-setInterval(
-  checkHealth,
-  60000
+window.addEventListener(
+  "resize",
+  draw
 );
+
+
+$("symbol")
+  .addEventListener(
+    "keydown",
+    e=>{
+      if(e.key==="Enter")
+        analyze();
+    }
+  );
+
+
+analyze();
 
 </script>
 
 </body>
+
 </html>
-```0
