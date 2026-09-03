@@ -2,7 +2,7 @@
 <html lang="fa" dir="rtl">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1">
 
 <title>Absorption Zone Scanner</title>
 
@@ -17,138 +17,125 @@ html{
 
 body{
   margin:0;
+  background:#07111f;
+  color:#eaf2ff;
   font-family:
     Tahoma,
     Arial,
     sans-serif;
-  background:
-    radial-gradient(
-      circle at top,
-      #172033 0,
-      #080b12 42%,
-      #05070b 100%
-    );
-  color:#eef2f7;
-  min-height:100vh;
-}
-
-button,
-input{
-  font:inherit;
-}
-
-button{
-  cursor:pointer;
 }
 
 .container{
-  width:min(1400px,96%);
-  margin:auto;
-  padding:18px 0 40px;
+  width:min(1100px,94%);
+  margin:20px auto 50px;
 }
-
-/* =========================
-   HEADER
-========================= */
 
 .header{
-  background:rgba(16,22,34,.94);
-  border:1px solid #283449;
+  background:
+    linear-gradient(
+      135deg,
+      #0c1c31,
+      #102943
+    );
+  border:1px solid #203a59;
   border-radius:20px;
-  padding:20px;
-  margin-bottom:16px;
-  box-shadow:0 15px 40px rgba(0,0,0,.25);
+  padding:22px;
+  box-shadow:
+    0 10px 35px rgba(0,0,0,.25);
 }
 
-.header h1{
+h1{
   margin:0 0 8px;
-  font-size:25px;
+  font-size:26px;
 }
 
-.header p{
-  margin:0;
-  color:#9ca9bb;
+.subtitle{
+  color:#9db4ce;
+  font-size:14px;
   line-height:1.8;
 }
 
 .status-row{
   display:flex;
   flex-wrap:wrap;
-  gap:10px;
+  gap:8px;
   margin-top:16px;
 }
 
 .badge{
   padding:8px 12px;
   border-radius:999px;
-  background:#111827;
-  border:1px solid #2c394e;
-  color:#b9c5d5;
-  font-size:13px;
+  background:#10243b;
+  border:1px solid #284664;
+  font-size:12px;
 }
 
 .badge.online{
-  color:#5ee7a2;
-  border-color:#1e6d4b;
+  color:#61ff9a;
+  border-color:#226d45;
 }
 
-/* =========================
-   CONTROL
-========================= */
+.badge.scanning{
+  color:#ffd76a;
+  border-color:#806728;
+}
 
-.panel{
-  background:rgba(13,18,29,.94);
-  border:1px solid #263248;
+.badge.offline{
+  color:#ff7373;
+  border-color:#743535;
+}
+
+.card{
+  margin-top:16px;
+  background:#0c1929;
+  border:1px solid #20364e;
   border-radius:18px;
-  padding:16px;
-  margin-bottom:16px;
+  padding:18px;
 }
 
-.controls{
+.section-title{
+  font-weight:bold;
+  margin-bottom:14px;
+  font-size:16px;
+}
+
+.input-row{
   display:grid;
   grid-template-columns:
-    minmax(180px,1fr)
-    auto
+    minmax(0,1fr)
     auto;
   gap:10px;
 }
 
-input{
+input,
+select{
   width:100%;
-  background:#080d16;
+  border:1px solid #29445f;
+  background:#081522;
   color:#fff;
-  border:1px solid #334158;
   border-radius:12px;
-  padding:13px 14px;
+  padding:13px;
   outline:none;
+  font-size:14px;
 }
 
-input:focus{
-  border-color:#5b8cff;
+input:focus,
+select:focus{
+  border-color:#4d89bd;
 }
 
 button{
   border:0;
   border-radius:12px;
   padding:12px 18px;
-  color:white;
-  background:#243149;
+  cursor:pointer;
+  font-weight:bold;
+  color:#fff;
+  background:#155b92;
 }
 
 button:hover{
-  filter:brightness(1.15);
-}
-
-button.primary{
-  background:#1769d2;
-}
-
-button.scan{
-  background:#148b57;
-}
-
-button.stop{
-  background:#8d2835;
+  filter:brightness(1.12);
 }
 
 button:disabled{
@@ -156,106 +143,113 @@ button:disabled{
   cursor:not-allowed;
 }
 
-.scan-info{
-  margin-top:12px;
-  color:#8f9bad;
-  font-size:13px;
+.btn-green{
+  background:#167344;
 }
 
-/* =========================
-   SETTINGS
-========================= */
+.btn-red{
+  background:#873434;
+}
 
-.settings{
+.btn-dark{
+  background:#1b3045;
+}
+
+.controls{
   display:grid;
   grid-template-columns:
-    repeat(5,minmax(120px,1fr));
+    repeat(3,minmax(0,1fr));
+  gap:12px;
+}
+
+.control{
+  background:#091624;
+  border:1px solid #20384f;
+  border-radius:14px;
+  padding:14px;
+}
+
+.control label{
+  display:block;
+  color:#a7bdd4;
+  font-size:12px;
+  margin-bottom:9px;
+}
+
+.range-wrap{
+  display:flex;
+  align-items:center;
   gap:10px;
 }
 
-.setting{
-  background:#0a101b;
-  border:1px solid #202d42;
-  border-radius:12px;
-  padding:12px;
+input[type="range"]{
+  padding:0;
 }
 
-.setting .label{
-  color:#8997aa;
-  font-size:12px;
-  margin-bottom:6px;
-}
-
-.setting .value{
+.range-value{
+  min-width:52px;
+  text-align:center;
+  color:#73d6ff;
   font-weight:bold;
 }
 
-/* =========================
-   SUMMARY
-========================= */
+.actions{
+  display:flex;
+  flex-wrap:wrap;
+  gap:10px;
+  margin-top:14px;
+}
 
 .summary{
   display:grid;
   grid-template-columns:
-    repeat(4,minmax(150px,1fr));
+    repeat(4,minmax(0,1fr));
   gap:10px;
-  margin-bottom:16px;
 }
 
 .stat{
-  background:#0d1421;
-  border:1px solid #263349;
-  border-radius:15px;
-  padding:15px;
+  background:#091624;
+  border:1px solid #20384f;
+  border-radius:14px;
+  padding:14px;
 }
 
-.stat .title{
-  color:#8997aa;
-  font-size:12px;
+.stat-title{
+  color:#8ea8c1;
+  font-size:11px;
+  margin-bottom:8px;
 }
 
-.stat .number{
-  margin-top:7px;
-  font-size:22px;
+.stat-value{
+  font-size:20px;
   font-weight:bold;
 }
 
-/* =========================
-   RESULTS
-========================= */
-
 .results{
   display:grid;
-  grid-template-columns:
-    repeat(auto-fill,minmax(330px,1fr));
-  gap:14px;
+  gap:12px;
 }
 
-.card{
-  background:
-    linear-gradient(
-      145deg,
-      rgba(17,25,40,.98),
-      rgba(8,12,20,.98)
-    );
-  border:1px solid #2a3850;
-  border-radius:18px;
-  overflow:hidden;
-  transition:.2s;
+.signal-card{
+  background:#091624;
+  border:1px solid #28445d;
+  border-radius:16px;
+  padding:16px;
 }
 
-.card:hover{
-  transform:translateY(-2px);
-  border-color:#435675;
+.signal-card.strong{
+  border-color:#31b66a;
+  box-shadow:
+    0 0 0 1px rgba(49,182,106,.15),
+    0 8px 25px rgba(0,0,0,.18);
 }
 
-.card-head{
-  padding:15px;
+.signal-head{
   display:flex;
-  justify-content:space-between;
   align-items:center;
+  justify-content:space-between;
   gap:10px;
-  border-bottom:1px solid #222e42;
+  flex-wrap:wrap;
 }
 
 .symbol{
@@ -264,298 +258,185 @@ button:disabled{
 }
 
 .signal{
-  font-size:11px;
-  padding:6px 9px;
+  padding:7px 10px;
   border-radius:999px;
-  background:#202b3d;
-  color:#b7c4d6;
+  font-size:11px;
+  font-weight:bold;
+  background:#15344a;
 }
 
 .signal.strong{
-  background:#103f2b;
-  color:#61f0a7;
+  background:#145b39;
+  color:#8dffb6;
 }
 
 .signal.long{
-  background:#173b60;
-  color:#70b4ff;
+  background:#174b65;
+  color:#8bdfff;
 }
 
 .signal.watch{
-  background:#473813;
-  color:#ffd96a;
-}
-
-.score{
-  padding:16px;
-  text-align:center;
-  border-bottom:1px solid #222e42;
-}
-
-.score-number{
-  font-size:39px;
-  font-weight:900;
-}
-
-.score-label{
-  color:#8997aa;
-  font-size:12px;
-}
-
-.score-bar{
-  margin-top:12px;
-  height:7px;
-  background:#202a3a;
-  border-radius:10px;
-  overflow:hidden;
-}
-
-.score-fill{
-  height:100%;
-  width:0%;
-  background:#51d994;
-  transition:.4s;
-}
-
-.card-body{
-  padding:15px;
-}
-
-.zone{
-  background:#151f2f;
-  border:1px solid #31435e;
-  border-radius:12px;
-  padding:12px;
-  margin-bottom:12px;
-}
-
-.zone-title{
-  color:#ffbd5c;
-  font-size:12px;
-  margin-bottom:6px;
-}
-
-.zone-price{
-  font-size:18px;
-  font-weight:bold;
+  background:#594719;
+  color:#ffe18a;
 }
 
 .grid{
   display:grid;
   grid-template-columns:
-    1fr 1fr;
+    repeat(4,minmax(0,1fr));
   gap:8px;
+  margin-top:14px;
 }
 
 .metric{
-  background:#0a101a;
-  border:1px solid #1e2a3d;
+  background:#0d2033;
   border-radius:10px;
-  padding:9px;
+  padding:10px;
 }
 
-.metric-title{
-  font-size:11px;
-  color:#78869a;
-}
-
-.metric-value{
-  margin-top:4px;
-  font-weight:bold;
-}
-
-.positive{
-  color:#54e49a;
-}
-
-.negative{
-  color:#ff6f7e;
-}
-
-.neutral{
-  color:#c5cfdd;
-}
-
-.card-foot{
-  padding:12px 15px;
-  border-top:1px solid #222e42;
-  color:#7f8da1;
-  font-size:11px;
-}
-
-/* =========================
-   DETAIL
-========================= */
-
-.detail{
-  display:none;
-  margin-top:16px;
-}
-
-.detail.active{
+.metric span{
   display:block;
+  color:#819ab3;
+  font-size:10px;
+  margin-bottom:5px;
 }
 
-.detail h2{
-  margin-top:0;
-}
-
-.detail-grid{
-  display:grid;
-  grid-template-columns:
-    repeat(3,minmax(180px,1fr));
-  gap:10px;
-}
-
-.detail-box{
-  background:#0a1019;
-  border:1px solid #26344a;
-  border-radius:12px;
-  padding:13px;
-}
-
-.detail-box h3{
+.metric strong{
   font-size:13px;
-  margin:0 0 10px;
-  color:#b7c3d3;
 }
 
-.detail-row{
-  display:flex;
-  justify-content:space-between;
-  gap:10px;
-  padding:5px 0;
-  border-bottom:1px solid #172131;
-  font-size:12px;
-}
-
-.detail-row:last-child{
-  border-bottom:0;
-}
-
-/* =========================
-   EMPTY / LOADING
-========================= */
-
-.empty{
-  text-align:center;
-  padding:45px 15px;
-  color:#7f8da1;
-  background:#0c121d;
-  border:1px dashed #29374d;
-  border-radius:16px;
-}
-
-.loading{
-  display:none;
-  text-align:center;
-  padding:25px;
-  color:#aab6c7;
-}
-
-.loading.active{
-  display:block;
-}
-
-.spinner{
-  width:30px;
-  height:30px;
-  border:3px solid #29364a;
-  border-top-color:#6da6ff;
-  border-radius:50%;
-  margin:0 auto 12px;
-  animation:spin .8s linear infinite;
-}
-
-@keyframes spin{
-  to{
-    transform:rotate(360deg);
-  }
-}
-
-.error{
-  display:none;
-  background:#351820;
-  border:1px solid #713341;
-  color:#ff9cab;
+.zone{
+  margin-top:12px;
+  background:#101e2e;
+  border:1px dashed #356080;
   border-radius:12px;
   padding:12px;
-  margin-bottom:14px;
 }
 
-.error.active{
-  display:block;
+.zone-title{
+  color:#8dd7ff;
+  font-size:12px;
+  margin-bottom:7px;
 }
 
-/* =========================
-   RESPONSIVE
-========================= */
+.details{
+  margin-top:12px;
+}
 
-@media(max-width:900px){
+details{
+  background:#081522;
+  border-radius:12px;
+  padding:10px;
+}
+
+summary{
+  cursor:pointer;
+  color:#9ec8e9;
+}
+
+pre{
+  white-space:pre-wrap;
+  word-break:break-word;
+  font-size:11px;
+  color:#aac3db;
+  direction:ltr;
+  text-align:left;
+}
+
+.alert-list{
+  display:grid;
+  gap:8px;
+  max-height:420px;
+  overflow:auto;
+}
+
+.alert{
+  background:#0a1826;
+  border:1px solid #29465e;
+  border-radius:12px;
+  padding:12px;
+}
+
+.alert.new{
+  border-color:#39bd73;
+}
+
+.alert-top{
+  display:flex;
+  justify-content:space-between;
+  gap:8px;
+  flex-wrap:wrap;
+}
+
+.alert-symbol{
+  font-weight:bold;
+  color:#8bdfff;
+}
+
+.alert-time{
+  color:#7e9ab3;
+  font-size:11px;
+}
+
+.alert-text{
+  margin-top:7px;
+  font-size:12px;
+  color:#bdd0e2;
+}
+
+.empty{
+  color:#829ab1;
+  text-align:center;
+  padding:20px;
+}
+
+.log{
+  background:#06101a;
+  border:1px solid #1d3245;
+  border-radius:12px;
+  padding:12px;
+  font-size:11px;
+  color:#8ca7bf;
+  max-height:220px;
+  overflow:auto;
+  direction:ltr;
+  text-align:left;
+}
+
+@media(max-width:800px){
+  .summary{
+    grid-template-columns:
+      repeat(2,minmax(0,1fr));
+  }
 
   .controls{
-    grid-template-columns:1fr 1fr;
-  }
-
-  .controls input{
-    grid-column:1/-1;
-  }
-
-  .settings{
     grid-template-columns:
-      repeat(3,1fr);
+      1fr;
+  }
+
+  .grid{
+    grid-template-columns:
+      repeat(2,minmax(0,1fr));
+  }
+}
+
+@media(max-width:520px){
+  .input-row{
+    grid-template-columns:1fr;
   }
 
   .summary{
     grid-template-columns:
-      repeat(2,1fr);
+      1fr 1fr;
   }
 
-  .detail-grid{
-    grid-template-columns:1fr 1fr;
-  }
-}
-
-@media(max-width:600px){
-
-  .container{
-    width:94%;
-    padding-top:10px;
+  .grid{
+    grid-template-columns:
+      1fr 1fr;
   }
 
-  .header{
-    padding:16px;
-    border-radius:16px;
-  }
-
-  .header h1{
+  h1{
     font-size:21px;
-  }
-
-  .controls{
-    grid-template-columns:1fr;
-  }
-
-  .controls input{
-    grid-column:auto;
-  }
-
-  .settings{
-    grid-template-columns:
-      repeat(2,1fr);
-  }
-
-  .summary{
-    grid-template-columns:
-      repeat(2,1fr);
-  }
-
-  .results{
-    grid-template-columns:1fr;
-  }
-
-  .detail-grid{
-    grid-template-columns:1fr;
   }
 }
 </style>
@@ -565,23 +446,22 @@ button:disabled{
 
 <div class="container">
 
-  <section class="header">
+  <div class="header">
 
     <h1>🔥 Absorption Zone Scanner</h1>
 
-    <p>
+    <div class="subtitle">
       شناسایی ناحیه جذب سفارش در Bybit Futures
-      با تمرکز اصلی روی 5 دقیقه و تأیید
-      15M / 3M / 1M
-    </p>
+      با تمرکز اصلی روی 5 دقیقه و تأیید 15M / 3M / 1M
+    </div>
 
     <div class="status-row">
 
       <div
-        id="connectionBadge"
+        id="workerStatus"
         class="badge"
       >
-        🔴 در حال اتصال...
+        ⏳ در حال اتصال به Worker
       </div>
 
       <div class="badge">
@@ -596,198 +476,383 @@ button:disabled{
         Absorption + Retest
       </div>
 
+      <div
+        id="scanStatus"
+        class="badge"
+      >
+        ⏸️ اسکن متوقف است
+      </div>
+
     </div>
 
-  </section>
+  </div>
 
 
-  <div
-    id="errorBox"
-    class="error"
-  ></div>
+  <!-- SYMBOL -->
 
+  <div class="card">
 
-  <section class="panel">
+    <div class="section-title">
+      🔎 تحلیل ارز
+    </div>
 
-    <div class="controls">
+    <div class="input-row">
 
       <input
         id="symbolInput"
-        type="text"
-        placeholder="مثلاً BTCUSDT یا PEPEUSDT"
+        value="BTCUSDT"
+        placeholder="مثلاً BTCUSDT"
         autocomplete="off"
       >
 
       <button
         id="analyzeBtn"
-        class="primary"
       >
-        🔎 تحلیل ارز
+        🔎 تحلیل
+      </button>
+
+    </div>
+
+    <div class="actions">
+
+      <button
+        id="startBtn"
+        class="btn-green"
+      >
+        🚀 شروع اسکن خودکار
       </button>
 
       <button
-        id="scanBtn"
-        class="scan"
+        id="stopBtn"
+        class="btn-red"
+        disabled
       >
-        🚀 شروع اسکن
+        ⏹️ توقف اسکن
+      </button>
+
+      <button
+        id="soundTestBtn"
+        class="btn-dark"
+      >
+        🔊 تست صدا
       </button>
 
     </div>
 
-    <div class="scan-info">
-      اسکنر به‌دنبال ساختار
-      Pump → Weak Candle → Absorption → Retest
-      می‌گردد.
-    </div>
-
-  </section>
-
-
-  <section class="panel">
-
-    <div class="settings">
-
-      <div class="setting">
-        <div class="label">
-          تایم‌فریم اصلی
-        </div>
-        <div class="value">
-          5M
-        </div>
-      </div>
-
-      <div class="setting">
-        <div class="label">
-          تأیید روند
-        </div>
-        <div class="value">
-          15M
-        </div>
-      </div>
-
-      <div class="setting">
-        <div class="label">
-          تأیید سریع
-        </div>
-        <div class="value">
-          3M
-        </div>
-      </div>
-
-      <div class="setting">
-        <div class="label">
-          ورود دقیق
-        </div>
-        <div class="value">
-          1M
-        </div>
-      </div>
-
-      <div class="setting">
-        <div class="label">
-          حداقل Volume
-        </div>
-        <div class="value">
-          1.5×
-        </div>
-      </div>
-
-    </div>
-
-  </section>
-
-
-  <section class="summary">
-
-    <div class="stat">
-      <div class="title">
-        نواحی شناسایی‌شده
-      </div>
-      <div
-        id="totalResults"
-        class="number"
-      >
-        0
-      </div>
-    </div>
-
-    <div class="stat">
-      <div class="title">
-        سیگنال قوی
-      </div>
-      <div
-        id="strongResults"
-        class="number"
-      >
-        0
-      </div>
-    </div>
-
-    <div class="stat">
-      <div class="title">
-        میانگین امتیاز
-      </div>
-      <div
-        id="averageScore"
-        class="number"
-      >
-        0
-      </div>
-    </div>
-
-    <div class="stat">
-      <div class="title">
-        آخرین بروزرسانی
-      </div>
-      <div
-        id="lastUpdate"
-        class="number"
-        style="font-size:15px"
-      >
-        —
-      </div>
-    </div>
-
-  </section>
-
-
-  <div
-    id="loading"
-    class="loading"
-  >
-    <div class="spinner"></div>
-    <div>
-      در حال بررسی بازار Bybit...
-    </div>
   </div>
 
 
-  <section
-    id="results"
-    class="results"
-  ></section>
+  <!-- SETTINGS -->
+
+  <div class="card">
+
+    <div class="section-title">
+      ⚙️ تنظیمات اسکن و هشدار
+    </div>
+
+    <div class="controls">
+
+      <div class="control">
+
+        <label>
+          فاصله اسکن
+        </label>
+
+        <select id="scanInterval">
+
+          <option value="15">
+            هر 15 ثانیه
+          </option>
+
+          <option value="30" selected>
+            هر 30 ثانیه
+          </option>
+
+          <option value="60">
+            هر 1 دقیقه
+          </option>
+
+          <option value="120">
+            هر 2 دقیقه
+          </option>
+
+        </select>
+
+      </div>
 
 
-  <section
-    id="detail"
-    class="detail panel"
-  >
+      <div class="control">
 
-    <h2>
-      🔬 جزئیات تحلیل
-    </h2>
+        <label>
+          🔊 صدای هشدار
+        </label>
+
+        <div class="range-wrap">
+
+          <input
+            id="volumeRange"
+            type="range"
+            min="0"
+            max="100"
+            value="70"
+          >
+
+          <div
+            id="volumeValue"
+            class="range-value"
+          >
+            70%
+          </div>
+
+        </div>
+
+      </div>
+
+
+      <div class="control">
+
+        <label>
+          حداقل امتیاز هشدار
+        </label>
+
+        <div class="range-wrap">
+
+          <input
+            id="scoreRange"
+            type="range"
+            min="50"
+            max="95"
+            value="60"
+          >
+
+          <div
+            id="scoreValue"
+            class="range-value"
+          >
+            60
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+
+
+  <!-- TIMEFRAMES -->
+
+  <div class="card">
+
+    <div class="section-title">
+      🎯 ساختار تحلیل
+    </div>
+
+    <div class="summary">
+
+      <div class="stat">
+
+        <div class="stat-title">
+          تایم‌فریم اصلی
+        </div>
+
+        <div class="stat-value">
+          5M
+        </div>
+
+      </div>
+
+      <div class="stat">
+
+        <div class="stat-title">
+          تأیید روند
+        </div>
+
+        <div class="stat-value">
+          15M
+        </div>
+
+      </div>
+
+      <div class="stat">
+
+        <div class="stat-title">
+          تأیید سریع
+        </div>
+
+        <div class="stat-value">
+          3M
+        </div>
+
+      </div>
+
+      <div class="stat">
+
+        <div class="stat-title">
+          ورود دقیق
+        </div>
+
+        <div class="stat-value">
+          1M
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+
+
+  <!-- SUMMARY -->
+
+  <div class="card">
+
+    <div class="section-title">
+      📊 وضعیت اسکن
+    </div>
+
+    <div class="summary">
+
+      <div class="stat">
+
+        <div class="stat-title">
+          نواحی شناسایی‌شده
+        </div>
+
+        <div
+          id="zonesCount"
+          class="stat-value"
+        >
+          0
+        </div>
+
+      </div>
+
+      <div class="stat">
+
+        <div class="stat-title">
+          سیگنال قوی
+        </div>
+
+        <div
+          id="strongCount"
+          class="stat-value"
+        >
+          0
+        </div>
+
+      </div>
+
+      <div class="stat">
+
+        <div class="stat-title">
+          میانگین امتیاز
+        </div>
+
+        <div
+          id="avgScore"
+          class="stat-value"
+        >
+          0
+        </div>
+
+      </div>
+
+      <div class="stat">
+
+        <div class="stat-title">
+          آخرین بروزرسانی
+        </div>
+
+        <div
+          id="lastUpdate"
+          class="stat-value"
+          style="font-size:14px"
+        >
+          —
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+
+
+  <!-- RESULTS -->
+
+  <div class="card">
+
+    <div class="section-title">
+      🔥 سیگنال‌های پیدا شده
+    </div>
 
     <div
-      id="detailContent"
-      class="detail-grid"
-    ></div>
+      id="results"
+      class="results"
+    >
 
-  </section>
+      <div class="empty">
+        🔍 هنوز ناحیه جذب معتبر پیدا نشده است.
+        <br>
+        اسکنر به‌دنبال ترکیب
+        Volume + Delta + Price Reaction + Retest
+        است.
+      </div>
+
+    </div>
+
+  </div>
+
+
+  <!-- ALERTS -->
+
+  <div class="card">
+
+    <div class="section-title">
+      🔔 تاریخچه هشدارها
+    </div>
+
+    <div
+      id="alerts"
+      class="alert-list"
+    >
+
+      <div class="empty">
+        هنوز هشداری ثبت نشده است.
+      </div>
+
+    </div>
+
+  </div>
+
+
+  <!-- LOG -->
+
+  <div class="card">
+
+    <div class="section-title">
+      🧾 لاگ اسکن
+    </div>
+
+    <div
+      id="log"
+      class="log"
+    >
+      Scanner ready...
+    </div>
+
+  </div>
 
 </div>
 
 
 <script>
+
+const WORKER_BASE =
+  window.location.origin;
+
 
 /* =========================================================
    STATE
@@ -795,19 +860,41 @@ button:disabled{
 
 let scanning = false;
 
+let scanTimer = null;
+
+let scanningNow = false;
+
+let audioContext = null;
+
+let lastAlerts =
+  JSON.parse(
+    localStorage.getItem(
+      "absorption_alerts"
+    ) || "[]"
+  );
+
+let seenSignals =
+  new Set(
+    JSON.parse(
+      localStorage.getItem(
+        "absorption_seen_signals"
+      ) || "[]"
+    )
+  );
+
 
 /* =========================================================
    ELEMENTS
 ========================================================= */
 
-const connectionBadge =
+const workerStatus =
   document.getElementById(
-    "connectionBadge"
+    "workerStatus"
   );
 
-const errorBox =
+const scanStatus =
   document.getElementById(
-    "errorBox"
+    "scanStatus"
   );
 
 const symbolInput =
@@ -820,14 +907,44 @@ const analyzeBtn =
     "analyzeBtn"
   );
 
-const scanBtn =
+const startBtn =
   document.getElementById(
-    "scanBtn"
+    "startBtn"
   );
 
-const loading =
+const stopBtn =
   document.getElementById(
-    "loading"
+    "stopBtn"
+  );
+
+const soundTestBtn =
+  document.getElementById(
+    "soundTestBtn"
+  );
+
+const scanInterval =
+  document.getElementById(
+    "scanInterval"
+  );
+
+const volumeRange =
+  document.getElementById(
+    "volumeRange"
+  );
+
+const volumeValue =
+  document.getElementById(
+    "volumeValue"
+  );
+
+const scoreRange =
+  document.getElementById(
+    "scoreRange"
+  );
+
+const scoreValue =
+  document.getElementById(
+    "scoreValue"
   );
 
 const results =
@@ -835,185 +952,420 @@ const results =
     "results"
   );
 
-const detail =
+const alerts =
   document.getElementById(
-    "detail"
+    "alerts"
   );
 
-const detailContent =
+const zonesCount =
   document.getElementById(
-    "detailContent"
+    "zonesCount"
+  );
+
+const strongCount =
+  document.getElementById(
+    "strongCount"
+  );
+
+const avgScore =
+  document.getElementById(
+    "avgScore"
+  );
+
+const lastUpdate =
+  document.getElementById(
+    "lastUpdate"
+  );
+
+const logBox =
+  document.getElementById(
+    "log"
   );
 
 
 /* =========================================================
-   HELPERS
+   SETTINGS
 ========================================================= */
 
-function esc(value){
+const savedVolume =
+  localStorage.getItem(
+    "absorption_volume"
+  );
 
-  return String(
-    value ?? ""
-  )
-  .replaceAll("&","&amp;")
-  .replaceAll("<","&lt;")
-  .replaceAll(">","&gt;")
-  .replaceAll('"',"&quot;")
-  .replaceAll("'","&#039;");
+const savedInterval =
+  localStorage.getItem(
+    "absorption_interval"
+  );
+
+const savedScore =
+  localStorage.getItem(
+    "absorption_score"
+  );
+
+if (
+  savedVolume !== null
+) {
+  volumeRange.value =
+    savedVolume;
 }
 
+if (
+  savedInterval !== null
+) {
+  scanInterval.value =
+    savedInterval;
+}
 
-function number(
-  value,
-  digits = 2
-){
+if (
+  savedScore !== null
+) {
+  scoreRange.value =
+    savedScore;
+}
 
-  const n =
-    Number(value);
+function updateSettingsUI(){
 
-  if(
-    !Number.isFinite(n)
-  ){
-    return "—";
-  }
+  volumeValue.textContent =
+    volumeRange.value + "%";
 
-  return n.toLocaleString(
-    "en-US",
-    {
-      maximumFractionDigits:
-        digits
-    }
+  scoreValue.textContent =
+    scoreRange.value;
+
+  localStorage.setItem(
+    "absorption_volume",
+    volumeRange.value
+  );
+
+  localStorage.setItem(
+    "absorption_interval",
+    scanInterval.value
+  );
+
+  localStorage.setItem(
+    "absorption_score",
+    scoreRange.value
   );
 }
 
+volumeRange.addEventListener(
+  "input",
+  updateSettingsUI
+);
 
-function price(value){
+scoreRange.addEventListener(
+  "input",
+  updateSettingsUI
+);
 
-  const n =
-    Number(value);
+scanInterval.addEventListener(
+  "change",
+  () => {
+    updateSettingsUI();
 
-  if(
-    !Number.isFinite(n)
-  ){
-    return "—";
+    if (scanning) {
+      restartTimer();
+    }
   }
+);
 
-  if(n >= 1000){
-    return n.toLocaleString(
-      "en-US",
+updateSettingsUI();
+
+
+/* =========================================================
+   LOG
+========================================================= */
+
+function log(message){
+
+  const time =
+    new Date()
+      .toLocaleTimeString(
+        "fa-IR",
+        {
+          hour:"2-digit",
+          minute:"2-digit",
+          second:"2-digit"
+        }
+      );
+
+  logBox.innerHTML =
+    `[${time}] ${message}<br>` +
+    logBox.innerHTML;
+
+}
+
+
+/* =========================================================
+   TIME
+========================================================= */
+
+function nowTime(){
+
+  return new Date()
+    .toLocaleTimeString(
+      "fa-IR",
       {
-        maximumFractionDigits:2
+        hour:"2-digit",
+        minute:"2-digit",
+        second:"2-digit"
       }
     );
-  }
-
-  if(n >= 1){
-    return n.toFixed(4);
-  }
-
-  if(n >= .01){
-    return n.toFixed(6);
-  }
-
-  return n.toPrecision(6);
-}
-
-
-function timeText(timestamp){
-
-  if(!timestamp){
-    return "—";
-  }
-
-  const d =
-    new Date(
-      Number(timestamp)
-    );
-
-  return d.toLocaleString(
-    "fa-IR",
-    {
-      month:"2-digit",
-      day:"2-digit",
-      hour:"2-digit",
-      minute:"2-digit"
-    }
-  );
-}
-
-
-function signed(
-  value,
-  digits=2
-){
-
-  const n =
-    Number(value);
-
-  if(
-    !Number.isFinite(n)
-  ){
-    return "—";
-  }
-
-  return (
-    n >= 0 ? "+" : ""
-  ) +
-  n.toFixed(digits) +
-  "%";
 }
 
 
 /* =========================================================
-   ERROR
+   AUDIO
 ========================================================= */
 
-function showError(message){
+function initAudio(){
 
-  errorBox.textContent =
-    message || "خطای نامشخص";
+  if (
+    !audioContext
+  ) {
 
-  errorBox.classList.add(
-    "active"
+    const AudioCtx =
+      window.AudioContext ||
+      window.webkitAudioContext;
+
+    if (!AudioCtx) {
+      return;
+    }
+
+    audioContext =
+      new AudioCtx();
+  }
+
+  if (
+    audioContext.state ===
+    "suspended"
+  ) {
+    audioContext.resume();
+  }
+}
+
+
+function beep(
+  frequency,
+  duration,
+  delay = 0
+){
+
+  if (!audioContext) {
+    return;
+  }
+
+  const oscillator =
+    audioContext.createOscillator();
+
+  const gain =
+    audioContext.createGain();
+
+  oscillator.type =
+    "sine";
+
+  oscillator.frequency.value =
+    frequency;
+
+  const volume =
+    Number(
+      volumeRange.value
+    ) / 100;
+
+  const start =
+    audioContext.currentTime +
+    delay;
+
+  const end =
+    start +
+    duration;
+
+  gain.gain.setValueAtTime(
+    0,
+    start
+  );
+
+  gain.gain.linearRampToValueAtTime(
+    0.25 * volume,
+    start + 0.03
+  );
+
+  gain.gain.exponentialRampToValueAtTime(
+    0.001,
+    end
+  );
+
+  oscillator.connect(
+    gain
+  );
+
+  gain.connect(
+    audioContext.destination
+  );
+
+  oscillator.start(
+    start
+  );
+
+  oscillator.stop(
+    end + 0.03
   );
 }
 
 
-function hideError(){
+function alertSound(){
 
-  errorBox.classList.remove(
-    "active"
+  initAudio();
+
+  if (!audioContext) {
+    return;
+  }
+
+  beep(
+    880,
+    0.18,
+    0
   );
 
-  errorBox.textContent = "";
+  beep(
+    1175,
+    0.18,
+    0.22
+  );
+
+  beep(
+    880,
+    0.18,
+    0.44
+  );
+
+  beep(
+    1320,
+    0.30,
+    0.66
+  );
+}
+
+
+soundTestBtn.addEventListener(
+  "click",
+  () => {
+
+    initAudio();
+
+    alertSound();
+
+    log(
+      "🔊 صدای هشدار تست شد."
+    );
+
+  }
+);
+
+
+/* =========================================================
+   WORKER HEALTH
+========================================================= */
+
+async function checkHealth(){
+
+  try {
+
+    const response =
+      await fetch(
+        WORKER_BASE +
+        "/api/health",
+        {
+          cache:"no-store"
+        }
+      );
+
+    const data =
+      await response.json();
+
+    if (
+      data.ok
+    ) {
+
+      workerStatus.textContent =
+        "🟢 Bybit Worker آنلاین";
+
+      workerStatus.className =
+        "badge online";
+
+      log(
+        "Bybit Worker آنلاین است."
+      );
+
+    } else {
+
+      throw new Error(
+        "Worker offline"
+      );
+    }
+
+  } catch(error){
+
+    workerStatus.textContent =
+      "🔴 Worker خطا دارد";
+
+    workerStatus.className =
+      "badge offline";
+
+    log(
+      "❌ خطای Worker: " +
+      error.message
+    );
+
+  }
+
 }
 
 
 /* =========================================================
-   API
+   FETCH
 ========================================================= */
 
 async function api(
-  endpoint
+  path
 ){
 
   const response =
-    await fetch(endpoint,{
-      cache:"no-store"
-    });
+    await fetch(
+      WORKER_BASE +
+      path,
+      {
+        cache:"no-store"
+      }
+    );
 
-  const data =
-    await response.json();
+  const text =
+    await response.text();
 
-  if(
+  let data;
+
+  try {
+
+    data =
+      JSON.parse(text);
+
+  } catch {
+
+    throw new Error(
+      "پاسخ Worker JSON نیست"
+    );
+
+  }
+
+  if (
     !response.ok ||
     data.ok === false
-  ){
+  ) {
 
     throw new Error(
       data.error ||
-      `HTTP ${response.status}`
+      "Worker error"
     );
+
   }
 
   return data;
@@ -1021,790 +1373,37 @@ async function api(
 
 
 /* =========================================================
-   HEALTH
-========================================================= */
-
-async function checkHealth(){
-
-  try{
-
-    const data =
-      await api(
-        "/api/health"
-      );
-
-    connectionBadge.textContent =
-      "🟢 Bybit Worker آنلاین";
-
-    connectionBadge.classList.add(
-      "online"
-    );
-
-  }catch(e){
-
-    connectionBadge.textContent =
-      "🔴 Worker آفلاین";
-
-    connectionBadge.classList.remove(
-      "online"
-    );
-
-  }
-
-}
-
-
-/* =========================================================
-   LOADING
-========================================================= */
-
-function setLoading(
-  state
-){
-
-  if(state){
-
-    loading.classList.add(
-      "active"
-    );
-
-  }else{
-
-    loading.classList.remove(
-      "active"
-    );
-
-  }
-
-}
-
-
-/* =========================================================
-   SIGNAL
-========================================================= */
-
-function signalClass(
-  signal
-){
-
-  if(
-    signal ===
-    "STRONG_LONG"
-  ){
-    return "strong";
-  }
-
-  if(
-    signal === "LONG"
-  ){
-    return "long";
-  }
-
-  return "watch";
-}
-
-
-function signalText(
-  signal
-){
-
-  const map = {
-
-    STRONG_LONG:
-      "🟢 STRONG LONG",
-
-    LONG:
-      "🟢 LONG",
-
-    ABSORPTION_WATCH:
-      "🔥 ABSORPTION",
-
-    WATCH:
-      "👀 WATCH"
-
-  };
-
-  return map[signal] ||
-    signal ||
-    "WATCH";
-}
-
-
-/* =========================================================
-   CARD
-========================================================= */
-
-function createCard(
-  item,
-  index
-){
-
-  const score =
-    Number(item.score || 0);
-
-  const delta =
-    Number(
-      item.delta?.deltaPercent || 0
-    );
-
-  const oi =
-    Number(
-      item.openInterest?.changePercent || 0
-    );
-
-  const volumeRatio =
-    Number(
-      item.absorption?.volumeRatio || 0
-    );
-
-  const imbalance =
-    Number(
-      item.orderBook?.imbalance || 0
-    );
-
-  const retest =
-    item.retest || {};
-
-  const zone =
-    item.zone || {};
-
-  return `
-
-  <article
-    class="card"
-    data-index="${index}"
-  >
-
-    <div class="card-head">
-
-      <div class="symbol">
-        ${esc(item.symbol)}
-      </div>
-
-      <div
-        class="signal ${signalClass(
-          item.signal
-        )}"
-      >
-        ${esc(
-          signalText(
-            item.signal
-          )
-        )}
-      </div>
-
-    </div>
-
-
-    <div class="score">
-
-      <div class="score-number">
-        ${number(score,0)}
-      </div>
-
-      <div class="score-label">
-        Absorption Score
-      </div>
-
-      <div class="score-bar">
-        <div
-          class="score-fill"
-          style="width:${Math.min(
-            100,
-            score
-          )}%"
-        ></div>
-      </div>
-
-    </div>
-
-
-    <div class="card-body">
-
-      <div class="zone">
-
-        <div class="zone-title">
-          🔥 ناحیه جذب
-        </div>
-
-        <div class="zone-price">
-          ${price(zone.low)}
-          —
-          ${price(zone.high)}
-        </div>
-
-      </div>
-
-
-      <div class="grid">
-
-        <div class="metric">
-
-          <div class="metric-title">
-            قیمت فعلی
-          </div>
-
-          <div class="metric-value">
-            ${price(
-              item.currentPrice
-            )}
-          </div>
-
-        </div>
-
-
-        <div class="metric">
-
-          <div class="metric-title">
-            Pump
-          </div>
-
-          <div class="metric-value positive">
-            +${number(
-              item.pump?.percent || 0,
-              2
-            )}%
-          </div>
-
-        </div>
-
-
-        <div class="metric">
-
-          <div class="metric-title">
-            Volume
-          </div>
-
-          <div class="metric-value">
-            ${number(
-              volumeRatio,
-              2
-            )}×
-          </div>
-
-        </div>
-
-
-        <div class="metric">
-
-          <div class="metric-title">
-            Delta
-          </div>
-
-          <div
-            class="metric-value ${
-              delta < 0
-                ? "negative"
-                : "positive"
-            }"
-          >
-            ${signed(
-              delta,
-              1
-            )}
-          </div>
-
-        </div>
-
-
-        <div class="metric">
-
-          <div class="metric-title">
-            OI
-          </div>
-
-          <div
-            class="metric-value ${
-              oi >= 0
-                ? "positive"
-                : "negative"
-            }"
-          >
-            ${signed(
-              oi,
-              2
-            )}
-          </div>
-
-        </div>
-
-
-        <div class="metric">
-
-          <div class="metric-title">
-            Order Book
-          </div>
-
-          <div
-            class="metric-value ${
-              imbalance >= 0
-                ? "positive"
-                : "negative"
-            }"
-          >
-            ${signed(
-              imbalance,
-              1
-            )}
-          </div>
-
-        </div>
-
-
-        <div class="metric">
-
-          <div class="metric-title">
-            Retest
-          </div>
-
-          <div
-            class="metric-value ${
-              retest.success
-                ? "positive"
-                : "neutral"
-            }"
-          >
-            ${
-              retest.success
-                ? "✅ موفق"
-                : retest.found
-                  ? "🟡 لمس"
-                  : "—"
-            }
-          </div>
-
-        </div>
-
-
-        <div class="metric">
-
-          <div class="metric-title">
-            Absorption
-          </div>
-
-          <div class="metric-value">
-            ${number(
-              item.absorption?.score || 0,
-              0
-            )}/100
-          </div>
-
-        </div>
-
-      </div>
-
-    </div>
-
-
-    <div class="card-foot">
-
-      5M Absorption ·
-      15M / 3M / 1M Confirmation ·
-      ${timeText(
-        item.absorption?.time
-      )}
-
-      <br><br>
-
-      <button
-        onclick="showDetails(${index})"
-        style="width:100%"
-      >
-        🔬 مشاهده جزئیات
-      </button>
-
-    </div>
-
-  </article>
-
-  `;
-}
-
-
-/* =========================================================
-   RENDER
-========================================================= */
-
-let currentResults = [];
-
-
-function renderResults(
-  list
-){
-
-  currentResults =
-    Array.isArray(list)
-      ? list
-      : [];
-
-  results.innerHTML = "";
-
-  if(
-    !currentResults.length
-  ){
-
-    results.innerHTML = `
-
-      <div class="empty">
-
-        🔍
-        هنوز ناحیه جذب معتبر
-        پیدا نشده است.
-
-        <br><br>
-
-        اسکنر به‌دنبال ترکیب
-        Volume + Delta + Price Reaction
-        + Retest است.
-
-      </div>
-
-    `;
-
-    updateSummary([]);
-
-    return;
-  }
-
-  currentResults.forEach(
-    (item,index) => {
-
-      results.insertAdjacentHTML(
-        "beforeend",
-        createCard(
-          item,
-          index
-        )
-      );
-
-    }
-  );
-
-  updateSummary(
-    currentResults
-  );
-}
-
-
-/* =========================================================
-   SUMMARY
-========================================================= */
-
-function updateSummary(
-  list
-){
-
-  const total =
-    list.length;
-
-  const strong =
-    list.filter(
-      x =>
-        x.signal ===
-        "STRONG_LONG"
-    ).length;
-
-  const average =
-    total
-      ? Math.round(
-          list.reduce(
-            (a,b) =>
-              a +
-              Number(
-                b.score || 0
-              ),
-            0
-          ) / total
-        )
-      : 0;
-
-  document.getElementById(
-    "totalResults"
-  ).textContent =
-    total;
-
-  document.getElementById(
-    "strongResults"
-  ).textContent =
-    strong;
-
-  document.getElementById(
-    "averageScore"
-  ).textContent =
-    average;
-
-  document.getElementById(
-    "lastUpdate"
-  ).textContent =
-    total
-      ? new Date()
-          .toLocaleTimeString(
-            "fa-IR",
-            {
-              hour:"2-digit",
-              minute:"2-digit",
-              second:"2-digit"
-            }
-          )
-      : "—";
-}
-
-
-/* =========================================================
-   DETAILS
-========================================================= */
-
-function showDetails(
-  index
-){
-
-  const item =
-    currentResults[index];
-
-  if(!item) return;
-
-  const confirmations =
-    item.confirmations || [];
-
-  detailContent.innerHTML = `
-
-    <div class="detail-box">
-
-      <h3>
-        🔥 Absorption
-      </h3>
-
-      <div class="detail-row">
-        <span>Score</span>
-        <b>
-          ${number(
-            item.absorption?.score,
-            0
-          )}/100
-        </b>
-      </div>
-
-      <div class="detail-row">
-        <span>Open</span>
-        <b>${price(
-          item.absorption?.open
-        )}</b>
-      </div>
-
-      <div class="detail-row">
-        <span>High</span>
-        <b>${price(
-          item.absorption?.high
-        )}</b>
-      </div>
-
-      <div class="detail-row">
-        <span>Low</span>
-        <b>${price(
-          item.absorption?.low
-        )}</b>
-      </div>
-
-      <div class="detail-row">
-        <span>Close</span>
-        <b>${price(
-          item.absorption?.close
-        )}</b>
-      </div>
-
-      <div class="detail-row">
-        <span>Body Ratio</span>
-        <b>${number(
-          Number(
-            item.absorption?.bodyRatio || 0
-          ) * 100,
-          1
-        )}%</b>
-      </div>
-
-      <div class="detail-row">
-        <span>Volume Ratio</span>
-        <b>${number(
-          item.absorption?.volumeRatio,
-          2
-        )}×</b>
-      </div>
-
-    </div>
-
-
-    <div class="detail-box">
-
-      <h3>
-        📊 Order Flow
-      </h3>
-
-      <div class="detail-row">
-        <span>Buy Volume</span>
-        <b>${number(
-          item.delta?.buyVolume,
-          2
-        )}</b>
-      </div>
-
-      <div class="detail-row">
-        <span>Sell Volume</span>
-        <b>${number(
-          item.delta?.sellVolume,
-          2
-        )}</b>
-      </div>
-
-      <div class="detail-row">
-        <span>Delta</span>
-        <b>${signed(
-          item.delta?.deltaPercent,
-          1
-        )}</b>
-      </div>
-
-      <div class="detail-row">
-        <span>CVD Change</span>
-        <b>${number(
-          item.cvd?.change,
-          2
-        )}</b>
-      </div>
-
-      <div class="detail-row">
-        <span>Order Book</span>
-        <b>${signed(
-          item.orderBook?.imbalance,
-          1
-        )}</b>
-      </div>
-
-    </div>
-
-
-    <div class="detail-box">
-
-      <h3>
-        📈 تایید تایم‌فریم‌ها
-      </h3>
-
-      ${
-        confirmations.map(
-          c => `
-
-            <div class="detail-row">
-
-              <span>
-                ${esc(
-                  c.interval
-                )}M
-              </span>
-
-              <b class="${
-                c.bullish
-                  ? "positive"
-                  : "negative"
-              }">
-
-                ${
-                  c.bullish
-                    ? "🟢 Bullish"
-                    : "🔴 Weak"
-                }
-
-                ·
-
-                ${number(
-                  c.score,
-                  0
-                )}
-
-              </b>
-
-            </div>
-
-          `
-        ).join("")
-      }
-
-      <div class="detail-row">
-        <span>Retest</span>
-        <b class="${
-          item.retest?.success
-            ? "positive"
-            : "neutral"
-        }">
-
-          ${
-            item.retest?.success
-              ? "✅ موفق"
-              : item.retest?.found
-                ? "🟡 لمس"
-                : "⏳ هنوز نشده"
-          }
-
-        </b>
-      </div>
-
-      <div class="detail-row">
-        <span>OI Change</span>
-        <b>${signed(
-          item.openInterest?.changePercent,
-          2
-        )}</b>
-      </div>
-
-    </div>
-
-  `;
-
-  detail.classList.add(
-    "active"
-  );
-
-  detail.scrollIntoView({
-    behavior:"smooth",
-    block:"start"
-  });
-}
-
-
-/* =========================================================
-   ANALYZE SYMBOL
+   ANALYZE SINGLE
 ========================================================= */
 
 async function analyzeSymbol(){
 
-  hideError();
-
-  let symbol =
+  const symbol =
     symbolInput.value
       .trim()
       .toUpperCase();
 
-  if(!symbol){
+  if (!symbol) {
 
-    showError(
-      "نام ارز را وارد کنید."
+    alert(
+      "نام ارز را وارد کن."
     );
-
-    symbolInput.focus();
 
     return;
   }
 
-  if(
-    !symbol.endsWith("USDT")
-  ){
-    symbol += "USDT";
-  }
+  initAudio();
 
-  symbolInput.value =
-    symbol;
+  analyzeBtn.disabled =
+    true;
 
-  setLoading(true);
+  try {
 
-  try{
+    log(
+      "🔎 تحلیل " +
+      symbol +
+      " ..."
+    );
 
     const data =
       await api(
@@ -1814,34 +1413,53 @@ async function analyzeSymbol(){
         )
       );
 
-    if(
-      !data.found
-    ){
-
-      renderResults([]);
-
-      showError(
-        `${symbol} در داده فعلی ناحیه جذب معتبر پیدا نکرد.`
-      );
-
-      return;
-    }
-
-    hideError();
-
-    renderResults([
-      data
-    ]);
-
-  }catch(e){
-
-    showError(
-      e.message
+    renderResults(
+      [data]
     );
 
-  }finally{
+    lastUpdate.textContent =
+      nowTime();
 
-    setLoading(false);
+    if (
+      data.detected &&
+      data.score >=
+        Number(
+          scoreRange.value
+        )
+    ) {
+
+      processSignals(
+        [data]
+      );
+
+    }
+
+    log(
+      "✅ تحلیل " +
+      symbol +
+      " انجام شد."
+    );
+
+  } catch(error){
+
+    log(
+      "❌ خطای تحلیل " +
+      symbol +
+      ": " +
+      error.message
+    );
+
+    results.innerHTML =
+      `<div class="empty">
+        ❌ ${escapeHtml(
+          error.message
+        )}
+      </div>`;
+
+  } finally {
+
+    analyzeBtn.disabled =
+      false;
 
   }
 
@@ -1852,56 +1470,81 @@ async function analyzeSymbol(){
    SCAN
 ========================================================= */
 
-async function startScan(){
+async function runScan(){
 
-  if(scanning) return;
+  if (
+    scanningNow
+  ) {
+    return;
+  }
 
-  scanning = true;
-
-  scanBtn.disabled =
+  scanningNow =
     true;
 
-  scanBtn.textContent =
-    "⏳ در حال اسکن...";
+  scanStatus.textContent =
+    "🟡 در حال اسکن...";
 
-  analyzeBtn.disabled =
-    true;
+  scanStatus.className =
+    "badge scanning";
 
-  hideError();
+  try {
 
-  setLoading(true);
-
-  try{
+    log(
+      "🔄 اسکن جدید شروع شد..."
+    );
 
     const data =
       await api(
         "/api/scan"
       );
 
+    const validResults =
+      (data.results || [])
+        .filter(
+          x =>
+            x &&
+            x.ok &&
+            x.detected
+        );
+
     renderResults(
-      data.results || []
+      validResults
     );
 
-  }catch(e){
-
-    showError(
-      e.message
+    processSignals(
+      validResults
     );
 
-  }finally{
+    lastUpdate.textContent =
+      nowTime();
 
-    setLoading(false);
+    log(
+      "✅ اسکن پایان یافت — " +
+      validResults.length +
+      " ناحیه پیدا شد."
+    );
 
-    scanning = false;
+  } catch(error){
 
-    scanBtn.disabled =
+    log(
+      "❌ خطای اسکن: " +
+      error.message
+    );
+
+  } finally {
+
+    scanningNow =
       false;
 
-    analyzeBtn.disabled =
-      false;
+    if (scanning) {
 
-    scanBtn.textContent =
-      "🚀 شروع اسکن";
+      scanStatus.textContent =
+        "🟢 اسکن خودکار فعال است";
+
+      scanStatus.className =
+        "badge scanning";
+
+    }
 
   }
 
@@ -1909,38 +1552,890 @@ async function startScan(){
 
 
 /* =========================================================
-   EVENTS
+   AUTO SCAN
 ========================================================= */
+
+function restartTimer(){
+
+  if (
+    scanTimer
+  ) {
+
+    clearInterval(
+      scanTimer
+    );
+
+    scanTimer =
+      null;
+
+  }
+
+  if (!scanning) {
+    return;
+  }
+
+  const seconds =
+    Number(
+      scanInterval.value
+    );
+
+  scanTimer =
+    setInterval(
+      runScan,
+      seconds * 1000
+    );
+
+}
+
+
+async function startScanning(){
+
+  if (scanning) {
+    return;
+  }
+
+  initAudio();
+
+  scanning =
+    true;
+
+  startBtn.disabled =
+    true;
+
+  stopBtn.disabled =
+    false;
+
+  scanStatus.textContent =
+    "🟢 اسکن خودکار فعال است";
+
+  scanStatus.className =
+    "badge scanning";
+
+  log(
+    "🚀 اسکن خودکار فعال شد."
+  );
+
+  await runScan();
+
+  restartTimer();
+
+}
+
+
+function stopScanning(){
+
+  scanning =
+    false;
+
+  if (
+    scanTimer
+  ) {
+
+    clearInterval(
+      scanTimer
+    );
+
+    scanTimer =
+      null;
+
+  }
+
+  startBtn.disabled =
+    false;
+
+  stopBtn.disabled =
+    true;
+
+  scanStatus.textContent =
+    "⏸️ اسکن متوقف است";
+
+  scanStatus.className =
+    "badge";
+
+  log(
+    "⏹️ اسکن خودکار متوقف شد."
+  );
+
+}
+
+
+startBtn.addEventListener(
+  "click",
+  startScanning
+);
+
+stopBtn.addEventListener(
+  "click",
+  stopScanning
+);
 
 analyzeBtn.addEventListener(
   "click",
   analyzeSymbol
 );
 
-scanBtn.addEventListener(
-  "click",
-  startScan
-);
 
-symbolInput.addEventListener(
-  "keydown",
-  e => {
+/* =========================================================
+   SIGNAL KEY
+========================================================= */
 
-    if(
-      e.key === "Enter"
-    ){
-      analyzeSymbol();
+function signalKey(
+  item
+){
+
+  const symbol =
+    item.symbol ||
+    "";
+
+  const zone =
+    item.setup?.absorption;
+
+  const zoneTime =
+    zone?.time ||
+    "";
+
+  const signal =
+    item.signal ||
+    "";
+
+  return (
+    symbol +
+    "|" +
+    zoneTime +
+    "|" +
+    signal
+  );
+
+}
+
+
+/* =========================================================
+   SIGNAL PROCESS
+========================================================= */
+
+function processSignals(
+  list
+){
+
+  if (!Array.isArray(list)) {
+    return;
+  }
+
+  const minScore =
+    Number(
+      scoreRange.value
+    );
+
+  for (
+    const item of list
+  ) {
+
+    if (
+      !item ||
+      !item.detected
+    ) {
+      continue;
     }
 
+    const score =
+      Number(
+        item.score || 0
+      );
+
+    if (
+      score <
+      minScore
+    ) {
+      continue;
+    }
+
+    const key =
+      signalKey(
+        item
+      );
+
+    if (
+      seenSignals.has(key)
+    ) {
+      continue;
+    }
+
+    seenSignals.add(
+      key
+    );
+
+    saveSeenSignals();
+
+    createAlert(
+      item
+    );
+
+    alertSound();
+
   }
+
+}
+
+
+/* =========================================================
+   SAVE SEEN
+========================================================= */
+
+function saveSeenSignals(){
+
+  const array =
+    Array.from(
+      seenSignals
+    );
+
+  if (
+    array.length > 500
+  ) {
+
+    array.splice(
+      0,
+      array.length - 500
+    );
+
+  }
+
+  localStorage.setItem(
+    "absorption_seen_signals",
+    JSON.stringify(
+      array
+    )
+  );
+
+}
+
+
+/* =========================================================
+   ALERT
+========================================================= */
+
+function createAlert(
+  item
+){
+
+  const time =
+    nowTime();
+
+  const symbol =
+    item.symbol ||
+    "UNKNOWN";
+
+  const score =
+    Number(
+      item.score || 0
+    ).toFixed(1);
+
+  const signal =
+    item.signal ||
+    "SIGNAL";
+
+  const zone =
+    item.setup?.absorption;
+
+  const zoneLow =
+    Number(
+      zone?.zoneLow || 0
+    );
+
+  const zoneHigh =
+    Number(
+      zone?.zoneHigh || 0
+    );
+
+  const alert = {
+    symbol,
+    score,
+    signal,
+    zoneLow,
+    zoneHigh,
+    time,
+    timestamp:
+      Date.now()
+  };
+
+  lastAlerts.unshift(
+    alert
+  );
+
+  lastAlerts =
+    lastAlerts.slice(
+      0,
+      100
+    );
+
+  localStorage.setItem(
+    "absorption_alerts",
+    JSON.stringify(
+      lastAlerts
+    )
+  );
+
+  renderAlerts();
+
+  log(
+    `🔔 ALERT ${symbol} | ${signal} | Score ${score} | ${time}`
+  );
+
+}
+
+
+/* =========================================================
+   RENDER ALERTS
+========================================================= */
+
+function renderAlerts(){
+
+  if (
+    !lastAlerts.length
+  ) {
+
+    alerts.innerHTML =
+      `<div class="empty">
+        هنوز هشداری ثبت نشده است.
+      </div>`;
+
+    return;
+  }
+
+  alerts.innerHTML =
+    lastAlerts
+      .map(
+        (a, index) => {
+
+          const cls =
+            index === 0
+              ? "alert new"
+              : "alert";
+
+          return `
+            <div class="${cls}">
+
+              <div class="alert-top">
+
+                <div class="alert-symbol">
+                  🔥 ${escapeHtml(
+                    a.symbol
+                  )}
+                </div>
+
+                <div class="alert-time">
+                  🕐 ${escapeHtml(
+                    a.time
+                  )}
+                </div>
+
+              </div>
+
+              <div class="alert-text">
+
+                ${escapeHtml(
+                  a.signal
+                )}
+
+                · امتیاز
+                <strong>
+                  ${escapeHtml(
+                    a.score
+                  )}
+                </strong>
+
+                · Zone:
+
+                ${formatPrice(
+                  a.zoneLow
+                )}
+
+                تا
+
+                ${formatPrice(
+                  a.zoneHigh
+                )}
+
+              </div>
+
+            </div>
+          `;
+
+        }
+      )
+      .join("");
+
+}
+
+
+/* =========================================================
+   RENDER RESULTS
+========================================================= */
+
+function renderResults(
+  list
+){
+
+  if (
+    !Array.isArray(list) ||
+    !list.length
+  ) {
+
+    results.innerHTML =
+      `<div class="empty">
+        🔍 هنوز ناحیه جذب معتبر پیدا نشده است.
+        <br>
+        اسکنر همچنان در حال بررسی بازار است.
+      </div>`;
+
+    zonesCount.textContent =
+      "0";
+
+    strongCount.textContent =
+      "0";
+
+    avgScore.textContent =
+      "0";
+
+    return;
+  }
+
+  const sorted =
+    [...list]
+      .sort(
+        (a,b) =>
+          Number(b.score || 0) -
+          Number(a.score || 0)
+      );
+
+  const strong =
+    sorted.filter(
+      x =>
+        Number(x.score || 0) >= 80
+    );
+
+  const scores =
+    sorted.map(
+      x =>
+        Number(x.score || 0)
+    );
+
+  const average =
+    scores.length
+      ? (
+          scores.reduce(
+            (a,b) =>
+              a + b,
+            0
+          ) /
+          scores.length
+        ).toFixed(1)
+      : 0;
+
+  zonesCount.textContent =
+    sorted.length;
+
+  strongCount.textContent =
+    strong.length;
+
+  avgScore.textContent =
+    average;
+
+  results.innerHTML =
+    sorted
+      .map(
+        renderSignalCard
+      )
+      .join("");
+
+}
+
+
+/* =========================================================
+   SIGNAL CARD
+========================================================= */
+
+function renderSignalCard(
+  item
+){
+
+  const score =
+    Number(
+      item.score || 0
+    );
+
+  const signal =
+    item.signal ||
+    "WATCH";
+
+  const signalClass =
+    signal ===
+      "STRONG_LONG"
+      ? "strong"
+      :
+    signal ===
+      "LONG"
+      ? "long"
+      :
+    "watch";
+
+  const pump =
+    item.setup?.pump;
+
+  const absorption =
+    item.setup?.absorption;
+
+  const footprint =
+    item.footprint || {};
+
+  const oi =
+    item.openInterest || {};
+
+  const retest =
+    item.retest || {};
+
+  const confirmation =
+    item.confirmations || {};
+
+  return `
+    <div class="signal-card ${
+      signalClass === "strong"
+        ? "strong"
+        : ""
+    }">
+
+      <div class="signal-head">
+
+        <div class="symbol">
+          🔥 ${escapeHtml(
+            item.symbol
+          )}
+        </div>
+
+        <div class="signal ${signalClass}">
+          ${escapeHtml(
+            signal
+          )}
+          · ${score.toFixed(1)}
+        </div>
+
+      </div>
+
+
+      <div class="grid">
+
+        <div class="metric">
+          <span>
+            قیمت فعلی
+          </span>
+          <strong>
+            ${formatPrice(
+              item.currentPrice
+            )}
+          </strong>
+        </div>
+
+        <div class="metric">
+          <span>
+            Pump
+          </span>
+          <strong>
+            ${Number(
+              pump?.pumpPercent || 0
+            ).toFixed(2)}%
+          </strong>
+        </div>
+
+        <div class="metric">
+          <span>
+            Volume Ratio
+          </span>
+          <strong>
+            ${Number(
+              absorption?.volumeRatio || 0
+            ).toFixed(2)}×
+          </strong>
+        </div>
+
+        <div class="metric">
+          <span>
+            Absorption
+          </span>
+          <strong>
+            ${Number(
+              absorption?.score || 0
+            ).toFixed(1)}
+          </strong>
+        </div>
+
+        <div class="metric">
+          <span>
+            Delta
+          </span>
+          <strong>
+            ${formatNumber(
+              footprint.delta
+            )}
+          </strong>
+        </div>
+
+        <div class="metric">
+          <span>
+            Delta %
+          </span>
+          <strong>
+            ${Number(
+              footprint.deltaPercent || 0
+            ).toFixed(2)}%
+          </strong>
+        </div>
+
+        <div class="metric">
+          <span>
+            OI Change
+          </span>
+          <strong>
+            ${Number(
+              oi.change || 0
+            ).toFixed(2)}%
+          </strong>
+        </div>
+
+        <div class="metric">
+          <span>
+            Retest
+          </span>
+          <strong>
+            ${
+              retest.confirmed
+                ? "✅ تأیید"
+                :
+              retest.detected
+                ? "🟡 لمس"
+                : "❌ ندارد"
+            }
+          </strong>
+        </div>
+
+      </div>
+
+
+      <div class="zone">
+
+        <div class="zone-title">
+          🎯 ناحیه جذب
+        </div>
+
+        <strong>
+          ${formatPrice(
+            absorption?.zoneLow
+          )}
+          —
+          ${formatPrice(
+            absorption?.zoneHigh
+          )}
+        </strong>
+
+        <div style="margin-top:8px;font-size:11px;color:#91a9bf">
+
+          15M:
+          ${escapeHtml(
+            confirmation["15m"]?.trend ||
+            "unknown"
+          )}
+
+          ·
+
+          3M:
+          ${escapeHtml(
+            confirmation["3m"]?.trend ||
+            "unknown"
+          )}
+
+          ·
+
+          1M:
+          ${escapeHtml(
+            confirmation["1m"]?.trend ||
+            "unknown"
+          )}
+
+        </div>
+
+      </div>
+
+
+      <div class="details">
+
+        <details>
+
+          <summary>
+            📋 جزئیات تحلیل
+          </summary>
+
+          <pre>${escapeHtml(
+            JSON.stringify(
+              item,
+              null,
+              2
+            )
+          )}</pre>
+
+        </details>
+
+      </div>
+
+    </div>
+  `;
+
+}
+
+
+/* =========================================================
+   FORMAT
+========================================================= */
+
+function formatPrice(
+  value
+){
+
+  const n =
+    Number(value);
+
+  if (
+    !Number.isFinite(n)
+  ) {
+    return "0";
+  }
+
+  if (
+    n >= 1000
+  ) {
+    return n.toLocaleString(
+      "en-US",
+      {
+        maximumFractionDigits:2
+      }
+    );
+  }
+
+  if (
+    n >= 1
+  ) {
+    return n.toFixed(4);
+  }
+
+  if (
+    n >= 0.01
+  ) {
+    return n.toFixed(6);
+  }
+
+  return n.toPrecision(6);
+}
+
+
+function formatNumber(
+  value
+){
+
+  const n =
+    Number(value);
+
+  if (
+    !Number.isFinite(n)
+  ) {
+    return "0";
+  }
+
+  const abs =
+    Math.abs(n);
+
+  if (
+    abs >= 1000000
+  ) {
+    return (
+      n / 1000000
+    ).toFixed(2) +
+      "M";
+  }
+
+  if (
+    abs >= 1000
+  ) {
+    return (
+      n / 1000
+    ).toFixed(2) +
+      "K";
+  }
+
+  return n.toFixed(2);
+}
+
+
+function escapeHtml(
+  value
+){
+
+  return String(
+    value ?? ""
+  )
+    .replaceAll(
+      "&",
+      "&amp;"
+    )
+    .replaceAll(
+      "<",
+      "&lt;"
+    )
+    .replaceAll(
+      ">",
+      "&gt;"
+    )
+    .replaceAll(
+      '"',
+      "&quot;"
+    )
+    .replaceAll(
+      "'",
+      "&#039;"
+    );
+
+}
+
+
+/* =========================================================
+   INITIALIZE
+========================================================= */
+
+renderAlerts();
+
+checkHealth();
+
+setInterval(
+  checkHealth,
+  60000
 );
 
 
 /* =========================================================
-   INIT
+   VISIBILITY
 ========================================================= */
 
-checkHealth();
+document.addEventListener(
+  "visibilitychange",
+  () => {
+
+    if (
+      document.visibilityState ===
+      "visible"
+    ) {
+
+      checkHealth();
+
+    }
+
+  }
+);
 
 </script>
 
