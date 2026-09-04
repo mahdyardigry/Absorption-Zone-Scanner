@@ -1,3313 +1,2103 @@
-import { DurableObject } from "cloudflare:workers";
+const BYBIT = "https://api.bybit.com";
+const VERSION = "ABSORPTION-ORDERFLOW-MAP-V6";
 
-const BYBIT_API = "https://api.bybit.com";
-const BYBIT_WS = "wss://stream.bybit.com/v5/public/linear";
+const TF = "5";
+const TF15 = "15";
+const TF3 = "3";
+const TF1 = "1";
 
-const VERSION = "BYBIT-SMART-MONEY-ORDER-FLOW-V6";
-
-const ORDERBOOK_DEPTH = 50;
-const RETENTION_MINUTES = 24 * 60;
-const SNAPSHOT_MS = 5000;
-const MINUTE_MS = 60 * 1000;
+const KLINE_LIMIT = 240;
 const TRADE_LIMIT = 1000;
+const ORDERBOOK_LIMIT = 50;
+const SCAN_BATCH = 20;
+const MAX_SYMBOLS = 200;
 
-const MAX_SYMBOLS = 1000;
-const WS_SUB_CHUNK = 200;
+const CHART_LIMIT = 180;
+const FOOTPRINT_MAX_LEVELS = 120;
+const HEATMAP_LEVELS = 50;
 
-const RECONNECT_MIN_MS = 3000;
-const RECONNECT_MAX_MS = 30000;
+const ALLOWED_INTERVALS = ["1","3","5","15","30","60"];
 
-function json(data, status = 200) {
-  return new Response(JSON.stringify(data), {
+const cache = new Map();
+
+function sleep(ms){
+  return new Promise(r => setTimeout(r,ms));
+}
+
+function json(data,status=200,extra={}){
+  return new Response(JSON.stringify(data),{
     status,
-    headers: {
-      "content-type": "application/json; charset=utf-8",
-      "cache-control": "no-store",
-      "access-control-allow-origin": "*",
-      "access-control-allow-methods": "GET,POST,OPTIONS",
-      "access-control-allow-headers": "*"
+    headers:{
+      "content-type":"application/json; charset=utf-8",
+      "cache-control":"no-store,no-cache,must-revalidate",
+      "access-control-allow-origin":"*",
+      "access-control-allow-methods":"GET,POST,OPTIONS",
+      "access-control-allow-headers":"Content-Type",
+      ...extra
     }
   });
 }
 
-function cors(response) {
-  const h = new Headers(response.headers);
-  h.set("access-control-allow-origin", "*");
-  h.set("access-control-allow-methods", "GET,POST,OPTIONS");
-  h.set("access-control-allow-headers", "*");
-
-  return new Response(response.body, {
-    status: response.status,
-    statusText: response.statusText,
-    headers: h
-  });
+function n(v,d=0){
+  const x=Number(v);
+  return Number.isFinite(x)?x:d;
 }
 
-function err(message, status = 500, extra = {}) {
-  return json({
-    ok: false,
-    error: String(message),
-    ...extra
-  }, status);
+function clamp(v,a,b){
+  return Math.max(a,Math.min(b,v));
 }
 
-function num(v) {
-  const n = Number(v);
-  return Number.isFinite(n) ? n : 0;
+function pct(a,b){
+  return b?(a/b)*100:0;
 }
 
-function safeSymbol(s) {
-  return String(s || "")
-    .trim()
-    .toUpperCase()
-    .replace(/[^A-Z0-9._-]/g, "");
+function avg(a){
+  return a?.length
+    ? a.reduce((x,y)=>x+y,0)/a.length
+    : 0;
 }
 
-function minuteTs(ts = Date.now()) {
-  return Math.floor(num(ts) / MINUTE_MS) * MINUTE_MS;
+function sum(a){
+  return a?.reduce((x,y)=>x+n(y),0)||0;
 }
 
-function emptyMinute(symbol, ts) {
-  return {
-    symbol,
-    ts,
-    levels: {},
-
-    buyVolume: 0,
-    sellVolume: 0,
-
-    buyValue: 0,
-    sellValue: 0,
-
-    buyTrades: 0,
-    sellTrades: 0,
-
-    totalVolume: 0,
-    totalValue: 0,
-
-    delta: 0,
-
-    orderbook: {
-      bids: [],
-      asks: [],
-      bestBid: 0,
-      bestAsk: 0,
-      bidLiquidity: 0,
-      askLiquidity: 0
-    },
-
-    liquidations: {
-      buy: 0,
-      sell: 0,
-      count: 0
-    },
-
-    blocks: []
-  };
+function normalizeInterval(v){
+  const x=String(v||TF);
+  return ALLOWED_INTERVALS.includes(x)?x:TF;
 }
 
-function ensureLevel(m, price) {
-  const p = String(price);
-
-  if (!m.levels[p]) {
-    m.levels[p] = {
-      price: num(price),
-
-      bidVolume: 0,
-      askVolume: 0,
-
-      bidValue: 0,
-      askValue: 0,
-
-      bidTrades: 0,
-      askTrades: 0,
-
-      delta: 0
-    };
-  }
-
-  return m.levels[p];
+function intervalMs(v){
+  return Number(normalizeInterval(v))*60*1000;
 }
 
-function addTrade(m, trade) {
-  if (!m || !trade) return;
-
-  const price = num(trade.price);
-  const size = num(trade.size);
-
-  if (!price || !size) return;
-
-  const value = price * size;
-  const side = String(trade.side || "").toLowerCase();
-
-  const l = ensureLevel(m, price);
-
-  /*
-    Bybit:
-    Buy  = aggressive buyer = ASK / BUY
-    Sell = aggressive seller = BID / SELL
-  */
-
-  if (side === "buy") {
-    l.askVolume += size;
-    l.askValue += value;
-    l.askTrades += 1;
-
-    m.buyVolume += size;
-    m.buyValue += value;
-    m.buyTrades += 1;
-  }
-
-  if (side === "sell") {
-    l.bidVolume += size;
-    l.bidValue += value;
-    l.bidTrades += 1;
-
-    m.sellVolume += size;
-    m.sellValue += value;
-    m.sellTrades += 1;
-  }
-
-  m.totalVolume =
-    m.buyVolume +
-    m.sellVolume;
-
-  m.totalValue =
-    m.buyValue +
-    m.sellValue;
-
-  m.delta =
-    m.buyVolume -
-    m.sellVolume;
-
-  l.delta =
-    l.askVolume -
-    l.bidVolume;
+function priceDecimals(step){
+  const s=String(step??"");
+  if(!s.includes("."))return 0;
+  return s.split(".")[1].replace(/0+$/,"").length;
 }
 
-function aggregateFootprint(m) {
-  if (!m) return null;
+function roundToStep(price,step){
+  const p=n(price);
+  const s=n(step);
+  if(!s)return p;
+  return Number(
+    (Math.round(p/s)*s).toFixed(priceDecimals(s))
+  );
+}
 
-  const levels = Object.values(m.levels || {})
-    .sort((a, b) => num(b.price) - num(a.price))
-    .map(l => ({
-      price: num(l.price),
+async function bybit(path,params={}){
+  const qs=new URLSearchParams();
 
-      bidVolume: num(l.bidVolume),
-      askVolume: num(l.askVolume),
-
-      bidValue: num(l.bidValue),
-      askValue: num(l.askValue),
-
-      bidTrades: num(l.bidTrades),
-      askTrades: num(l.askTrades),
-
-      delta: num(l.delta),
-
-      totalVolume:
-        num(l.bidVolume) +
-        num(l.askVolume)
-    }));
-
-  let open = 0;
-  let high = 0;
-  let low = 0;
-  let close = 0;
-
-  if (levels.length) {
-    const prices = levels
-      .map(x => num(x.price))
-      .filter(Boolean);
-
-    if (prices.length) {
-      high = Math.max(...prices);
-      low = Math.min(...prices);
-
-      open = prices[prices.length - 1];
-      close = prices[0];
+  for(const [k,v] of Object.entries(params)){
+    if(v!==undefined&&v!==null&&v!==""){
+      qs.set(k,String(v));
     }
   }
 
-  const bestBid =
-    num(m.orderbook?.bestBid);
-
-  const bestAsk =
-    num(m.orderbook?.bestAsk);
-
-  if (!open) {
-    open = bestBid || bestAsk;
-  }
-
-  if (!close) {
-    close = bestBid || bestAsk;
-  }
-
-  if (!high) {
-    high = Math.max(bestAsk, bestBid);
-  }
-
-  if (!low) {
-    low = Math.min(
-      bestBid || Infinity,
-      bestAsk || Infinity
-    );
-
-    if (!Number.isFinite(low)) {
-      low = 0;
-    }
-  }
-
-  return {
-    time: num(m.ts),
-    ts: num(m.ts),
-
-    symbol: m.symbol,
-
-    open,
-    high,
-    low,
-    close,
-
-    bidVolume: num(m.sellVolume),
-    askVolume: num(m.buyVolume),
-
-    sellVolume: num(m.sellVolume),
-    buyVolume: num(m.buyVolume),
-
-    bidValue: num(m.sellValue),
-    askValue: num(m.buyValue),
-
-    delta: num(m.delta),
-
-    totalVolume: num(m.totalVolume),
-    totalValue: num(m.totalValue),
-
-    buyTrades: num(m.buyTrades),
-    sellTrades: num(m.sellTrades),
-
-    trades:
-      num(m.buyTrades) +
-      num(m.sellTrades),
-
-    levels,
-
-    orderbook: {
-      bids: m.orderbook?.bids || [],
-      asks: m.orderbook?.asks || [],
-
-      bestBid,
-      bestAsk,
-
-      bidLiquidity:
-        num(m.orderbook?.bidLiquidity),
-
-      askLiquidity:
-        num(m.orderbook?.askLiquidity)
-    },
-
-    liquidations:
-      m.liquidations || {
-        buy: 0,
-        sell: 0,
-        count: 0
-      },
-
-    blocks: Array.isArray(m.blocks)
-      ? m.blocks
-      : []
-  };
-}
-
-function aggregateCandles(klines, intervalMinutes) {
-  if (!Array.isArray(klines)) {
-    return [];
-  }
-
-  const n = Number(intervalMinutes);
-
-  if (!n || n <= 0) {
-    return [];
-  }
-
-  const sorted = klines
-    .map(k => ({
-      ts: num(k[0]),
-      open: num(k[1]),
-      high: num(k[2]),
-      low: num(k[3]),
-      close: num(k[4]),
-      volume: num(k[5]),
-      turnover: num(k[6])
-    }))
-    .filter(k =>
-      k.ts &&
-      k.open &&
-      k.high &&
-      k.low &&
-      k.close
-    )
-    .sort((a, b) => a.ts - b.ts);
-
-  const bucketMs =
-    n * MINUTE_MS;
-
-  const map = new Map();
-
-  for (const k of sorted) {
-    const bucket =
-      Math.floor(k.ts / bucketMs) *
-      bucketMs;
-
-    if (!map.has(bucket)) {
-      map.set(bucket, {
-        time: bucket,
-        open: k.open,
-        high: k.high,
-        low: k.low,
-        close: k.close,
-        volume: k.volume,
-        turnover: k.turnover
-      });
-    } else {
-      const c = map.get(bucket);
-
-      c.high =
-        Math.max(c.high, k.high);
-
-      c.low =
-        Math.min(c.low, k.low);
-
-      c.close = k.close;
-
-      c.volume += k.volume;
-      c.turnover += k.turnover;
-    }
-  }
-
-  return Array.from(map.values())
-    .sort((a, b) => a.time - b.time);
-}
-
-async function bybit(path, params = {}) {
-  const u =
-    new URL(BYBIT_API + path);
-
-  for (const [k, v] of Object.entries(params)) {
-    if (
-      v !== undefined &&
-      v !== null &&
-      v !== ""
-    ) {
-      u.searchParams.set(
-        k,
-        String(v)
-      );
-    }
-  }
-
-  const r = await fetch(
-    u.toString(),
+  const r=await fetch(
+    `${BYBIT}${path}?${qs.toString()}`,
     {
-      method: "GET",
-      headers: {
-        accept: "application/json"
-      }
+      method:"GET",
+      headers:{accept:"application/json"}
     }
   );
 
-  const text = await r.text();
+  if(!r.ok){
+    throw new Error(`Bybit HTTP ${r.status}`);
+  }
 
-  let data;
+  const data=await r.json();
 
-  try {
-    data = JSON.parse(text);
-  } catch {
+  if(data.retCode!==0){
     throw new Error(
-      `Bybit HTTP ${r.status}: ${text.slice(0, 300)}`
+      data.retMsg||`Bybit error ${data.retCode}`
     );
   }
 
-  if (!r.ok) {
-    throw new Error(
-      `Bybit HTTP ${r.status}: ${
-        data?.retMsg || "request failed"
-      }`
-    );
-  }
-
-  if (data.retCode !== 0) {
-    throw new Error(
-      `Bybit ${data.retCode}: ${
-        data.retMsg || "API error"
-      }`
-    );
-  }
-
-  return data;
+  return data.result;
 }
 
-async function getKlines(
+async function instrumentInfo(category,symbol){
+  const key=`instrument:${category}:${symbol}`;
+
+  if(cache.has(key)){
+    return cache.get(key);
+  }
+
+  const result=await bybit(
+    "/v5/market/instruments-info",
+    {category,symbol}
+  );
+
+  const item=result?.list?.[0];
+
+  const info={
+    symbol,
+    category,
+    tickSize:n(
+      item?.priceFilter?.tickSize,
+      0.00000001
+    ),
+    minPrice:n(item?.priceFilter?.minPrice),
+    maxPrice:n(item?.priceFilter?.maxPrice),
+    qtyStep:n(item?.lotSizeFilter?.qtyStep),
+    minQty:n(item?.lotSizeFilter?.minOrderQty),
+    maxQty:n(item?.lotSizeFilter?.maxOrderQty)
+  };
+
+  cache.set(key,info);
+  return info;
+}
+
+async function kline(
+  category,
   symbol,
-  interval = "1",
-  limit = 200
-) {
-  const data = await bybit(
+  interval,
+  limit=KLINE_LIMIT
+){
+  const result=await bybit(
     "/v5/market/kline",
     {
-      category: "linear",
+      category,
       symbol,
-      interval,
+      interval:normalizeInterval(interval),
       limit
     }
   );
 
-  return data?.result?.list || [];
+  return (result?.list||[])
+    .map(x=>({
+      time:n(x[0]),
+      open:n(x[1]),
+      high:n(x[2]),
+      low:n(x[3]),
+      close:n(x[4]),
+      volume:n(x[5]),
+      turnover:n(x[6])
+    }))
+    .sort((a,b)=>a.time-b.time);
 }
 
-async function getTicker(symbol) {
-  const data = await bybit(
+async function ticker(category,symbol){
+  const result=await bybit(
     "/v5/market/tickers",
-    {
-      category: "linear",
-      symbol
-    }
+    {category,symbol}
   );
 
-  return data?.result?.list?.[0] || null;
-}
+  const x=result?.list?.[0]||{};
 
-async function getOrderbook(symbol) {
-  const data = await bybit(
-    "/v5/market/orderbook",
-    {
-      category: "linear",
-      symbol,
-      limit: ORDERBOOK_DEPTH
-    }
-  );
-
-  const r =
-    data?.result || {};
-
-  const bids =
-    (r.b || [])
-      .map(x => ({
-        price: num(x[0]),
-        size: num(x[1]),
-        value:
-          num(x[0]) *
-          num(x[1])
-      }));
-
-  const asks =
-    (r.a || [])
-      .map(x => ({
-        price: num(x[0]),
-        size: num(x[1]),
-        value:
-          num(x[0]) *
-          num(x[1])
-      }));
-
-  return {
-    bids,
-    asks,
-
-    bestBid:
-      num(r.b?.[0]?.[0]),
-
-    bestAsk:
-      num(r.a?.[0]?.[0]),
-
-    bidLiquidity:
-      bids.reduce(
-        (a, x) => a + num(x.value),
-        0
-      ),
-
-    askLiquidity:
-      asks.reduce(
-        (a, x) => a + num(x.value),
-        0
-      )
+  return{
+    symbol,
+    last:n(x.lastPrice),
+    mark:n(x.markPrice),
+    index:n(x.indexPrice),
+    volume24h:n(x.volume24h),
+    turnover24h:n(x.turnover24h),
+    change24h:n(x.price24hPcnt)*100,
+    openInterest:n(x.openInterest),
+    fundingRate:n(x.fundingRate)
   };
 }
 
-async function getRecentTrades(symbol) {
-  const data = await bybit(
+async function trades(
+  category,
+  symbol,
+  limit=TRADE_LIMIT
+){
+  const result=await bybit(
     "/v5/market/recent-trade",
     {
-      category: "linear",
+      category,
       symbol,
-      limit: TRADE_LIMIT
+      limit:Math.min(1000,limit)
     }
   );
 
-  return (
-    data?.result?.list || []
-  ).map(t => ({
-    id:
-      t.execId ||
-      t.id ||
-      "",
+  return(result?.list||[])
+    .map(x=>{
+      const side=String(
+        x.side||""
+      ).trim().toUpperCase();
 
-    time: num(t.time),
-
-    price: num(t.price),
-
-    size: num(t.size),
-
-    side: t.side || "",
-
-    isBlockTrade:
-      !!t.isBlockTrade
-  }));
+      return{
+        id:
+          x.execId||
+          x.id||
+          `${x.time}-${x.price}-${x.size}`,
+        time:n(x.time),
+        price:n(x.price),
+        size:n(x.size),
+        side,
+        value:n(x.price)*n(x.size),
+        isBlockTrade:Boolean(x.isBlockTrade),
+        isRPITrade:Boolean(x.isRPITrade)
+      };
+    })
+    .filter(x=>
+      Number.isFinite(x.price)&&
+      Number.isFinite(x.size)&&
+      (x.side==="BUY"||x.side==="SELL")
+    )
+    .sort((a,b)=>a.time-b.time);
 }
 
-function buildFootprintFromTrades(
+function aggressorSide(x){
+  const side=String(
+    x?.side||""
+  ).trim().toUpperCase();
+
+  if(side==="BUY")return"BUY";
+  if(side==="SELL")return"SELL";
+  return"UNKNOWN";
+}
+
+async function orderbook(
+  category,
   symbol,
-  trades,
-  ts = Date.now()
-) {
-  const m =
-    emptyMinute(
+  limit=ORDERBOOK_LIMIT
+){
+  const result=await bybit(
+    "/v5/market/orderbook",
+    {
+      category,
       symbol,
-      minuteTs(ts)
-    );
-
-  for (const t of trades || []) {
-    const tradeMinute =
-      minuteTs(
-        num(t.time) || ts
-      );
-
-    /*
-      Only keep trades belonging to
-      their actual minute.
-    */
-    if (tradeMinute !== m.ts) {
-      continue;
+      limit
     }
-
-    addTrade(
-      m,
-      {
-        price: t.price,
-        size: t.size,
-        side: t.side
-      }
-    );
-  }
-
-  return aggregateFootprint(m);
-}
-
-function mergeLiveFootprint(
-  footprint,
-  orderbook
-) {
-  if (!footprint) {
-    return null;
-  }
-
-  footprint.orderbook = {
-    bids:
-      orderbook?.bids || [],
-
-    asks:
-      orderbook?.asks || [],
-
-    bestBid:
-      num(orderbook?.bestBid),
-
-    bestAsk:
-      num(orderbook?.bestAsk),
-
-    bidLiquidity:
-      num(orderbook?.bidLiquidity),
-
-    askLiquidity:
-      num(orderbook?.askLiquidity)
-  };
-
-  return footprint;
-}
-
-function calculateIndicators(candles) {
-  const closes =
-    (candles || [])
-      .map(x => num(x.close))
-      .filter(Boolean);
-
-  function sma(arr, n) {
-    if (arr.length < n) {
-      return null;
-    }
-
-    let s = 0;
-
-    for (
-      let i = arr.length - n;
-      i < arr.length;
-      i++
-    ) {
-      s += arr[i];
-    }
-
-    return s / n;
-  }
-
-  function ema(arr, n) {
-    if (arr.length < n) {
-      return null;
-    }
-
-    const k =
-      2 / (n + 1);
-
-    let e =
-      sma(
-        arr.slice(0, n),
-        n
-      );
-
-    if (e === null) {
-      return null;
-    }
-
-    for (
-      let i = n;
-      i < arr.length;
-      i++
-    ) {
-      e =
-        arr[i] * k +
-        e * (1 - k);
-    }
-
-    return e;
-  }
-
-  function rsi(arr, n = 14) {
-    if (arr.length <= n) {
-      return null;
-    }
-
-    let gain = 0;
-    let loss = 0;
-
-    for (
-      let i = 1;
-      i <= n;
-      i++
-    ) {
-      const d =
-        arr[i] -
-        arr[i - 1];
-
-      if (d >= 0) {
-        gain += d;
-      } else {
-        loss -= d;
-      }
-    }
-
-    let avgGain =
-      gain / n;
-
-    let avgLoss =
-      loss / n;
-
-    for (
-      let i = n + 1;
-      i < arr.length;
-      i++
-    ) {
-      const d =
-        arr[i] -
-        arr[i - 1];
-
-      const g =
-        d > 0 ? d : 0;
-
-      const l =
-        d < 0 ? -d : 0;
-
-      avgGain =
-        ((avgGain * (n - 1)) + g) /
-        n;
-
-      avgLoss =
-        ((avgLoss * (n - 1)) + l) /
-        n;
-    }
-
-    if (avgLoss === 0) {
-      return 100;
-    }
-
-    const rs =
-      avgGain / avgLoss;
-
-    return (
-      100 -
-      100 / (1 + rs)
-    );
-  }
-
-  const last =
-    closes[closes.length - 1] || 0;
-
-  const ma20 =
-    sma(closes, 20);
-
-  const ema20 =
-    ema(closes, 20);
-
-  const ema50 =
-    ema(closes, 50);
-
-  const r =
-    rsi(closes, 14);
-
-  let trend =
-    "NEUTRAL";
-
-  if (
-    ema20 !== null &&
-    ema50 !== null
-  ) {
-    if (ema20 > ema50) {
-      trend = "BULLISH";
-    }
-
-    if (ema20 < ema50) {
-      trend = "BEARISH";
-    }
-  }
-
-  return {
-    price: last,
-    ma20,
-    ema20,
-    ema50,
-    rsi: r,
-    trend
-  };
-}
-
-function calculateSignal(
-  ind,
-  footprint,
-  orderbook
-) {
-  let score = 50;
-
-  const reasons = [];
-
-  const delta =
-    num(footprint?.delta);
-
-  const volume =
-    num(footprint?.totalVolume);
-
-  if (delta > 0) {
-    score += 15;
-    reasons.push("Delta مثبت");
-  } else if (delta < 0) {
-    score -= 15;
-    reasons.push("Delta منفی");
-  }
-
-  if (ind.trend === "BULLISH") {
-    score += 15;
-    reasons.push("روند EMA صعودی");
-  } else if (
-    ind.trend === "BEARISH"
-  ) {
-    score -= 15;
-    reasons.push("روند EMA نزولی");
-  }
-
-  if (ind.rsi !== null) {
-    if (ind.rsi >= 55) {
-      score += 5;
-      reasons.push("RSI بالای 55");
-    }
-
-    if (ind.rsi <= 45) {
-      score -= 5;
-      reasons.push("RSI زیر 45");
-    }
-  }
-
-  const bidL =
-    num(orderbook?.bidLiquidity);
-
-  const askL =
-    num(orderbook?.askLiquidity);
-
-  if (
-    bidL > askL * 1.08
-  ) {
-    score += 10;
-    reasons.push(
-      "نقدینگی Bid بیشتر"
-    );
-  } else if (
-    askL > bidL * 1.08
-  ) {
-    score -= 10;
-    reasons.push(
-      "نقدینگی Ask بیشتر"
-    );
-  }
-
-  if (volume > 0) {
-    const deltaPct =
-      Math.abs(
-        delta / volume
-      ) * 100;
-
-    if (deltaPct >= 10) {
-      score +=
-        delta > 0 ? 5 : -5;
-
-      reasons.push(
-        `Delta ${deltaPct.toFixed(1)}%`
-      );
-    }
-  }
-
-  score =
-    Math.max(
-      0,
-      Math.min(
-        100,
-        Math.round(score)
-      )
-    );
-
-  let signal =
-    "NEUTRAL";
-
-  if (score >= 65) {
-    signal = "BUY";
-  }
-
-  if (score <= 35) {
-    signal = "SELL";
-  }
-
-  return {
-    signal,
-    score,
-    reasons
-  };
-}
-
-async function collectorJSON(
-  stub,
-  path,
-  options = {}
-) {
-  const base =
-    "https://collector.internal";
-
-  const u =
-    new URL(
-      path,
-      base
-    );
-
-  const request =
-    new Request(
-      u.toString(),
-      {
-        method:
-          options.method || "GET",
-
-        headers:
-          options.headers || {},
-
-        body:
-          options.body
-      }
-    );
-
-  const r =
-    await stub.fetch(request);
-
-  const text =
-    await r.text();
-
-  let data;
-
-  try {
-    data =
-      JSON.parse(text);
-  } catch {
-    throw new Error(
-      `Collector HTTP ${r.status}: ${text.slice(0, 500)}`
-    );
-  }
-
-  if (
-    !r.ok ||
-    data?.ok === false
-  ) {
-    throw new Error(
-      data?.error ||
-      `Collector HTTP ${r.status}`
-    );
-  }
-
-  return data;
-}
-
-async function ensureCollector(
-  stub,
-  symbol
-) {
-  try {
-    const status =
-      await collectorJSON(
-        stub,
-        "/status"
-      );
-
-    if (
-      status.started &&
-      num(status.symbols) > 0
-    ) {
-      return status;
-    }
-  } catch {}
-
-  const init =
-    await collectorJSON(
-      stub,
-      "/init",
-      {
-        method: "POST",
-
-        headers: {
-          "content-type":
-            "application/json"
-        },
-
-        body:
-          JSON.stringify({
-            symbols: [
-              symbol
-            ]
-          })
-      }
-    );
-
-  return init;
-}
-
-async function analyzeSymbol(
-  symbol,
-  interval,
-  stub
-) {
-  symbol =
-    safeSymbol(symbol);
-
-  interval =
-    String(interval || "1");
-
-  if (!symbol) {
-    throw new Error(
-      "Symbol is required"
-    );
-  }
-
-  await ensureCollector(
-    stub,
-    symbol
   );
 
-  const [
-    k1,
-    ticker,
-    orderbook,
-    trades,
-    collector
-  ] =
-    await Promise.all([
-      getKlines(
-        symbol,
-        "1",
-        200
-      ),
+  const bids=(result?.b||[])
+    .map(x=>{
+      const price=n(x[0]);
+      const size=n(x[1]);
 
-      getTicker(
-        symbol
-      ),
+      return{
+        price,
+        size,
+        value:price*size
+      };
+    })
+    .filter(x=>x.price>0&&x.size>0)
+    .sort((a,b)=>b.price-a.price);
 
-      getOrderbook(
-        symbol
-      ),
+  const asks=(result?.a||[])
+    .map(x=>{
+      const price=n(x[0]);
+      const size=n(x[1]);
 
-      getRecentTrades(
-        symbol
-      ),
+      return{
+        price,
+        size,
+        value:price*size
+      };
+    })
+    .filter(x=>x.price>0&&x.size>0)
+    .sort((a,b)=>a.price-b.price);
 
-      collectorJSON(
-        stub,
-        `/history-footprint?symbol=${encodeURIComponent(symbol)}&hours=24`
+  return{
+    bids,
+    asks,
+    bestBid:bids[0]?.price||0,
+    bestAsk:asks[0]?.price||0
+  };
+}
+
+async function oiFunding(symbol){
+  try{
+    const[
+      oiResult,
+      fundingResult
+    ]=await Promise.all([
+      bybit(
+        "/v5/market/open-interest",
+        {
+          category:"linear",
+          symbol,
+          intervalTime:"5min",
+          limit:1
+        }
+      ),
+      bybit(
+        "/v5/market/funding/history",
+        {
+          category:"linear",
+          symbol,
+          limit:1
+        }
       )
     ]);
 
-  const minuteCandles =
-    k1
-      .slice()
-      .reverse()
-      .map(k => ({
-        time: num(k[0]),
-        open: num(k[1]),
-        high: num(k[2]),
-        low: num(k[3]),
-        close: num(k[4]),
-        volume: num(k[5]),
-        turnover: num(k[6])
-      }));
-
-  let candles =
-    minuteCandles;
-
-  if (
-    ["3", "5", "15", "30", "60"]
-      .includes(interval)
-  ) {
-    candles =
-      aggregateCandles(
-        k1,
-        Number(interval)
-      );
-  }
-
-  let footprints =
-    Array.isArray(
-      collector?.footprints
-    )
-      ? collector.footprints
-      : [];
-
-  /*
-    Rebuild current minute from REST trades.
-    This is used only as live/current-minute
-    confirmation and does not overwrite older
-    collector history.
-  */
-
-  const recentFootprint =
-    buildFootprintFromTrades(
-      symbol,
-      trades,
-      Date.now()
-    );
-
-  const storedLatest =
-    footprints.length
-      ? footprints[
-          footprints.length - 1
-        ]
-      : null;
-
-  if (
-    !storedLatest ||
-    num(storedLatest.time) !==
-      num(recentFootprint.time)
-  ) {
-    footprints = [
-      ...footprints,
-      recentFootprint
-    ];
-  } else {
-    footprints[
-      footprints.length - 1
-    ] = {
-      ...storedLatest,
-      ...recentFootprint,
-      levels:
-        recentFootprint.levels
+    return{
+      openInterest:n(
+        oiResult?.list?.[0]?.openInterest
+      ),
+      fundingRate:n(
+        fundingResult?.list?.[0]?.fundingRate
+      ),
+      fundingTime:n(
+        fundingResult?.list?.[0]?.fundingRateTimestamp
+      )
+    };
+  }catch{
+    return{
+      openInterest:0,
+      fundingRate:0,
+      fundingTime:0
     };
   }
+}
 
-  footprints =
-    footprints
-      .filter(Boolean)
-      .sort(
-        (a, b) =>
-          num(a.time) -
-          num(b.time)
-      )
-      .slice(-2000);
+function sma(values,period){
+  if(!values?.length)return[];
 
-  const liveFootprint =
-    mergeLiveFootprint(
-      recentFootprint,
-      orderbook
+  const out=new Array(values.length).fill(null);
+  let rolling=0;
+
+  for(let i=0;i<values.length;i++){
+    rolling+=n(values[i]);
+
+    if(i>=period){
+      rolling-=n(values[i-period]);
+    }
+
+    if(i>=period-1){
+      out[i]=rolling/period;
+    }
+  }
+
+  return out;
+}
+
+function ema(values,period){
+  if(!values?.length)return[];
+
+  const out=new Array(values.length).fill(null);
+  const k=2/(period+1);
+
+  let prev=n(values[0]);
+  out[0]=prev;
+
+  for(let i=1;i<values.length;i++){
+    prev=n(values[i])*k+prev*(1-k);
+    out[i]=prev;
+  }
+
+  return out;
+}
+
+function atr(candles,period=14){
+  if(!candles?.length)return[];
+
+  const tr=candles.map((c,i)=>{
+    if(i===0){
+      return c.high-c.low;
+    }
+
+    return Math.max(
+      c.high-c.low,
+      Math.abs(c.high-candles[i-1].close),
+      Math.abs(c.low-candles[i-1].close)
     );
+  });
 
-  const indicators =
-    calculateIndicators(
-      minuteCandles.length
-        ? minuteCandles
-        : candles
-    );
+  return ema(tr,period);
+}
 
-  const signal =
-    calculateSignal(
-      indicators,
-      liveFootprint,
-      orderbook
-    );
+function rsi(values,period=14){
+  if(!values?.length)return[];
 
-  return {
-    ok: true,
+  const out=new Array(values.length).fill(null);
 
-    version: VERSION,
+  let gains=0;
+  let losses=0;
 
-    symbol,
+  for(let i=1;i<values.length;i++){
+    const diff=
+      n(values[i])-n(values[i-1]);
 
-    interval,
+    gains+=Math.max(diff,0);
+    losses+=Math.max(-diff,0);
 
-    serverTime:
-      Date.now(),
+    if(i>period){
+      const oldDiff=
+        n(values[i-period])-
+        n(values[i-period-1]);
 
-    ticker: {
-      lastPrice:
-        num(ticker?.lastPrice),
+      gains-=Math.max(oldDiff,0);
+      losses-=Math.max(-oldDiff,0);
+    }
 
-      markPrice:
-        num(ticker?.markPrice),
+    if(i>=period){
+      const avgGain=gains/period;
+      const avgLoss=losses/period;
 
-      indexPrice:
-        num(ticker?.indexPrice),
+      if(avgLoss===0){
+        out[i]=100;
+      }else{
+        const rs=avgGain/avgLoss;
+        out[i]=100-100/(1+rs);
+      }
+    }
+  }
 
-      volume24h:
-        num(ticker?.volume24h),
+  return out;
+}
 
-      turnover24h:
-        num(ticker?.turnover24h),
+function candleStats(c){
+  const range=Math.max(c.high-c.low,0);
+  const body=Math.abs(c.close-c.open);
 
-      price24hPcnt:
-        num(ticker?.price24hPcnt)
-    },
-
-    candles,
-
-    footprints,
-
-    liveFootprint,
-
-    footprint:
-      liveFootprint,
-
-    trades,
-
-    orderbook,
-
-    currentFlow:
-      liveFootprint,
-
-    indicators,
-
-    signal
+  return{
+    range,
+    body,
+    bodyPercent:
+      range?body/range*100:0,
+    upperWick:
+      c.high-Math.max(c.open,c.close),
+    lowerWick:
+      Math.min(c.open,c.close)-c.low,
+    bullish:c.close>=c.open,
+    bearish:c.close<c.open
   };
 }
 
-export default {
-  async fetch(
-    request,
-    env,
-    ctx
-  ) {
-    if (
-      request.method ===
-      "OPTIONS"
-    ) {
-      return new Response(
-        null,
-        {
-          status: 204,
-
-          headers: {
-            "access-control-allow-origin":
-              "*",
-
-            "access-control-allow-methods":
-              "GET,POST,OPTIONS",
-
-            "access-control-allow-headers":
-              "*"
-          }
-        }
-      );
-    }
-
-    try {
-      const url =
-        new URL(
-          request.url
-        );
-
-      const path =
-        url.pathname;
-
-      if (!env.COLLECTOR) {
-        return err(
-          "COLLECTOR Durable Object binding is missing",
-          500
-        );
-      }
-
-      const id =
-        env.COLLECTOR.idFromName(
-          "BYBIT-SMART-MONEY-COLLECTOR"
-        );
-
-      const stub =
-        env.COLLECTOR.get(id);
-
-      if (
-        path ===
-        "/api/test-bybit"
-      ) {
-        const server =
-          await bybit(
-            "/v5/market/time"
-          );
-
-        return cors(
-          json({
-            ok: true,
-            connected: true,
-
-            bybit: {
-              retCode:
-                server.retCode,
-
-              retMsg:
-                server.retMsg,
-
-              timeSecond:
-                server.result?.timeSecond,
-
-              timeNano:
-                server.result?.timeNano
-            }
-          })
-        );
-      }
-
-      if (
-        path ===
-        "/api/health"
-      ) {
-        const d =
-          await collectorJSON(
-            stub,
-            "/status"
-          );
-
-        return cors(
-          json({
-            ok: true,
-            version: VERSION,
-            bybit: true,
-            collector: d,
-            d1: true
-          })
-        );
-      }
-
-      if (
-        path ===
-        "/api/status"
-      ) {
-        const d =
-          await collectorJSON(
-            stub,
-            "/status"
-          );
-
-        return cors(
-          json(d)
-        );
-      }
-
-      if (
-        path ===
-        "/api/init"
-      ) {
-        const body =
-          await request
-            .json()
-            .catch(
-              () => ({})
-            );
-
-        let symbols =
-          Array.isArray(
-            body.symbols
-          )
-            ? body.symbols
-            : [];
-
-        symbols =
-          symbols
-            .map(safeSymbol)
-            .filter(Boolean);
-
-        if (!symbols.length) {
-          symbols = [
-            "BTCUSDT"
-          ];
-        }
-
-        const r =
-          await collectorJSON(
-            stub,
-            "/init",
-            {
-              method: "POST",
-
-              headers: {
-                "content-type":
-                  "application/json"
-              },
-
-              body:
-                JSON.stringify({
-                  symbols
-                })
-            }
-          );
-
-        return cors(
-          json(r)
-        );
-      }
-
-      if (
-        path ===
-        "/api/symbols"
-      ) {
-        const d =
-          await collectorJSON(
-            stub,
-            "/symbols"
-          );
-
-        return cors(
-          json(d)
-        );
-      }
-
-      if (
-        path ===
-        "/api/history-footprint"
-      ) {
-        const symbol =
-          safeSymbol(
-            url.searchParams.get(
-              "symbol"
-            ) ||
-            "BTCUSDT"
-          );
-
-        const hours =
-          Math.max(
-            1,
-            Math.min(
-              24,
-              Number(
-                url.searchParams.get(
-                  "hours"
-                ) || 24
-              )
-            )
-          );
-
-        await ensureCollector(
-          stub,
-          symbol
-        );
-
-        const d =
-          await collectorJSON(
-            stub,
-            `/history-footprint?symbol=${encodeURIComponent(symbol)}&hours=${hours}`
-          );
-
-        return cors(
-          json(d)
-        );
-      }
-
-      if (
-        path ===
-        "/api/latest"
-      ) {
-        const symbol =
-          safeSymbol(
-            url.searchParams.get(
-              "symbol"
-            ) ||
-            "BTCUSDT"
-          );
-
-        await ensureCollector(
-          stub,
-          symbol
-        );
-
-        const d =
-          await collectorJSON(
-            stub,
-            `/latest?symbol=${encodeURIComponent(symbol)}`
-          );
-
-        return cors(
-          json(d)
-        );
-      }
-
-      if (
-        path ===
-        "/api/analyze"
-      ) {
-        const symbol =
-          safeSymbol(
-            url.searchParams.get(
-              "symbol"
-            ) ||
-            "BTCUSDT"
-          );
-
-        const interval =
-          url.searchParams.get(
-            "interval"
-          ) ||
-          "1";
-
-        const d =
-          await analyzeSymbol(
-            symbol,
-            interval,
-            stub
-          );
-
-        return cors(
-          json(d)
-        );
-      }
-
-      if (
-        path ===
-        "/api/live"
-      ) {
-        const symbol =
-          safeSymbol(
-            url.searchParams.get(
-              "symbol"
-            ) ||
-            "BTCUSDT"
-          );
-
-        const interval =
-          url.searchParams.get(
-            "interval"
-          ) ||
-          "1";
-
-        const d =
-          await analyzeSymbol(
-            symbol,
-            interval,
-            stub
-          );
-
-        return cors(
-          json({
-            ok: true,
-            version: VERSION,
-            symbol,
-            interval,
-            time: Date.now(),
-
-            footprint:
-              d.liveFootprint,
-
-            liveFootprint:
-              d.liveFootprint,
-
-            currentFlow:
-              d.liveFootprint,
-
-            orderbook:
-              d.orderbook,
-
-            trades:
-              d.trades,
-
-            ticker:
-              d.ticker,
-
-            signal:
-              d.signal
-          })
-        );
-      }
-
-      if (
-        path ===
-        "/api/collect"
-      ) {
-        const symbol =
-          safeSymbol(
-            url.searchParams.get(
-              "symbol"
-            ) ||
-            "BTCUSDT"
-          );
-
-        await ensureCollector(
-          stub,
-          symbol
-        );
-
-        const d =
-          await collectorJSON(
-            stub,
-            `/collect?symbol=${encodeURIComponent(symbol)}`
-          );
-
-        return cors(
-          json(d)
-        );
-      }
-
-      if (
-        path ===
-        "/api/scan"
-      ) {
-        let symbols = [];
-
-        try {
-          const s =
-            await bybit(
-              "/v5/market/instruments-info",
-              {
-                category:
-                  "linear",
-
-                status:
-                  "Trading",
-
-                limit:
-                  1000
-              }
-            );
-
-          symbols =
-            (
-              s?.result?.list ||
-              []
-            )
-              .map(
-                x => x.symbol
-              )
-              .filter(Boolean)
-              .slice(
-                0,
-                100
-              );
-
-        } catch {
-          symbols = [
-            "BTCUSDT",
-            "ETHUSDT",
-            "SOLUSDT",
-            "XRPUSDT",
-            "DOGEUSDT",
-            "BNBUSDT",
-            "ADAUSDT",
-            "AVAXUSDT",
-            "LINKUSDT",
-            "SUIUSDT"
-          ];
-        }
-
-        const results = [];
-
-        for (
-          const symbol of symbols
-        ) {
-          try {
-            const d =
-              await analyzeSymbol(
-                symbol,
-                "1",
-                stub
-              );
-
-            results.push({
-              symbol,
-
-              price:
-                d.ticker.lastPrice,
-
-              signal:
-                d.signal.signal,
-
-              score:
-                d.signal.score,
-
-              delta:
-                d.liveFootprint?.delta ||
-                0,
-
-              volume:
-                d.liveFootprint?.totalVolume ||
-                0,
-
-              trend:
-                d.indicators?.trend ||
-                "NEUTRAL"
-            });
-
-          } catch (e) {
-            results.push({
-              symbol,
-
-              error:
-                String(
-                  e.message || e
-                )
-            });
-          }
-        }
-
-        results.sort(
-          (a, b) =>
-            num(b.score) -
-            num(a.score)
-        );
-
-        return cors(
-          json({
-            ok: true,
-
-            count:
-              results.length,
-
-            results
-          })
-        );
-      }
-
-      if (
-        path.startsWith(
-          "/api/"
-        )
-      ) {
-        const target =
-          new URL(
-            request.url
-          );
-
-        target.pathname =
-          path.replace(
-            /^\/api/,
-            ""
-          ) || "/";
-
-        return cors(
-          await stub.fetch(
-            new Request(
-              target.toString(),
-              request
-            )
-          )
-        );
-      }
-
-      if (env.ASSETS) {
-        return env.ASSETS.fetch(
-          request
-        );
-      }
-
-      return err(
-        "Not Found",
-        404
-      );
-
-    } catch (e) {
-      console.error(
-        "WORKER ERROR",
-        e
-      );
-
-      return cors(
-        err(
-          e?.message ||
-            String(e),
-          502,
-          {
-            version:
-              VERSION,
-
-            stack:
-              e?.stack
-                ? String(
-                    e.stack
-                  ).slice(
-                    0,
-                    2000
-                  )
-                : undefined
-          }
-        )
-      );
-    }
-  }
-};
-
-
-export class CollectorDO
-  extends DurableObject {
-
-  constructor(
-    ctx,
-    env
-  ) {
-    super(
-      ctx,
-      env
+function flowFromTrades(
+  list,
+  start=0,
+  end=Infinity
+){
+  const selected=(list||[]).filter(t=>
+    t.time>=start&&
+    t.time<=end
+  );
+
+  let buyVolume=0;
+  let sellVolume=0;
+  let buyValue=0;
+  let sellValue=0;
+  let buyTrades=0;
+  let sellTrades=0;
+
+  for(const t of selected){
+    const side=aggressorSide(t);
+    const value=n(
+      t.value,
+      n(t.price)*n(t.size)
     );
 
-    this.ctx = ctx;
-    this.env = env;
-
-    this.running = false;
-
-    this.symbols = [];
-
-    this.shards = [];
-
-    this.minutes =
-      new Map();
-
-    this.lastTradeIds =
-      new Map();
-
-    this.ctx.storage.sql.exec(`
-      CREATE TABLE IF NOT EXISTS minutes (
-        symbol TEXT NOT NULL,
-        ts INTEGER NOT NULL,
-        data TEXT NOT NULL,
-        PRIMARY KEY(symbol, ts)
-      )
-    `);
-
-    this.ctx.storage.sql.exec(`
-      CREATE TABLE IF NOT EXISTS meta (
-        key TEXT PRIMARY KEY,
-        value TEXT
-      )
-    `);
-
-    const saved =
-      this.ctx.storage.sql
-        .exec(
-          `SELECT value FROM meta WHERE key = 'symbols' LIMIT 1`
-        )
-        .toArray();
-
-    if (
-      saved?.[0]?.value
-    ) {
-      try {
-        this.symbols =
-          JSON.parse(
-            saved[0].value
-          );
-      } catch {
-        this.symbols = [];
-      }
+    if(side==="BUY"){
+      buyVolume+=n(t.size);
+      buyValue+=value;
+      buyTrades++;
+    }else if(side==="SELL"){
+      sellVolume+=n(t.size);
+      sellValue+=value;
+      sellTrades++;
     }
   }
 
-  async fetch(request) {
-    const url =
-      new URL(
-        request.url
-      );
-
-    const path =
-      url.pathname;
-
-    try {
-      if (
-        path === "/status"
-      ) {
-        return json({
-          ok: true,
-
-          version:
-            VERSION,
-
-          started:
-            this.running,
-
-          symbols:
-            this.symbols.length,
-
-          shards:
-            this.shards.length,
-
-          minutes:
-            this.countMinutes()
-        });
-      }
-
-      if (
-        path === "/symbols"
-      ) {
-        return json({
-          ok: true,
-          symbols:
-            this.symbols
-        });
-      }
-
-      if (
-        path === "/init"
-      ) {
-        let body = {};
-
-        if (
-          request.method ===
-          "POST"
-        ) {
-          body =
-            await request
-              .json()
-              .catch(
-                () => ({})
-              );
-        }
-
-        let symbols =
-          Array.isArray(
-            body.symbols
-          )
-            ? body.symbols
-            : [];
-
-        symbols =
-          symbols
-            .map(safeSymbol)
-            .filter(Boolean);
-
-        if (
-          !symbols.length
-        ) {
-          symbols =
-            await this.getDefaultSymbols();
-        }
-
-        symbols =
-          [
-            ...new Set(
-              symbols
-            )
-          ].slice(
-            0,
-            MAX_SYMBOLS
-          );
-
-        await this.startCollector(
-          symbols
-        );
-
-        return json({
-          ok: true,
-
-          started: true,
-
-          symbols:
-            this.symbols.length,
-
-          shards:
-            this.shards.length
-        });
-      }
-
-      if (
-        path ===
-        "/history-footprint"
-      ) {
-        const symbol =
-          safeSymbol(
-            url.searchParams.get(
-              "symbol"
-            ) ||
-            "BTCUSDT"
-          );
-
-        const hours =
-          Math.max(
-            1,
-            Math.min(
-              24,
-              Number(
-                url.searchParams.get(
-                  "hours"
-                ) || 24
-              )
-            )
-          );
-
-        const footprints =
-          this.getHistoryFootprint(
-            symbol,
-            hours
-          );
-
-        return json({
-          ok: true,
-
-          symbol,
-
-          hours,
-
-          footprints
-        });
-      }
-
-      if (
-        path === "/latest"
-      ) {
-        const symbol =
-          safeSymbol(
-            url.searchParams.get(
-              "symbol"
-            ) ||
-            "BTCUSDT"
-          );
-
-        const latest =
-          this.getLatestFootprint(
-            symbol
-          );
-
-        return json({
-          ok: true,
-
-          symbol,
-
-          footprint:
-            latest
-        });
-      }
-
-      if (
-        path === "/cleanup"
-      ) {
-        const removed =
-          this.cleanup();
-
-        return json({
-          ok: true,
-          removed
-        });
-      }
-
-      if (
-        path === "/collect"
-      ) {
-        const symbol =
-          safeSymbol(
-            url.searchParams.get(
-              "symbol"
-            ) ||
-            "BTCUSDT"
-          );
-
-        await this.collectSymbolREST(
-          symbol
-        );
-
-        return json({
-          ok: true,
-
-          symbol,
-
-          footprint:
-            this.getLatestFootprint(
-              symbol
-            )
-        });
-      }
-
-      return err(
-        "Collector route not found",
-        404
-      );
-
-    } catch (e) {
-      console.error(
-        "COLLECTOR ERROR",
-        e
-      );
-
-      return err(
-        e?.message ||
-          String(e),
-        500
-      );
-    }
-  }
-
-  countMinutes() {
-    try {
-      const r =
-        this.ctx.storage.sql
-          .exec(
-            `SELECT COUNT(*) AS c FROM minutes`
-          )
-          .toArray();
-
-      return num(
-        r?.[0]?.c
-      );
-
-    } catch {
-      return 0;
-    }
-  }
-
-  async getDefaultSymbols() {
-    try {
-      const data =
-        await fetch(
-          `${BYBIT_API}/v5/market/instruments-info?category=linear&status=Trading&limit=1000`
-        );
-
-      const j =
-        await data.json();
-
-      return (
-        j?.result?.list ||
-        []
-      )
-        .map(
-          x => x.symbol
-        )
-        .filter(Boolean)
-        .slice(
-          0,
-          MAX_SYMBOLS
-        );
-
-    } catch {
-      return [
-        "BTCUSDT",
-        "ETHUSDT",
-        "SOLUSDT",
-        "XRPUSDT",
-        "DOGEUSDT",
-        "BNBUSDT",
-        "ADAUSDT",
-        "AVAXUSDT",
-        "LINKUSDT",
-        "SUIUSDT"
-      ];
-    }
-  }
-
-  async startCollector(
-    symbols
-  ) {
-    symbols =
-      [
-        ...new Set(
-          (symbols || [])
-            .map(
-              safeSymbol
-            )
-            .filter(Boolean)
-        )
-      ].slice(
-        0,
-        MAX_SYMBOLS
-      );
-
-    this.symbols =
-      symbols;
-
-    this.ctx.storage.sql.exec(
-      `INSERT OR REPLACE INTO meta(key,value) VALUES('symbols',?)`,
-      JSON.stringify(
-        this.symbols
-      )
-    );
-
-    this.running =
-      true;
-
-    for (
-      const ws of this.shards
-    ) {
-      try {
-        ws.stop();
-      } catch {}
-    }
-
-    this.shards = [];
-
-    const chunks = [];
-
-    for (
-      let i = 0;
-      i < this.symbols.length;
-      i += WS_SUB_CHUNK
-    ) {
-      chunks.push(
-        this.symbols.slice(
-          i,
-          i + WS_SUB_CHUNK
-        )
-      );
-    }
-
-    for (
-      const chunk of chunks
-    ) {
-      const shard =
-        new CollectorShard(
-          this.ctx,
-          this.env,
-          this,
-          chunk
-        );
-
-      this.shards.push(
-        shard
-      );
-
-      this.ctx.waitUntil(
-        shard.start()
-      );
-    }
-
-    this.ctx.waitUntil(
-      this.cleanupLoop()
-    );
-  }
-
-  async cleanupLoop() {
-    await new Promise(
-      resolve =>
-        setTimeout(
-          resolve,
-          10000
-        )
-    );
-
-    this.cleanup();
-  }
-
-  cleanup() {
-    const cutoff =
-      Date.now() -
-      RETENTION_MINUTES *
-        MINUTE_MS;
-
-    try {
-      const r =
-        this.ctx.storage.sql.exec(
-          `DELETE FROM minutes WHERE ts < ?`,
-          cutoff
-        );
-
-      return (
-        r?.changes || 0
-      );
-
-    } catch {
-      return 0;
-    }
-  }
-
-  saveMinute(m) {
-    if (
-      !m ||
-      !m.symbol ||
-      !m.ts
-    ) {
-      return;
-    }
-
-    const data =
-      JSON.stringify(m);
-
-    this.ctx.storage.sql.exec(
-      `
-      INSERT OR REPLACE INTO minutes(symbol,ts,data)
-      VALUES(?,?,?)
-      `,
-      m.symbol,
-      m.ts,
-      data
-    );
-
-    this.minutes.set(
-      `${m.symbol}:${m.ts}`,
-      m
-    );
-  }
-
-  loadMinutes(
-    symbol,
-    hours
-  ) {
-    const cutoff =
-      Date.now() -
-      hours *
-        60 *
-        MINUTE_MS;
-
-    const rows =
-      this.ctx.storage.sql
-        .exec(
-          `
-          SELECT ts,data
-          FROM minutes
-          WHERE symbol = ?
-          AND ts >= ?
-          ORDER BY ts ASC
-          `,
-          symbol,
-          cutoff
-        )
-        .toArray();
-
-    return rows
-      .map(row => {
-        try {
-          return JSON.parse(
-            row.data
-          );
-        } catch {
-          return null;
-        }
-      })
-      .filter(Boolean);
-  }
-
-  getCurrentMinute(
-    symbol
-  ) {
-    const ts =
-      minuteTs();
-
-    const key =
-      `${symbol}:${ts}`;
-
-    const inMemory =
-      this.minutes.get(
-        key
-      );
-
-    if (inMemory) {
-      return inMemory;
-    }
-
-    const rows =
-      this.ctx.storage.sql
-        .exec(
-          `
-          SELECT data
-          FROM minutes
-          WHERE symbol = ?
-          AND ts = ?
-          LIMIT 1
-          `,
-          symbol,
-          ts
-        )
-        .toArray();
-
-    if (
-      !rows.length
-    ) {
-      return null;
-    }
-
-    try {
-      return JSON.parse(
-        rows[0].data
-      );
-    } catch {
-      return null;
-    }
-  }
-
-  getHistoryFootprint(
-    symbol,
-    hours
-  ) {
-    const stored =
-      this.loadMinutes(
-        symbol,
-        hours
-      )
-        .map(
-          aggregateFootprint
-        )
-        .filter(Boolean);
-
-    const current =
-      this.getCurrentMinute(
-        symbol
-      );
-
-    if (current) {
-      const currentFp =
-        aggregateFootprint(
-          current
-        );
-
-      const idx =
-        stored.findIndex(
-          x =>
-            num(x.time) ===
-            num(
-              currentFp.time
-            )
-        );
-
-      if (idx >= 0) {
-        stored[idx] =
-          currentFp;
-      } else {
-        stored.push(
-          currentFp
-        );
-      }
-    }
-
-    return stored
-      .filter(Boolean)
-      .sort(
-        (a, b) =>
-          num(a.time) -
-          num(b.time)
-      );
-  }
-
-  getLatestFootprint(
-    symbol
-  ) {
-    const arr =
-      this.getHistoryFootprint(
-        symbol,
-        24
-      );
-
-    return arr.length
-      ? arr[arr.length - 1]
-      : null;
-  }
-
-  async collectSymbolREST(
-    symbol
-  ) {
-    try {
-      const u =
-        new URL(
-          `${BYBIT_API}/v5/market/recent-trade`
-        );
-
-      u.searchParams.set(
-        "category",
-        "linear"
-      );
-
-      u.searchParams.set(
-        "symbol",
-        symbol
-      );
-
-      u.searchParams.set(
-        "limit",
-        "1000"
-      );
-
-      const r =
-        await fetch(
-          u.toString()
-        );
-
-      const data =
-        await r.json();
-
-      if (
-        data.retCode !== 0
-      ) {
-        throw new Error(
-          data.retMsg ||
-          "Bybit error"
-        );
-      }
-
-      const trades =
-        data?.result?.list ||
-        [];
-
-      const grouped =
-        new Map();
-
-      for (
-        const t of trades
-      ) {
-        const ts =
-          minuteTs(
-            num(t.time)
-          );
-
-        if (
-          !grouped.has(ts)
-        ) {
-          grouped.set(
-            ts,
-            emptyMinute(
-              symbol,
-              ts
-            )
-          );
-        }
-
-        addTrade(
-          grouped.get(ts),
-          {
-            price:
-              num(t.price),
-
-            size:
-              num(t.size),
-
-            side:
-              t.side
-          }
-        );
-      }
-
-      for (
-        const m of grouped.values()
-      ) {
-        this.saveMinute(m);
-      }
-
-      return true;
-
-    } catch (e) {
-      console.error(
-        "REST COLLECT ERROR",
-        symbol,
-        e
-      );
-
-      return false;
-    }
-  }
+  const totalVolume=
+    buyVolume+sellVolume;
+
+  const totalValue=
+    buyValue+sellValue;
+
+  const delta=
+    buyVolume-sellVolume;
+
+  const deltaValue=
+    buyValue-sellValue;
+
+  return{
+    buyVolume,
+    sellVolume,
+    totalVolume,
+    buyValue,
+    sellValue,
+    totalValue,
+    delta,
+    deltaValue,
+    deltaPercent:pct(
+      delta,
+      totalVolume
+    ),
+    deltaValuePercent:pct(
+      deltaValue,
+      totalValue
+    ),
+    buyShare:pct(
+      buyVolume,
+      totalVolume
+    ),
+    sellShare:pct(
+      sellVolume,
+      totalVolume
+    ),
+    buyTrades,
+    sellTrades,
+    totalTrades:
+      buyTrades+sellTrades,
+    firstTime:selected[0]?.time||0,
+    lastTime:
+      selected[selected.length-1]?.time||0
+  };
 }
 
+function createFootprintLevel(price){
+  return{
+    price,
+    bidVolume:0,
+    askVolume:0,
+    bidValue:0,
+    askValue:0,
+    bidTrades:0,
+    askTrades:0,
+    totalVolume:0,
+    totalValue:0,
+    delta:0,
+    deltaValue:0,
+    imbalance:0,
+    imbalanceValue:0,
+    side:"NEUTRAL",
+    largestTradeValue:0
+  };
+}
 
-class CollectorShard {
+function buildFootprints(
+  candles,
+  tradeList,
+  interval,
+  tickSize
+){
+  const ms=intervalMs(interval);
+  const result=[];
 
-  constructor(
-    ctx,
-    env,
-    owner,
-    symbols
-  ) {
-    this.ctx = ctx;
-    this.env = env;
-    this.owner = owner;
-    this.symbols = symbols;
+  for(const candle of candles||[]){
+    const start=candle.time;
+    const end=start+ms;
 
-    this.ws = null;
+    const levelMap=new Map();
 
-    this.connected =
-      false;
-
-    this.retry =
-      RECONNECT_MIN_MS;
-
-    this.lastSnapshot =
-      0;
-
-    this.minutes =
-      new Map();
-
-    this.books =
-      new Map();
-
-    this.reconnectScheduled =
-      false;
-  }
-
-  async start() {
-    await this.connect();
-  }
-
-  stop() {
-    this.connected =
-      false;
-
-    this.reconnectScheduled =
-      true;
-
-    try {
-      this.ws?.close();
-    } catch {}
-
-    this.ws = null;
-  }
-
-  async connect() {
-    if (
-      this.connected
-    ) {
-      return;
-    }
-
-    try {
-      const response =
-        await fetch(
-          BYBIT_WS,
-          {
-            headers: {
-              Upgrade:
-                "websocket"
-            }
-          }
-        );
-
-      if (
-        response.status !== 101 ||
-        !response.webSocket
-      ) {
-        throw new Error(
-          `WebSocket HTTP ${response.status}`
-        );
-      }
-
-      this.ws =
-        response.webSocket;
-
-      this.ws.accept();
-
-      this.connected =
-        true;
-
-      this.reconnectScheduled =
-        false;
-
-      this.retry =
-        RECONNECT_MIN_MS;
-
-      this.subscribe();
-
-      this.ws.addEventListener(
-        "message",
-        event => {
-          this.onMessage(
-            event.data
-          );
-        }
-      );
-
-      this.ws.addEventListener(
-        "close",
-        () => {
-          this.connected =
-            false;
-
-          this.reconnect();
-        }
-      );
-
-      this.ws.addEventListener(
-        "error",
-        () => {
-          this.connected =
-            false;
-
-          try {
-            this.ws.close();
-          } catch {}
-
-          this.reconnect();
-        }
-      );
-
-      this.ctx.waitUntil(
-        this.heartbeat()
-      );
-
-      this.ctx.waitUntil(
-        this.flushLoop()
-      );
-
-    } catch (e) {
-      console.error(
-        "WS CONNECT ERROR",
-        e
-      );
-
-      this.connected =
-        false;
-
-      this.reconnect();
-    }
-  }
-
-  subscribe() {
-    if (!this.ws) {
-      return;
-    }
-
-    const args = [];
-
-    for (
-      const symbol of this.symbols
-    ) {
-      args.push(
-        `publicTrade.${symbol}`
-      );
-
-      args.push(
-        `orderbook.50.${symbol}`
-      );
-
-      args.push(
-        `allLiquidation.${symbol}`
-      );
-    }
-
-    for (
-      let i = 0;
-      i < args.length;
-      i += 200
-    ) {
-      const chunk =
-        args.slice(
-          i,
-          i + 200
-        );
-
-      try {
-        this.ws.send(
-          JSON.stringify({
-            op:
-              "subscribe",
-
-            args:
-              chunk
-          })
-        );
-      } catch {}
-    }
-  }
-
-  async heartbeat() {
-    while (
-      this.connected &&
-      this.ws
-    ) {
-      await new Promise(
-        resolve =>
-          setTimeout(
-            resolve,
-            20000
-          )
-      );
-
-      if (
-        !this.connected ||
-        !this.ws
-      ) {
-        break;
-      }
-
-      try {
-        this.ws.send(
-          JSON.stringify({
-            op: "ping"
-          })
-        );
-      } catch {
-        break;
-      }
-    }
-  }
-
-  async reconnect() {
-    if (
-      this.reconnectScheduled
-    ) {
-      return;
-    }
-
-    this.reconnectScheduled =
-      true;
-
-    const wait =
-      this.retry;
-
-    this.retry =
-      Math.min(
-        RECONNECT_MAX_MS,
-        this.retry * 2
-      );
-
-    await new Promise(
-      resolve =>
-        setTimeout(
-          resolve,
-          wait
-        )
+    const localTrades=(tradeList||[]).filter(t=>
+      t.time>=start&&
+      t.time<end
     );
 
-    this.reconnectScheduled =
-      false;
-
-    if (
-      !this.connected
-    ) {
-      await this.connect();
-    }
-  }
-
-  onMessage(raw) {
-    let msg;
-
-    try {
-      msg =
-        typeof raw ===
-        "string"
-          ? JSON.parse(raw)
-          : JSON.parse(
-              new TextDecoder()
-                .decode(raw)
-            );
-    } catch {
-      return;
-    }
-
-    if (
-      msg.op === "pong"
-    ) {
-      return;
-    }
-
-    if (
-      msg.success === true &&
-      !msg.topic
-    ) {
-      return;
-    }
-
-    const topic =
-      String(
-        msg.topic || ""
+    for(const t of localTrades){
+      const price=roundToStep(
+        t.price,
+        tickSize
       );
 
-    if (
-      topic.startsWith(
-        "publicTrade."
-      )
-    ) {
-      this.handleTrades(
-        msg
-      );
-
-      return;
-    }
-
-    if (
-      topic.startsWith(
-        "orderbook."
-      )
-    ) {
-      this.handleOrderbook(
-        msg
-      );
-
-      return;
-    }
-
-    if (
-      topic.startsWith(
-        "allLiquidation."
-      )
-    ) {
-      this.handleLiquidation(
-        msg
-      );
-    }
-  }
-
-  handleTrades(msg) {
-    const topic =
-      String(
-        msg.topic || ""
-      );
-
-    const symbol =
-      topic
-        .split(".")
-        .pop();
-
-    const list =
-      msg.data || [];
-
-    if (!symbol) {
-      return;
-    }
-
-    for (
-      const t of list
-    ) {
-      const id =
-        t.i ||
-        t.execId ||
-        `${t.T}:${t.p}:${t.v}:${t.S}`;
-
-      const last =
-        this.owner.lastTradeIds
-          .get(symbol);
-
-      if (
-        last === id
-      ) {
-        continue;
-      }
-
-      this.owner.lastTradeIds
-        .set(
-          symbol,
-          id
-        );
-
-      const price =
-        num(t.p);
-
-      const size =
-        num(t.v);
-
-      const side =
-        t.S ||
-        t.side ||
-        "";
-
-      if (
-        !price ||
-        !size
-      ) {
-        continue;
-      }
-
-      const m =
-        this.getMinute(
-          symbol,
-          num(t.T) ||
-          Date.now()
-        );
-
-      addTrade(
-        m,
-        {
+      if(!levelMap.has(price)){
+        levelMap.set(
           price,
-          size,
-          side
-        }
+          createFootprintLevel(price)
+        );
+      }
+
+      const level=levelMap.get(price);
+      const side=aggressorSide(t);
+      const size=n(t.size);
+      const value=n(
+        t.value,
+        n(t.price)*size
       );
+
+      level.totalVolume+=size;
+      level.totalValue+=value;
+
+      level.largestTradeValue=
+        Math.max(
+          level.largestTradeValue,
+          value
+        );
+
+      if(side==="BUY"){
+        level.askVolume+=size;
+        level.askValue+=value;
+        level.askTrades++;
+      }else if(side==="SELL"){
+        level.bidVolume+=size;
+        level.bidValue+=value;
+        level.bidTrades++;
+      }
     }
+
+    const levels=[...levelMap.values()]
+      .map(level=>{
+        level.delta=
+          level.askVolume-
+          level.bidVolume;
+
+        level.deltaValue=
+          level.askValue-
+          level.bidValue;
+
+        if(level.bidVolume>0){
+          level.imbalance=
+            level.askVolume/
+            level.bidVolume;
+        }else if(level.askVolume>0){
+          level.imbalance=Infinity;
+        }
+
+        if(level.bidValue>0){
+          level.imbalanceValue=
+            level.askValue/
+            level.bidValue;
+        }else if(level.askValue>0){
+          level.imbalanceValue=Infinity;
+        }
+
+        if(level.delta>0){
+          level.side="BUY";
+        }else if(level.delta<0){
+          level.side="SELL";
+        }else{
+          level.side="NEUTRAL";
+        }
+
+        return level;
+      })
+      .sort((a,b)=>b.price-a.price)
+      .slice(0,FOOTPRINT_MAX_LEVELS);
+
+    const flow=flowFromTrades(
+      localTrades,
+      start,
+      end-1
+    );
+
+    let imbalances=0;
+
+    for(const level of levels){
+      if(
+        level.imbalance>=3||
+        (
+          level.imbalance>0&&
+          level.imbalance<=1/3
+        )
+      ){
+        imbalances++;
+      }
+    }
+
+    result.push({
+      time:candle.time,
+      open:candle.open,
+      high:candle.high,
+      low:candle.low,
+      close:candle.close,
+      volume:candle.volume,
+      turnover:candle.turnover,
+
+      tradeCount:localTrades.length,
+
+      flowVolume:flow.totalVolume,
+      buyVolume:flow.buyVolume,
+      sellVolume:flow.sellVolume,
+      buyValue:flow.buyValue,
+      sellValue:flow.sellValue,
+      totalValue:flow.totalValue,
+
+      buyTrades:flow.buyTrades,
+      sellTrades:flow.sellTrades,
+
+      delta:flow.delta,
+      deltaValue:flow.deltaValue,
+      deltaPercent:flow.deltaPercent,
+      deltaValuePercent:
+        flow.deltaValuePercent,
+
+      cumulativeDeltaValue:0,
+
+      levels,
+      imbalances
+    });
   }
 
-  handleOrderbook(msg) {
-    const topic =
-      String(
-        msg.topic || ""
-      );
+  let cumulative=0;
 
-    const symbol =
-      topic
-        .split(".")
-        .pop();
+  for(const fp of result){
+    cumulative+=n(fp.deltaValue);
+    fp.cumulativeDeltaValue=cumulative;
+  }
 
-    if (!symbol) {
-      return;
-    }
+  return result;
+}
 
-    const data =
-      msg.data || {};
+function candleDeltaSeries(footprints){
+  return(footprints||[]).map(fp=>({
+    time:fp.time,
+    buyVolume:fp.buyVolume,
+    sellVolume:fp.sellVolume,
+    delta:fp.delta,
+    deltaValue:fp.deltaValue,
+    totalVolume:fp.flowVolume,
+    totalValue:fp.totalValue,
+    buyTrades:fp.buyTrades,
+    sellTrades:fp.sellTrades
+  }));
+}
 
-    const book =
-      this.getBook(
-        symbol
-      );
+function analyzeBlocks(list){
+  const values=(list||[])
+    .map(x=>n(
+      x.value,
+      n(x.price)*n(x.size)
+    ))
+    .filter(x=>x>0);
 
-    if (
-      data.u !== undefined
-    ) {
-      book.updateId =
-        num(data.u);
-    }
-
-    if (
-      Array.isArray(
-        data.b
-      )
-    ) {
-      for (
-        const row of data.b
-      ) {
-        const price =
-          String(row[0]);
-
-        const size =
-          num(row[1]);
-
-        if (!price) {
-          continue;
-        }
-
-        if (size === 0) {
-          book.bids.delete(
-            price
-          );
-        } else {
-          book.bids.set(
-            price,
-            size
-          );
-        }
-      }
-    }
-
-    if (
-      Array.isArray(
-        data.a
-      )
-    ) {
-      for (
-        const row of data.a
-      ) {
-        const price =
-          String(row[0]);
-
-        const size =
-          num(row[1]);
-
-        if (!price) {
-          continue;
-        }
-
-        if (size === 0) {
-          book.asks.delete(
-            price
-          );
-        } else {
-          book.asks.set(
-            price,
-            size
-          );
-        }
-      }
-    }
-
-    const bids =
-      Array.from(
-        book.bids.entries()
-      )
-        .map(
-          ([price, size]) => ({
-            price:
-              num(price),
-
-            size,
-
-            value:
-              num(price) *
-              size
-          })
-        )
-        .sort(
-          (a, b) =>
-            b.price -
-            a.price
-        )
-        .slice(
-          0,
-          ORDERBOOK_DEPTH
-        );
-
-    const asks =
-      Array.from(
-        book.asks.entries()
-      )
-        .map(
-          ([price, size]) => ({
-            price:
-              num(price),
-
-            size,
-
-            value:
-              num(price) *
-              size
-          })
-        )
-        .sort(
-          (a, b) =>
-            a.price -
-            b.price
-        )
-        .slice(
-          0,
-          ORDERBOOK_DEPTH
-        );
-
-    const m =
-      this.getMinute(
-        symbol
-      );
-
-    m.orderbook = {
-      bids,
-      asks,
-
-      bestBid:
-        bids[0]?.price ||
-        0,
-
-      bestAsk:
-        asks[0]?.price ||
-        0,
-
-      bidLiquidity:
-        bids.reduce(
-          (a, x) =>
-            a + num(x.value),
-          0
-        ),
-
-      askLiquidity:
-        asks.reduce(
-          (a, x) =>
-            a + num(x.value),
-          0
-        )
+  if(!values.length){
+    return{
+      threshold:0,
+      blocks:[]
     };
   }
 
-  getMinute(
-    symbol,
-    ts = Date.now()
-  ) {
-    const mt =
-      minuteTs(ts);
+  const sorted=[...values].sort(
+    (a,b)=>a-b
+  );
 
-    const key =
-      `${symbol}:${mt}`;
-
-    if (
-      !this.minutes.has(
-        key
+  const p95=
+    sorted[
+      Math.floor(
+        (sorted.length-1)*0.95
       )
-    ) {
-      this.minutes.set(
-        key,
-        emptyMinute(
-          symbol,
-          mt
-        )
-      );
-    }
+    ];
 
-    return this.minutes.get(
-      key
-    );
+  const averageNotional=avg(values);
+
+  const threshold=Math.max(
+    averageNotional*5,
+    p95
+  );
+
+  const blocks=(list||[])
+    .filter(x=>
+      n(
+        x.value,
+        n(x.price)*x.size
+      )>=threshold
+    )
+    .sort(
+      (a,b)=>
+        n(b.value,b.price*b.size)-
+        n(a.value,a.price*a.size)
+    )
+    .slice(0,50)
+    .map(x=>({
+      ...x,
+      value:n(
+        x.value,
+        x.price*x.size
+      ),
+      side:aggressorSide(x)
+    }));
+
+  return{
+    threshold,
+    blocks
+  };
+}
+
+function median(values){
+  const a=(values||[])
+    .map(n)
+    .filter(x=>x>0)
+    .sort((x,y)=>x-y);
+
+  if(!a.length)return 0;
+
+  const m=Math.floor(a.length/2);
+
+  return a.length%2
+    ? a[m]
+    : (a[m-1]+a[m])/2;
+}
+
+function analyzeWalls(book){
+  const bids=book?.bids||[];
+  const asks=book?.asks||[];
+
+  const buyLiquidity=sum(
+    bids.map(x=>x.value)
+  );
+
+  const sellLiquidity=sum(
+    asks.map(x=>x.value)
+  );
+
+  const totalLiquidity=
+    buyLiquidity+sellLiquidity;
+
+  const buyShare=pct(
+    buyLiquidity,
+    totalLiquidity
+  );
+
+  const sellShare=pct(
+    sellLiquidity,
+    totalLiquidity
+  );
+
+  const buyMedian=median(
+    bids.map(x=>x.value)
+  );
+
+  const sellMedian=median(
+    asks.map(x=>x.value)
+  );
+
+  const buyThreshold=buyMedian*4;
+  const sellThreshold=sellMedian*4;
+
+  const buyWalls=bids
+    .filter(x=>
+      buyMedian>0&&
+      x.value>=buyThreshold
+    )
+    .sort((a,b)=>b.value-a.value)
+    .slice(0,20);
+
+  const sellWalls=asks
+    .filter(x=>
+      sellMedian>0&&
+      x.value>=sellThreshold
+    )
+    .sort((a,b)=>b.value-a.value)
+    .slice(0,20);
+
+  let pressure="NEUTRAL";
+
+  if(buyShare>sellShare+8){
+    pressure="BUY_PRESSURE";
+  }else if(sellShare>buyShare+8){
+    pressure="SELL_PRESSURE";
   }
 
-  getBook(symbol) {
-    if (
-      !this.books.has(
-        symbol
+  return{
+    buyLiquidity,
+    sellLiquidity,
+    totalLiquidity,
+    buyShare,
+    sellShare,
+    buyMedian,
+    sellMedian,
+    buyThreshold,
+    sellThreshold,
+    buyWalls,
+    sellWalls,
+    pressure,
+    bestBid:book?.bestBid||0,
+    bestAsk:book?.bestAsk||0
+  };
+}
+
+function buildHeatmap(book){
+  const all=[
+    ...(book?.bids||[]).map(x=>({
+      ...x,
+      side:"BID"
+    })),
+    ...(book?.asks||[]).map(x=>({
+      ...x,
+      side:"ASK"
+    }))
+  ]
+  .sort((a,b)=>b.value-a.value)
+  .slice(0,HEATMAP_LEVELS);
+
+  const max=Math.max(
+    1,
+    ...all.map(x=>n(x.value))
+  );
+
+  return all.map(x=>({
+    price:x.price,
+    size:x.size,
+    value:x.value,
+    side:x.side,
+    intensity:clamp(
+      x.value/max,
+      0,
+      1
+    )
+  }));
+}
+
+function buildLiquidityZones(book){
+  const bids=book?.bids||[];
+  const asks=book?.asks||[];
+
+  const bidMedian=median(
+    bids.map(x=>x.value)
+  );
+
+  const askMedian=median(
+    asks.map(x=>x.value)
+  );
+
+  return[
+    ...bids
+      .filter(x=>
+        bidMedian>0&&
+        x.value>=bidMedian*2
       )
-    ) {
-      this.books.set(
-        symbol,
-        {
-          bids:
-            new Map(),
+      .map(x=>({
+        price:x.price,
+        value:x.value,
+        size:x.size,
+        side:"BUY",
+        strength:x.value/bidMedian
+      })),
 
-          asks:
-            new Map(),
+    ...asks
+      .filter(x=>
+        askMedian>0&&
+        x.value>=askMedian*2
+      )
+      .map(x=>({
+        price:x.price,
+        value:x.value,
+        size:x.size,
+        side:"SELL",
+        strength:x.value/askMedian
+      }))
+  ]
+  .sort((a,b)=>b.value-a.value)
+  .slice(0,50);
+}
 
-          updateId:
-            0
-        }
-      );
-    }
+function detectSweep(candles){
+  if(!candles||candles.length<7){
+    return{
+      detected:false,
+      type:"NONE",
+      price:0,
+      time:0
+    };
+  }
 
-    return this.books.get(
+  const c=candles[candles.length-1];
+  const previous=candles.slice(-6,-1);
+
+  const previousHigh=Math.max(
+    ...previous.map(x=>x.high)
+  );
+
+  const previousLow=Math.min(
+    ...previous.map(x=>x.low)
+  );
+
+  if(
+    c.high>previousHigh&&
+    c.close<previousHigh
+  ){
+    return{
+      detected:true,
+      type:"SELL_SWEEP",
+      price:c.high,
+      time:c.time
+    };
+  }
+
+  if(
+    c.low<previousLow&&
+    c.close>previousLow
+  ){
+    return{
+      detected:true,
+      type:"BUY_SWEEP",
+      price:c.low,
+      time:c.time
+    };
+  }
+
+  return{
+    detected:false,
+    type:"NONE",
+    price:0,
+    time:c.time
+  };
+}
+
+function detectTradeSweep(list){
+  const recent=(list||[]).slice(-50);
+
+  let buy=0;
+  let sell=0;
+
+  for(const t of recent){
+    const value=n(
+      t.value,
+      n(t.price)*n(t.size)
+    );
+
+    if(aggressorSide(t)==="BUY")buy+=value;
+    if(aggressorSide(t)==="SELL")sell+=value;
+  }
+
+  if(
+    buy>0&&
+    buy>=sell*2
+  ){
+    return{
+      detected:true,
+      type:"BUY_TRADE_SWEEP",
+      buyValue:buy,
+      sellValue:sell
+    };
+  }
+
+  if(
+    sell>0&&
+    sell>=buy*2
+  ){
+    return{
+      detected:true,
+      type:"SELL_TRADE_SWEEP",
+      buyValue:buy,
+      sellValue:sell
+    };
+  }
+
+  return{
+    detected:false,
+    type:"NONE",
+    buyValue:buy,
+    sellValue:sell
+  };
+}
+
+function detectAbsorption(
+  flow,
+  candle,
+  wall
+){
+  const stats=candleStats(candle);
+
+  let type="NONE";
+  let detected=false;
+
+  if(
+    flow.deltaPercent>=10&&
+    stats.bodyPercent<=35&&
+    wall.sellShare>=wall.buyShare
+  ){
+    detected=true;
+    type="SELL_ABSORPTION";
+  }
+
+  if(
+    flow.deltaPercent<=-10&&
+    stats.bodyPercent<=35&&
+    wall.buyShare>=wall.sellShare
+  ){
+    detected=true;
+    type="BUY_ABSORPTION";
+  }
+
+  return{
+    detected,
+    type,
+    deltaPercent:flow.deltaPercent,
+    bodyPercent:stats.bodyPercent
+  };
+}
+
+function structureAnalysis(candles){
+  if(!candles?.length){
+    return{
+      trend:"NEUTRAL",
+      strength:0,
+      sma5:0,
+      sma20:0,
+      price:0
+    };
+  }
+
+  const closes=candles.map(x=>x.close);
+  const ma5=sma(closes,5);
+  const ma20=sma(closes,20);
+  const a=atr(candles,14);
+
+  const i=candles.length-1;
+  const price=candles[i].close;
+
+  const sma5=n(ma5[i]);
+  const sma20=n(ma20[i]);
+  const atrValue=n(a[i]);
+
+  let trend="NEUTRAL";
+
+  if(sma5>sma20&&price>sma20){
+    trend="BULLISH";
+  }else if(
+    sma5<sma20&&
+    price<sma20
+  ){
+    trend="BEARISH";
+  }
+
+  const distance=atrValue
+    ? Math.abs(price-sma20)/atrValue
+    : 0;
+
+  return{
+    trend,
+    strength:clamp(
+      distance*25,
+      0,
+      100
+    ),
+    sma5,
+    sma20,
+    price,
+    atr:atrValue
+  };
+}
+
+function entry1m(candles){
+  if(!candles?.length){
+    return{
+      signal:"WAIT",
+      rsi:0,
+      ma20:0
+    };
+  }
+
+  const closes=candles.map(x=>x.close);
+  const ma=sma(closes,20);
+  const rs=rsi(closes,14);
+
+  const i=candles.length-1;
+
+  const price=closes[i];
+  const ma20=n(ma[i]);
+  const rsiValue=n(rs[i],50);
+
+  let signal="WAIT";
+
+  if(
+    price>ma20&&
+    rsiValue>=50
+  ){
+    signal="LONG";
+  }else if(
+    price<ma20&&
+    rsiValue<=50
+  ){
+    signal="SHORT";
+  }
+
+  return{
+    signal,
+    rsi:rsiValue,
+    ma20
+  };
+}
+
+function supportResistance(candles){
+  const recent=(candles||[]).slice(-30);
+
+  if(!recent.length){
+    return{
+      support:0,
+      resistance:0
+    };
+  }
+
+  return{
+    support:Math.min(
+      ...recent.map(x=>x.low)
+    ),
+    resistance:Math.max(
+      ...recent.map(x=>x.high)
+    )
+  };
+}
+
+function movement(candles){
+  if(!candles||candles.length<2){
+    return{
+      percent:0,
+      direction:"NEUTRAL"
+    };
+  }
+
+  const previous=
+    candles[candles.length-2].close;
+
+  const current=
+    candles[candles.length-1].close;
+
+  const change=pct(
+    current-previous,
+    previous
+  );
+
+  return{
+    percent:change,
+    direction:
+      change>0
+        ?"UP"
+        :change<0
+          ?"DOWN"
+          :"NEUTRAL"
+  };
+}
+
+function structuralZone(
+  candles,
+  price
+){
+  const recent=(candles||[]).slice(-20);
+
+  if(!recent.length){
+    return{
+      low:0,
+      high:0,
+      position:"NEUTRAL",
+      premiumDiscount:50
+    };
+  }
+
+  const low=Math.min(
+    ...recent.map(x=>x.low)
+  );
+
+  const high=Math.max(
+    ...recent.map(x=>x.high)
+  );
+
+  const range=high-low;
+
+  const position=range
+    ?(price-low)/range
+    :0.5;
+
+  return{
+    low,
+    high,
+    position:
+      position>=0.66
+        ?"PREMIUM"
+        :position<=0.33
+          ?"DISCOUNT"
+          :"EQUILIBRIUM",
+    premiumDiscount:
+      position*100
+  };
+}
+
+function flowPressure(flow){
+  if(flow.deltaPercent>=10){
+    return"BUY_PRESSURE";
+  }
+
+  if(flow.deltaPercent<=-10){
+    return"SELL_PRESSURE";
+  }
+
+  return"NEUTRAL";
+}
+
+async function buildChartData(
+  symbol,
+  interval
+){
+  const selectedInterval=
+    normalizeInterval(interval);
+
+  const[
+    candles,
+    tick,
+    book,
+    tradeList,
+    info
+  ]=await Promise.all([
+    kline(
+      "linear",
+      symbol,
+      selectedInterval,
+      CHART_LIMIT
+    ),
+    ticker("linear",symbol),
+    orderbook(
+      "linear",
+      symbol,
+      ORDERBOOK_LIMIT
+    ),
+    trades(
+      "linear",
+      symbol,
+      TRADE_LIMIT
+    ),
+    instrumentInfo(
+      "linear",
       symbol
+    )
+  ]);
+
+  const footprints=buildFootprints(
+    candles,
+    tradeList,
+    selectedInterval,
+    info.tickSize
+  );
+
+  const candleFlow=
+    candleDeltaSeries(
+      footprints
     );
+
+  const enrichedCandles=
+    candles.map((c,i)=>({
+      ...c,
+      ...(candleFlow[i]||{
+        buyVolume:0,
+        sellVolume:0,
+        delta:0,
+        deltaValue:0,
+        totalVolume:0,
+        totalValue:0
+      })
+    }));
+
+  const current=
+    candles[candles.length-1];
+
+  const currentFlow=current
+    ?flowFromTrades(
+      tradeList,
+      current.time,
+      current.time+
+        intervalMs(selectedInterval)-1
+    )
+    :flowFromTrades([]);
+
+  const wall=analyzeWalls(book);
+  const heatmap=buildHeatmap(book);
+  const zones=buildLiquidityZones(book);
+  const sweep=detectSweep(candles);
+  const tradeSweep=
+    detectTradeSweep(tradeList);
+
+  const absorption=detectAbsorption(
+    currentFlow,
+    current||{
+      open:0,
+      high:0,
+      low:0,
+      close:0
+    },
+    wall
+  );
+
+  const blocks=analyzeBlocks(
+    tradeList
+  );
+
+  return{
+    version:VERSION,
+    symbol,
+    category:"linear",
+    interval:selectedInterval,
+
+    ticker:tick,
+    instrument:info,
+
+    candles:enrichedCandles,
+    footprints,
+    candleDelta:candleFlow,
+
+    currentFlow,
+    flowPressure:
+      flowPressure(currentFlow),
+
+    orderbook:book,
+    wall,
+    heatmap,
+    zones,
+
+    sweep,
+    tradeSweep,
+    absorption,
+    blocks,
+
+    trades:tradeList.slice(-250),
+
+    lastPrice:tick.last,
+    serverTime:Date.now()
+  };
+}
+
+async function analyze(
+  symbol,
+  selectedInterval
+){
+  const interval=
+    normalizeInterval(
+      selectedInterval
+    );
+
+  const[
+    candles5,
+    candles15,
+    candles3,
+    candles1,
+    tick,
+    book,
+    tradeList,
+    info,
+    oi
+  ]=await Promise.all([
+    kline(
+      "linear",
+      symbol,
+      TF,
+      KLINE_LIMIT
+    ),
+    kline(
+      "linear",
+      symbol,
+      TF15,
+      KLINE_LIMIT
+    ),
+    kline(
+      "linear",
+      symbol,
+      TF3,
+      KLINE_LIMIT
+    ),
+    kline(
+      "linear",
+      symbol,
+      TF1,
+      KLINE_LIMIT
+    ),
+    ticker("linear",symbol),
+    orderbook(
+      "linear",
+      symbol,
+      ORDERBOOK_LIMIT
+    ),
+    trades(
+      "linear",
+      symbol,
+      TRADE_LIMIT
+    ),
+    instrumentInfo(
+      "linear",
+      symbol
+    ),
+    oiFunding(symbol)
+  ]);
+
+  const baseCandles=
+    interval==="1"
+      ?candles1
+      :interval==="3"
+        ?candles3
+        :interval==="15"
+          ?candles15
+          :interval==="30"||
+            interval==="60"
+            ?await kline(
+              "linear",
+              symbol,
+              interval,
+              KLINE_LIMIT
+            )
+            :candles5;
+
+  const footprints=buildFootprints(
+    baseCandles,
+    tradeList,
+    interval,
+    info.tickSize
+  );
+
+  const candleDelta=
+    candleDeltaSeries(
+      footprints
+    );
+
+  const selectedCandles=
+    baseCandles.map((c,i)=>({
+      ...c,
+      ...(candleDelta[i]||{})
+    }));
+
+  const currentCandle=
+    selectedCandles[
+      selectedCandles.length-1
+    ];
+
+  let currentFlow=
+    currentCandle
+      ?flowFromTrades(
+        tradeList,
+        currentCandle.time,
+        currentCandle.time+
+          intervalMs(interval)-1
+      )
+      :flowFromTrades([]);
+
+  if(currentFlow.totalTrades<8){
+    currentFlow=
+      flowFromTrades(tradeList);
   }
 
-  handleLiquidation(msg) {
-    const topic =
-      String(
-        msg.topic || ""
+  const wall=analyzeWalls(book);
+  const heatmap=buildHeatmap(book);
+  const zones=buildLiquidityZones(book);
+
+  const sweep=
+    detectSweep(selectedCandles);
+
+  const tradeSweep=
+    detectTradeSweep(tradeList);
+
+  const absorption=
+    detectAbsorption(
+      currentFlow,
+      currentCandle||{
+        open:0,
+        high:0,
+        low:0,
+        close:0
+      },
+      wall
+    );
+
+  const blocks=
+    analyzeBlocks(tradeList);
+
+  const structure5=
+    structureAnalysis(candles5);
+
+  const structure15=
+    structureAnalysis(candles15);
+
+  const structure1=
+    structureAnalysis(candles1);
+
+  const entry=
+    entry1m(candles1);
+
+  const sr=
+    supportResistance(
+      selectedCandles
+    );
+
+  const move=
+    movement(selectedCandles);
+
+  const zone=
+    structuralZone(
+      selectedCandles,
+      tick.last
+    );
+
+  let score=50;
+  const reasons=[];
+
+  if(structure5.trend==="BULLISH"){
+    score+=8;
+    reasons.push("ساختار 5m صعودی");
+  }
+
+  if(structure5.trend==="BEARISH"){
+    score-=8;
+    reasons.push("ساختار 5m نزولی");
+  }
+
+  if(structure15.trend==="BULLISH"){
+    score+=8;
+    reasons.push("تأیید 15m صعودی");
+  }
+
+  if(structure15.trend==="BEARISH"){
+    score-=8;
+    reasons.push("تأیید 15m نزولی");
+  }
+
+  if(currentFlow.deltaPercent>=10){
+    score+=12;
+    reasons.push("Aggressor Buy قوی");
+  }
+
+  if(currentFlow.deltaPercent<=-10){
+    score-=12;
+    reasons.push("Aggressor Sell قوی");
+  }
+
+  if(wall.pressure==="BUY_PRESSURE"){
+    score+=8;
+    reasons.push("فشار نقدینگی سمت Bid");
+  }
+
+  if(wall.pressure==="SELL_PRESSURE"){
+    score-=8;
+    reasons.push("فشار نقدینگی سمت Ask");
+  }
+
+  if(absorption.type==="BUY_ABSORPTION"){
+    score+=10;
+    reasons.push("Buy Absorption");
+  }
+
+  if(absorption.type==="SELL_ABSORPTION"){
+    score-=10;
+    reasons.push("Sell Absorption");
+  }
+
+  if(sweep.type==="BUY_SWEEP"){
+    score+=8;
+    reasons.push("Liquidity Sweep پایین");
+  }
+
+  if(sweep.type==="SELL_SWEEP"){
+    score-=8;
+    reasons.push("Liquidity Sweep بالا");
+  }
+
+  score=clamp(score,0,100);
+
+  let signal="WAIT";
+
+  if(score>=70){
+    signal="BUY";
+  }else if(score<=30){
+    signal="SELL";
+  }else if(score>=55){
+    signal="WATCH_BUY";
+  }else if(score<=45){
+    signal="WATCH_SELL";
+  }
+
+  return{
+    version:VERSION,
+    symbol,
+    category:"linear",
+    interval,
+
+    ticker:tick,
+    instrument:info,
+
+    candles:selectedCandles,
+    footprints,
+    candleDelta,
+
+    candles5,
+    candles15,
+    candles3,
+    candles1,
+
+    currentFlow,
+    historicalFlow:candleDelta,
+    flowPressure:
+      flowPressure(currentFlow),
+
+    orderbook:book,
+    wall,
+    heatmap,
+    zones,
+
+    sweep,
+    tradeSweep,
+    absorption,
+    blocks,
+
+    trades:tradeList.slice(-250),
+
+    structure:{
+      tf5:structure5,
+      tf15:structure15,
+      tf1:structure1
+    },
+
+    supportResistance:sr,
+    movement:move,
+    pressure:
+      flowPressure(currentFlow),
+    oiFunding:oi,
+    entry,
+    zone,
+
+    score,
+    signal,
+    reasons,
+
+    lastPrice:tick.last,
+    serverTime:Date.now()
+  };
+}
+
+async function live(
+  symbol,
+  interval
+){
+  const selectedInterval=
+    normalizeInterval(interval);
+
+  const[
+    tick,
+    book,
+    tradeList,
+    candles,
+    info
+  ]=await Promise.all([
+    ticker("linear",symbol),
+    orderbook(
+      "linear",
+      symbol,
+      ORDERBOOK_LIMIT
+    ),
+    trades(
+      "linear",
+      symbol,
+      TRADE_LIMIT
+    ),
+    kline(
+      "linear",
+      symbol,
+      selectedInterval,
+      180
+    ),
+    instrumentInfo(
+      "linear",
+      symbol
+    )
+  ]);
+
+  const footprints=
+    buildFootprints(
+      candles,
+      tradeList,
+      selectedInterval,
+      info.tickSize
+    );
+
+  const delta=
+    candleDeltaSeries(
+      footprints
+    );
+
+  const enriched=
+    candles.map((c,i)=>({
+      ...c,
+      ...(delta[i]||{})
+    }));
+
+  const current=
+    candles[candles.length-1];
+
+  const currentFlow=current
+    ?flowFromTrades(
+      tradeList,
+      current.time,
+      current.time+
+        intervalMs(selectedInterval)-1
+    )
+    :flowFromTrades([]);
+
+  const wall=analyzeWalls(book);
+
+  return{
+    version:VERSION,
+    symbol,
+    category:"linear",
+    interval:selectedInterval,
+
+    ticker:tick,
+    instrument:info,
+
+    candles:enriched,
+    footprints,
+    candleDelta:delta,
+
+    currentFlow,
+    flowPressure:
+      flowPressure(currentFlow),
+
+    orderbook:book,
+    wall,
+    heatmap:buildHeatmap(book),
+    zones:buildLiquidityZones(book),
+
+    sweep:detectSweep(candles),
+    tradeSweep:
+      detectTradeSweep(tradeList),
+
+    absorption:detectAbsorption(
+      currentFlow,
+      current||{
+        open:0,
+        high:0,
+        low:0,
+        close:0
+      },
+      wall
+    ),
+
+    blocks:analyzeBlocks(tradeList),
+
+    trades:tradeList.slice(-250),
+
+    lastPrice:tick.last,
+    serverTime:Date.now()
+  };
+}
+
+async function getSymbols(){
+  const result=await bybit(
+    "/v5/market/instruments-info",
+    {
+      category:"linear",
+      status:"Trading",
+      limit:1000
+    }
+  );
+
+  return(result?.list||[])
+    .filter(x=>
+      x.quoteCoin==="USDT"&&
+      x.contractType==="LinearPerpetual"&&
+      x.status==="Trading"
+    )
+    .map(x=>x.symbol)
+    .slice(0,MAX_SYMBOLS);
+}
+
+async function scan(offset=0){
+  const symbols=await getSymbols();
+
+  const start=Math.max(
+    0,
+    Number(offset)||0
+  );
+
+  const batch=symbols.slice(
+    start,
+    start+SCAN_BATCH
+  );
+
+  const results=[];
+
+  for(const symbol of batch){
+    try{
+      const a=await analyze(
+        symbol,
+        TF
       );
 
-    const symbol =
-      topic
-        .split(".")
-        .pop();
-
-    if (!symbol) {
-      return;
+      if(a.score>=55){
+        results.push({
+          symbol,
+          score:a.score,
+          signal:a.signal,
+          price:a.lastPrice,
+          deltaPercent:
+            a.currentFlow?.deltaPercent||0,
+          pressure:a.pressure,
+          absorption:
+            a.absorption?.type||"NONE",
+          sweep:
+            a.sweep?.type||"NONE"
+        });
+      }
+    }catch(e){
+      results.push({
+        symbol,
+        score:0,
+        signal:"ERROR",
+        error:e.message
+      });
     }
 
-    const list =
-      Array.isArray(
-        msg.data
-      )
-        ? msg.data
-        : [msg.data];
+    await sleep(25);
+  }
 
-    const m =
-      this.getMinute(
-        symbol
-      );
+  results.sort(
+    (a,b)=>b.score-a.score
+  );
 
-    for (
-      const x of list
-    ) {
-      if (!x) {
-        continue;
+  return{
+    version:VERSION,
+    offset:start,
+    nextOffset:
+      start+SCAN_BATCH>=symbols.length
+        ?0
+        :start+SCAN_BATCH,
+    totalSymbols:symbols.length,
+    results
+  };
+}
+
+function validSymbol(value){
+  return/^[A-Z0-9._-]{2,40}$/i.test(
+    String(value||"")
+  );
+}
+
+export default{
+  async fetch(request,env){
+    if(request.method==="OPTIONS"){
+      return new Response(null,{
+        status:204,
+        headers:{
+          "access-control-allow-origin":"*",
+          "access-control-allow-methods":
+            "GET,POST,OPTIONS",
+          "access-control-allow-headers":
+            "Content-Type"
+        }
+      });
+    }
+
+    const url=new URL(request.url);
+    const path=url.pathname;
+
+    try{
+      if(path==="/api/health"){
+        return json({
+          ok:true,
+          online:true,
+          bybit:BYBIT,
+          version:VERSION,
+          time:Date.now()
+        });
       }
 
-      const side =
-        String(
-          x.S ||
-          x.side ||
-          ""
-        ).toLowerCase();
-
-      const qty =
-        num(
-          x.v ||
-          x.qty ||
-          x.size
+      if(path==="/api/test-bybit"){
+        const t=await ticker(
+          "linear",
+          "BTCUSDT"
         );
 
-      if (
-        side === "buy"
-      ) {
-        m.liquidations.buy +=
-          qty;
+        return json({
+          ok:true,
+          bybit:true,
+          ticker:t,
+          version:VERSION
+        });
       }
 
-      if (
-        side === "sell"
-      ) {
-        m.liquidations.sell +=
-          qty;
+      if(path==="/api/symbols"){
+        return json({
+          ok:true,
+          symbols:await getSymbols()
+        });
       }
 
-      m.liquidations.count +=
-        1;
-    }
-  }
+      if(path==="/api/analyze"){
+        const symbol=String(
+          url.searchParams.get("symbol")||
+          "BTCUSDT"
+        )
+        .trim()
+        .toUpperCase();
 
-  async flushLoop() {
-    let lastMinute =
-      minuteTs();
-
-    while (
-      this.connected
-    ) {
-      await new Promise(
-        resolve =>
-          setTimeout(
-            resolve,
-            SNAPSHOT_MS
-          )
-      );
-
-      if (
-        !this.connected
-      ) {
-        break;
-      }
-
-      const current =
-        minuteTs();
-
-      for (
-        const [
-          key,
-          m
-        ] of this.minutes
-      ) {
-        if (
-          m.ts < current
-        ) {
-          this.owner.saveMinute(
-            m
+        const selectedInterval=
+          normalizeInterval(
+            url.searchParams.get("interval")||
+            TF
           );
 
-          this.minutes.delete(
-            key
-          );
+        if(!validSymbol(symbol)){
+          return json({
+            ok:false,
+            error:"Invalid symbol"
+          },400);
         }
+
+        return json(
+          await analyze(
+            symbol,
+            selectedInterval
+          )
+        );
       }
 
-      if (
-        current !==
-        lastMinute
-      ) {
-        lastMinute =
-          current;
+      if(path==="/api/chart"){
+        const symbol=String(
+          url.searchParams.get("symbol")||
+          "BTCUSDT"
+        )
+        .trim()
+        .toUpperCase();
+
+        const selectedInterval=
+          normalizeInterval(
+            url.searchParams.get("interval")||
+            TF
+          );
+
+        if(!validSymbol(symbol)){
+          return json({
+            ok:false,
+            error:"Invalid symbol"
+          },400);
+        }
+
+        return json(
+          await buildChartData(
+            symbol,
+            selectedInterval
+          )
+        );
       }
 
-      if (
-        Date.now() -
-        this.lastSnapshot >
-        60000
-      ) {
-        this.owner.cleanup();
+      if(path==="/api/live"){
+        const symbol=String(
+          url.searchParams.get("symbol")||
+          "BTCUSDT"
+        )
+        .trim()
+        .toUpperCase();
 
-        this.lastSnapshot =
-          Date.now();
+        const selectedInterval=
+          normalizeInterval(
+            url.searchParams.get("interval")||
+            TF
+          );
+
+        if(!validSymbol(symbol)){
+          return json({
+            ok:false,
+            error:"Invalid symbol"
+          },400);
+        }
+
+        return json(
+          await live(
+            symbol,
+            selectedInterval
+          )
+        );
       }
+
+      if(path==="/api/scan"){
+        const offset=Number(
+          url.searchParams.get("offset")||0
+        );
+
+        return json(
+          await scan(offset)
+        );
+      }
+
+      return env.ASSETS.fetch(request);
+
+    }catch(error){
+      return json({
+        ok:false,
+        error:error?.message||String(error),
+        version:VERSION
+      },500);
     }
   }
-}
+};
