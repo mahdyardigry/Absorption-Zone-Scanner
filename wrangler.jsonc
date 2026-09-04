@@ -1,5 +1,5 @@
 {
-  "name": "bybit-smart-money-orderflow",
+  "name": "bybit-personal-orderflow",
   "main": "worker.js",
   "compatibility_date": "2026-09-04",
 
@@ -8,17 +8,21 @@
     "binding": "ASSETS"
   },
 
-  "d1_databases": [
-    {
-      "binding": "FOOTPRINT_DB",
-      "database_name": "bybit-footprint",
-      "database_id": "YOUR_D1_DATABASE_ID"
-    }
-  ],
-
-  "triggers": {
-    "crons": [
-      "* * * * *"
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "COLLECTOR",
+        "class_name": "CollectorDO"
+      }
     ]
-  }
+  },
+
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": [
+        "CollectorDO"
+      ]
+    }
+  ]
 }
