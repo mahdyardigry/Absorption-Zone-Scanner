@@ -6,452 +6,753 @@
 <title>Bybit Smart Money Order Flow</title>
 
 <style>
-*{box-sizing:border-box}
+*{
+  box-sizing:border-box;
+  -webkit-tap-highlight-color:transparent;
+}
+
 html,body{
   margin:0;
   padding:0;
   width:100%;
   min-height:100%;
-  background:#070b12;
-  color:#e8eef7;
+  background:#071018;
+  color:#e8eef5;
   font-family:Tahoma,Arial,sans-serif;
-  overflow-x:hidden
 }
-body{padding:10px}
-button,input,select{font:inherit}
+
+body{
+  overflow-x:hidden;
+}
+
+button,input{
+  font:inherit;
+}
+
 button{
-  border:1px solid #263246;
-  background:#111927;
-  color:#e8eef7;
-  border-radius:9px;
-  padding:9px 12px;
-  cursor:pointer
+  cursor:pointer;
+  border:1px solid #263746;
+  background:#101c27;
+  color:#dce8f2;
+  border-radius:10px;
+  padding:8px 12px;
 }
-button:active{transform:scale(.98)}
-input,select{
-  width:100%;
-  background:#0d1420;
+
+button:hover{
+  background:#172735;
+}
+
+button.active{
+  background:#17364a;
+  border-color:#27a8df;
   color:#fff;
-  border:1px solid #263246;
-  border-radius:9px;
-  padding:10px
 }
-.app{max-width:1500px;margin:auto}
-.card{
-  background:#0b111b;
-  border:1px solid #1e2939;
-  border-radius:14px;
-  margin-bottom:10px;
-  overflow:hidden
+
+input{
+  background:#0c1721;
+  color:#fff;
+  border:1px solid #2b3d4d;
+  border-radius:10px;
+  padding:9px 12px;
+  outline:none;
 }
+
+.app{
+  width:100%;
+  max-width:1800px;
+  margin:auto;
+  padding:10px;
+}
+
 .header{
-  padding:14px;
-  border-bottom:1px solid #1c2635;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  flex-wrap:wrap;
+  margin-bottom:8px;
 }
+
 .title{
   font-size:20px;
-  font-weight:900;
+  font-weight:800;
 }
-.sub{
-  color:#8492a8;
-  font-size:12px;
-  margin-top:5px
-}
-.controls{
-  display:grid;
-  grid-template-columns:180px 130px 120px 120px 1fr;
-  gap:8px;
-  padding:10px
-}
-.status{
-  padding:9px 12px;
-  font-size:12px;
-  border-top:1px solid #1c2635;
-  color:#aebbd0
-}
-.green{color:#00e676}
-.red{color:#ff465c}
-.yellow{color:#ffd54a}
-.muted{color:#718096}
 
-.chart-card{padding:0}
-.chart-toolbar{
+.subtitle{
+  color:#8295a6;
+  font-size:11px;
+  margin-top:3px;
+}
+
+.toolbar{
   display:flex;
   align-items:center;
   gap:6px;
-  padding:8px;
-  overflow-x:auto;
-  border-bottom:1px solid #1c2635
+  flex-wrap:wrap;
+  margin-bottom:8px;
 }
-.chart-toolbar button.active{
-  border-color:#00e676;
-  color:#00e676
+
+.symbol{
+  width:140px;
+  text-transform:uppercase;
+  direction:ltr;
+  text-align:left;
 }
-.chart-wrap{
+
+.status{
+  padding:7px 10px;
+  border-radius:9px;
+  background:#0d1923;
+  border:1px solid #263746;
+  font-size:12px;
+}
+
+.status.ok{
+  color:#5ee58b;
+}
+
+.status.bad{
+  color:#ff6d72;
+}
+
+.chart-panel{
   position:relative;
   width:100%;
-  height:470px;
+  background:#09131d;
+  border:1px solid #243542;
+  border-radius:14px;
   overflow:hidden;
-  background:#060a10;
-  touch-action:none
 }
+
+.chart-head{
+  height:42px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:6px 9px;
+  border-bottom:1px solid #1e303d;
+}
+
+.chart-title{
+  font-size:12px;
+  font-weight:bold;
+}
+
+.chart-tools{
+  display:flex;
+  gap:5px;
+}
+
+.fullscreen{
+  font-size:18px;
+  width:38px;
+  height:32px;
+  padding:0;
+}
+
+.canvas-wrap{
+  position:relative;
+  width:100%;
+  height:390px;
+  overflow:hidden;
+  touch-action:none;
+  user-select:none;
+  -webkit-user-select:none;
+}
+
 #chart{
   display:block;
   width:100%;
   height:100%;
-  touch-action:none
+  touch-action:none;
 }
-.chart-info{
+
+.crosshair{
   position:absolute;
-  top:8px;
-  right:8px;
-  left:8px;
-  z-index:5;
   pointer-events:none;
-  display:flex;
-  flex-wrap:wrap;
-  gap:6px
-}
-.badge{
-  background:rgba(10,16,25,.88);
-  border:1px solid #263246;
-  border-radius:7px;
-  padding:5px 8px;
-  font-size:11px
+  display:none;
+  z-index:4;
 }
 
-.panels{
+.crosshair-v{
+  position:absolute;
+  top:0;
+  bottom:0;
+  width:1px;
+  background:#64798a;
+}
+
+.crosshair-h{
+  position:absolute;
+  left:0;
+  right:0;
+  height:1px;
+  background:#64798a;
+}
+
+.help{
+  position:absolute;
+  left:8px;
+  top:8px;
+  color:#6f8597;
+  font-size:10px;
+  pointer-events:none;
+  direction:rtl;
+}
+
+.layers{
+  display:flex;
+  flex-wrap:wrap;
+  gap:5px;
+  padding:7px;
+  border-top:1px solid #1e303d;
+}
+
+.layer{
+  font-size:10px;
+  padding:6px 9px;
+}
+
+.stats{
   display:grid;
-  grid-template-columns:repeat(4,1fr);
-  gap:8px;
-  padding:8px
-}
-.stat{
-  background:#0d1420;
-  border:1px solid #1e2a3c;
-  border-radius:10px;
-  padding:10px
-}
-.stat-title{font-size:11px;color:#7f8ca1}
-.stat-value{font-size:16px;font-weight:900;margin-top:5px}
-
-.section-title{
-  padding:10px 12px;
-  font-weight:900;
-  border-bottom:1px solid #1c2635;
-  background:#0d1420
+  grid-template-columns:repeat(8,minmax(0,1fr));
+  gap:7px;
+  margin-top:8px;
 }
 
-/* ================= FOOTPRINT ================= */
-
-.fp-tools{
-  display:flex;
-  flex-wrap:wrap;
-  align-items:center;
-  gap:6px;
-  padding:8px;
-  border-bottom:1px solid #1c2635
-}
-.fp-tools button{padding:7px 10px}
-.fp-scale-label{
-  min-width:65px;
-  text-align:center;
-  font-size:11px;
-  color:#aab7c9
+.card{
+  min-width:0;
+  background:#0c1822;
+  border:1px solid #223542;
+  border-radius:11px;
+  padding:9px;
 }
 
-.fp-viewport{
+.card-label{
+  color:#738898;
+  font-size:10px;
+  margin-bottom:4px;
+}
+
+.card-value{
+  font-size:13px;
+  font-weight:800;
+  direction:ltr;
+  text-align:left;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+.green{
+  color:#43df78 !important;
+}
+
+.red{
+  color:#ff5962 !important;
+}
+
+.yellow{
+  color:#ffd45c !important;
+}
+
+.blue{
+  color:#46c8ff !important;
+}
+
+/* =========================
+   FOOTPRINT
+========================= */
+
+.footprint-box{
   width:100%;
-  max-height:650px;
-  overflow:auto;
-  background:
-    linear-gradient(#080d15 1px,transparent 1px),
-    linear-gradient(90deg,#080d15 1px,transparent 1px);
-  background-size:100% 24px,24px 100%;
-  overscroll-behavior:contain;
-  -webkit-overflow-scrolling:touch;
-  touch-action:pan-x pan-y;
-  padding:12px
-}
-
-.fp-board{
-  --row-h:32px;
-  --candle-w:300px;
-  --delta-w:115px;
-  --hist-w:190px;
-  min-width:650px;
-  width:100%;
-  transform-origin:top center;
+  margin-top:9px;
+  background:#08121b;
+  border:1px solid #263a49;
+  border-radius:14px;
+  overflow:hidden;
 }
 
 .fp-head{
-  display:grid;
-  grid-template-columns:var(--delta-w) var(--candle-w) var(--hist-w);
-  direction:ltr;
-  gap:8px;
-  margin-bottom:5px;
-  position:sticky;
-  top:0;
-  z-index:10
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  padding:9px 11px;
+  border-bottom:1px solid #21333f;
 }
-.fp-head > div{
-  background:#0e1622;
-  border:1px solid #202d40;
-  border-radius:7px;
-  padding:7px;
-  text-align:center;
-  font-size:11px;
-  color:#91a0b5
+
+.fp-title{
+  font-weight:800;
+  font-size:13px;
+}
+
+.fp-meta{
+  color:#8193a3;
+  font-size:10px;
+}
+
+.fp-tools{
+  display:flex;
+  gap:5px;
+}
+
+.fp-tools button{
+  min-width:32px;
+  padding:5px 8px;
+}
+
+.fp-viewport{
+  position:relative;
+  width:100%;
+  min-height:310px;
+  max-height:58vh;
+  overflow:auto;
+  direction:ltr;
+  touch-action:pan-x pan-y;
+  overscroll-behavior:contain;
+  -webkit-overflow-scrolling:touch;
+}
+
+.fp-board{
+  position:relative;
+  width:100%;
+  min-width:920px;
+  padding:10px;
+  transform-origin:top left;
+}
+
+.fp-content{
+  width:100%;
 }
 
 .fp-grid{
   display:grid;
-  grid-template-columns:var(--delta-w) var(--candle-w) var(--hist-w);
-  direction:ltr;
+  grid-template-columns:minmax(190px,1fr) 260px minmax(190px,1fr);
   gap:8px;
-  align-items:stretch
+  direction:ltr;
+  align-items:stretch;
 }
 
 .fp-side{
+  direction:ltr;
+  min-width:0;
+}
+
+.fp-side-title{
+  height:32px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:11px;
+  font-weight:bold;
+  border-bottom:1px solid #243744;
+  background:#0b1720;
+  border-radius:7px 7px 0 0;
+}
+
+.fp-level-row{
+  display:grid;
+  grid-template-columns:1fr;
+  min-height:30px;
+  border-bottom:1px solid #162733;
+  align-items:center;
   position:relative;
-  direction:rtl
+}
+
+.fp-level-value{
+  padding:4px 7px;
+  direction:ltr;
+  text-align:center;
+  font-size:11px;
+  font-weight:700;
+  white-space:nowrap;
+  position:relative;
+  z-index:2;
+}
+
+.fp-level-bar{
+  position:absolute;
+  top:4px;
+  bottom:4px;
+  border-radius:3px;
+  opacity:.20;
+  pointer-events:none;
+}
+
+.fp-level-bar.bid{
+  right:3px;
+  background:#ff5962;
+}
+
+.fp-level-bar.ask{
+  left:3px;
+  background:#43df78;
+}
+
+.fp-center{
+  position:relative;
+  border-left:1px solid #253844;
+  border-right:1px solid #253844;
+  min-height:100%;
+}
+
+.fp-price-head{
+  height:32px;
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  align-items:center;
+  border-bottom:1px solid #243744;
+  background:#0b1720;
+  border-radius:7px 7px 0 0;
+}
+
+.fp-price-head div{
+  text-align:center;
+  font-size:10px;
+  color:#8093a2;
 }
 
 .fp-candle{
   position:relative;
-  min-height:300px;
-  border:1px solid #263246;
-  border-radius:10px;
-  background:#080d15;
-  overflow:hidden;
-  direction:ltr
+  width:100%;
+  min-height:calc(var(--fp-row-height,30px) * 1);
+  overflow:visible;
 }
 
-.fp-levels{
+.fp-candle-stage{
   position:relative;
-  z-index:4
-}
-
-.fp-level{
-  height:var(--row-h);
-  min-height:var(--row-h);
-  display:grid;
-  grid-template-columns:1fr 76px 1fr;
-  align-items:center;
-  border-bottom:1px solid rgba(100,120,150,.12);
-  font-family:Arial,Tahoma,sans-serif;
-  font-size:11px;
-  position:relative
-}
-
-.fp-level:hover{
-  background:rgba(255,255,255,.035)
-}
-
-.fp-price{
-  text-align:center;
-  color:#8c9bb0;
-  font-size:10px;
-  direction:ltr
-}
-
-.fp-bid{
-  color:#ff4057;
-  text-align:right;
-  padding-right:6px;
-  font-weight:900;
-  direction:ltr
-}
-
-.fp-ask{
-  color:#00e676;
-  text-align:left;
-  padding-left:6px;
-  font-weight:900;
-  direction:ltr
-}
-
-.fp-bid span,
-.fp-ask span{
-  display:inline-block;
-  padding:2px 4px;
-  border-radius:4px
-}
-
-.fp-bid span{background:rgba(255,45,70,.10)}
-.fp-ask span{background:rgba(0,230,118,.10)}
-
-.fp-delta-row{
-  height:var(--row-h);
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  border-bottom:1px solid rgba(100,120,150,.12);
-  font-family:Arial,Tahoma,sans-serif;
-  font-weight:900;
-  font-size:11px;
-  direction:ltr
-}
-
-.fp-delta-positive{color:#00e676}
-.fp-delta-negative{color:#ff4057}
-.fp-delta-zero{color:#7c899d}
-
-.fp-hist-row{
-  height:var(--row-h);
-  display:flex;
-  align-items:center;
-  border-bottom:1px solid rgba(100,120,150,.12);
-  padding:0 5px;
-  direction:ltr
-}
-
-.fp-hist{
-  height:13px;
-  min-width:2px;
-  border-radius:2px;
-  opacity:.9
-}
-.fp-hist.buy{background:#00c968}
-.fp-hist.sell{background:#f53650}
-.fp-hist.neutral{background:#6d7888}
-
-.fp-candle-visual{
-  position:absolute;
-  left:50%;
-  top:0;
-  bottom:0;
-  width:54px;
-  transform:translateX(-50%);
-  z-index:2;
-  pointer-events:none
+  width:100%;
+  min-height:var(--fp-candle-height,600px);
 }
 
 .fp-wick{
   position:absolute;
   left:50%;
-  width:2px;
   transform:translateX(-50%);
-  background:#b9c3d2;
-  opacity:.75
+  width:3px;
+  background:#b7c4cc;
+  border-radius:3px;
 }
 
 .fp-body{
   position:absolute;
   left:50%;
-  width:46px;
   transform:translateX(-50%);
-  border-radius:3px;
-  opacity:.18;
-  border:1px solid currentColor
+  width:58px;
+  min-height:8px;
+  border-radius:5px;
+  z-index:3;
+  box-shadow:
+    0 0 0 1px rgba(255,255,255,.18),
+    0 0 18px rgba(255,255,255,.04);
+}
+
+.fp-price-column{
+  position:absolute;
+  inset:0;
+  z-index:4;
+  pointer-events:none;
+}
+
+.fp-price-row{
+  position:absolute;
+  left:0;
+  right:0;
+  height:30px;
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  align-items:center;
+}
+
+.fp-price-row span{
+  font-size:9px;
+  text-align:center;
+  direction:ltr;
+  color:#aebdca;
+  font-weight:700;
+}
+
+.fp-inside-bid{
+  color:#ff5962 !important;
+  text-shadow:0 0 5px rgba(0,0,0,.9);
+}
+
+.fp-inside-ask{
+  color:#43df78 !important;
+  text-shadow:0 0 5px rgba(0,0,0,.9);
 }
 
 .fp-candle-info{
   position:absolute;
+  bottom:7px;
+  left:0;
+  right:0;
+  text-align:center;
+  font-size:9px;
+  line-height:15px;
+  color:#8b9da9;
+  direction:ltr;
   z-index:8;
-  left:7px;
-  right:7px;
-  top:7px;
-  display:flex;
-  justify-content:center;
-  pointer-events:none
-}
-.fp-ohlc{
-  background:rgba(7,12,19,.9);
-  border:1px solid #263246;
-  border-radius:6px;
-  padding:5px 7px;
-  font-size:10px;
-  color:#aab6c8;
-  direction:ltr
+  pointer-events:none;
 }
 
-.fp-candle-center{
+.fp-delta-column{
+  direction:ltr;
+}
+
+.fp-delta-row{
+  min-height:30px;
+  display:grid;
+  grid-template-columns:88px 1fr;
+  gap:5px;
+  align-items:center;
+  border-bottom:1px solid #162733;
+  padding:0 5px;
+}
+
+.fp-delta-value{
+  direction:ltr;
+  text-align:center;
+  font-size:10px;
+  font-weight:800;
+  white-space:nowrap;
+}
+
+.fp-delta-track{
+  height:14px;
+  width:100%;
+  background:#0b1720;
+  border-radius:4px;
+  overflow:hidden;
+  position:relative;
+}
+
+.fp-delta-bar{
+  height:100%;
+  border-radius:4px;
+  min-width:1px;
+  transition:none;
+}
+
+.fp-delta-bar.buy{
+  background:#35df72;
+}
+
+.fp-delta-bar.sell{
+  background:#ff5962;
+}
+
+.fp-delta-axis{
   position:absolute;
-  z-index:6;
   top:0;
   bottom:0;
   left:50%;
   width:1px;
-  background:rgba(150,165,185,.15)
+  background:#3a4a56;
+}
+
+.fp-level-highlight{
+  background:rgba(255,255,255,.035);
+}
+
+.fp-totals{
+  display:grid;
+  grid-template-columns:repeat(6,1fr);
+  gap:6px;
+  margin-top:9px;
+}
+
+.fp-total{
+  background:#0d1923;
+  border:1px solid #203440;
+  border-radius:9px;
+  padding:8px;
+  text-align:center;
+}
+
+.fp-total-label{
+  color:#718594;
+  font-size:9px;
+}
+
+.fp-total-value{
+  font-weight:bold;
+  font-size:11px;
+  margin-top:4px;
+  direction:ltr;
 }
 
 .fp-empty{
-  padding:30px;
+  padding:40px 15px;
   text-align:center;
-  color:#6f7d91
+  color:#728797;
+  font-size:12px;
 }
 
-.fp-summary{
-  display:grid;
-  grid-template-columns:repeat(5,1fr);
-  gap:6px;
-  margin-top:8px
-}
-.fp-summary-box{
-  background:#0d1420;
-  border:1px solid #202d40;
-  border-radius:8px;
-  padding:8px;
-  text-align:center
-}
-.fp-summary-label{font-size:10px;color:#7d8a9d}
-.fp-summary-value{
-  margin-top:4px;
-  font-family:Arial,Tahoma,sans-serif;
-  font-weight:900;
-  font-size:13px;
-  direction:ltr
+/* =========================
+   SCAN / TRADES
+========================= */
+
+.scan-panel,
+.trades-panel{
+  margin-top:9px;
+  background:#0a151e;
+  border:1px solid #223542;
+  border-radius:13px;
+  overflow:hidden;
 }
 
-/* ================= TABLES ================= */
+.panel-head{
+  padding:9px 11px;
+  border-bottom:1px solid #20323e;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
 
-.table-wrap{
+.panel-title{
+  font-size:12px;
+  font-weight:bold;
+}
+
+.scan-controls{
+  display:flex;
+  gap:5px;
+}
+
+.scan-list{
+  max-height:300px;
   overflow:auto;
-  max-height:360px
 }
+
+.scan-row{
+  display:grid;
+  grid-template-columns:1fr 80px 100px 110px 100px;
+  gap:5px;
+  padding:8px 10px;
+  border-bottom:1px solid #14242e;
+  font-size:11px;
+  direction:ltr;
+}
+
+.scan-row div{
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+.trade-wrap{
+  max-height:330px;
+  overflow:auto;
+}
+
 table{
   width:100%;
   border-collapse:collapse;
-  font-size:11px
+  direction:ltr;
+  font-size:10px;
 }
+
 th,td{
   padding:7px;
-  border-bottom:1px solid #182232;
+  border-bottom:1px solid #172832;
   text-align:center;
-  white-space:nowrap
 }
+
 th{
+  color:#78909f;
   position:sticky;
   top:0;
-  background:#0d1420;
-  z-index:2
+  background:#0a151e;
 }
 
-.signal{
-  font-weight:900
-}
-.signal.BUY{color:#00e676}
-.signal.SELL{color:#ff4057}
-.signal.WATCH_BUY{color:#8affba}
-.signal.WATCH_SELL{color:#ff8b99}
-.signal.WAIT{color:#9ba8ba}
+@media(max-width:1000px){
+  .stats{
+    grid-template-columns:repeat(4,1fr);
+  }
 
-@media(max-width:900px){
-  .controls{grid-template-columns:1fr 1fr}
-  .panels{grid-template-columns:1fr 1fr}
-  .chart-wrap{height:420px}
+  .fp-grid{
+    grid-template-columns:200px 250px 200px;
+  }
 }
-@media(max-width:600px){
-  body{padding:5px}
-  .controls{grid-template-columns:1fr 1fr}
-  .panels{grid-template-columns:1fr 1fr}
-  .chart-wrap{height:380px}
-  .fp-summary{grid-template-columns:1fr 1fr}
+
+@media(max-width:800px){
+  .app{
+    padding:6px;
+  }
+
+  .canvas-wrap{
+    height:350px;
+  }
+
+  .stats{
+    grid-template-columns:repeat(4,1fr);
+  }
+
   .fp-board{
-    --delta-w:90px;
-    --candle-w:270px;
-    --hist-w:160px
+    min-width:820px;
+  }
+
+  .fp-grid{
+    grid-template-columns:180px 230px 180px;
+  }
+}
+
+@media(max-width:480px){
+  .title{
+    font-size:16px;
+  }
+
+  .symbol{
+    width:105px;
+  }
+
+  .canvas-wrap{
+    height:320px;
+  }
+
+  .stats{
+    grid-template-columns:repeat(2,1fr);
+  }
+
+  .fp-viewport{
+    min-height:290px;
+    max-height:65vh;
+  }
+
+  .fp-board{
+    min-width:760px;
+  }
+
+  .fp-grid{
+    grid-template-columns:160px 210px 160px;
+    gap:5px;
+  }
+
+  .fp-totals{
+    grid-template-columns:repeat(3,1fr);
+  }
+}
+
+.chart-panel:fullscreen{
+  width:100vw;
+  height:100vh;
+  max-width:none;
+  border-radius:0;
+}
+
+.chart-panel:fullscreen .canvas-wrap{
+  height:calc(100vh - 92px);
+}
+
+.chart-panel:fullscreen .layers{
+  max-height:55px;
+  overflow:auto;
+}
+
+@media(orientation:landscape) and (max-height:600px){
+  .canvas-wrap{
+    height:calc(100vh - 115px);
   }
 }
 </style>
@@ -461,1671 +762,3297 @@ th{
 
 <div class="app">
 
-  <div class="card">
-    <div class="header">
-      <div class="title">📊 Bybit Smart Money Order Flow</div>
-      <div class="sub">
-        تحلیل واقعی بازار بر پایه کندل، معاملات، Footprint، Bid/Ask، Delta و نقدینگی Bybit
+  <div class="header">
+    <div>
+      <div class="title">
+        📊 اسکنر شخصی Bybit — Smart Money Order Flow
       </div>
-    </div>
-
-    <div class="controls">
-      <input id="symbolInput" value="BTCUSDT" placeholder="BTCUSDT">
-
-      <select id="intervalSelect">
-        <option value="1">1m</option>
-        <option value="3">3m</option>
-        <option value="5" selected>5m</option>
-        <option value="15">15m</option>
-        <option value="30">30m</option>
-        <option value="60">1h</option>
-      </select>
-
-      <button id="analyzeBtn">🔍 تحلیل</button>
-      <button id="refreshBtn">🔄 بروزرسانی</button>
-      <button id="scanBtn">🚀 اسکن بازار</button>
+      <div class="subtitle">
+        داده واقعی Bybit · Candle · Order Book · Aggressor Flow · Footprint · Liquidity
+      </div>
     </div>
 
     <div id="status" class="status">
-      🟡 در حال اتصال به Worker...
+      🔄 در حال اتصال...
     </div>
   </div>
 
-  <div class="card chart-card">
+  <div class="toolbar">
 
-    <div class="chart-toolbar">
-      <button data-tf="1">1m</button>
-      <button data-tf="3">3m</button>
-      <button data-tf="5" class="active">5m</button>
-      <button data-tf="15">15m</button>
-      <button data-tf="30">30m</button>
-      <button data-tf="60">1h</button>
-      <button id="chartZoomOut">−</button>
-      <button id="chartZoomIn">+</button>
-      <button id="chartReset">↺</button>
+    <input
+      id="symbol"
+      class="symbol"
+      value="BTCUSDT"
+      autocomplete="off"
+      spellcheck="false"
+    >
+
+    <button id="analyzeBtn">تحلیل</button>
+    <button id="liveBtn">Live</button>
+    <button id="stopBtn">توقف</button>
+
+    <button class="tf active" data-tf="1">1m</button>
+    <button class="tf" data-tf="3">3m</button>
+    <button class="tf" data-tf="5">5m</button>
+    <button class="tf" data-tf="15">15m</button>
+
+  </div>
+
+  <section id="chartPanel" class="chart-panel">
+
+    <div class="chart-head">
+      <div id="chartTitle" class="chart-title">
+        BTCUSDT · 1m
+      </div>
+
+      <div class="chart-tools">
+        <button id="fullscreenBtn" class="fullscreen">⛶</button>
+      </div>
     </div>
 
-    <div class="chart-wrap" id="chartWrap">
+    <div id="canvasWrap" class="canvas-wrap">
+
       <canvas id="chart"></canvas>
 
-      <div class="chart-info">
-        <div class="badge" id="chartSymbol">BTCUSDT</div>
-        <div class="badge" id="chartPrice">-</div>
-        <div class="badge" id="chartSignal">WAIT</div>
-        <div class="badge" id="chartDelta">Δ -</div>
-      </div>
-    </div>
-
-    <div class="panels">
-
-      <div class="stat">
-        <div class="stat-title">Price</div>
-        <div id="statPrice" class="stat-value">-</div>
+      <div id="crosshair" class="crosshair">
+        <div id="crossV" class="crosshair-v"></div>
+        <div id="crossH" class="crosshair-h"></div>
       </div>
 
-      <div class="stat">
-        <div class="stat-title">Signal</div>
-        <div id="statSignal" class="stat-value">WAIT</div>
-      </div>
-
-      <div class="stat">
-        <div class="stat-title">Delta</div>
-        <div id="statDelta" class="stat-value">-</div>
-      </div>
-
-      <div class="stat">
-        <div class="stat-title">Orderbook</div>
-        <div id="statPressure" class="stat-value">-</div>
+      <div class="help">
+        کشیدن = حرکت · پینچ/چرخش = زوم · لمس کندل = انتخاب Footprint
       </div>
 
     </div>
-  </div>
 
-  <div class="card">
+    <div class="layers">
 
-    <div class="section-title">
-      🧱 Footprint — Bid / Ask / Delta / Fixed Volume
+      <button class="layer active" data-layer="candles">🕯 کندل</button>
+      <button class="layer active" data-layer="footprint">📊 Footprint</button>
+      <button class="layer active" data-layer="heatmap">🌡 Heatmap</button>
+      <button class="layer active" data-layer="walls">🧱 Walls</button>
+      <button class="layer active" data-layer="liquidity">💧 Liquidity</button>
+      <button class="layer active" data-layer="zones">🟨 Zones</button>
+      <button class="layer active" data-layer="sweep">🎯 Sweep</button>
+      <button class="layer active" data-layer="absorption">🧲 Absorption</button>
+      <button class="layer active" data-layer="blocks">🧱 Blocks</button>
+      <button class="layer active" data-layer="trades">• Trades</button>
+      <button class="layer active" data-layer="delta">Δ Delta</button>
+      <button class="layer active" data-layer="bidask">Bid × Ask</button>
+
     </div>
 
-    <div class="fp-tools">
-      <button id="fpMinus">−</button>
-      <span id="fpScaleLabel" class="fp-scale-label">100%</span>
-      <button id="fpPlus">+</button>
-      <button id="fpReset">↺</button>
-      <button id="fpPrev">◀ کندل قبلی</button>
-      <button id="fpNext">کندل بعدی ▶</button>
-      <span id="fpSelectedInfo" class="muted"></span>
+  </section>
+
+  <section class="stats">
+
+    <div class="card">
+      <div class="card-label">Price</div>
+      <div id="priceCard" class="card-value">—</div>
+    </div>
+
+    <div class="card">
+      <div class="card-label">🟢 Buy / Ask Aggressor</div>
+      <div id="buyCard" class="card-value green">—</div>
+    </div>
+
+    <div class="card">
+      <div class="card-label">🔴 Sell / Bid Aggressor</div>
+      <div id="sellCard" class="card-value red">—</div>
+    </div>
+
+    <div class="card">
+      <div class="card-label">Δ Delta</div>
+      <div id="deltaCard" class="card-value">—</div>
+    </div>
+
+    <div class="card">
+      <div class="card-label">Bid Book</div>
+      <div id="bidBookCard" class="card-value red">—</div>
+    </div>
+
+    <div class="card">
+      <div class="card-label">Ask Book</div>
+      <div id="askBookCard" class="card-value green">—</div>
+    </div>
+
+    <div class="card">
+      <div class="card-label">Absorption</div>
+      <div id="absorptionCard" class="card-value">—</div>
+    </div>
+
+    <div class="card">
+      <div class="card-label">Score / Signal</div>
+      <div id="scoreCard" class="card-value">—</div>
+    </div>
+
+  </section>
+
+  <section class="footprint-box">
+
+    <div class="fp-head">
+
+      <div>
+        <div class="fp-title">
+          📊 Footprint — کندل انتخابی
+        </div>
+
+        <div id="fpMeta" class="fp-meta">
+          —
+        </div>
+      </div>
+
+      <div class="fp-tools">
+        <button id="fpMinus">−</button>
+        <button id="fpPlus">+</button>
+        <button id="fpReset">↺</button>
+      </div>
+
     </div>
 
     <div id="fpViewport" class="fp-viewport">
-      <div id="fpBoard" class="fp-board"></div>
+
+      <div id="fpBoard" class="fp-board">
+
+        <div id="fpContent" class="fp-content">
+          <div class="fp-empty">
+            کندل را انتخاب کنید
+          </div>
+        </div>
+
+      </div>
+
     </div>
 
-  </div>
+  </section>
 
-  <div class="card">
-    <div class="section-title">💧 Liquidity / Order Book</div>
-    <div id="orderbookPanel" class="panels"></div>
-  </div>
+  <section class="scan-panel">
 
-  <div class="card">
-    <div class="section-title">🔥 معاملات بزرگ</div>
-    <div class="table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th>زمان</th>
-            <th>قیمت</th>
-            <th>حجم</th>
-            <th>ارزش</th>
-            <th>سمت</th>
-          </tr>
-        </thead>
-        <tbody id="tradesBody"></tbody>
-      </table>
+    <div class="panel-head">
+
+      <div class="panel-title">
+        🔎 اسکن بازار
+      </div>
+
+      <div class="scan-controls">
+        <button id="scanStart">شروع اسکن</button>
+        <button id="scanStop">توقف اسکن</button>
+      </div>
+
     </div>
-  </div>
 
-  <div class="card">
-    <div class="section-title">🚀 نتایج اسکن</div>
-    <div class="table-wrap">
+    <div id="scanList" class="scan-list">
+      <div class="fp-empty">
+        هنوز اسکن انجام نشده است.
+      </div>
+    </div>
+
+  </section>
+
+  <section class="trades-panel">
+
+    <div class="panel-head">
+
+      <div class="panel-title">
+        📡 معاملات واقعی اخیر Bybit
+      </div>
+
+      <div id="tradeInfo" class="fp-meta">
+        —
+      </div>
+
+    </div>
+
+    <div class="trade-wrap">
+
       <table>
+
         <thead>
           <tr>
-            <th>Symbol</th>
-            <th>Score</th>
-            <th>Signal</th>
+            <th>Time</th>
+            <th>Side</th>
             <th>Price</th>
-            <th>Delta %</th>
-            <th>Pressure</th>
-            <th>Absorption</th>
+            <th>Size</th>
+            <th>Value</th>
           </tr>
         </thead>
-        <tbody id="scanBody"></tbody>
+
+        <tbody id="tradeBody"></tbody>
+
       </table>
+
     </div>
-  </div>
+
+  </section>
 
 </div>
 
 <script>
 "use strict";
 
-/* =========================================================
-   STATE
-========================================================= */
+const API=location.origin;
 
-const state = {
-  symbol: "BTCUSDT",
-  interval: "5",
-  data: null,
+let symbol="BTCUSDT";
+let interval="1";
 
-  chart: {
-    candles: [],
-    start: 0,
-    count: 65,
-    selected: -1,
-    dragging: false,
-    moved: false,
-    lastX: 0,
-    pointers: new Map(),
-    pinch: null,
-    lastTap: 0,
-    lastTapX: 0
-  },
+let data=null;
+let liveTimer=null;
+let scanTimer=null;
 
-  footprint: {
-    selected: -1,
-    scale: 1
-  }
+let selectedIndex=-1;
+
+let viewCount=70;
+let viewStart=0;
+
+let dpr=Math.max(
+  1,
+  Math.min(
+    3,
+    window.devicePixelRatio||1
+  )
+);
+
+const layers={
+  candles:true,
+  footprint:true,
+  heatmap:true,
+  walls:true,
+  liquidity:true,
+  zones:true,
+  sweep:true,
+  absorption:true,
+  blocks:true,
+  trades:true,
+  delta:true,
+  bidask:true
 };
 
-/* =========================================================
-   DOM
-========================================================= */
+const canvas=
+  document.getElementById("chart");
 
-const $ = id => document.getElementById(id);
-
-const canvas = $("chart");
-const ctx = canvas.getContext("2d");
-
-const chartWrap = $("chartWrap");
-const fpViewport = $("fpViewport");
-const fpBoard = $("fpBoard");
-
-/* =========================================================
-   HELPERS
-========================================================= */
-
-function num(v,d=0){
-  const x=Number(v);
-  return Number.isFinite(x)?x:d;
-}
-
-function fmt(v,d=2){
-  const x=num(v);
-  if(Math.abs(x)>=1000000)return (x/1000000).toFixed(2)+"M";
-  if(Math.abs(x)>=1000)return (x/1000).toFixed(2)+"K";
-  return x.toFixed(d);
-}
-
-function priceFmt(v){
-  const x=num(v);
-  if(x===0)return "0";
-  if(Math.abs(x)>=1000)return x.toFixed(2);
-  if(Math.abs(x)>=1)return x.toFixed(4);
-  if(Math.abs(x)>=.01)return x.toFixed(6);
-  return x.toPrecision(6);
-}
-
-function signed(v,d=2){
-  const x=num(v);
-  return (x>=0?"+":"")+fmt(x,d);
-}
-
-function pct(v,d=2){
-  return signed(v,d)+"%";
-}
-
-function timeFmt(t){
-  if(!t)return "-";
-  return new Date(num(t)).toLocaleTimeString("fa-IR",{
-    hour:"2-digit",
-    minute:"2-digit",
-    second:"2-digit"
-  });
-}
-
-function escapeHtml(s){
-  return String(s ?? "")
-    .replaceAll("&","&amp;")
-    .replaceAll("<","&lt;")
-    .replaceAll(">","&gt;")
-    .replaceAll('"',"&quot;")
-    .replaceAll("'","&#039;");
-}
-
-/* =========================================================
-   API
-========================================================= */
-
-async function api(path){
-  const r=await fetch(path,{
-    cache:"no-store",
-    headers:{accept:"application/json"}
+const ctx=
+  canvas.getContext("2d",{
+    alpha:false
   });
 
-  if(!r.ok){
-    throw new Error("HTTP "+r.status);
-  }
+const canvasWrap=
+  document.getElementById("canvasWrap");
 
-  const data=await r.json();
+const crosshair=
+  document.getElementById("crosshair");
 
-  if(data && data.ok===false){
-    throw new Error(data.error || "Worker error");
-  }
+const crossV=
+  document.getElementById("crossV");
 
-  return data;
+const crossH=
+  document.getElementById("crossH");
+
+const statusEl=
+  document.getElementById("status");
+
+const fpViewport=
+  document.getElementById("fpViewport");
+
+const fpBoard=
+  document.getElementById("fpBoard");
+
+function esc(value){
+  return String(value??"")
+    .replace(/&/g,"&amp;")
+    .replace(/</g,"&lt;")
+    .replace(/>/g,"&gt;")
+    .replace(/"/g,"&quot;");
 }
 
-async function loadData(){
-  const symbol=String($("symbolInput").value || "BTCUSDT")
-    .trim()
-    .toUpperCase();
+function num(value,digits=2){
+  const x=Number(value);
 
-  const interval=$("intervalSelect").value || "5";
+  if(!Number.isFinite(x))return"0";
 
-  state.symbol=symbol;
-  state.interval=interval;
+  if(Math.abs(x)>=1000000){
+    return(x/1000000).toFixed(2)+"M";
+  }
 
-  setStatus("🟡 دریافت اطلاعات واقعی Bybit...");
+  if(Math.abs(x)>=1000){
+    return(x/1000).toFixed(2)+"K";
+  }
 
-  try{
-    const data=await api(
-      `/api/analyze?symbol=${encodeURIComponent(symbol)}&interval=${encodeURIComponent(interval)}`
+  return x.toFixed(digits);
+}
+
+function fullNum(value,digits=4){
+  const x=Number(value);
+
+  if(!Number.isFinite(x))return"0";
+
+  return x.toLocaleString(
+    "en-US",
+    {
+      maximumFractionDigits:digits
+    }
+  );
+}
+
+function normalizeCandle(c){
+  return{
+    time:Number(c?.time||0),
+    open:Number(c?.open||0),
+    high:Number(c?.high||0),
+    low:Number(c?.low||0),
+    close:Number(c?.close||0),
+    volume:Number(c?.volume||0),
+    turnover:Number(c?.turnover||0),
+
+    buyVolume:Number(c?.buyVolume||0),
+    sellVolume:Number(c?.sellVolume||0),
+    delta:Number(c?.delta||0),
+    deltaValue:Number(c?.deltaValue||0),
+
+    totalVolume:Number(
+      c?.totalVolume??
+      c?.flowVolume??
+      0
+    ),
+
+    totalValue:Number(
+      c?.totalValue??
+      0
+    )
+  };
+}
+
+function getCandles(){
+  return(data?.candles||[])
+    .map(normalizeCandle);
+}
+
+function getFootprint(index){
+  return data?.footprints?.[index]||null;
+}
+
+function getLevels(fp){
+  return Array.isArray(fp?.levels)
+    ?fp.levels
+    :[];
+}
+
+function setStatus(text,ok=true){
+  statusEl.textContent=text;
+  statusEl.className=
+    "status "+(ok?"ok":"bad");
+}
+
+function formatTime(ms){
+  if(!ms)return"—";
+
+  return new Date(ms)
+    .toLocaleTimeString(
+      "fa-IR",
+      {
+        hour:"2-digit",
+        minute:"2-digit",
+        second:"2-digit"
+      }
     );
-
-    state.data=data;
-
-    prepareChart();
-    renderAll();
-
-    setStatus("🟢 اتصال برقرار است — داده واقعی Bybit");
-  }catch(e){
-    console.error(e);
-    setStatus("🔴 خطا: "+e.message);
-  }
 }
 
-function setStatus(text){
-  $("status").textContent=text;
+function formatDate(ms){
+  if(!ms)return"—";
+
+  return new Date(ms)
+    .toLocaleString(
+      "fa-IR",
+      {
+        month:"2-digit",
+        day:"2-digit",
+        hour:"2-digit",
+        minute:"2-digit"
+      }
+    );
 }
 
-/* =========================================================
-   CHART
-========================================================= */
-
-function prepareChart(){
-  const candles=state.data?.candles || [];
-
-  state.chart.candles=candles;
-
-  if(!candles.length){
-    state.chart.start=0;
-    state.chart.selected=-1;
-    return;
-  }
-
-  state.chart.count=Math.min(
-    Math.max(state.chart.count,25),
-    candles.length
+function priceDigits(){
+  const p=Number(
+    data?.instrument?.tickSize||0
   );
 
-  state.chart.start=Math.max(
-    0,
-    candles.length-state.chart.count
+  if(!p)return 4;
+
+  const s=String(p);
+
+  if(!s.includes("."))return 0;
+
+  return s.split(".")[1]
+    .replace(/0+$/,"")
+    .length;
+}
+
+function priceFormat(v){
+  return fullNum(
+    v,
+    priceDigits()
   );
-
-  state.chart.selected=candles.length-1;
-
-  state.footprint.selected=state.chart.selected;
 }
 
 function resizeCanvas(){
-  const rect=chartWrap.getBoundingClientRect();
-  const dpr=Math.min(window.devicePixelRatio || 1,2);
+  const rect=
+    canvasWrap.getBoundingClientRect();
 
-  canvas.width=Math.max(1,Math.floor(rect.width*dpr));
-  canvas.height=Math.max(1,Math.floor(rect.height*dpr));
+  dpr=Math.max(
+    1,
+    Math.min(
+      3,
+      window.devicePixelRatio||1
+    )
+  );
 
-  canvas.style.width=rect.width+"px";
-  canvas.style.height=rect.height+"px";
+  canvas.width=
+    Math.max(
+      1,
+      Math.floor(rect.width*dpr)
+    );
 
-  ctx.setTransform(dpr,0,0,dpr,0,0);
+  canvas.height=
+    Math.max(
+      1,
+      Math.floor(rect.height*dpr)
+    );
+
+  canvas.style.width=
+    rect.width+"px";
+
+  canvas.style.height=
+    rect.height+"px";
+
+  ctx.setTransform(
+    dpr,
+    0,
+    0,
+    dpr,
+    0,
+    0
+  );
 
   drawChart();
 }
 
-function visibleCandles(){
-  const all=state.chart.candles;
-  const start=Math.max(
-    0,
-    Math.min(state.chart.start,Math.max(0,all.length-state.chart.count))
-  );
-
-  state.chart.start=start;
-
-  return all.slice(start,start+state.chart.count);
-}
-
-function drawChart(){
-  const rect=chartWrap.getBoundingClientRect();
-  const W=rect.width;
-  const H=rect.height;
-
-  ctx.clearRect(0,0,W,H);
-
-  ctx.fillStyle="#060a10";
-  ctx.fillRect(0,0,W,H);
-
-  const candles=visibleCandles();
+function getVisible(){
+  const candles=getCandles();
 
   if(!candles.length){
-    ctx.fillStyle="#718096";
-    ctx.textAlign="center";
-    ctx.fillText("داده‌ای وجود ندارد",W/2,H/2);
-    return;
+    return{
+      candles:[],
+      start:0,
+      end:0
+    };
   }
 
-  const highs=candles.map(c=>num(c.high));
-  const lows=candles.map(c=>num(c.low));
+  viewCount=Math.max(
+    10,
+    Math.min(
+      viewCount,
+      candles.length
+    )
+  );
 
-  let hi=Math.max(...highs);
-  let lo=Math.min(...lows);
+  viewStart=Math.max(
+    0,
+    Math.min(
+      viewStart,
+      Math.max(
+        0,
+        candles.length-viewCount
+      )
+    )
+  );
 
-  const range=Math.max(hi-lo,Number.EPSILON);
+  const start=Math.floor(viewStart);
 
-  hi+=range*.08;
-  lo-=range*.08;
+  const end=Math.min(
+    candles.length,
+    start+Math.floor(viewCount)
+  );
 
-  const chartTop=38;
-  const chartBottom=H-45;
-  const chartHeight=chartBottom-chartTop;
-
-  const priceY=price=>{
-    return chartTop+(hi-price)/(hi-lo)*chartHeight;
+  return{
+    candles:candles.slice(
+      start,
+      end
+    ),
+    start,
+    end
   };
+}
 
-  const left=8;
-  const right=58;
-  const plotW=W-left-right;
+function chartGeometry(){
+  const rect=
+    canvasWrap.getBoundingClientRect();
 
-  const gap=Math.max(
-    2,
-    Math.min(10,plotW/candles.length*.18)
+  return{
+    width:rect.width,
+    height:rect.height,
+    left:58,
+    right:18,
+    top:20,
+    bottom:58
+  };
+}
+
+function visiblePriceRange(visible){
+  if(!visible.candles.length){
+    return{
+      min:0,
+      max:1
+    };
+  }
+
+  let min=Infinity;
+  let max=-Infinity;
+
+  for(const c of visible.candles){
+    min=Math.min(min,c.low);
+    max=Math.max(max,c.high);
+  }
+
+  if(layers.bidask){
+    for(const x of data?.orderbook?.bids||[]){
+      min=Math.min(min,Number(x.price));
+      max=Math.max(max,Number(x.price));
+    }
+
+    for(const x of data?.orderbook?.asks||[]){
+      min=Math.min(min,Number(x.price));
+      max=Math.max(max,Number(x.price));
+    }
+  }
+
+  const range=Math.max(
+    max-min,
+    Math.abs(max)*0.0001,
+    0.00000001
   );
 
-  const cw=Math.max(
-    3,
-    (plotW-gap*(candles.length-1))/candles.length
-  );
+  const pad=range*0.08;
 
-  /* grid */
+  return{
+    min:min-pad,
+    max:max+pad
+  };
+}
 
-  ctx.strokeStyle="rgba(120,140,165,.10)";
+function priceY(price,range,g){
+  const h=
+    g.height-
+    g.top-
+    g.bottom;
+
+  if(
+    !h||
+    range.max===range.min
+  ){
+    return g.top+h/2;
+  }
+
+  return g.top+
+    (
+      (range.max-price)/
+      (range.max-range.min)
+    )*h;
+}
+
+function xForIndex(
+  localIndex,
+  visibleLength,
+  g
+){
+  const chartW=
+    g.width-
+    g.left-
+    g.right;
+
+  const step=
+    chartW/
+    Math.max(
+      1,
+      visibleLength
+    );
+
+  return g.left+
+    step*localIndex+
+    step/2;
+}
+
+function candleStep(g,count){
+  return(
+    g.width-
+    g.left-
+    g.right
+  )/Math.max(1,count);
+}
+
+function drawGrid(g,range){
+  ctx.save();
+
+  ctx.strokeStyle="#162631";
   ctx.lineWidth=1;
 
-  for(let i=0;i<=8;i++){
-    const y=chartTop+i*chartHeight/8;
+  const rows=7;
+
+  for(let i=0;i<=rows;i++){
+    const y=
+      g.top+
+      (
+        g.height-
+        g.top-
+        g.bottom
+      )*i/rows;
 
     ctx.beginPath();
-    ctx.moveTo(left,y);
-    ctx.lineTo(W-right,y);
+    ctx.moveTo(g.left,y);
+    ctx.lineTo(
+      g.width-g.right,
+      y
+    );
     ctx.stroke();
 
-    const p=hi-(hi-lo)*i/8;
+    const p=
+      range.max-
+      (
+        range.max-range.min
+      )*i/rows;
 
-    ctx.fillStyle="#64748b";
-    ctx.font="10px Arial";
+    ctx.fillStyle="#607584";
+    ctx.font="10px Tahoma";
     ctx.textAlign="left";
-    ctx.fillText(priceFmt(p),W-right+5,y+3);
+
+    ctx.fillText(
+      priceFormat(p),
+      4,
+      y+3
+    );
   }
 
-  for(let i=0;i<candles.length;i++){
-    const x=left+i*(cw+gap)+cw/2;
+  ctx.restore();
+}
 
-    ctx.strokeStyle="rgba(120,140,165,.06)";
-    ctx.beginPath();
-    ctx.moveTo(x,chartTop);
-    ctx.lineTo(x,chartBottom);
-    ctx.stroke();
-  }
+function drawHeatmap(
+  g,
+  visible,
+  range
+){
+  if(!layers.heatmap)return;
 
-  /* candles */
+  const heat=data?.heatmap||[];
 
-  candles.forEach((c,i)=>{
-    const x=left+i*(cw+gap)+cw/2;
+  if(!heat.length)return;
 
-    const yO=priceY(c.open);
-    const yC=priceY(c.close);
-    const yH=priceY(c.high);
-    const yL=priceY(c.low);
+  ctx.save();
 
-    const bullish=c.close>=c.open;
-
-    ctx.strokeStyle=bullish?"#00e676":"#ff4057";
-    ctx.fillStyle=bullish?"#00e676":"#ff4057";
-
-    ctx.lineWidth=Math.max(1,cw*.16);
-
-    ctx.beginPath();
-    ctx.moveTo(x,yH);
-    ctx.lineTo(x,yL);
-    ctx.stroke();
-
-    const bodyTop=Math.min(yO,yC);
-    const bodyHeight=Math.max(1,Math.abs(yC-yO));
-
-    ctx.fillRect(
-      x-cw*.36,
-      bodyTop,
-      Math.max(2,cw*.72),
-      bodyHeight
+  for(const x of heat){
+    const y=priceY(
+      x.price,
+      range,
+      g
     );
 
     if(
-      state.chart.start+i===
-      state.chart.selected
+      y<g.top||
+      y>g.height-g.bottom
+    )continue;
+
+    const alpha=
+      0.03+
+      Math.max(
+        0,
+        Math.min(
+          0.20,
+          Number(x.intensity||0)*0.20
+        )
+      );
+
+    ctx.fillStyle=
+      x.side==="BID"
+        ?`rgba(255,60,70,${alpha})`
+        :`rgba(50,220,110,${alpha})`;
+
+    ctx.fillRect(
+      g.left,
+      y-5,
+      g.width-g.left-g.right,
+      10
+    );
+  }
+
+  ctx.restore();
+}
+
+function drawCandles(
+  g,
+  visible,
+  range
+){
+  if(!layers.candles)return;
+
+  const step=
+    candleStep(
+      g,
+      visible.candles.length
+    );
+
+  const bodyW=
+    Math.max(
+      3,
+      Math.min(
+        20,
+        step*.64
+      )
+    );
+
+  ctx.save();
+
+  visible.candles.forEach((c,i)=>{
+
+    const x=xForIndex(
+      i,
+      visible.candles.length,
+      g
+    );
+
+    const yOpen=priceY(
+      c.open,
+      range,
+      g
+    );
+
+    const yClose=priceY(
+      c.close,
+      range,
+      g
+    );
+
+    const yHigh=priceY(
+      c.high,
+      range,
+      g
+    );
+
+    const yLow=priceY(
+      c.low,
+      range,
+      g
+    );
+
+    const bullish=
+      c.close>=c.open;
+
+    const candleColor=
+      bullish
+        ?"rgb(55,220,114)"
+        :"rgb(255,85,95)";
+
+    ctx.strokeStyle=candleColor;
+    ctx.lineWidth=1.2;
+
+    ctx.beginPath();
+    ctx.moveTo(x,yHigh);
+    ctx.lineTo(x,yLow);
+    ctx.stroke();
+
+    const top=Math.min(
+      yOpen,
+      yClose
+    );
+
+    const h=Math.max(
+      1,
+      Math.abs(
+        yClose-yOpen
+      )
+    );
+
+    ctx.fillStyle=candleColor;
+
+    ctx.fillRect(
+      x-bodyW/2,
+      top,
+      bodyW,
+      h
+    );
+
+    if(
+      selectedIndex===
+      visible.start+i
     ){
       ctx.strokeStyle="#ffffff";
       ctx.lineWidth=2;
 
       ctx.strokeRect(
-        x-cw*.52,
-        Math.min(yH,chartTop),
-        Math.max(4,cw*1.04),
-        Math.min(
-          chartBottom-chartTop,
-          Math.max(8,yL-yH)
-        )
-      );
-    }
-
-    /* delta marker */
-
-    const d=num(c.delta);
-
-    if(Math.abs(d)>0){
-      ctx.font="9px Arial";
-      ctx.textAlign="center";
-      ctx.fillStyle=d>=0?"#00e676":"#ff4057";
-      ctx.fillText(
-        signed(d,0),
-        x,
-        chartBottom+16
-      );
-    }
-
-    if(i%Math.ceil(candles.length/8)===0){
-      ctx.fillStyle="#65748a";
-      ctx.font="9px Arial";
-      ctx.textAlign="center";
-      ctx.fillText(
-        timeFmt(c.time),
-        x,
-        H-10
+        x-bodyW/2-4,
+        top-4,
+        bodyW+8,
+        h+8
       );
     }
   });
 
-  /* last price */
+  ctx.restore();
+}
 
-  const last=num(state.data?.lastPrice);
+function drawDelta(
+  g,
+  visible,
+  range
+){
+  if(!layers.delta)return;
 
-  if(last>0 && last>=lo && last<=hi){
-    const y=priceY(last);
+  const step=
+    candleStep(
+      g,
+      visible.candles.length
+    );
 
-    ctx.strokeStyle="rgba(255,213,74,.65)";
-    ctx.setLineDash([4,4]);
+  ctx.save();
 
-    ctx.beginPath();
-    ctx.moveTo(left,y);
-    ctx.lineTo(W-right,y);
-    ctx.stroke();
+  visible.candles.forEach((c,i)=>{
 
-    ctx.setLineDash([]);
+    const x=xForIndex(
+      i,
+      visible.candles.length,
+      g
+    );
 
-    ctx.fillStyle="#ffd54a";
-    ctx.fillRect(W-right,y-9,right,18);
+    const delta=
+      Number(c.delta||0);
 
-    ctx.fillStyle="#10151d";
-    ctx.font="10px Arial";
+    ctx.fillStyle=
+      delta>=0
+        ?"rgb(53,223,114)"
+        :"rgb(255,89,98)";
+
+    ctx.font="9px Tahoma";
     ctx.textAlign="center";
-    ctx.fillText(priceFmt(last),W-right+right/2,y+3);
-  }
-
-  /* footer */
-
-  const sel=state.chart.candles[state.chart.selected];
-
-  if(sel){
-    ctx.fillStyle="#8b98aa";
-    ctx.font="10px Arial";
-    ctx.textAlign="left";
 
     ctx.fillText(
-      `${state.symbol} · ${state.interval}m · ${timeFmt(sel.time)}`,
-      left,
-      16
+      num(delta,2),
+      x,
+      g.height-29
     );
-  }
-}
 
-/* =========================================================
-   CHART GESTURES
-========================================================= */
+    if(i>0){
+      const previous=
+        Number(
+          visible.candles[i-1].delta||0
+        );
 
-function clampChart(){
-  const len=state.chart.candles.length;
+      ctx.strokeStyle=
+        delta>=previous
+          ?"rgba(50,220,110,.35)"
+          :"rgba(255,80,90,.35)";
 
-  state.chart.count=Math.max(
-    15,
-    Math.min(state.chart.count,Math.max(15,len))
-  );
-
-  state.chart.start=Math.max(
-    0,
-    Math.min(
-      state.chart.start,
-      Math.max(0,len-state.chart.count)
-    )
-  );
-}
-
-function chartZoom(factor,anchorX){
-  const len=state.chart.candles.length;
-  if(!len)return;
-
-  const oldCount=state.chart.count;
-  const newCount=Math.max(
-    15,
-    Math.min(
-      len,
-      Math.round(oldCount*factor)
-    )
-  );
-
-  if(newCount===oldCount)return;
-
-  const rect=chartWrap.getBoundingClientRect();
-  const left=8;
-  const right=58;
-  const usable=Math.max(1,rect.width-left-right);
-
-  const ratio=Math.max(
-    0,
-    Math.min(
-      1,
-      (anchorX-left)/usable
-    )
-  );
-
-  const anchorIndex=state.chart.start+ratio*oldCount;
-
-  state.chart.count=newCount;
-  state.chart.start=Math.round(
-    anchorIndex-ratio*newCount
-  );
-
-  clampChart();
-  drawChart();
-}
-
-function chartPan(dx){
-  const rect=chartWrap.getBoundingClientRect();
-  const usable=Math.max(1,rect.width-66);
-
-  const candlesPerPx=state.chart.count/usable;
-
-  state.chart.start-=Math.round(dx*candlesPerPx);
-
-  clampChart();
-  drawChart();
-}
-
-canvas.addEventListener("pointerdown",e=>{
-  canvas.setPointerCapture?.(e.pointerId);
-
-  state.chart.pointers.set(e.pointerId,{
-    x:e.clientX,
-    y:e.clientY
+      ctx.beginPath();
+      ctx.moveTo(
+        x-step,
+        g.height-38
+      );
+      ctx.lineTo(
+        x,
+        g.height-38
+      );
+      ctx.stroke();
+    }
   });
 
-  if(state.chart.pointers.size===1){
-    state.chart.dragging=true;
-    state.chart.moved=false;
-    state.chart.lastX=e.clientX;
-  }
-
-  if(state.chart.pointers.size===2){
-    const p=[...state.chart.pointers.values()];
-
-    const dx=p[0].x-p[1].x;
-    const dy=p[0].y-p[1].y;
-
-    state.chart.pinch={
-      distance:Math.hypot(dx,dy),
-      count:state.chart.count,
-      start:state.chart.start,
-      center:(p[0].x+p[1].x)/2
-    };
-  }
-
-  e.preventDefault();
-});
-
-canvas.addEventListener("pointermove",e=>{
-  if(!state.chart.pointers.has(e.pointerId))return;
-
-  state.chart.pointers.set(e.pointerId,{
-    x:e.clientX,
-    y:e.clientY
-  });
-
-  if(state.chart.pointers.size===2 && state.chart.pinch){
-    const p=[...state.chart.pointers.values()];
-
-    const dx=p[0].x-p[1].x;
-    const dy=p[0].y-p[1].y;
-
-    const distance=Math.max(1,Math.hypot(dx,dy));
-
-    const factor=state.chart.pinch.distance/distance;
-
-    const newCount=Math.max(
-      15,
-      Math.min(
-        state.chart.candles.length,
-        Math.round(state.chart.pinch.count*factor)
-      )
-    );
-
-    const rect=chartWrap.getBoundingClientRect();
-    const left=8;
-    const right=58;
-    const usable=Math.max(1,rect.width-left-right);
-
-    const ratio=Math.max(
-      0,
-      Math.min(
-        1,
-        (state.chart.pinch.center-rect.left-left)/usable
-      )
-    );
-
-    const anchor=
-      state.chart.pinch.start+
-      ratio*state.chart.pinch.count;
-
-    state.chart.count=newCount;
-    state.chart.start=Math.round(
-      anchor-ratio*newCount
-    );
-
-    clampChart();
-    drawChart();
-
-    state.chart.moved=true;
-
-    e.preventDefault();
-    return;
-  }
-
-  if(
-    state.chart.pointers.size===1 &&
-    state.chart.dragging
-  ){
-    const dx=e.clientX-state.chart.lastX;
-
-    if(Math.abs(dx)>1){
-      state.chart.moved=true;
-      chartPan(dx);
-    }
-
-    state.chart.lastX=e.clientX;
-    e.preventDefault();
-  }
-});
-
-canvas.addEventListener("pointerup",e=>{
-  const wasMoved=state.chart.moved;
-
-  state.chart.pointers.delete(e.pointerId);
-
-  if(state.chart.pointers.size<2){
-    state.chart.pinch=null;
-  }
-
-  if(state.chart.pointers.size===0){
-    state.chart.dragging=false;
-
-    if(!wasMoved){
-      const now=Date.now();
-      const doubleTap=
-        now-state.chart.lastTap<320 &&
-        Math.abs(e.clientX-state.chart.lastTapX)<35;
-
-      if(doubleTap){
-        chartZoom(.72,e.clientX-chartWrap.getBoundingClientRect().left);
-        state.chart.lastTap=0;
-      }else{
-        selectChartCandle(e.clientX);
-        state.chart.lastTap=now;
-        state.chart.lastTapX=e.clientX;
-      }
-    }
-  }
-
-  e.preventDefault();
-});
-
-canvas.addEventListener("pointercancel",e=>{
-  state.chart.pointers.delete(e.pointerId);
-  state.chart.dragging=false;
-  state.chart.pinch=null;
-});
-
-canvas.addEventListener("wheel",e=>{
-  e.preventDefault();
-
-  const rect=chartWrap.getBoundingClientRect();
-
-  chartZoom(
-    e.deltaY>0?1.12:.89,
-    e.clientX-rect.left
-  );
-},{passive:false});
-
-function selectChartCandle(clientX){
-  const rect=chartWrap.getBoundingClientRect();
-
-  const W=rect.width;
-  const left=8;
-  const right=58;
-
-  const usable=W-left-right;
-
-  const ratio=Math.max(
-    0,
-    Math.min(
-      1,
-      (clientX-rect.left-left)/usable
-    )
-  );
-
-  const index=Math.floor(
-    state.chart.start+
-    ratio*state.chart.count
-  );
-
-  if(
-    index>=0 &&
-    index<state.chart.candles.length
-  ){
-    state.chart.selected=index;
-    state.footprint.selected=index;
-
-    renderSelectedFootprint();
-    drawChart();
-  }
+  ctx.restore();
 }
 
-/* =========================================================
-   FOOTPRINT
-========================================================= */
+function drawOrderbook(g,range){
+  if(!layers.bidask)return;
 
-function getSelectedFootprint(){
-  const fps=state.data?.footprints || [];
+  const bids=
+    data?.orderbook?.bids||[];
 
-  if(!fps.length)return null;
+  const asks=
+    data?.orderbook?.asks||[];
 
-  let index=state.footprint.selected;
-
-  if(index<0){
-    index=fps.length-1;
-  }
-
-  index=Math.max(
-    0,
-    Math.min(index,fps.length-1)
-  );
-
-  state.footprint.selected=index;
-  state.chart.selected=index;
-
-  return fps[index];
-}
-
-function buildLevelRows(fp){
-  const levels=(fp?.levels || [])
-    .filter(x =>
-      num(x.price)>0 &&
-      (num(x.bidVolume)!==0 ||
-       num(x.askVolume)!==0 ||
-       num(x.delta)!==0)
-    )
-    .sort((a,b)=>num(b.price)-num(a.price));
-
-  return levels;
-}
-
-function renderSelectedFootprint(){
-  const fp=getSelectedFootprint();
-
-  if(!fp){
-    fpBoard.innerHTML=
-      `<div class="fp-empty">Footprint موجود نیست</div>`;
-    return;
-  }
-
-  const levels=buildLevelRows(fp);
-
-  if(!levels.length){
-    fpBoard.innerHTML=`
-      <div class="fp-empty">
-        برای این کندل هنوز معامله‌ای در داده‌های Recent Trade وجود ندارد.
-      </div>`;
-    return;
-  }
-
-  const maxDelta=Math.max(
+  const maxValue=Math.max(
     1,
-    ...levels.map(x=>Math.abs(num(x.delta)))
+    ...bids.map(
+      x=>Number(x.value||0)
+    ),
+    ...asks.map(
+      x=>Number(x.value||0)
+    )
   );
 
-  const candleHigh=num(fp.high);
-  const candleLow=num(fp.low);
-
-  const prices=levels.map(x=>num(x.price));
-
-  const maxPrice=Math.max(
-    candleHigh,
-    ...prices
+  const baseWidth=Math.min(
+    130,
+    g.width*.20
   );
 
-  const minPrice=Math.min(
-    candleLow,
-    ...prices
+  ctx.save();
+
+  for(const x of bids.slice(0,25)){
+    const y=priceY(
+      x.price,
+      range,
+      g
+    );
+
+    if(
+      y<g.top||
+      y>g.height-g.bottom
+    )continue;
+
+    const w=
+      baseWidth*
+      Number(x.value||0)/
+      maxValue;
+
+    ctx.fillStyle=
+      "rgba(255,65,75,.20)";
+
+    ctx.fillRect(
+      g.left-w,
+      y-2,
+      w,
+      4
+    );
+  }
+
+  for(const x of asks.slice(0,25)){
+    const y=priceY(
+      x.price,
+      range,
+      g
+    );
+
+    if(
+      y<g.top||
+      y>g.height-g.bottom
+    )continue;
+
+    const w=
+      baseWidth*
+      Number(x.value||0)/
+      maxValue;
+
+    ctx.fillStyle=
+      "rgba(50,220,110,.20)";
+
+    ctx.fillRect(
+      g.width-g.right,
+      y-2,
+      w,
+      4
+    );
+  }
+
+  ctx.restore();
+}
+
+function drawWalls(g,range){
+  if(!layers.walls)return;
+
+  const buy=
+    data?.wall?.buyWalls||[];
+
+  const sell=
+    data?.wall?.sellWalls||[];
+
+  ctx.save();
+
+  for(const x of buy.slice(0,8)){
+    const y=priceY(
+      x.price,
+      range,
+      g
+    );
+
+    if(
+      y<g.top||
+      y>g.height-g.bottom
+    )continue;
+
+    ctx.strokeStyle=
+      "rgba(255,80,90,.75)";
+
+    ctx.lineWidth=1.5;
+    ctx.setLineDash([7,5]);
+
+    ctx.beginPath();
+    ctx.moveTo(g.left,y);
+    ctx.lineTo(
+      g.width-g.right,
+      y
+    );
+    ctx.stroke();
+  }
+
+  for(const x of sell.slice(0,8)){
+    const y=priceY(
+      x.price,
+      range,
+      g
+    );
+
+    if(
+      y<g.top||
+      y>g.height-g.bottom
+    )continue;
+
+    ctx.strokeStyle=
+      "rgba(55,225,115,.75)";
+
+    ctx.lineWidth=1.5;
+    ctx.setLineDash([7,5]);
+
+    ctx.beginPath();
+    ctx.moveTo(g.left,y);
+    ctx.lineTo(
+      g.width-g.right,
+      y
+    );
+    ctx.stroke();
+  }
+
+  ctx.setLineDash([]);
+
+  ctx.restore();
+}
+
+function drawLiquidityZones(
+  g,
+  range
+){
+  if(
+    !layers.liquidity&&
+    !layers.zones
+  ){
+    return;
+  }
+
+  const zones=data?.zones||[];
+
+  ctx.save();
+
+  for(const z of zones.slice(0,25)){
+    const y=priceY(
+      z.price,
+      range,
+      g
+    );
+
+    if(
+      y<g.top||
+      y>g.height-g.bottom
+    )continue;
+
+    const strength=Math.min(
+      1,
+      Number(z.strength||0)/10
+    );
+
+    if(layers.liquidity){
+      ctx.fillStyle=
+        z.side==="BUY"
+          ?`rgba(255,70,80,${0.04+strength*.12})`
+          :`rgba(50,220,110,${0.04+strength*.12})`;
+
+      ctx.fillRect(
+        g.left,
+        y-4,
+        g.width-g.left-g.right,
+        8
+      );
+    }
+
+    if(layers.zones){
+      ctx.strokeStyle=
+        z.side==="BUY"
+          ?"rgba(255,80,90,.42)"
+          :"rgba(50,220,110,.42)";
+
+      ctx.lineWidth=1;
+
+      ctx.beginPath();
+      ctx.moveTo(g.left,y);
+      ctx.lineTo(
+        g.width-g.right,
+        y
+      );
+      ctx.stroke();
+    }
+  }
+
+  ctx.restore();
+}
+
+function drawSweep(g,range){
+  if(!layers.sweep)return;
+
+  const sweep=data?.sweep;
+
+  if(!sweep?.detected)return;
+
+  const y=priceY(
+    Number(sweep.price),
+    range,
+    g
+  );
+
+  ctx.save();
+
+  ctx.strokeStyle=
+    sweep.type==="BUY_SWEEP"
+      ?"rgb(59,228,120)"
+      :"rgb(255,91,100)";
+
+  ctx.lineWidth=2;
+  ctx.setLineDash([4,4]);
+
+  ctx.beginPath();
+  ctx.moveTo(g.left,y);
+  ctx.lineTo(
+    g.width-g.right,
+    y
+  );
+  ctx.stroke();
+
+  ctx.setLineDash([]);
+
+  ctx.font="11px Tahoma";
+  ctx.fillStyle=
+    sweep.type==="BUY_SWEEP"
+      ?"rgb(59,228,120)"
+      :"rgb(255,91,100)";
+
+  ctx.textAlign="right";
+
+  ctx.fillText(
+    sweep.type==="BUY_SWEEP"
+      ?"BUY SWEEP"
+      :"SELL SWEEP",
+    g.width-g.right-4,
+    y-5
+  );
+
+  ctx.restore();
+}
+
+function drawAbsorption(g,range){
+  if(!layers.absorption)return;
+
+  const a=data?.absorption;
+
+  if(!a?.detected)return;
+
+  const price=
+    Number(
+      data?.ticker?.last||0
+    );
+
+  const y=priceY(
+    price,
+    range,
+    g
+  );
+
+  ctx.save();
+
+  ctx.fillStyle=
+    a.type==="BUY_ABSORPTION"
+      ?"rgb(50,220,110)"
+      :"rgb(255,70,80)";
+
+  ctx.beginPath();
+
+  ctx.arc(
+    g.left+12,
+    y,
+    6,
+    0,
+    Math.PI*2
+  );
+
+  ctx.fill();
+
+  ctx.font="10px Tahoma";
+  ctx.textAlign="left";
+
+  ctx.fillText(
+    a.type==="BUY_ABSORPTION"
+      ?"BUY ABSORPTION"
+      :"SELL ABSORPTION",
+    g.left+23,
+    y+3
+  );
+
+  ctx.restore();
+}
+
+function drawBlocks(g,range){
+  if(!layers.blocks)return;
+
+  const blocks=
+    data?.blocks?.blocks||[];
+
+  if(!blocks.length)return;
+
+  ctx.save();
+
+  for(const b of blocks.slice(0,30)){
+    const y=priceY(
+      Number(b.price),
+      range,
+      g
+    );
+
+    if(
+      y<g.top||
+      y>g.height-g.bottom
+    )continue;
+
+    ctx.fillStyle=
+      b.side==="BUY"
+        ?"rgba(50,220,110,.85)"
+        :"rgba(255,70,80,.85)";
+
+    ctx.beginPath();
+
+    ctx.arc(
+      g.width-g.right-7,
+      y,
+      Math.max(
+        2,
+        Math.min(
+          7,
+          Math.log10(
+            Math.max(
+              1,
+              Number(b.value||1)
+            )
+          )
+        )
+      ),
+      0,
+      Math.PI*2
+    );
+
+    ctx.fill();
+  }
+
+  ctx.restore();
+}
+
+function drawTrades(g,range){
+  if(!layers.trades)return;
+
+  const trades=data?.trades||[];
+
+  if(!trades.length)return;
+
+  const visible=getVisible();
+
+  const startTime=
+    visible.candles[0]?.time||0;
+
+  const endTime=
+    visible.candles[
+      visible.candles.length-1
+    ]?.time||0;
+
+  const intervalMsValue=
+    Number(
+      data?.interval||
+      interval
+    )*60*1000;
+
+  const lastEnd=
+    endTime+intervalMsValue;
+
+  const local=trades.filter(t=>
+    t.time>=startTime&&
+    t.time<=lastEnd
+  );
+
+  ctx.save();
+
+  for(const t of local.slice(-120)){
+
+    const index=
+      visible.candles.findIndex(c=>
+        t.time>=c.time&&
+        t.time<
+          c.time+
+          intervalMsValue
+      );
+
+    if(index<0)continue;
+
+    const x=xForIndex(
+      index,
+      visible.candles.length,
+      g
+    );
+
+    const y=priceY(
+      Number(t.price),
+      range,
+      g
+    );
+
+    const side=
+      String(t.side)
+        .toUpperCase();
+
+    ctx.fillStyle=
+      side==="BUY"
+        ?"rgba(50,225,110,.65)"
+        :"rgba(255,70,80,.65)";
+
+    const size=Math.max(
+      1.5,
+      Math.min(
+        6,
+        Math.sqrt(
+          Math.max(
+            1,
+            Number(t.value||1)
+          )
+        )/
+        Math.sqrt(
+          Math.max(
+            1,
+            Number(
+              data?.blocks?.threshold||1
+            )
+          )
+        )*8
+      )
+    );
+
+    ctx.beginPath();
+
+    ctx.arc(
+      x,
+      y,
+      size,
+      0,
+      Math.PI*2
+    );
+
+    ctx.fill();
+  }
+
+  ctx.restore();
+}
+
+function drawSelected(
+  g,
+  visible
+){
+  if(
+    selectedIndex<visible.start||
+    selectedIndex>=visible.end
+  ){
+    return;
+  }
+
+  const local=
+    selectedIndex-visible.start;
+
+  const x=xForIndex(
+    local,
+    visible.candles.length,
+    g
+  );
+
+  ctx.save();
+
+  ctx.strokeStyle=
+    "rgba(255,255,255,.55)";
+
+  ctx.lineWidth=1;
+  ctx.setLineDash([3,4]);
+
+  ctx.beginPath();
+
+  ctx.moveTo(x,g.top);
+  ctx.lineTo(
+    x,
+    g.height-g.bottom
+  );
+
+  ctx.stroke();
+
+  ctx.setLineDash([]);
+
+  ctx.restore();
+}
+
+function drawChart(){
+  if(!canvas||!ctx)return;
+
+  const g=chartGeometry();
+
+  ctx.clearRect(
+    0,
+    0,
+    g.width,
+    g.height
+  );
+
+  ctx.fillStyle="#09131d";
+
+  ctx.fillRect(
+    0,
+    0,
+    g.width,
+    g.height
+  );
+
+  const visible=getVisible();
+
+  if(!visible.candles.length){
+    ctx.fillStyle="#64798a";
+    ctx.font="12px Tahoma";
+    ctx.textAlign="center";
+
+    ctx.fillText(
+      "داده‌ای برای نمایش وجود ندارد",
+      g.width/2,
+      g.height/2
+    );
+
+    return;
+  }
+
+  const range=
+    visiblePriceRange(
+      visible
+    );
+
+  drawGrid(g,range);
+  drawLiquidityZones(g,range);
+  drawHeatmap(g,visible,range);
+  drawOrderbook(g,range);
+  drawCandles(g,visible,range);
+  drawTrades(g,range);
+  drawBlocks(g,range);
+  drawWalls(g,range);
+  drawSweep(g,range);
+  drawAbsorption(g,range);
+  drawDelta(g,visible,range);
+  drawSelected(g,visible);
+}
+
+function updateCards(){
+  const ticker=data?.ticker||{};
+  const flow=data?.currentFlow||{};
+  const wall=data?.wall||{};
+  const absorption=data?.absorption||{};
+
+  const score=data?.score;
+  const signal=data?.signal;
+
+  document.getElementById(
+    "priceCard"
+  ).textContent=
+    priceFormat(ticker.last);
+
+  document.getElementById(
+    "buyCard"
+  ).textContent=
+    `${num(flow.buyVolume,2)} · ${num(flow.buyValue,2)}`;
+
+  document.getElementById(
+    "sellCard"
+  ).textContent=
+    `${num(flow.sellVolume,2)} · ${num(flow.sellValue,2)}`;
+
+  const deltaEl=
+    document.getElementById(
+      "deltaCard"
+    );
+
+  deltaEl.textContent=
+    `${num(flow.delta,2)} · ${num(flow.deltaPercent,2)}%`;
+
+  deltaEl.className=
+    "card-value "+
+    (
+      Number(flow.delta)>=0
+        ?"green"
+        :"red"
+    );
+
+  document.getElementById(
+    "bidBookCard"
+  ).textContent=
+    `${num(wall.buyLiquidity,2)} · ${num(wall.buyShare,1)}%`;
+
+  document.getElementById(
+    "askBookCard"
+  ).textContent=
+    `${num(wall.sellLiquidity,2)} · ${num(wall.sellShare,1)}%`;
+
+  const absEl=
+    document.getElementById(
+      "absorptionCard"
+    );
+
+  absEl.textContent=
+    absorption.detected
+      ?absorption.type
+      :"NONE";
+
+  absEl.className=
+    "card-value "+
+    (
+      absorption.type==="BUY_ABSORPTION"
+        ?"green"
+        :absorption.type==="SELL_ABSORPTION"
+          ?"red"
+          :""
+    );
+
+  const scoreEl=
+    document.getElementById(
+      "scoreCard"
+    );
+
+  if(
+    score!==undefined&&
+    score!==null
+  ){
+    scoreEl.textContent=
+      `${score} · ${signal||"WAIT"}`;
+
+    scoreEl.className=
+      "card-value "+
+      (
+        signal==="BUY"||
+        signal==="WATCH_BUY"
+          ?"green"
+          :signal==="SELL"||
+            signal==="WATCH_SELL"
+            ?"red"
+            :"yellow"
+      );
+  }else{
+    scoreEl.textContent="—";
+  }
+}
+
+function renderTrades(){
+  const body=
+    document.getElementById(
+      "tradeBody"
+    );
+
+  const trades=data?.trades||[];
+
+  body.innerHTML="";
+
+  for(
+    const t of trades.slice(-80).reverse()
+  ){
+
+    const tr=
+      document.createElement("tr");
+
+    const side=
+      String(t.side||"")
+        .toUpperCase();
+
+    const sideClass=
+      side==="BUY"
+        ?"green"
+        :"red";
+
+    tr.innerHTML=`
+      <td>${esc(formatTime(t.time))}</td>
+      <td class="${sideClass}">
+        ${esc(side)}
+      </td>
+      <td>${esc(priceFormat(t.price))}</td>
+      <td>${esc(fullNum(t.size,8))}</td>
+      <td>${esc(num(t.value,2))}</td>
+    `;
+
+    body.appendChild(tr);
+  }
+
+  document.getElementById(
+    "tradeInfo"
+  ).textContent=
+    `${trades.length} معامله`;
+}
+
+/* ==========================================================
+   FOOTPRINT RENDER
+   ========================================================== */
+
+let fpScale=1;
+
+function applyFpScale(){
+  fpBoard.style.width=
+    `${100/fpScale}%`;
+
+  fpBoard.style.transform=
+    `scale(${fpScale})`;
+
+  fpBoard.style.transformOrigin=
+    "top left";
+
+  const baseHeight=
+    fpBoard.scrollHeight||500;
+
+  fpBoard.style.marginBottom=
+    `${Math.max(
+      0,
+      baseHeight*(fpScale-1)
+    )}px`;
+}
+
+function renderSelectedFootprint(index){
+
+  const content=
+    document.getElementById(
+      "fpContent"
+    );
+
+  const candles=getCandles();
+  const candle=candles[index];
+  const fp=getFootprint(index);
+
+  if(!candle){
+    content.innerHTML=`
+      <div class="fp-empty">
+        کندلی انتخاب نشده است
+      </div>
+    `;
+
+    return;
+  }
+
+  document.getElementById(
+    "fpMeta"
+  ).textContent=
+    `${symbol} · ${interval}m · ${formatDate(candle.time)}`;
+
+  const levels=getLevels(fp);
+
+  const realTradeCount=
+    Number(fp?.tradeCount||0);
+
+  if(
+    !fp||
+    !realTradeCount||
+    !levels.length
+  ){
+    content.innerHTML=`
+      <div class="fp-empty">
+        برای این کندل معامله واقعی Bybit در نمونه دریافتی موجود نیست.
+        <br>
+        Footprint از Volume کندل ساخته نمی‌شود.
+      </div>
+    `;
+
+    return;
+  }
+
+  const ordered=
+    [...levels]
+      .sort(
+        (a,b)=>
+          Number(b.price)-
+          Number(a.price)
+      );
+
+  const high=Math.max(
+    Number(candle.high),
+    ...ordered.map(
+      x=>Number(x.price)
+    )
+  );
+
+  const low=Math.min(
+    Number(candle.low),
+    ...ordered.map(
+      x=>Number(x.price)
+    )
   );
 
   const range=Math.max(
-    maxPrice-minPrice,
-    Number.EPSILON
+    high-low,
+    0.00000001
   );
 
-  /*
-    تعیین موقعیت wick و body روی همان ردیف‌های
-    واقعی قیمت.
-  */
-
-  const rowH=32;
-
-  const totalH=Math.max(
-    levels.length*rowH,
-    300
-  );
-
-  const priceToY=price=>{
-    return ((maxPrice-price)/range)*totalH;
-  };
-
-  const bodyTopPrice=Math.max(
-    num(fp.open),
-    num(fp.close)
-  );
-
-  const bodyBottomPrice=Math.min(
-    num(fp.open),
-    num(fp.close)
-  );
-
-  const bodyTop=priceToY(bodyTopPrice);
-  const bodyBottom=priceToY(bodyBottomPrice);
-
-  const wickTop=priceToY(candleHigh);
-  const wickBottom=priceToY(candleLow);
-
-  const bullish=num(fp.close)>=num(fp.open);
-
-  const wickTopPx=Math.max(
-    0,
-    Math.min(totalH,wickTop)
-  );
-
-  const wickHeight=Math.max(
-    2,
-    Math.min(totalH,totalH?wickBottom-wickTop:2)
-  );
-
-  const bodyTopPx=Math.max(
-    0,
-    Math.min(totalH,bodyTop)
-  );
-
-  const bodyHeight=Math.max(
-    3,
-    Math.min(totalH,Math.abs(bodyBottom-bodyTop))
-  );
-
-  let levelsHtml="";
-  let deltaHtml="";
-  let histHtml="";
-
-  for(const l of levels){
-    const bid=num(l.bidVolume);
-    const ask=num(l.askVolume);
-    const delta=num(l.delta);
-
-    const dClass=
-      delta>0
-        ?"fp-delta-positive"
-        :delta<0
-          ?"fp-delta-negative"
-          :"fp-delta-zero";
-
-    const sign=delta>0?"+":"";
-
-    const width=
-      Math.max(
-        delta===0?2:3,
-        Math.round(
-          Math.abs(delta)/maxDelta*100
+  const maxAbsDelta=Math.max(
+    0.00000001,
+    ...ordered.map(
+      level=>
+        Math.abs(
+          Number(
+            level.delta||0
+          )
         )
-      );
-
-    const histClass=
-      delta>0
-        ?"buy"
-        :delta<0
-          ?"sell"
-          :"neutral";
-
-    levelsHtml+=`
-      <div class="fp-level">
-        <div class="fp-bid">
-          <span>${fmt(bid,3)}</span>
-        </div>
-
-        <div class="fp-price">
-          ${priceFmt(l.price)}
-        </div>
-
-        <div class="fp-ask">
-          <span>${fmt(ask,3)}</span>
-        </div>
-      </div>
-    `;
-
-    deltaHtml+=`
-      <div class="fp-delta-row ${dClass}">
-        ${sign}${fmt(delta,3)}
-      </div>
-    `;
-
-    histHtml+=`
-      <div class="fp-hist-row">
-        <div
-          class="fp-hist ${histClass}"
-          style="width:${width}%"
-        ></div>
-      </div>
-    `;
-  }
-
-  fpBoard.innerHTML=`
-
-    <div class="fp-head">
-      <div>DELTA / هر سطح</div>
-      <div>BID / ASK در هر سطح قیمت</div>
-      <div>FIXED VOLUME RANGE</div>
-    </div>
-
-    <div class="fp-grid">
-
-      <div class="fp-side">
-        ${deltaHtml}
-      </div>
-
-      <div class="fp-candle"
-           style="min-height:${totalH}px">
-
-        <div class="fp-candle-info">
-          <div class="fp-ohlc">
-            O ${priceFmt(fp.open)}
-            · H ${priceFmt(fp.high)}
-            · L ${priceFmt(fp.low)}
-            · C ${priceFmt(fp.close)}
-          </div>
-        </div>
-
-        <div class="fp-candle-center"></div>
-
-        <div
-          class="fp-wick"
-          style="
-            top:${wickTopPx}px;
-            height:${wickHeight}px;
-          ">
-        </div>
-
-        <div
-          class="fp-body"
-          style="
-            top:${bodyTopPx}px;
-            height:${bodyHeight}px;
-            color:${bullish?"#00e676":"#ff4057"};
-            background:${bullish?"rgba(0,230,118,.13)":"rgba(255,64,87,.13)"};
-          ">
-        </div>
-
-        <div class="fp-levels">
-          ${levelsHtml}
-        </div>
-
-      </div>
-
-      <div class="fp-side">
-        ${histHtml}
-      </div>
-
-    </div>
-
-    <div class="fp-summary">
-
-      <div class="fp-summary-box">
-        <div class="fp-summary-label">BID / SELL</div>
-        <div class="fp-summary-value red">
-          ${fmt(fp.sellVolume,3)}
-        </div>
-      </div>
-
-      <div class="fp-summary-box">
-        <div class="fp-summary-label">ASK / BUY</div>
-        <div class="fp-summary-value green">
-          ${fmt(fp.buyVolume,3)}
-        </div>
-      </div>
-
-      <div class="fp-summary-box">
-        <div class="fp-summary-label">DELTA</div>
-        <div class="fp-summary-value ${num(fp.delta)>=0?"green":"red"}">
-          ${signed(fp.delta,3)}
-        </div>
-      </div>
-
-      <div class="fp-summary-box">
-        <div class="fp-summary-label">VOLUME</div>
-        <div class="fp-summary-value">
-          ${fmt(fp.flowVolume || fp.totalVolume,3)}
-        </div>
-      </div>
-
-      <div class="fp-summary-box">
-        <div class="fp-summary-label">VALUE</div>
-        <div class="fp-summary-value">
-          ${fmt(fp.totalValue,2)}
-        </div>
-      </div>
-
-    </div>
-  `;
-
-  $("fpSelectedInfo").textContent=
-    `${state.symbol} · ${state.interval}m · ${timeFmt(fp.time)} · ${levels.length} levels`;
-
-  applyFpScale();
-}
-
-function applyFpScale(){
-  const scale=state.footprint.scale;
-
-  fpBoard.style.zoom=String(scale);
-
-  $("fpScaleLabel").textContent=
-    Math.round(scale*100)+"%";
-}
-
-function fpZoom(factor){
-  state.footprint.scale=Math.max(
-    .55,
-    Math.min(
-      2.8,
-      state.footprint.scale*factor
     )
   );
 
-  applyFpScale();
-}
-
-$("fpPlus").onclick=()=>{
-  fpZoom(1.15);
-};
-
-$("fpMinus").onclick=()=>{
-  fpZoom(.87);
-};
-
-$("fpReset").onclick=()=>{
-  state.footprint.scale=1;
-  applyFpScale();
-};
-
-$("fpPrev").onclick=()=>{
-  if(!state.data?.footprints?.length)return;
-
-  state.footprint.selected=Math.max(
-    0,
-    state.footprint.selected-1
+  const maxBid=Math.max(
+    0.00000001,
+    ...ordered.map(
+      level=>
+        Number(
+          level.bidVolume||0
+        )
+    )
   );
 
-  state.chart.selected=state.footprint.selected;
-
-  renderSelectedFootprint();
-  drawChart();
-};
-
-$("fpNext").onclick=()=>{
-  if(!state.data?.footprints?.length)return;
-
-  state.footprint.selected=Math.min(
-    state.data.footprints.length-1,
-    state.footprint.selected+1
+  const maxAsk=Math.max(
+    0.00000001,
+    ...ordered.map(
+      level=>
+        Number(
+          level.askVolume||0
+        )
+    )
   );
 
-  state.chart.selected=state.footprint.selected;
-
-  renderSelectedFootprint();
-  drawChart();
-};
-
-/* =========================================================
-   FOOTPRINT PINCH ZOOM
-========================================================= */
-
-let fpPointers=new Map();
-let fpPinch=null;
-
-fpViewport.addEventListener("pointerdown",e=>{
-  fpPointers.set(e.pointerId,{
-    x:e.clientX,
-    y:e.clientY
-  });
-
-  if(fpPointers.size===2){
-    const p=[...fpPointers.values()];
-
-    const dx=p[0].x-p[1].x;
-    const dy=p[0].y-p[1].y;
-
-    fpPinch={
-      distance:Math.max(1,Math.hypot(dx,dy)),
-      scale:state.footprint.scale
-    };
-  }
-});
-
-fpViewport.addEventListener("pointermove",e=>{
-  if(!fpPointers.has(e.pointerId))return;
-
-  fpPointers.set(e.pointerId,{
-    x:e.clientX,
-    y:e.clientY
-  });
-
-  if(fpPointers.size===2 && fpPinch){
-    const p=[...fpPointers.values()];
-
-    const dx=p[0].x-p[1].x;
-    const dy=p[0].y-p[1].y;
-
-    const distance=Math.max(
-      1,
-      Math.hypot(dx,dy)
+  /*
+   * Candle stage:
+   * ارتفاع ثابت و هر price level دقیقاً یک ردیف دارد.
+   */
+  const rowHeight=30;
+  const candleHeight=
+    Math.max(
+      420,
+      ordered.length*rowHeight+20
     );
 
-    state.footprint.scale=Math.max(
-      .55,
-      Math.min(
-        2.8,
-        fpPinch.scale*
-        (distance/fpPinch.distance)
+  const priceToTop=price=>{
+    return(
+      (high-Number(price))/
+      range
+    )*
+    candleHeight;
+  };
+
+  const bodyTop=
+    priceToTop(
+      Math.max(
+        candle.open,
+        candle.close
       )
     );
 
-    applyFpScale();
-
-    e.preventDefault();
-  }
-},{passive:false});
-
-function fpPointerEnd(e){
-  fpPointers.delete(e.pointerId);
-
-  if(fpPointers.size<2){
-    fpPinch=null;
-  }
-}
-
-fpViewport.addEventListener("pointerup",fpPointerEnd);
-fpViewport.addEventListener("pointercancel",fpPointerEnd);
-
-/* =========================================================
-   SUMMARY
-========================================================= */
-
-function renderStats(){
-  const d=state.data;
-
-  if(!d)return;
-
-  const price=num(d.lastPrice);
-  const flow=d.currentFlow || {};
-
-  $("statPrice").textContent=priceFmt(price);
-
-  const signal=d.signal || "WAIT";
-
-  $("statSignal").textContent=signal;
-  $("statSignal").className=
-    "stat-value signal "+signal;
-
-  $("statDelta").textContent=
-    signed(flow.delta,3);
-
-  $("statDelta").className=
-    "stat-value "+
-    (num(flow.delta)>=0?"green":"red");
-
-  $("statPressure").textContent=
-    d.pressure || d.flowPressure || "-";
-
-  $("statPressure").className=
-    "stat-value "+
-    (
-      String(d.pressure||"").includes("BUY")
-        ?"green"
-        :
-      String(d.pressure||"").includes("SELL")
-        ?"red"
-        :"yellow"
+  const bodyBottom=
+    priceToTop(
+      Math.min(
+        candle.open,
+        candle.close
+      )
     );
 
-  $("chartSymbol").textContent=
-    state.symbol;
+  const bodyHeight=
+    Math.max(
+      8,
+      bodyBottom-bodyTop
+    );
 
-  $("chartPrice").textContent=
-    priceFmt(price);
+  const wickTop=
+    priceToTop(high);
 
-  $("chartSignal").textContent=
-    signal;
+  const wickBottom=
+    priceToTop(low);
 
-  $("chartSignal").className=
-    "badge signal "+signal;
+  const bullish=
+    Number(candle.close)>=
+    Number(candle.open);
 
-  $("chartDelta").textContent=
-    "Δ "+signed(flow.delta,3);
+  /*
+   * ردیف‌های سمت SELL/BID
+   */
+  const bidRows=ordered.map(level=>{
 
-  $("chartDelta").style.color=
-    num(flow.delta)>=0
-      ?" #00e676"
-      :"#ff4057";
-}
+    const bid=
+      Number(level.bidVolume||0);
 
-function renderOrderbook(){
-  const d=state.data;
-  const w=d?.wall;
+    const percent=
+      bid/maxBid*100;
 
-  if(!w){
-    $("orderbookPanel").innerHTML="";
-    return;
-  }
+    const delta=
+      Number(
+        level.delta??(
+          Number(level.askVolume||0)-
+          bid
+        )
+      );
 
-  $("orderbookPanel").innerHTML=`
+    const highlight=
+      bid>0
+        ?" fp-level-highlight"
+        :"";
 
-    <div class="stat">
-      <div class="stat-title">Best Bid</div>
-      <div class="stat-value red">
-        ${priceFmt(w.bestBid)}
+    return`
+      <div class="fp-level-row${highlight}">
+        <div
+          class="fp-level-bar bid"
+          style="width:${percent}%"
+        ></div>
+
+        <div class="fp-level-value fp-bid">
+          ${num(bid,3)}
+        </div>
       </div>
+    `;
+  }).join("");
+
+  /*
+   * ردیف‌های سمت BUY/ASK
+   */
+  const askRows=ordered.map(level=>{
+
+    const ask=
+      Number(level.askVolume||0);
+
+    const percent=
+      ask/maxAsk*100;
+
+    const highlight=
+      ask>0
+        ?" fp-level-highlight"
+        :"";
+
+    return`
+      <div class="fp-level-row${highlight}">
+        <div
+          class="fp-level-bar ask"
+          style="width:${percent}%"
+        ></div>
+
+        <div class="fp-level-value fp-ask">
+          ${num(ask,3)}
+        </div>
+      </div>
+    `;
+  }).join("");
+
+  /*
+   * Price + Bid/Ask داخل خود کندل
+   */
+  const insideRows=ordered.map(level=>{
+
+    const price=Number(level.price);
+
+    const bid=
+      Number(level.bidVolume||0);
+
+    const ask=
+      Number(level.askVolume||0);
+
+    const top=
+      priceToTop(price);
+
+    return`
+      <div
+        class="fp-price-row"
+        style="
+          top:${Math.max(
+            0,
+            top-rowHeight/2
+          )}px;
+        "
+      >
+        <span class="fp-inside-bid">
+          ${bid>0?num(bid,2):"·"}
+        </span>
+
+        <span class="fp-inside-ask">
+          ${ask>0?num(ask,2):"·"}
+        </span>
+      </div>
+    `;
+  }).join("");
+
+  /*
+   * Delta + Fixed Volume style histogram
+   * سمت راست
+   */
+  const deltaRows=ordered.map(level=>{
+
+    const delta=
+      Number(
+        level.delta??(
+          Number(level.askVolume||0)-
+          Number(level.bidVolume||0)
+        )
+      );
+
+    const abs=Math.abs(delta);
+
+    const width=
+      abs/maxAbsDelta*100;
+
+    const positive=delta>=0;
+
+    return`
+      <div class="fp-delta-row">
+
+        <div
+          class="fp-delta-value ${
+            positive
+              ?"green"
+              :"red"
+          }"
+        >
+          ${positive?"+":""}${num(delta,3)}
+        </div>
+
+        <div class="fp-delta-track">
+
+          <div class="fp-delta-axis"></div>
+
+          <div
+            class="fp-delta-bar ${
+              positive
+                ?"buy"
+                :"sell"
+            }"
+            style="
+              width:${Math.max(
+                abs>0?1:0,
+                width
+              )}%;
+            "
+          ></div>
+
+        </div>
+
+      </div>
+    `;
+  }).join("");
+
+  content.innerHTML=`
+
+    <div
+      class="fp-grid"
+      style="
+        --fp-row-height:${rowHeight}px;
+        --fp-candle-height:${candleHeight}px;
+      "
+    >
+
+      <!-- SELL / BID -->
+
+      <div class="fp-side">
+
+        <div class="fp-side-title red">
+          🔴 SELL / BID
+        </div>
+
+        ${bidRows}
+
+      </div>
+
+      <!-- CENTER CANDLE -->
+
+      <div class="fp-center">
+
+        <div class="fp-price-head">
+
+          <div class="red">
+            BID
+          </div>
+
+          <div class="green">
+            ASK
+          </div>
+
+        </div>
+
+        <div
+          class="fp-candle-stage"
+          style="
+            height:${candleHeight}px;
+          "
+        >
+
+          <div
+            class="fp-wick"
+            style="
+              top:${wickTop}px;
+              height:${Math.max(
+                2,
+                wickBottom-wickTop
+              )}px;
+            "
+          ></div>
+
+          <div
+            class="fp-body"
+            style="
+              top:${bodyTop}px;
+              height:${bodyHeight}px;
+              background:${
+                bullish
+                  ?"rgb(53,220,114)"
+                  :"rgb(255,89,98)"
+              };
+            "
+          ></div>
+
+          <div class="fp-price-column">
+            ${insideRows}
+          </div>
+
+          <div class="fp-candle-info">
+
+            O ${priceFormat(candle.open)}
+            ·
+            H ${priceFormat(candle.high)}
+            <br>
+
+            L ${priceFormat(candle.low)}
+            ·
+            C ${priceFormat(candle.close)}
+
+          </div>
+
+        </div>
+
+      </div>
+
+      <!-- DELTA + HISTOGRAM -->
+
+      <div class="fp-side fp-delta-column">
+
+        <div class="fp-side-title blue">
+          Δ DELTA · FIXED VOLUME
+        </div>
+
+        ${deltaRows}
+
+      </div>
+
+      <!-- ASK COLUMN BELOW/ADDITIONAL -->
     </div>
 
-    <div class="stat">
-      <div class="stat-title">Best Ask</div>
-      <div class="stat-value green">
-        ${priceFmt(w.bestAsk)}
+    <div
+      style="
+        display:grid;
+        grid-template-columns:1fr;
+        margin-top:8px;
+      "
+    >
+
+      <div
+        class="fp-side"
+        style="
+          border:1px solid #1f3440;
+          border-radius:8px;
+          overflow:hidden;
+        "
+      >
+
+        <div class="fp-side-title green">
+          🟢 BUY / ASK
+        </div>
+
+        <div
+          style="
+            display:grid;
+            grid-template-columns:repeat(${Math.max(
+              1,
+              Math.min(
+                6,
+                ordered.length
+              )
+            )},1fr);
+          "
+        >
+          ${ordered.slice(0,6).map(level=>`
+            <div
+              style="
+                min-height:38px;
+                border-bottom:1px solid #162733;
+                padding:5px;
+                text-align:center;
+              "
+            >
+              <div
+                style="
+                  color:#7f919f;
+                  font-size:8px;
+                  direction:ltr;
+                "
+              >
+                ${priceFormat(level.price)}
+              </div>
+
+              <div
+                class="fp-ask"
+                style="
+                  font-size:11px;
+                  font-weight:bold;
+                  direction:ltr;
+                "
+              >
+                ${num(level.askVolume,3)}
+              </div>
+            </div>
+          `).join("")}
+        </div>
+
       </div>
+
     </div>
 
-    <div class="stat">
-      <div class="stat-title">Bid Liquidity</div>
-      <div class="stat-value red">
-        ${fmt(w.buyLiquidity,2)}
-      </div>
-    </div>
+    <div class="fp-totals">
 
-    <div class="stat">
-      <div class="stat-title">Ask Liquidity</div>
-      <div class="stat-value green">
-        ${fmt(w.sellLiquidity,2)}
-      </div>
-    </div>
+      <div class="fp-total">
+        <div class="fp-total-label">
+          BID / SELL
+        </div>
 
-    <div class="stat">
-      <div class="stat-title">Bid Share</div>
-      <div class="stat-value">
-        ${fmt(w.buyShare,2)}%
+        <div class="fp-total-value red">
+          ${num(fp.sellVolume,3)}
+        </div>
       </div>
-    </div>
 
-    <div class="stat">
-      <div class="stat-title">Ask Share</div>
-      <div class="stat-value">
-        ${fmt(w.sellShare,2)}%
-      </div>
-    </div>
+      <div class="fp-total">
+        <div class="fp-total-label">
+          ASK / BUY
+        </div>
 
-    <div class="stat">
-      <div class="stat-title">Pressure</div>
-      <div class="stat-value ${
-        w.pressure==="BUY_PRESSURE"
-          ?"green"
-          :w.pressure==="SELL_PRESSURE"
-            ?"red"
-            :"yellow"
-      }">
-        ${escapeHtml(w.pressure)}
+        <div class="fp-total-value green">
+          ${num(fp.buyVolume,3)}
+        </div>
       </div>
-    </div>
 
-    <div class="stat">
-      <div class="stat-title">Walls</div>
-      <div class="stat-value">
-        ${(w.buyWalls?.length||0)}
-        /
-        ${(w.sellWalls?.length||0)}
+      <div class="fp-total">
+        <div class="fp-total-label">
+          DELTA
+        </div>
+
+        <div
+          class="fp-total-value ${
+            Number(fp.delta||0)>=0
+              ?"green"
+              :"red"
+          }"
+        >
+          ${
+            Number(fp.delta||0)>=0
+              ?"+"
+              :""
+          }${num(fp.delta,3)}
+        </div>
       </div>
+
+      <div class="fp-total">
+        <div class="fp-total-label">
+          VOLUME
+        </div>
+
+        <div class="fp-total-value">
+          ${num(fp.flowVolume,3)}
+        </div>
+      </div>
+
+      <div class="fp-total">
+        <div class="fp-total-label">
+          VALUE
+        </div>
+
+        <div class="fp-total-value">
+          ${num(fp.totalValue,2)}
+        </div>
+      </div>
+
+      <div class="fp-total">
+        <div class="fp-total-label">
+          TRADES
+        </div>
+
+        <div class="fp-total-value">
+          ${fullNum(realTradeCount,0)}
+        </div>
+      </div>
+
     </div>
   `;
-}
 
-/* =========================================================
-   TRADES
-========================================================= */
-
-function renderTrades(){
-  const list=state.data?.trades || [];
-
-  const rows=[...list]
-    .sort((a,b)=>num(b.time)-num(a.time))
-    .slice(0,100);
-
-  $("tradesBody").innerHTML=rows.map(t=>`
-    <tr>
-      <td>${timeFmt(t.time)}</td>
-      <td dir="ltr">${priceFmt(t.price)}</td>
-      <td dir="ltr">${fmt(t.size,4)}</td>
-      <td dir="ltr">${fmt(t.value,2)}</td>
-      <td class="${t.side==="BUY"?"green":"red"}">
-        ${t.side==="BUY"?"BUY":"SELL"}
-      </td>
-    </tr>
-  `).join("");
-}
-
-/* =========================================================
-   SCAN
-========================================================= */
-
-async function runScan(){
-  const btn=$("scanBtn");
-
-  btn.disabled=true;
-  btn.textContent="⏳ اسکن...";
-
-  try{
-    const data=await api("/api/scan?offset=0");
-
-    const rows=data.results || [];
-
-    $("scanBody").innerHTML=rows.map(x=>`
-      <tr>
-        <td>
-          <button
-            class="scan-symbol"
-            data-symbol="${escapeHtml(x.symbol)}">
-            ${escapeHtml(x.symbol)}
-          </button>
-        </td>
-        <td>${fmt(x.score,0)}</td>
-        <td class="signal ${escapeHtml(x.signal)}">
-          ${escapeHtml(x.signal)}
-        </td>
-        <td dir="ltr">${priceFmt(x.price)}</td>
-        <td class="${num(x.deltaPercent)>=0?"green":"red"}">
-          ${pct(x.deltaPercent,2)}
-        </td>
-        <td>${escapeHtml(x.pressure)}</td>
-        <td>${escapeHtml(x.absorption)}</td>
-      </tr>
-    `).join("");
-
-    document.querySelectorAll(".scan-symbol")
-      .forEach(b=>{
-        b.onclick=()=>{
-          $("symbolInput").value=
-            b.dataset.symbol;
-
-          loadData();
-        };
-      });
-
-  }catch(e){
-    setStatus("🔴 خطای اسکن: "+e.message);
-  }finally{
-    btn.disabled=false;
-    btn.textContent="🚀 اسکن بازار";
-  }
-}
-
-/* =========================================================
-   RENDER
-========================================================= */
-
-function renderSelectedFootprintOnly(){
-  renderSelectedFootprint();
-}
-
-function renderAll(){
-  renderStats();
-  renderOrderbook();
-  renderTrades();
-  renderSelectedFootprintOnly();
-  resizeCanvas();
-}
-
-/* =========================================================
-   BUTTONS
-========================================================= */
-
-$("analyzeBtn").onclick=loadData;
-$("refreshBtn").onclick=loadData;
-$("scanBtn").onclick=runScan;
-
-$("chartZoomIn").onclick=()=>{
-  chartZoom(
-    .78,
-    chartWrap.getBoundingClientRect().width/2
-  );
-};
-
-$("chartZoomOut").onclick=()=>{
-  chartZoom(
-    1.28,
-    chartWrap.getBoundingClientRect().width/2
-  );
-};
-
-$("chartReset").onclick=()=>{
-  prepareChart();
-  drawChart();
-  renderSelectedFootprint();
-};
-
-document.querySelectorAll("[data-tf]")
-  .forEach(btn=>{
-    btn.onclick=async()=>{
-      document.querySelectorAll("[data-tf]")
-        .forEach(x=>x.classList.remove("active"));
-
-      btn.classList.add("active");
-
-      $("intervalSelect").value=
-        btn.dataset.tf;
-
-      await loadData();
-    };
+  requestAnimationFrame(()=>{
+    applyFpScale();
+    fpViewport.scrollTop=0;
   });
+}
 
-$("intervalSelect").addEventListener("change",()=>{
-  document.querySelectorAll("[data-tf]")
-    .forEach(x=>{
-      x.classList.toggle(
-        "active",
-        x.dataset.tf===
-        $("intervalSelect").value
-      );
-    });
-});
+/* ==========================================================
+   CHART TOUCH / ZOOM / PAN
+   ========================================================== */
 
-$("symbolInput").addEventListener("keydown",e=>{
-  if(e.key==="Enter"){
-    loadData();
+function selectFromPointer(clientX){
+  const rect=
+    canvasWrap.getBoundingClientRect();
+
+  const g=chartGeometry();
+  const visible=getVisible();
+
+  if(!visible.candles.length)return;
+
+  const x=
+    clientX-
+    rect.left;
+
+  const chartW=
+    g.width-
+    g.left-
+    g.right;
+
+  const step=
+    chartW/
+    Math.max(
+      1,
+      visible.candles.length
+    );
+
+  const local=Math.floor(
+    (x-g.left)/step
+  );
+
+  if(
+    local>=0&&
+    local<visible.candles.length
+  ){
+    selectedIndex=
+      visible.start+local;
+
+    renderSelectedFootprint(
+      selectedIndex
+    );
+
+    drawChart();
   }
-});
+}
 
-/* =========================================================
-   KEYBOARD
-========================================================= */
+function zoomAt(
+  factor,
+  clientX
+){
+  const candles=getCandles();
 
-window.addEventListener("keydown",e=>{
-  if(e.key==="ArrowLeft"){
-    $("fpPrev").click();
-  }
+  if(!candles.length)return;
 
-  if(e.key==="ArrowRight"){
-    $("fpNext").click();
-  }
+  const rect=
+    canvasWrap.getBoundingClientRect();
 
-  if(e.key==="+"){
-    $("fpPlus").click();
-  }
+  const g=chartGeometry();
 
-  if(e.key==="-"){
-    $("fpMinus").click();
-  }
-});
+  const oldCount=
+    Math.max(
+      10,
+      Math.min(
+        viewCount,
+        candles.length
+      )
+    );
 
-/* =========================================================
-   RESIZE
-========================================================= */
+  const chartW=
+    g.width-
+    g.left-
+    g.right;
 
-window.addEventListener("resize",()=>{
-  resizeCanvas();
-});
+  const x=Math.max(
+    0,
+    Math.min(
+      chartW,
+      clientX-
+        rect.left-
+        g.left
+    )
+  );
 
-/* =========================================================
-   LIVE REFRESH
-========================================================= */
+  const ratio=
+    chartW
+      ?x/chartW
+      :0.5;
 
-let liveTimer=null;
+  const center=
+    viewStart+
+    ratio*oldCount;
 
-function startLive(){
-  clearInterval(liveTimer);
+  const newCount=
+    Math.max(
+      10,
+      Math.min(
+        candles.length,
+        Math.round(
+          oldCount*factor
+        )
+      )
+    );
 
-  liveTimer=setInterval(async()=>{
-    if(document.hidden)return;
+  viewCount=newCount;
+
+  viewStart=
+    center-
+    ratio*newCount;
+
+  viewStart=Math.max(
+    0,
+    Math.min(
+      viewStart,
+      candles.length-newCount
+    )
+  );
+
+  drawChart();
+}
+
+function moveView(delta){
+  const candles=getCandles();
+
+  if(!candles.length)return;
+
+  viewStart=Math.max(
+    0,
+    Math.min(
+      candles.length-viewCount,
+      viewStart+delta
+    )
+  );
+
+  drawChart();
+}
+
+const pointers=new Map();
+
+let pinchState=null;
+
+let pointerState={
+  active:false,
+  moved:false,
+  startX:0,
+  startY:0,
+  startView:0,
+  pointerId:null,
+  selecting:false
+};
+
+canvasWrap.addEventListener(
+  "pointerdown",
+  e=>{
+
+    e.preventDefault();
+
+    pointers.set(
+      e.pointerId,
+      {
+        x:e.clientX,
+        y:e.clientY
+      }
+    );
 
     try{
-      const data=await api(
-        `/api/live?symbol=${encodeURIComponent(state.symbol)}&interval=${encodeURIComponent(state.interval)}`
+      canvasWrap.setPointerCapture(
+        e.pointerId
+      );
+    }catch{}
+
+    if(pointers.size===2){
+
+      const pts=[
+        ...pointers.values()
+      ];
+
+      const dx=
+        pts[0].x-pts[1].x;
+
+      const dy=
+        pts[0].y-pts[1].y;
+
+      const distance=Math.hypot(
+        dx,
+        dy
       );
 
-      if(!data)return;
-
-      /*
-       * داده Live فقط اطلاعات جاری را تازه می‌کند.
-       * برای Footprint کامل، Analyze دوره‌ای دوباره انجام می‌شود.
-       */
-
-      state.data={
-        ...state.data,
-        ...data
+      pinchState={
+        distance,
+        count:viewCount
       };
 
-      renderStats();
-      renderOrderbook();
+      pointerState.active=false;
 
-      if(data.footprints?.length){
-        state.data.footprints=data.footprints;
+      return;
+    }
 
-        if(
-          state.footprint.selected>=
-          data.footprints.length
-        ){
-          state.footprint.selected=
-            data.footprints.length-1;
+    pointerState={
+      active:true,
+      moved:false,
+      startX:e.clientX,
+      startY:e.clientY,
+      startView:viewStart,
+      pointerId:e.pointerId,
+      selecting:true
+    };
+
+    const rect=
+      canvasWrap.getBoundingClientRect();
+
+    crossV.style.left=
+      `${e.clientX-rect.left}px`;
+
+    crossH.style.top=
+      `${e.clientY-rect.top}px`;
+
+    crosshair.style.display="block";
+  },
+  {
+    passive:false
+  }
+);
+
+canvasWrap.addEventListener(
+  "pointermove",
+  e=>{
+
+    e.preventDefault();
+
+    if(pointers.has(e.pointerId)){
+      pointers.set(
+        e.pointerId,
+        {
+          x:e.clientX,
+          y:e.clientY
         }
+      );
+    }
 
-        renderSelectedFootprint();
+    if(pointers.size>=2){
+
+      const pts=[
+        ...pointers.values()
+      ];
+
+      const dx=
+        pts[0].x-pts[1].x;
+
+      const dy=
+        pts[0].y-pts[1].y;
+
+      const distance=Math.hypot(
+        dx,
+        dy
+      );
+
+      if(
+        pinchState&&
+        pinchState.distance>0&&
+        distance>0
+      ){
+
+        const factor=
+          pinchState.distance/
+          distance;
+
+        const centerX=
+          (
+            pts[0].x+
+            pts[1].x
+          )/2;
+
+        zoomAt(
+          factor,
+          centerX
+        );
+
+        pinchState.distance=
+          distance;
       }
 
-      if(data.candles?.length){
-        state.data.candles=data.candles;
-        state.chart.candles=data.candles;
+      return;
+    }
+
+    const rect=
+      canvasWrap.getBoundingClientRect();
+
+    const x=
+      e.clientX-
+      rect.left;
+
+    const y=
+      e.clientY-
+      rect.top;
+
+    crossV.style.left=
+      `${x}px`;
+
+    crossH.style.top=
+      `${y}px`;
+
+    if(!pointerState.active){
+      return;
+    }
+
+    const dx=
+      e.clientX-
+      pointerState.startX;
+
+    const dy=
+      e.clientY-
+      pointerState.startY;
+
+    if(
+      Math.abs(dx)>6||
+      Math.abs(dy)>6
+    ){
+      pointerState.moved=true;
+    }
+
+    /*
+     * حرکت افقی = Pan
+     */
+    if(
+      Math.abs(dx)>
+      Math.abs(dy)
+    ){
+
+      const candles=getCandles();
+
+      const g=chartGeometry();
+
+      const step=
+        candleStep(
+          g,
+          viewCount
+        );
+
+      const delta=
+        step
+          ?dx/step
+          :0;
+
+      viewStart=
+        pointerState.startView-
+        delta;
+
+      viewStart=Math.max(
+        0,
+        Math.min(
+          candles.length-viewCount,
+          viewStart
+        )
+      );
+
+      drawChart();
+    }
+  },
+  {
+    passive:false
+  }
+);
+
+function finishPointer(e){
+
+  pointers.delete(
+    e.pointerId
+  );
+
+  if(pointers.size<2){
+    pinchState=null;
+  }
+
+  if(
+    pointerState.active&&
+    !pointerState.moved&&
+    pointers.size===0
+  ){
+    selectFromPointer(
+      e.clientX
+    );
+  }
+
+  pointerState.active=false;
+
+  if(!pointers.size){
+    crosshair.style.display="none";
+  }
+}
+
+canvasWrap.addEventListener(
+  "pointerup",
+  finishPointer,
+  {
+    passive:false
+  }
+);
+
+canvasWrap.addEventListener(
+  "pointercancel",
+  e=>{
+    pointers.delete(
+      e.pointerId
+    );
+
+    if(!pointers.size){
+      pointerState.active=false;
+      pinchState=null;
+      crosshair.style.display="none";
+    }
+  }
+);
+
+canvasWrap.addEventListener(
+  "wheel",
+  e=>{
+    e.preventDefault();
+
+    zoomAt(
+      e.deltaY>0
+        ?1.15
+        :0.87,
+      e.clientX
+    );
+  },
+  {
+    passive:false
+  }
+);
+
+/* ==========================================================
+   FOOTPRINT ZOOM
+   ========================================================== */
+
+document
+  .getElementById("fpPlus")
+  .addEventListener(
+    "click",
+    ()=>{
+      fpScale=Math.min(
+        2.5,
+        fpScale*1.18
+      );
+
+      applyFpScale();
+    }
+  );
+
+document
+  .getElementById("fpMinus")
+  .addEventListener(
+    "click",
+    ()=>{
+      fpScale=Math.max(
+        0.65,
+        fpScale/1.18
+      );
+
+      applyFpScale();
+    }
+  );
+
+document
+  .getElementById("fpReset")
+  .addEventListener(
+    "click",
+    ()=>{
+      fpScale=1;
+      applyFpScale();
+
+      fpViewport.scrollTop=0;
+      fpViewport.scrollLeft=0;
+    }
+  );
+
+/* ==========================================================
+   LAYERS
+   ========================================================== */
+
+document
+  .querySelectorAll(".layer")
+  .forEach(btn=>{
+
+    btn.addEventListener(
+      "click",
+      ()=>{
+        const name=
+          btn.dataset.layer;
+
+        layers[name]=
+          !layers[name];
+
+        btn.classList.toggle(
+          "active",
+          layers[name]
+        );
+
+        if(
+          name==="footprint"
+        ){
+          document
+            .querySelector(".footprint-box")
+            .style.display=
+              layers.footprint
+                ?"block"
+                :"none";
+        }
 
         drawChart();
       }
+    );
+  });
 
-    }catch(e){
-      console.warn("LIVE",e);
+/* ==========================================================
+   TIMEFRAMES
+   ========================================================== */
+
+document
+  .querySelectorAll(".tf")
+  .forEach(btn=>{
+
+    btn.addEventListener(
+      "click",
+      async()=>{
+        document
+          .querySelectorAll(".tf")
+          .forEach(x=>
+            x.classList.remove(
+              "active"
+            )
+          );
+
+        btn.classList.add(
+          "active"
+        );
+
+        interval=
+          btn.dataset.tf;
+
+        await loadAnalysis();
+      }
+    );
+  });
+
+document
+  .getElementById("analyzeBtn")
+  .addEventListener(
+    "click",
+    loadAnalysis
+  );
+
+document
+  .getElementById("liveBtn")
+  .addEventListener(
+    "click",
+    startLive
+  );
+
+document
+  .getElementById("stopBtn")
+  .addEventListener(
+    "click",
+    stopLive
+  );
+
+document
+  .getElementById("symbol")
+  .addEventListener(
+    "keydown",
+    e=>{
+      if(e.key==="Enter"){
+        loadAnalysis();
+      }
+    }
+  );
+
+/* ==========================================================
+   ANALYSIS
+   ========================================================== */
+
+async function loadAnalysis(){
+
+  stopLive();
+
+  symbol=
+    document
+      .getElementById("symbol")
+      .value
+      .trim()
+      .toUpperCase();
+
+  if(!symbol){
+    symbol="BTCUSDT";
+
+    document
+      .getElementById("symbol")
+      .value=symbol;
+  }
+
+  setStatus(
+    "🔄 دریافت داده واقعی Bybit..."
+  );
+
+  try{
+
+    const url=
+      `${API}/api/analyze`+
+      `?symbol=${encodeURIComponent(symbol)}`+
+      `&interval=${encodeURIComponent(interval)}`;
+
+    const response=
+      await fetch(
+        url,
+        {
+          cache:"no-store"
+        }
+      );
+
+    const result=
+      await response.json();
+
+    if(!response.ok){
+      throw new Error(
+        result.error||
+        "Analysis error"
+      );
     }
 
-  },5000);
+    data=result;
+
+    const candles=getCandles();
+
+    viewCount=
+      Math.min(
+        70,
+        Math.max(
+          10,
+          candles.length
+        )
+      );
+
+    viewStart=Math.max(
+      0,
+      candles.length-viewCount
+    );
+
+    selectedIndex=
+      candles.length-1;
+
+    document
+      .getElementById(
+        "chartTitle"
+      )
+      .textContent=
+        `${symbol} · ${interval}m`;
+
+    updateCards();
+    renderTrades();
+
+    fpScale=1;
+
+    renderSelectedFootprint(
+      selectedIndex
+    );
+
+    setStatus(
+      "🟢 اتصال برقرار است — Bybit"
+    );
+
+    resizeCanvas();
+
+  }catch(error){
+
+    setStatus(
+      "🔴 "+
+      (
+        error?.message||
+        "خطا"
+      ),
+      false
+    );
+  }
 }
 
-/* =========================================================
-   INIT
-========================================================= */
+/* ==========================================================
+   LIVE
+   ========================================================== */
+
+async function loadLive(){
+
+  try{
+
+    const response=
+      await fetch(
+        `${API}/api/live`+
+        `?symbol=${encodeURIComponent(symbol)}`+
+        `&interval=${encodeURIComponent(interval)}`,
+        {
+          cache:"no-store"
+        }
+      );
+
+    const result=
+      await response.json();
+
+    if(!response.ok){
+      throw new Error(
+        result.error||
+        "Live error"
+      );
+    }
+
+    data=result;
+
+    const candles=getCandles();
+
+    /*
+     * اگر کاربر کندل خاصی انتخاب کرده،
+     * تا زمانی که index معتبر است همان انتخاب حفظ می‌شود.
+     */
+    if(
+      selectedIndex<0||
+      selectedIndex>=candles.length
+    ){
+      selectedIndex=
+        candles.length-1;
+    }
+
+    updateCards();
+    renderTrades();
+
+    renderSelectedFootprint(
+      selectedIndex
+    );
+
+    drawChart();
+
+    setStatus(
+      "🟢 Live · Bybit"
+    );
+
+  }catch(error){
+
+    setStatus(
+      "🔴 Live قطع شد",
+      false
+    );
+  }
+}
+
+function startLive(){
+
+  stopLive();
+
+  loadLive();
+
+  liveTimer=
+    setInterval(
+      loadLive,
+      3000
+    );
+}
+
+function stopLive(){
+
+  if(liveTimer){
+    clearInterval(
+      liveTimer
+    );
+
+    liveTimer=null;
+  }
+}
+
+/* ==========================================================
+   SCANNER
+   ========================================================== */
+
+let scanOffset=0;
+
+async function runScan(){
+
+  try{
+
+    const response=
+      await fetch(
+        `${API}/api/scan?offset=${scanOffset}`,
+        {
+          cache:"no-store"
+        }
+      );
+
+    const result=
+      await response.json();
+
+    if(!response.ok){
+      throw new Error(
+        result.error||
+        "Scan error"
+      );
+    }
+
+    scanOffset=
+      Number(
+        result.nextOffset||0
+      );
+
+    renderScan(
+      result.results||[]
+    );
+
+  }catch(error){
+
+    document
+      .getElementById(
+        "scanList"
+      )
+      .innerHTML=`
+        <div class="fp-empty">
+          خطا در اسکن:
+          ${esc(error.message)}
+        </div>
+      `;
+  }
+}
+
+function renderScan(results){
+
+  const box=
+    document.getElementById(
+      "scanList"
+    );
+
+  if(!results.length){
+
+    box.innerHTML=`
+      <div class="fp-empty">
+        در این Batch سیگنال بالای 55 پیدا نشد.
+      </div>
+    `;
+
+    return;
+  }
+
+  box.innerHTML=
+    results.map(r=>{
+
+      const score=
+        Number(r.score||0);
+
+      const cls=
+        r.signal==="BUY"||
+        r.signal==="WATCH_BUY"
+          ?"green"
+          :r.signal==="SELL"||
+            r.signal==="WATCH_SELL"
+            ?"red"
+            :"yellow";
+
+      return`
+        <div
+          class="scan-row"
+          data-symbol="${esc(r.symbol)}"
+        >
+
+          <div>
+            ${esc(r.symbol)}
+          </div>
+
+          <div class="${cls}">
+            ${esc(r.signal)}
+          </div>
+
+          <div>
+            ${score}
+          </div>
+
+          <div>
+            ${num(r.deltaPercent,2)}%
+          </div>
+
+          <div>
+            ${esc(r.absorption||"NONE")}
+          </div>
+
+        </div>
+      `;
+    }).join("");
+
+  box
+    .querySelectorAll(".scan-row")
+    .forEach(row=>{
+
+      row.addEventListener(
+        "click",
+        async()=>{
+          const s=
+            row.dataset.symbol;
+
+          document
+            .getElementById(
+              "symbol"
+            )
+            .value=s;
+
+          await loadAnalysis();
+        }
+      );
+    });
+}
+
+document
+  .getElementById("scanStart")
+  .addEventListener(
+    "click",
+    ()=>{
+      if(scanTimer){
+        clearInterval(
+          scanTimer
+        );
+      }
+
+      scanOffset=0;
+
+      runScan();
+
+      scanTimer=
+        setInterval(
+          runScan,
+          8000
+        );
+    }
+  );
+
+document
+  .getElementById("scanStop")
+  .addEventListener(
+    "click",
+    ()=>{
+      if(scanTimer){
+        clearInterval(
+          scanTimer
+        );
+
+        scanTimer=null;
+      }
+    }
+  );
+
+/* ==========================================================
+   FULLSCREEN
+   ========================================================== */
+
+document
+  .getElementById("fullscreenBtn")
+  .addEventListener(
+    "click",
+    async()=>{
+
+      const panel=
+        document.getElementById(
+          "chartPanel"
+        );
+
+      try{
+
+        if(!document.fullscreenElement){
+
+          await panel.requestFullscreen();
+
+          try{
+            if(
+              screen.orientation&&
+              screen.orientation.lock
+            ){
+              await screen.orientation.lock(
+                "landscape"
+              );
+            }
+          }catch{}
+
+        }else{
+
+          await document.exitFullscreen();
+
+          try{
+            if(
+              screen.orientation&&
+              screen.orientation.unlock
+            ){
+              screen.orientation.unlock();
+            }
+          }catch{}
+        }
+
+      }catch{}
+
+      setTimeout(
+        resizeCanvas,
+        150
+      );
+    }
+  );
+
+document.addEventListener(
+  "fullscreenchange",
+  ()=>{
+    setTimeout(
+      resizeCanvas,
+      150
+    );
+  }
+);
+
+window.addEventListener(
+  "resize",
+  ()=>{
+    setTimeout(
+      resizeCanvas,
+      50
+    );
+  }
+);
+
+window.addEventListener(
+  "orientationchange",
+  ()=>{
+    setTimeout(
+      resizeCanvas,
+      200
+    );
+  }
+);
+
+/* ==========================================================
+   INITIALIZE
+   ========================================================== */
 
 (async function init(){
 
-  try{
-    const h=await api("/api/health");
+  resizeCanvas();
 
-    if(h?.ok){
+  try{
+
+    const response=
+      await fetch(
+        `${API}/api/health`,
+        {
+          cache:"no-store"
+        }
+      );
+
+    if(response.ok){
       setStatus(
-        "🟢 Worker آنلاین است — Bybit متصل"
+        "🟢 Worker آنلاین است"
       );
     }
-  }catch(e){
-    setStatus(
-      "🔴 Worker در دسترس نیست"
-    );
-  }
 
-  await loadData();
+  }catch{}
 
-  startLive();
+  await loadAnalysis();
 
 })();
 </script>
