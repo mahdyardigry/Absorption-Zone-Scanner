@@ -6070,3 +6070,49 @@ export default {
     }
   }
 };
+
+export class CollectorDO extends DurableObject {
+  constructor(ctx, env) {
+    super(ctx, env);
+
+    this.ctx = ctx;
+    this.env = env;
+  }
+
+  async fetch(request) {
+    const url = new URL(request.url);
+
+    if (
+      request.method === "GET" &&
+      url.pathname === "/health"
+    ) {
+      return new Response(
+        JSON.stringify({
+          ok: true,
+          collector: "CollectorDO",
+          timestamp: Date.now()
+        }),
+        {
+          status: 200,
+          headers: {
+            "content-type": "application/json; charset=utf-8"
+          }
+        }
+      );
+    }
+
+    return new Response(
+      JSON.stringify({
+        ok: true,
+        collector: "CollectorDO"
+      }),
+      {
+        status: 200,
+        headers: {
+          "content-type": "application/json; charset=utf-8"
+        }
+      }
+    );
+  }
+}
+    
