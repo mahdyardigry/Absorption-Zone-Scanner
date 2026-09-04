@@ -3,26 +3,19 @@ import { DurableObject } from "cloudflare:workers";
 const BYBIT_API = "https://api.bybit.com";
 const BYBIT_WS = "wss://stream.bybit.com/v5/public/linear";
 
-const VERSION = "BYBIT-PERSONAL-COLLECTOR-V4";
-
-const MAX_SYMBOLS = 1000;
-const WS_SHARDS = 6;
+const VERSION = "BYBIT-PERSONAL-COLLECTOR-V5";
 
 const ORDERBOOK_DEPTH = 50;
-const BOOK_SNAPSHOT_LEVELS = 50;
+const RETENTION_MINUTES = 24 * 60;
 const SNAPSHOT_MS = 5000;
-
-const MINUTE_MS = 60000;
-const RETENTION_MINUTES = 1440;
-
-const MAX_BLOCKS_PER_MINUTE = 100;
-const BLOCK_MULTIPLIER = 5;
-
+const MINUTE_MS = 60 * 1000;
+const TRADE_LIMIT = 1000;
+const MAX_SYMBOLS = 1000;
 const WS_SUB_CHUNK = 200;
 const RECONNECT_MIN_MS = 3000;
 const RECONNECT_MAX_MS = 30000;
 
-function json(data, status = 200, extra = {}) {
+function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
     headers: {
@@ -30,66 +23,266 @@ function json(data, status = 200, extra = {}) {
       "cache-control": "no-store",
       "access-control-allow-origin": "*",
       "access-control-allow-methods": "GET,POST,OPTIONS",
-      "access-control-allow-headers": "content-type",
-      ...extra
+      "access-control-allow-headers": "*"
     }
   });
 }
 
-function num(v, d = 0) {
+function cors(response) {
+  const h = new Headers(response.headers);
+  h.set("access-control-allow-origin", "*");
+  h.set("access-control-allow-methods", "GET,POST,OPTIONS");
+  h.set("access-control-allow-headers", "*");
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers: h
+  });
+}
+
+function err(message, status = 500, extra = {}) {
+  return json({
+    ok: false,
+    error: String(message),
+    ...extra
+  }, status);
+}
+
+function num(v) {
   const n = Number(v);
-  return Number.isFinite(n) ? n : d;
+  return Number.isFinite(n) ? n : 0;
 }
 
-function normalizeSymbol(v) {
-  return String(v || "").trim().toUpperCase();
+function safeSymbol(s) {
+  return String(s || "")
+    .trim()
+    .toUpperCase()
+    .replace(/[^A-Z0-9._-]/g, "");
 }
 
-function validSymbol(v) {
-  return /^[A-Z0-9_-]{2,40}$/.test(String(v || ""));
+function minuteTs(ts = Date.now()) {
+  return Math.floor(Number(ts) / MINUTE_MS) * MINUTE_MS;
 }
 
-function minuteStart(ts) {
-  return Math.floor(num(ts, Date.now()) / MINUTE_MS) * MINUTE_MS;
+function emptyMinute(symbol, ts) {
+  return {
+    symbol,
+    ts,
+    levels: {},
+    buyVolume: 0,
+    sellVolume: 0,
+    buyValue: 0,
+    sellValue: 0,
+    buyTrades: 0,
+    sellTrades: 0,
+    totalVolume: 0,
+    totalValue: 0,
+    delta: 0,
+    orderbook: {
+      bids: [],
+      asks: [],
+      bestBid: 0,
+      bestAsk: 0,
+      bidLiquidity: 0,
+      askLiquidity: 0
+    },
+    liquidations: {
+      buy: 0,
+      sell: 0,
+      count: 0
+    },
+    blocks: []
+  };
 }
 
-function priceKey(price) {
-  const n = num(price);
-  if (!Number.isFinite(n)) return "0";
-  if (Math.abs(n) >= 1000) return n.toFixed(4);
-  if (Math.abs(n) >= 1) return n.toFixed(6);
-  if (Math.abs(n) >= 0.001) return n.toFixed(8);
-  return n.toPrecision(12);
+function ensureLevel(m, price) {
+  const p = String(price);
+  if (!m.levels[p]) {
+    m.levels[p] = {
+      price: num(price),
+      bidVolume: 0,
+      askVolume: 0,
+      bidValue: 0,
+      askValue: 0,
+      bidTrades: 0,
+      askTrades: 0,
+      delta: 0
+    };
+  }
+  return m.levels[p];
 }
 
-function average(a) {
-  if (!Array.isArray(a) || !a.length) return 0;
-  let s = 0;
-  let n = 0;
-  for (const x of a) {
-    const v = Number(x);
-    if (Number.isFinite(v)) {
-      s += v;
-      n++;
+function addTrade(m, trade) {
+  const price = num(trade.price);
+  const size = num(trade.size);
+  if (!price || !size) return;
+
+  const value = price * size;
+  const side = String(trade.side || "").toLowerCase();
+
+  const l = ensureLevel(m, price);
+
+  /*
+    Bybit publicTrade:
+    Side = Buy  => aggressive buyer => ASK / BUY
+    Side = Sell => aggressive seller => BID / SELL
+  */
+
+  if (side === "buy") {
+    l.askVolume += size;
+    l.askValue += value;
+    l.askTrades += 1;
+
+    m.buyVolume += size;
+    m.buyValue += value;
+    m.buyTrades += 1;
+  } else if (side === "sell") {
+    l.bidVolume += size;
+    l.bidValue += value;
+    l.bidTrades += 1;
+
+    m.sellVolume += size;
+    m.sellValue += value;
+    m.sellTrades += 1;
+  }
+
+  m.totalVolume = m.buyVolume + m.sellVolume;
+  m.totalValue = m.buyValue + m.sellValue;
+  m.delta = m.buyVolume - m.sellVolume;
+
+  l.delta = l.askVolume - l.bidVolume;
+}
+
+function aggregateFootprint(m) {
+  if (!m) return null;
+
+  const levels = Object.values(m.levels || {})
+    .sort((a, b) => b.price - a.price)
+    .map(l => ({
+      price: num(l.price),
+      bidVolume: num(l.bidVolume),
+      askVolume: num(l.askVolume),
+      bidValue: num(l.bidValue),
+      askValue: num(l.askValue),
+      bidTrades: num(l.bidTrades),
+      askTrades: num(l.askTrades),
+      delta: num(l.delta),
+      totalVolume: num(l.bidVolume) + num(l.askVolume)
+    }));
+
+  const bestBid = num(m.orderbook?.bestBid);
+  const bestAsk = num(m.orderbook?.bestAsk);
+
+  let open = 0;
+  let high = 0;
+  let low = 0;
+  let close = 0;
+
+  if (levels.length) {
+    const prices = levels.map(x => x.price).filter(Boolean);
+    low = Math.min(...prices);
+    high = Math.max(...prices);
+    open = prices[prices.length - 1] || 0;
+    close = prices[0] || 0;
+  }
+
+  if (!open && bestBid) open = bestBid;
+  if (!close && bestBid) close = bestBid;
+  if (!high && bestAsk) high = bestAsk;
+  if (!low && bestBid) low = bestBid;
+
+  return {
+    time: num(m.ts),
+    ts: num(m.ts),
+    symbol: m.symbol,
+
+    open,
+    high,
+    low,
+    close,
+
+    bidVolume: num(m.sellVolume),
+    askVolume: num(m.buyVolume),
+
+    sellVolume: num(m.sellVolume),
+    buyVolume: num(m.buyVolume),
+
+    bidValue: num(m.sellValue),
+    askValue: num(m.buyValue),
+
+    delta: num(m.delta),
+
+    totalVolume: num(m.totalVolume),
+    totalValue: num(m.totalValue),
+
+    buyTrades: num(m.buyTrades),
+    sellTrades: num(m.sellTrades),
+
+    levels,
+
+    orderbook: {
+      bids: m.orderbook?.bids || [],
+      asks: m.orderbook?.asks || [],
+      bestBid,
+      bestAsk,
+      bidLiquidity: num(m.orderbook?.bidLiquidity),
+      askLiquidity: num(m.orderbook?.askLiquidity)
+    },
+
+    liquidations: m.liquidations || {
+      buy: 0,
+      sell: 0,
+      count: 0
+    },
+
+    blocks: m.blocks || []
+  };
+}
+
+function aggregateCandles(klines, intervalMinutes) {
+  const out = [];
+
+  if (!Array.isArray(klines)) return out;
+
+  const sorted = klines
+    .map(k => ({
+      ts: num(k[0]),
+      open: num(k[1]),
+      high: num(k[2]),
+      low: num(k[3]),
+      close: num(k[4]),
+      volume: num(k[5]),
+      turnover: num(k[6])
+    }))
+    .sort((a, b) => a.ts - b.ts);
+
+  const bucketMs = intervalMinutes * MINUTE_MS;
+  const map = new Map();
+
+  for (const k of sorted) {
+    const bucket = Math.floor(k.ts / bucketMs) * bucketMs;
+
+    if (!map.has(bucket)) {
+      map.set(bucket, {
+        time: bucket,
+        open: k.open,
+        high: k.high,
+        low: k.low,
+        close: k.close,
+        volume: k.volume,
+        turnover: k.turnover
+      });
+    } else {
+      const c = map.get(bucket);
+      c.high = Math.max(c.high, k.high);
+      c.low = Math.min(c.low, k.low);
+      c.close = k.close;
+      c.volume += k.volume;
+      c.turnover += k.turnover;
     }
   }
-  return n ? s / n : 0;
-}
 
-function median(a) {
-  const x = (a || [])
-    .map(Number)
-    .filter(Number.isFinite)
-    .sort((a, b) => a - b);
-
-  if (!x.length) return 0;
-
-  const m = Math.floor(x.length / 2);
-  return x.length % 2 ? x[m] : (x[m - 1] + x[m]) / 2;
-}
-
-function clamp(n, a, b) {
-  return Math.max(a, Math.min(b, n));
+  return Array.from(map.values()).sort((a, b) => a.time - b.time);
 }
 
 async function bybit(path, params = {}) {
@@ -101,519 +294,421 @@ async function bybit(path, params = {}) {
     }
   }
 
-  const r = await fetch(u, {
-    headers: { accept: "application/json" }
+  const r = await fetch(u.toString(), {
+    method: "GET",
+    headers: {
+      "accept": "application/json"
+    }
   });
 
-  if (!r.ok) throw new Error(`Bybit HTTP ${r.status}`);
+  const text = await r.text();
 
-  const d = await r.json();
+  let data;
 
-  if (d.retCode !== 0) {
-    throw new Error(`Bybit ${d.retCode}: ${d.retMsg || "Unknown error"}`);
-  }
-
-  return d;
-}
-
-async function getLinearSymbols() {
-  const out = [];
-  let cursor = "";
-
-  while (out.length < MAX_SYMBOLS) {
-    const d = await bybit("/v5/market/instruments-info", {
-      category: "linear",
-      status: "Trading",
-      limit: 1000,
-      cursor
-    });
-
-    const list = d?.result?.list || [];
-
-    for (const x of list) {
-      const s = normalizeSymbol(x.symbol);
-
-      if (
-        !s ||
-        !validSymbol(s) ||
-        !s.endsWith("USDT") ||
-        (x.status && x.status !== "Trading") ||
-        (x.quoteCoin && x.quoteCoin !== "USDT")
-      ) continue;
-
-      if (!out.includes(s)) out.push(s);
-      if (out.length >= MAX_SYMBOLS) break;
-    }
-
-    cursor = d?.result?.nextPageCursor || "";
-    if (!cursor || !list.length) break;
-  }
-
-  return out.sort();
-}
-
-function emptyMinute(symbol, ts) {
-  return {
-    symbol,
-    ts,
-
-    open: 0,
-    high: 0,
-    low: 0,
-    close: 0,
-
-    tradeCount: 0,
-
-    buyVolume: 0,
-    sellVolume: 0,
-
-    buyValue: 0,
-    sellValue: 0,
-
-    delta: 0,
-    deltaValue: 0,
-
-    cumulativeDelta: 0,
-    cumulativeDeltaValue: 0,
-
-    largestTradeValue: 0,
-    blockThreshold: 0,
-    blocks: [],
-
-    liquidationBuyVolume: 0,
-    liquidationSellVolume: 0,
-    liquidationBuyValue: 0,
-    liquidationSellValue: 0,
-    liquidationBuyCount: 0,
-    liquidationSellCount: 0,
-
-    maxBidLiquidity: 0,
-    maxAskLiquidity: 0,
-    avgBidLiquidity: 0,
-    avgAskLiquidity: 0,
-
-    bookSnapshotCount: 0,
-    lastBestBid: 0,
-    lastBestAsk: 0,
-
-    levels: {},
-    bookSnapshots: []
-  };
-}
-
-function aggregateFootprint(minute) {
-  const levels = Object.values(minute.levels || {})
-    .map(x => ({
-      price: num(x.price),
-      bidVolume: num(x.bidVolume),
-      askVolume: num(x.askVolume),
-      bidValue: num(x.bidValue),
-      askValue: num(x.askValue),
-      bidTrades: num(x.bidTrades),
-      askTrades: num(x.askTrades),
-      delta: num(x.askVolume) - num(x.bidVolume),
-      deltaValue: num(x.askValue) - num(x.bidValue),
-      totalVolume: num(x.totalVolume),
-      totalValue: num(x.totalValue)
-    }))
-    .filter(x => x.price > 0)
-    .sort((a, b) => b.price - a.price);
-
-  return {
-    time: minute.ts,
-    symbol: minute.symbol,
-    open: num(minute.open),
-    high: num(minute.high),
-    low: num(minute.low),
-    close: num(minute.close),
-
-    buyVolume: num(minute.buyVolume),
-    sellVolume: num(minute.sellVolume),
-    totalVolume: num(minute.buyVolume) + num(minute.sellVolume),
-
-    buyValue: num(minute.buyValue),
-    sellValue: num(minute.sellValue),
-    totalValue: num(minute.buyValue) + num(minute.sellValue),
-
-    delta: num(minute.delta),
-    deltaValue: num(minute.deltaValue),
-
-    cumulativeDelta: num(minute.cumulativeDelta),
-    cumulativeDeltaValue: num(minute.cumulativeDeltaValue),
-
-    tradeCount: num(minute.tradeCount),
-
-    largestTradeValue: num(minute.largestTradeValue),
-    blockThreshold: num(minute.blockThreshold),
-    blocks: minute.blocks || [],
-
-    liquidationBuyVolume: num(minute.liquidationBuyVolume),
-    liquidationSellVolume: num(minute.liquidationSellVolume),
-    liquidationBuyValue: num(minute.liquidationBuyValue),
-    liquidationSellValue: num(minute.liquidationSellValue),
-    liquidationBuyCount: num(minute.liquidationBuyCount),
-    liquidationSellCount: num(minute.liquidationSellCount),
-
-    maxBidLiquidity: num(minute.maxBidLiquidity),
-    maxAskLiquidity: num(minute.maxAskLiquidity),
-    avgBidLiquidity: num(minute.avgBidLiquidity),
-    avgAskLiquidity: num(minute.avgAskLiquidity),
-
-    bestBid: num(minute.lastBestBid),
-    bestAsk: num(minute.lastBestAsk),
-
-    bookSnapshotCount: num(minute.bookSnapshotCount),
-    bookSnapshots: minute.bookSnapshots || [],
-
-    levels
-  };
-}
-
-function buildEmptyFlow() {
-  return {
-    buyVolume: 0,
-    sellVolume: 0,
-    totalVolume: 0,
-    buyValue: 0,
-    sellValue: 0,
-    totalValue: 0,
-    delta: 0,
-    deltaValue: 0,
-    deltaPercent: 0
-  };
-}
-
-function flowFromTrades(trades) {
-  const f = buildEmptyFlow();
-
-  for (const t of trades || []) {
-    const side = String(t.side || "").toUpperCase();
-    const size = num(t.size);
-    const value = num(t.value);
-
-    if (side === "BUY") {
-      f.buyVolume += size;
-      f.buyValue += value;
-    } else if (side === "SELL") {
-      f.sellVolume += size;
-      f.sellValue += value;
-    }
-  }
-
-  f.totalVolume = f.buyVolume + f.sellVolume;
-  f.totalValue = f.buyValue + f.sellValue;
-  f.delta = f.buyVolume - f.sellVolume;
-  f.deltaValue = f.buyValue - f.sellValue;
-
-  f.deltaPercent =
-    f.totalVolume > 0
-      ? f.delta / f.totalVolume * 100
-      : 0;
-
-  return f;
-}
-
-function pressure(deltaPercent) {
-  if (deltaPercent >= 15) return "BUY_PRESSURE";
-  if (deltaPercent <= -15) return "SELL_PRESSURE";
-  return "NEUTRAL";
-}
-
-function absorption(flow) {
-  const d = num(flow.deltaPercent);
-
-  if (Math.abs(d) < 5 && flow.totalVolume > 0) {
-    return "ABSORPTION";
-  }
-
-  return "NORMAL";
-}
-
-function signalFromFlow(flow) {
-  const d = num(flow.deltaPercent);
-
-  if (d >= 20) return "BUY";
-  if (d <= -20) return "SELL";
-  return "WAIT";
-}
-
-async function getTicker(symbol) {
   try {
-    const d = await bybit("/v5/market/tickers", {
-      category: "linear",
-      symbol
-    });
-
-    const x = d?.result?.list?.[0] || {};
-
-    return {
-      lastPrice: num(x.lastPrice),
-      markPrice: num(x.markPrice),
-      indexPrice: num(x.indexPrice),
-      fundingRate: num(x.fundingRate),
-      openInterest: num(x.openInterest),
-      volume24h: num(x.volume24h),
-      turnover24h: num(x.turnover24h)
-    };
+    data = JSON.parse(text);
   } catch {
-    return {
-      lastPrice: 0,
-      markPrice: 0,
-      indexPrice: 0,
-      fundingRate: 0,
-      openInterest: 0,
-      volume24h: 0,
-      turnover24h: 0
-    };
+    throw new Error(
+      `Bybit HTTP ${r.status}: ${text.slice(0, 300)}`
+    );
   }
+
+  if (!r.ok) {
+    throw new Error(
+      `Bybit HTTP ${r.status}: ${data?.retMsg || "request failed"}`
+    );
+  }
+
+  if (data.retCode !== 0) {
+    throw new Error(
+      `Bybit ${data.retCode}: ${data.retMsg || "API error"}`
+    );
+  }
+
+  return data;
 }
 
-async function getKlines(symbol, interval, limit = 200) {
-  const d = await bybit("/v5/market/kline", {
+async function getKlines(symbol, interval = "1", limit = 200) {
+  const data = await bybit("/v5/market/kline", {
     category: "linear",
     symbol,
     interval,
     limit
   });
 
-  return (d?.result?.list || [])
-    .map(x => ({
-      time: num(x[0]),
-      open: num(x[1]),
-      high: num(x[2]),
-      low: num(x[3]),
-      close: num(x[4]),
-      volume: num(x[5]),
-      turnover: num(x[6]),
-      delta: 0
-    }))
-    .sort((a, b) => a.time - b.time);
+  return data?.result?.list || [];
 }
 
-async function getRecentTrades(symbol, limit = 1000) {
-  const d = await bybit("/v5/market/recent-trade", {
+async function getTicker(symbol) {
+  const data = await bybit("/v5/market/tickers", {
     category: "linear",
-    symbol,
-    limit: Math.min(1000, limit)
+    symbol
   });
 
-  return (d?.result?.list || [])
-    .map(x => {
-      const price = num(x.price);
-      const size = num(x.size);
-      const side =
-        String(x.side || "").toUpperCase() === "BUY"
-          ? "BUY"
-          : "SELL";
-
-      return {
-        id: String(x.execId || x.i || `${x.time}-${price}-${size}-${side}`),
-        time: num(x.time),
-        price,
-        size,
-        value: price * size,
-        side
-      };
-    })
-    .filter(x => x.price > 0 && x.size > 0)
-    .sort((a, b) => b.time - a.time);
+  return data?.result?.list?.[0] || null;
 }
 
 async function getOrderbook(symbol) {
-  const d = await bybit("/v5/market/orderbook", {
+  const data = await bybit("/v5/market/orderbook", {
     category: "linear",
     symbol,
     limit: ORDERBOOK_DEPTH
   });
 
-  const r = d?.result || {};
-
-  const bids = (r.b || [])
-    .map(x => [num(x[0]), num(x[1])])
-    .filter(x => x[0] > 0 && x[1] > 0)
-    .sort((a, b) => b[0] - a[0]);
-
-  const asks = (r.a || [])
-    .map(x => [num(x[0]), num(x[1])])
-    .filter(x => x[0] > 0 && x[1] > 0)
-    .sort((a, b) => a[0] - b[0]);
-
-  const buyLiquidity = bids.reduce((s, x) => s + x[0] * x[1], 0);
-  const sellLiquidity = asks.reduce((s, x) => s + x[0] * x[1], 0);
-
-  const bidSizes = bids.map(x => x[1]);
-  const askSizes = asks.map(x => x[1]);
-
-  const bidMedian = median(bidSizes);
-  const askMedian = median(askSizes);
-
-  const buyWalls = bids
-    .filter(x => bidMedian > 0 && x[1] >= bidMedian * 4)
-    .map(x => ({
-      price: x[0],
-      size: x[1],
-      value: x[0] * x[1]
-    }));
-
-  const sellWalls = asks
-    .filter(x => askMedian > 0 && x[1] >= askMedian * 4)
-    .map(x => ({
-      price: x[0],
-      size: x[1],
-      value: x[0] * x[1]
-    }));
-
-  const total = buyLiquidity + sellLiquidity;
-
-  const buyShare =
-    total > 0 ? buyLiquidity / total * 100 : 50;
-
-  const sellShare =
-    total > 0 ? sellLiquidity / total * 100 : 50;
-
-  let bookPressure = "NEUTRAL";
-
-  if (buyShare > sellShare + 8) bookPressure = "BUY_PRESSURE";
-  if (sellShare > buyShare + 8) bookPressure = "SELL_PRESSURE";
+  const r = data?.result || {};
 
   return {
-    bestBid: bids[0]?.[0] || 0,
-    bestAsk: asks[0]?.[0] || 0,
-
-    buyLiquidity,
-    sellLiquidity,
-
-    bidLiquidity: buyLiquidity,
-    askLiquidity: sellLiquidity,
-
-    buyShare,
-    sellShare,
-
-    pressure: bookPressure,
-
-    bids,
-    asks,
-
-    buyWalls,
-    sellWalls
+    bids: (r.b || []).map(x => ({
+      price: num(x[0]),
+      size: num(x[1]),
+      value: num(x[0]) * num(x[1])
+    })),
+    asks: (r.a || []).map(x => ({
+      price: num(x[0]),
+      size: num(x[1]),
+      value: num(x[0]) * num(x[1])
+    })),
+    bestBid: num(r.b?.[0]?.[0]),
+    bestAsk: num(r.a?.[0]?.[0])
   };
 }
 
-function resampleCandles(base, interval) {
-  const mins = Number(interval);
+async function getRecentTrades(symbol) {
+  const data = await bybit("/v5/market/recent-trade", {
+    category: "linear",
+    symbol,
+    limit: TRADE_LIMIT
+  });
 
-  if (!Number.isFinite(mins) || mins <= 1) {
-    return base;
-  }
-
-  const bucket = mins * MINUTE_MS;
-  const map = new Map();
-
-  for (const c of base) {
-    const t = Math.floor(c.time / bucket) * bucket;
-
-    let x = map.get(t);
-
-    if (!x) {
-      x = {
-        time: t,
-        open: c.open,
-        high: c.high,
-        low: c.low,
-        close: c.close,
-        volume: 0,
-        turnover: 0,
-        delta: 0
-      };
-
-      map.set(t, x);
-    }
-
-    x.high = Math.max(x.high, c.high);
-    x.low = Math.min(x.low, c.low);
-    x.close = c.close;
-    x.volume += c.volume;
-    x.turnover += c.turnover;
-  }
-
-  return [...map.values()]
-    .sort((a, b) => a.time - b.time);
+  return (data?.result?.list || []).map(t => ({
+    id: t.execId || t.id || "",
+    time: num(t.time),
+    price: num(t.price),
+    size: num(t.size),
+    side: t.side || "",
+    isBlockTrade: !!t.isBlockTrade
+  }));
 }
 
-async function analyzeSymbol(symbol, interval, collector) {
-  symbol = normalizeSymbol(symbol);
-  interval = String(interval || "5");
+function buildFootprintFromTrades(symbol, trades, ts = Date.now()) {
+  const m = emptyMinute(symbol, minuteTs(ts));
 
-  if (!validSymbol(symbol)) {
-    throw new Error("Invalid symbol");
+  for (const t of trades || []) {
+    addTrade(m, {
+      price: t.price,
+      size: t.size,
+      side: t.side
+    });
+  }
+
+  return aggregateFootprint(m);
+}
+
+function mergeLiveFootprint(footprint, orderbook) {
+  if (!footprint) return footprint;
+
+  footprint.orderbook = {
+    bids: orderbook?.bids || [],
+    asks: orderbook?.asks || [],
+    bestBid: num(orderbook?.bestBid),
+    bestAsk: num(orderbook?.bestAsk),
+    bidLiquidity: (orderbook?.bids || [])
+      .reduce((a, x) => a + num(x.value), 0),
+    askLiquidity: (orderbook?.asks || [])
+      .reduce((a, x) => a + num(x.value), 0)
+  };
+
+  return footprint;
+}
+
+function calculateIndicators(candles) {
+  const closes = candles.map(x => num(x.close));
+
+  function sma(arr, n) {
+    if (arr.length < n) return null;
+    let s = 0;
+    for (let i = arr.length - n; i < arr.length; i++) {
+      s += arr[i];
+    }
+    return s / n;
+  }
+
+  function ema(arr, n) {
+    if (arr.length < n) return null;
+
+    const k = 2 / (n + 1);
+    let e = sma(arr.slice(0, n), n);
+
+    if (e === null) return null;
+
+    for (let i = n; i < arr.length; i++) {
+      e = arr[i] * k + e * (1 - k);
+    }
+
+    return e;
+  }
+
+  function rsi(arr, n = 14) {
+    if (arr.length <= n) return null;
+
+    let gain = 0;
+    let loss = 0;
+
+    for (let i = 1; i <= n; i++) {
+      const d = arr[i] - arr[i - 1];
+
+      if (d >= 0) gain += d;
+      else loss -= d;
+    }
+
+    let avgGain = gain / n;
+    let avgLoss = loss / n;
+
+    for (let i = n + 1; i < arr.length; i++) {
+      const d = arr[i] - arr[i - 1];
+
+      const g = d > 0 ? d : 0;
+      const l = d < 0 ? -d : 0;
+
+      avgGain = ((avgGain * (n - 1)) + g) / n;
+      avgLoss = ((avgLoss * (n - 1)) + l) / n;
+    }
+
+    if (avgLoss === 0) return 100;
+
+    const rs = avgGain / avgLoss;
+    return 100 - (100 / (1 + rs));
+  }
+
+  const last = closes[closes.length - 1] || 0;
+
+  const ma20 = sma(closes, 20);
+  const ema20 = ema(closes, 20);
+  const ema50 = ema(closes, 50);
+  const r = rsi(closes, 14);
+
+  let trend = "NEUTRAL";
+
+  if (ema20 !== null && ema50 !== null) {
+    if (ema20 > ema50) trend = "BULLISH";
+    if (ema20 < ema50) trend = "BEARISH";
+  }
+
+  return {
+    price: last,
+    ma20,
+    ema20,
+    ema50,
+    rsi: r,
+    trend
+  };
+}
+
+function calculateSignal(ind, footprint, orderbook) {
+  let score = 50;
+  const reasons = [];
+
+  const delta = num(footprint?.delta);
+  const volume = num(footprint?.totalVolume);
+
+  if (delta > 0) {
+    score += 15;
+    reasons.push("Delta مثبت");
+  } else if (delta < 0) {
+    score -= 15;
+    reasons.push("Delta منفی");
+  }
+
+  if (ind.trend === "BULLISH") {
+    score += 15;
+    reasons.push("روند EMA صعودی");
+  } else if (ind.trend === "BEARISH") {
+    score -= 15;
+    reasons.push("روند EMA نزولی");
+  }
+
+  if (ind.rsi !== null) {
+    if (ind.rsi >= 55) {
+      score += 5;
+      reasons.push("RSI بالای 55");
+    }
+
+    if (ind.rsi <= 45) {
+      score -= 5;
+      reasons.push("RSI زیر 45");
+    }
+  }
+
+  const bidL = num(orderbook?.bidLiquidity);
+  const askL = num(orderbook?.askLiquidity);
+
+  if (bidL > askL * 1.08) {
+    score += 10;
+    reasons.push("نقدینگی Bid بیشتر");
+  } else if (askL > bidL * 1.08) {
+    score -= 10;
+    reasons.push("نقدینگی Ask بیشتر");
+  }
+
+  if (volume > 0) {
+    const deltaPct = Math.abs(delta / volume) * 100;
+
+    if (deltaPct >= 10) {
+      score += delta > 0 ? 5 : -5;
+      reasons.push(`Delta ${deltaPct.toFixed(1)}%`);
+    }
+  }
+
+  score = Math.max(0, Math.min(100, Math.round(score)));
+
+  let signal = "NEUTRAL";
+
+  if (score >= 65) signal = "BUY";
+  if (score <= 35) signal = "SELL";
+
+  return {
+    signal,
+    score,
+    reasons
+  };
+}
+
+async function collectorJSON(stub, path, options = {}) {
+  const base = "https://collector.internal";
+  const u = new URL(path, base);
+
+  const request = new Request(u.toString(), {
+    method: options.method || "GET",
+    headers: options.headers || {},
+    body: options.body
+  });
+
+  const r = await stub.fetch(request);
+  const text = await r.text();
+
+  let data;
+
+  try {
+    data = JSON.parse(text);
+  } catch {
+    throw new Error(
+      `Collector HTTP ${r.status}: ${text.slice(0, 500)}`
+    );
+  }
+
+  if (!r.ok || data?.ok === false) {
+    throw new Error(
+      data?.error ||
+      `Collector HTTP ${r.status}`
+    );
+  }
+
+  return data;
+}
+
+async function analyzeSymbol(symbol, interval, stub) {
+  symbol = safeSymbol(symbol);
+  interval = String(interval || "1");
+
+  if (!symbol) {
+    throw new Error("Symbol is required");
   }
 
   const [
-    raw1m,
+    k1,
+    k15,
+    ticker,
+    orderbook,
     trades,
-    book,
-    ticker
+    collector
   ] = await Promise.all([
-    getKlines(symbol, "1", 1000),
-    getRecentTrades(symbol, 1000),
+    getKlines(symbol, "1", 200),
+    getKlines(symbol, "15", 200),
+    getTicker(symbol),
     getOrderbook(symbol),
-    getTicker(symbol)
+    getRecentTrades(symbol),
+    collectorJSON(
+      stub,
+      `/history-footprint?symbol=${encodeURIComponent(symbol)}&hours=24`
+    )
   ]);
 
-  const candles =
-    interval === "1"
-      ? raw1m.slice(-200)
-      : resampleCandles(raw1m, interval).slice(-200);
+  const minuteCandles = k1
+    .slice()
+    .reverse()
+    .map(k => ({
+      time: num(k[0]),
+      open: num(k[1]),
+      high: num(k[2]),
+      low: num(k[3]),
+      close: num(k[4]),
+      volume: num(k[5]),
+      turnover: num(k[6])
+    }));
 
-  const liveFlow = flowFromTrades(trades);
+  let candles;
 
-  const footprints =
-    collector
-      ? collector.getHistoryForSymbol(symbol, 24 * 60)
-      : [];
+  if (interval === "1") {
+    candles = minuteCandles;
+  } else {
+    const n = Number(interval);
 
-  const currentMinute =
-    collector
-      ? collector.getCurrentMinute(symbol)
-      : null;
-
-  if (currentMinute) {
-    const fp = aggregateFootprint(currentMinute);
-
-    if (fp.tradeCount > 0) {
-      footprints.push(fp);
+    if ([3, 5, 15, 30, 60].includes(n)) {
+      candles = aggregateCandles(
+        k1.map(k => k),
+        n
+      );
+    } else {
+      candles = minuteCandles;
     }
   }
 
-  const fpMap = new Map();
+  let footprints = collector?.footprints || [];
 
-  for (const fp of footprints) {
-    fpMap.set(String(fp.time), fp);
-  }
-
-  const finalFootprints =
-    [...fpMap.values()]
-      .sort((a, b) => num(a.time) - num(b.time))
-      .slice(-1440);
-
-  const byMinute = new Map(
-    finalFootprints.map(x => [
-      minuteStart(x.time),
-      x
-    ])
+  const recentFootprint = buildFootprintFromTrades(
+    symbol,
+    trades,
+    Date.now()
   );
 
-  for (const c of candles) {
-    const fp = byMinute.get(minuteStart(c.time));
+  const storedLatest = footprints.length
+    ? footprints[footprints.length - 1]
+    : null;
 
-    if (fp) {
-      c.delta = num(fp.delta);
-      c.flowVolume = num(fp.totalVolume);
-    }
+  if (
+    !storedLatest ||
+    num(storedLatest.time) !== num(recentFootprint.time)
+  ) {
+    footprints = [...footprints, recentFootprint];
+  } else {
+    footprints[footprints.length - 1] = recentFootprint;
   }
 
-  const signal =
-    signalFromFlow(liveFlow);
+  if (footprints.length > 2000) {
+    footprints = footprints.slice(-2000);
+  }
+
+  const liveFootprint = mergeLiveFootprint(
+    recentFootprint,
+    orderbook
+  );
+
+  const indicators = calculateIndicators(
+    minuteCandles.length
+      ? minuteCandles
+      : candles
+  );
+
+  const signal = calculateSignal(
+    indicators,
+    liveFootprint,
+    {
+      bidLiquidity: (orderbook.bids || [])
+        .reduce((a, x) => a + num(x.value), 0),
+      askLiquidity: (orderbook.asks || [])
+        .reduce((a, x) => a + num(x.value), 0)
+    }
+  );
 
   return {
     ok: true,
@@ -621,726 +716,1112 @@ async function analyzeSymbol(symbol, interval, collector) {
     symbol,
     interval,
 
-    lastPrice:
-      ticker.lastPrice ||
-      candles.at(-1)?.close ||
-      0,
+    serverTime: Date.now(),
+
+    ticker: {
+      lastPrice: num(ticker?.lastPrice),
+      markPrice: num(ticker?.markPrice),
+      indexPrice: num(ticker?.indexPrice),
+      volume24h: num(ticker?.volume24h),
+      turnover24h: num(ticker?.turnover24h),
+      price24hPcnt: num(ticker?.price24hPcnt)
+    },
 
     candles,
 
-    trades: trades.slice(0, 150),
+    footprints,
 
-    footprints: finalFootprints,
+    liveFootprint,
 
-    currentFlow: liveFlow,
+    trades,
 
-    flowPressure:
-      pressure(liveFlow.deltaPercent),
+    orderbook,
 
-    absorption:
-      absorption(liveFlow),
+    indicators,
 
-    signal,
-
-    wall: book,
-
-    ticker
+    signal
   };
 }
 
-export class CollectorDO extends DurableObject {
-  constructor(ctx, env) {
-    super(ctx, env);
-
-    this.ctx = ctx;
-    this.env = env;
-
-    this.shards = new Map();
-    this.symbols = [];
-
-    this.started = false;
-    this.startedAt = Date.now();
-
-    this.stats = {
-      messages: 0,
-      trades: 0,
-      orderbookMessages: 0,
-      liquidations: 0,
-      reconnects: 0,
-      errors: 0
-    };
-
-    this.ensureSchema();
-  }
-
-  ensureSchema() {
-    try {
-      this.ctx.storage.sql.exec(`
-        CREATE TABLE IF NOT EXISTS minutes(
-          symbol TEXT NOT NULL,
-          ts INTEGER NOT NULL,
-          data TEXT NOT NULL,
-          PRIMARY KEY(symbol,ts)
-        )
-      `);
-
-      this.ctx.storage.sql.exec(`
-        CREATE INDEX IF NOT EXISTS idx_minutes_symbol_ts
-        ON minutes(symbol,ts)
-      `);
-
-      this.ctx.storage.sql.exec(`
-        CREATE TABLE IF NOT EXISTS meta(
-          key TEXT PRIMARY KEY,
-          value TEXT
-        )
-      `);
-    } catch (e) {
-      console.error(e);
-    }
-  }
-
-  saveMeta(key, value) {
-    try {
-      this.ctx.storage.sql.exec(
-        `
-        INSERT INTO meta(key,value)
-        VALUES(?,?)
-        ON CONFLICT(key)
-        DO UPDATE SET value=excluded.value
-        `,
-        key,
-        String(value)
-      );
-    } catch {}
-  }
-
-  getMeta(key, fallback = null) {
-    try {
-      const r = this.ctx.storage.sql.exec(
-        `SELECT value FROM meta WHERE key=? LIMIT 1`,
-        key
-      ).toArray();
-
-      return r.length ? r[0].value : fallback;
-    } catch {
-      return fallback;
-    }
-  }
-
-  saveMinute(m) {
-    try {
-      this.ctx.storage.sql.exec(
-        `
-        INSERT INTO minutes(symbol,ts,data)
-        VALUES(?,?,?)
-        ON CONFLICT(symbol,ts)
-        DO UPDATE SET data=excluded.data
-        `,
-        m.symbol,
-        m.ts,
-        JSON.stringify(m)
-      );
-    } catch (e) {
-      this.stats.errors++;
-      console.error(e);
-    }
-  }
-
-  latest(symbol) {
-    try {
-      const r = this.ctx.storage.sql.exec(
-        `
-        SELECT data
-        FROM minutes
-        WHERE symbol=?
-        ORDER BY ts DESC
-        LIMIT 1
-        `,
-        symbol
-      ).toArray();
-
-      return r.length ? JSON.parse(r[0].data) : null;
-    } catch {
-      return null;
-    }
-  }
-
-  history(symbol, from, to, limit = 1440) {
-    try {
-      const r = this.ctx.storage.sql.exec(
-        `
-        SELECT data
-        FROM minutes
-        WHERE symbol=?
-        AND ts>=?
-        AND ts<=?
-        ORDER BY ts ASC
-        LIMIT ?
-        `,
-        symbol,
-        from,
-        to,
-        limit
-      ).toArray();
-
-      return r
-        .map(x => {
-          try {
-            return JSON.parse(x.data);
-          } catch {
-            return null;
-          }
-        })
-        .filter(Boolean);
-    } catch {
-      return [];
-    }
-  }
-
-  getHistoryForSymbol(symbol, count = 1440) {
-    const now = Date.now();
-
-    const rows =
-      this.history(
-        symbol,
-        now - count * MINUTE_MS,
-        now,
-        count
-      );
-
-    return rows.map(aggregateFootprint);
-  }
-
-  getCurrentMinute(symbol) {
-    for (const shard of this.shards.values()) {
-      const x = shard.getCurrentMinute(symbol);
-      if (x) return x;
-    }
-
-    return null;
-  }
-
-  deleteOld(symbol, before) {
-    try {
-      this.ctx.storage.sql.exec(
-        `
-        DELETE FROM minutes
-        WHERE symbol=?
-        AND ts<?
-        `,
-        symbol,
-        before
-      );
-    } catch {}
-  }
-
-  async setSymbols(symbols) {
-    const clean = [
-      ...new Set(
-        (symbols || [])
-          .map(normalizeSymbol)
-          .filter(validSymbol)
-          .filter(x => x.endsWith("USDT"))
-      )
-    ].slice(0, MAX_SYMBOLS);
-
-    this.symbols = clean;
-
-    this.saveMeta(
-      "symbols",
-      JSON.stringify(clean)
-    );
-
-    await this.stopShards();
-    await this.startShards();
-  }
-
-  async startShards() {
-    if (!this.symbols.length) return;
-
-    this.started = true;
-
-    const n = Math.min(
-      WS_SHARDS,
-      Math.max(1, this.symbols.length)
-    );
-
-    const groups =
-      Array.from(
-        { length: n },
-        () => []
-      );
-
-    this.symbols.forEach(
-      (s, i) =>
-        groups[i % n].push(s)
-    );
-
-    for (let i = 0; i < groups.length; i++) {
-      const shard =
-        new CollectorShard(
-          this,
-          i,
-          groups[i]
-        );
-
-      this.shards.set(i, shard);
-
-      this.ctx.waitUntil(
-        shard.start().catch(
-          e => console.error(e)
-        )
-      );
-    }
-
-    this.saveMeta(
-      "startedAt",
-      Date.now()
-    );
-  }
-
-  async stopShards() {
-    const all = [...this.shards.values()];
-    this.shards.clear();
-
-    await Promise.allSettled(
-      all.map(x => x.stop())
-    );
-  }
-
-  async fetch(request) {
-    const url = new URL(request.url);
-    const path = url.pathname;
-
+export default {
+  async fetch(request, env, ctx) {
     if (request.method === "OPTIONS") {
       return new Response(null, {
         status: 204,
         headers: {
           "access-control-allow-origin": "*",
           "access-control-allow-methods": "GET,POST,OPTIONS",
-          "access-control-allow-headers": "content-type"
+          "access-control-allow-headers": "*"
         }
       });
     }
 
-    if (path === "/init") {
-      let body = {};
+    try {
+      const url = new URL(request.url);
+      const path = url.pathname;
 
-      try {
-        body = await request.json();
-      } catch {}
+      if (!env.COLLECTOR) {
+        return err(
+          "COLLECTOR Durable Object binding is missing",
+          500
+        );
+      }
 
-      let symbols =
-        Array.isArray(body.symbols)
+      const id = env.COLLECTOR.idFromName("BYBIT-SMART-MONEY-COLLECTOR");
+      const stub = env.COLLECTOR.get(id);
+
+      if (path === "/api/test-bybit") {
+        const server = await bybit("/v5/market/time");
+
+        return cors(json({
+          ok: true,
+          connected: true,
+          bybit: {
+            retCode: server.retCode,
+            retMsg: server.retMsg,
+            timeSecond: server.result?.timeSecond,
+            timeNano: server.result?.timeNano
+          }
+        }));
+      }
+
+      if (path === "/api/health") {
+        const d = await collectorJSON(stub, "/status");
+
+        return cors(json({
+          ok: true,
+          version: VERSION,
+          bybit: true,
+          collector: d,
+          d1: true
+        }));
+      }
+
+      if (path === "/api/status") {
+        const d = await collectorJSON(stub, "/status");
+        return cors(json(d));
+      }
+
+      if (path === "/api/init") {
+        const body = await request
+          .json()
+          .catch(() => ({}));
+
+        const symbols = Array.isArray(body.symbols)
           ? body.symbols
           : [];
 
-      if (!symbols.length) {
-        symbols = await getLinearSymbols();
+        const r = await collectorJSON(
+          stub,
+          "/init",
+          {
+            method: "POST",
+            headers: {
+              "content-type": "application/json"
+            },
+            body: JSON.stringify({
+              symbols
+            })
+          }
+        );
+
+        return cors(json(r));
       }
 
-      await this.setSymbols(symbols);
+      if (path === "/api/symbols") {
+        const d = await collectorJSON(stub, "/symbols");
+        return cors(json(d));
+      }
 
-      return json({
-        ok: true,
-        version: VERSION,
-        symbols: this.symbols.length,
-        shards: this.shards.size
-      });
-    }
+      if (path === "/api/history-footprint") {
+        const qs = url.searchParams;
 
-    if (path === "/symbols") {
-      if (!this.symbols.length) {
+        const symbol = safeSymbol(
+          qs.get("symbol") || "BTCUSDT"
+        );
+
+        const hours = Math.max(
+          1,
+          Math.min(
+            24,
+            Number(qs.get("hours") || 24)
+          )
+        );
+
+        const d = await collectorJSON(
+          stub,
+          `/history-footprint?symbol=${encodeURIComponent(symbol)}&hours=${hours}`
+        );
+
+        return cors(json(d));
+      }
+
+      if (path === "/api/latest") {
+        const symbol = safeSymbol(
+          url.searchParams.get("symbol") || "BTCUSDT"
+        );
+
+        const d = await collectorJSON(
+          stub,
+          `/latest?symbol=${encodeURIComponent(symbol)}`
+        );
+
+        return cors(json(d));
+      }
+
+      if (path === "/api/analyze") {
+        const symbol = safeSymbol(
+          url.searchParams.get("symbol") || "BTCUSDT"
+        );
+
+        const interval =
+          url.searchParams.get("interval") || "1";
+
+        const d = await analyzeSymbol(
+          symbol,
+          interval,
+          stub
+        );
+
+        return cors(json(d));
+      }
+
+      if (path === "/api/live") {
+        const symbol = safeSymbol(
+          url.searchParams.get("symbol") || "BTCUSDT"
+        );
+
+        const interval =
+          url.searchParams.get("interval") || "1";
+
+        const d = await analyzeSymbol(
+          symbol,
+          interval,
+          stub
+        );
+
+        return cors(json({
+          ok: true,
+          symbol,
+          interval,
+          time: Date.now(),
+          footprint: d.liveFootprint,
+          orderbook: d.orderbook,
+          trades: d.trades,
+          ticker: d.ticker,
+          signal: d.signal
+        }));
+      }
+
+      if (path === "/api/collect") {
+        const symbol = safeSymbol(
+          url.searchParams.get("symbol") || "BTCUSDT"
+        );
+
+        const d = await analyzeSymbol(
+          symbol,
+          "1",
+          stub
+        );
+
+        return cors(json({
+          ok: true,
+          symbol,
+          collected: true,
+          footprint: d.liveFootprint,
+          orderbook: d.orderbook,
+          trades: d.trades
+        }));
+      }
+
+      if (path === "/api/scan") {
+        let symbols = [];
+
         try {
-          this.symbols =
-            JSON.parse(
-              this.getMeta(
-                "symbols",
-                "[]"
-              )
-            );
+          const s = await bybit(
+            "/v5/market/instruments-info",
+            {
+              category: "linear",
+              status: "Trading",
+              limit: 1000
+            }
+          );
+
+          symbols = (s?.result?.list || [])
+            .map(x => x.symbol)
+            .filter(Boolean)
+            .slice(0, 100);
         } catch {
-          this.symbols = [];
+          symbols = [
+            "BTCUSDT",
+            "ETHUSDT",
+            "SOLUSDT",
+            "XRPUSDT",
+            "DOGEUSDT",
+            "BNBUSDT",
+            "ADAUSDT",
+            "AVAXUSDT",
+            "LINKUSDT",
+            "SUIUSDT"
+          ];
         }
+
+        const results = [];
+
+        for (const symbol of symbols) {
+          try {
+            const d = await analyzeSymbol(
+              symbol,
+              "1",
+              stub
+            );
+
+            results.push({
+              symbol,
+              price: d.ticker.lastPrice,
+              signal: d.signal.signal,
+              score: d.signal.score,
+              delta: d.liveFootprint?.delta || 0,
+              volume: d.liveFootprint?.totalVolume || 0,
+              trend: d.indicators?.trend || "NEUTRAL"
+            });
+          } catch (e) {
+            results.push({
+              symbol,
+              error: String(e.message || e)
+            });
+          }
+        }
+
+        results.sort(
+          (a, b) => num(b.score) - num(a.score)
+        );
+
+        return cors(json({
+          ok: true,
+          count: results.length,
+          results
+        }));
       }
 
-      return json({
-        ok: true,
-        count: this.symbols.length,
-        symbols: this.symbols
-      });
-    }
-
-    if (path === "/status") {
-      return json({
-        ok: true,
-        version: VERSION,
-        started: this.started,
-        startedAt: this.startedAt,
-        uptimeMs: Date.now() - this.startedAt,
-        symbols: this.symbols.length,
-        shards: this.shards.size,
-        stats: this.stats,
-        shardStatus:
-          [...this.shards.values()]
-            .map(x => x.status())
-      });
-    }
-
-    if (path === "/latest") {
-      const symbol =
-        normalizeSymbol(
-          url.searchParams.get("symbol")
+      if (path.startsWith("/api/")) {
+        const target = new URL(
+          request.url
         );
 
-      return json({
-        ok: true,
-        symbol,
-        data: this.latest(symbol)
-      });
-    }
+        target.pathname =
+          path.replace(/^\/api/, "") || "/";
 
-    if (path === "/history") {
-      const symbol =
-        normalizeSymbol(
-          url.searchParams.get("symbol")
+        return cors(
+          await stub.fetch(
+            new Request(
+              target.toString(),
+              request
+            )
+          )
         );
-
-      const hours =
-        clamp(
-          num(
-            url.searchParams.get("hours"),
-            24
-          ),
-          1,
-          24
-        );
-
-      const now = Date.now();
-
-      const data =
-        this.history(
-          symbol,
-          now - hours * 60 * MINUTE_MS,
-          now,
-          hours * 60
-        ).map(aggregateFootprint);
-
-      return json({
-        ok: true,
-        symbol,
-        hours,
-        count: data.length,
-        data
-      });
-    }
-
-    if (path === "/history-footprint") {
-      const symbol =
-        normalizeSymbol(
-          url.searchParams.get("symbol")
-        );
-
-      const hours =
-        clamp(
-          num(
-            url.searchParams.get("hours"),
-            24
-          ),
-          1,
-          24
-        );
-
-      const now = Date.now();
-
-      const raw =
-        this.history(
-          symbol,
-          now - hours * 60 * MINUTE_MS,
-          now,
-          hours * 60
-        );
-
-      const data =
-        raw.map(aggregateFootprint);
-
-      return json({
-        ok: true,
-        available: data.length > 0,
-        symbol,
-        hours,
-        count: data.length,
-        footprints: data
-      });
-    }
-
-    if (path === "/cleanup") {
-      const before =
-        Date.now() -
-        RETENTION_MINUTES *
-        MINUTE_MS;
-
-      for (const s of this.symbols) {
-        this.deleteOld(s, before);
       }
 
-      return json({
-        ok: true,
-        before
-      });
-    }
+      if (env.ASSETS) {
+        return env.ASSETS.fetch(request);
+      }
 
-    return json({
-      ok: true,
-      service: "Bybit Personal Collector",
-      version: VERSION
-    });
+      return err("Not Found", 404);
+
+    } catch (e) {
+      console.error("WORKER ERROR", e);
+
+      return cors(err(
+        e?.message || String(e),
+        502,
+        {
+          version: VERSION,
+          stack: e?.stack
+            ? String(e.stack).slice(0, 2000)
+            : undefined
+        }
+      ));
+    }
   }
-}
+};
 
-class CollectorShard {
-  constructor(owner, id, symbols) {
-    this.owner = owner;
-    this.id = id;
+
+export class CollectorDO extends DurableObject {
+
+  constructor(ctx, env) {
+    super(ctx, env);
+
+    this.ctx = ctx;
+    this.env = env;
+
+    this.running = false;
+    this.symbols = [];
+    this.shards = [];
+    this.minutes = new Map();
+    this.lastTradeIds = new Map();
+
+    this.ctx.storage.sql.exec(`
+      CREATE TABLE IF NOT EXISTS minutes (
+        symbol TEXT NOT NULL,
+        ts INTEGER NOT NULL,
+        data TEXT NOT NULL,
+        PRIMARY KEY(symbol, ts)
+      )
+    `);
+
+    this.ctx.storage.sql.exec(`
+      CREATE TABLE IF NOT EXISTS meta (
+        key TEXT PRIMARY KEY,
+        value TEXT
+      )
+    `);
+
+    const saved = this.ctx.storage.sql
+      .exec(
+        `SELECT value FROM meta WHERE key = 'symbols' LIMIT 1`
+      )
+      .toArray();
+
+    if (saved?.[0]?.value) {
+      try {
+        this.symbols = JSON.parse(saved[0].value);
+      } catch {
+        this.symbols = [];
+      }
+    }
+  }
+
+  async fetch(request) {
+    const url = new URL(request.url);
+    const path = url.pathname;
+
+    try {
+      if (path === "/status") {
+        return json({
+          ok: true,
+          version: VERSION,
+          started: this.running,
+          symbols: this.symbols.length,
+          shards: this.shards.length,
+          minutes: this.countMinutes()
+        });
+      }
+
+      if (path === "/symbols") {
+        return json({
+          ok: true,
+          symbols: this.symbols
+        });
+      }
+
+      if (path === "/init") {
+        let body = {};
+
+        if (request.method === "POST") {
+          body = await request.json().catch(() => ({}));
+        }
+
+        let symbols = Array.isArray(body.symbols)
+          ? body.symbols
+          : [];
+
+        symbols = symbols
+          .map(safeSymbol)
+          .filter(Boolean);
+
+        if (!symbols.length) {
+          symbols = await this.getDefaultSymbols();
+        }
+
+        symbols = [...new Set(symbols)]
+          .slice(0, MAX_SYMBOLS);
+
+        await this.startCollector(symbols);
+
+        return json({
+          ok: true,
+          started: true,
+          symbols: this.symbols.length,
+          shards: this.shards.length
+        });
+      }
+
+      if (path === "/history-footprint") {
+        const symbol = safeSymbol(
+          url.searchParams.get("symbol") || "BTCUSDT"
+        );
+
+        const hours = Math.max(
+          1,
+          Math.min(
+            24,
+            Number(url.searchParams.get("hours") || 24)
+          )
+        );
+
+        const footprints =
+          this.getHistoryFootprint(
+            symbol,
+            hours
+          );
+
+        return json({
+          ok: true,
+          symbol,
+          hours,
+          footprints
+        });
+      }
+
+      if (path === "/latest") {
+        const symbol = safeSymbol(
+          url.searchParams.get("symbol") || "BTCUSDT"
+        );
+
+        const latest =
+          this.getLatestFootprint(symbol);
+
+        return json({
+          ok: true,
+          symbol,
+          footprint: latest
+        });
+      }
+
+      if (path === "/cleanup") {
+        const removed = this.cleanup();
+
+        return json({
+          ok: true,
+          removed
+        });
+      }
+
+      if (path === "/collect") {
+        const symbol = safeSymbol(
+          url.searchParams.get("symbol") || "BTCUSDT"
+        );
+
+        await this.collectSymbolREST(symbol);
+
+        return json({
+          ok: true,
+          symbol,
+          footprint:
+            this.getLatestFootprint(symbol)
+        });
+      }
+
+      return err("Collector route not found", 404);
+
+    } catch (e) {
+      console.error("COLLECTOR ERROR", e);
+
+      return err(
+        e?.message || String(e),
+        500
+      );
+    }
+  }
+
+  countMinutes() {
+    try {
+      const r = this.ctx.storage.sql
+        .exec(
+          `SELECT COUNT(*) AS c FROM minutes`
+        )
+        .toArray();
+
+      return num(r?.[0]?.c);
+    } catch {
+      return 0;
+    }
+  }
+
+  async getDefaultSymbols() {
+    try {
+      const data = await fetch(
+        `${BYBIT_API}/v5/market/instruments-info?category=linear&status=Trading&limit=1000`
+      );
+
+      const j = await data.json();
+
+      return (j?.result?.list || [])
+        .map(x => x.symbol)
+        .filter(Boolean)
+        .slice(0, MAX_SYMBOLS);
+
+    } catch {
+      return [
+        "BTCUSDT",
+        "ETHUSDT",
+        "SOLUSDT",
+        "XRPUSDT",
+        "DOGEUSDT",
+        "BNBUSDT",
+        "ADAUSDT",
+        "AVAXUSDT",
+        "LINKUSDT",
+        "SUIUSDT"
+      ];
+    }
+  }
+
+  async startCollector(symbols) {
+    symbols = [...new Set(
+      (symbols || [])
+        .map(safeSymbol)
+        .filter(Boolean)
+    )].slice(0, MAX_SYMBOLS);
+
     this.symbols = symbols;
 
-    this.ws = null;
-    this.running = false;
-    this.connecting = false;
-
-    this.reconnectTimer = null;
-    this.reconnectDelay = RECONNECT_MIN_MS;
-
-    this.books = new Map();
-    this.minutes = new Map();
-
-    this.lastTradeId = new Map();
-    this.connectedAt = 0;
-
-    this.messageCount = 0;
-    this.tradeCount = 0;
-    this.orderbookCount = 0;
-    this.liquidationCount = 0;
-    this.errors = 0;
-  }
-
-  async start() {
-    if (this.running) return;
+    this.ctx.storage.sql.exec(
+      `INSERT OR REPLACE INTO meta(key,value) VALUES('symbols',?)`,
+      JSON.stringify(this.symbols)
+    );
 
     this.running = true;
 
-    await this.connect();
-  }
-
-  async stop() {
-    this.running = false;
-
-    if (this.reconnectTimer) {
-      clearTimeout(this.reconnectTimer);
-      this.reconnectTimer = null;
+    for (const ws of this.shards) {
+      try {
+        ws.close();
+      } catch {}
     }
 
-    try {
-      this.ws?.close(1000, "stopping");
-    } catch {}
+    this.shards = [];
 
-    this.ws = null;
+    const chunks = [];
+
+    for (
+      let i = 0;
+      i < this.symbols.length;
+      i += WS_SUB_CHUNK
+    ) {
+      chunks.push(
+        this.symbols.slice(
+          i,
+          i + WS_SUB_CHUNK
+        )
+      );
+    }
+
+    for (const chunk of chunks) {
+      const shard = new CollectorShard(
+        this.ctx,
+        this.env,
+        this,
+        chunk
+      );
+
+      this.shards.push(shard);
+
+      this.ctx.waitUntil(
+        shard.start()
+      );
+    }
+
+    this.ctx.waitUntil(
+      this.cleanupLoop()
+    );
   }
 
-  status() {
-    return {
-      id: this.id,
-      symbols: this.symbols.length,
-      connected:
-        !!this.ws &&
-        this.ws.readyState === WebSocket.OPEN,
-      connectedAt: this.connectedAt,
-      messageCount: this.messageCount,
-      tradeCount: this.tradeCount,
-      orderbookCount: this.orderbookCount,
-      liquidationCount: this.liquidationCount,
-      errors: this.errors,
-      books: this.books.size,
-      activeMinutes: this.minutes.size
-    };
+  async cleanupLoop() {
+    await new Promise(
+      resolve => setTimeout(resolve, 10000)
+    );
+
+    this.cleanup();
+  }
+
+  cleanup() {
+    const cutoff =
+      Date.now() -
+      RETENTION_MINUTES * MINUTE_MS;
+
+    try {
+      const r = this.ctx.storage.sql.exec(
+        `DELETE FROM minutes WHERE ts < ?`,
+        cutoff
+      );
+
+      return r?.changes || 0;
+    } catch {
+      return 0;
+    }
+  }
+
+  saveMinute(m) {
+    if (!m || !m.symbol || !m.ts) return;
+
+    const data = JSON.stringify(m);
+
+    this.ctx.storage.sql.exec(
+      `
+      INSERT OR REPLACE INTO minutes(symbol,ts,data)
+      VALUES(?,?,?)
+      `,
+      m.symbol,
+      m.ts,
+      data
+    );
+
+    this.minutes.set(
+      `${m.symbol}:${m.ts}`,
+      m
+    );
+  }
+
+  loadMinutes(symbol, hours) {
+    const cutoff =
+      Date.now() -
+      hours * 60 * MINUTE_MS;
+
+    const rows = this.ctx.storage.sql
+      .exec(
+        `
+        SELECT ts,data
+        FROM minutes
+        WHERE symbol = ?
+        AND ts >= ?
+        ORDER BY ts ASC
+        `,
+        symbol,
+        cutoff
+      )
+      .toArray();
+
+    return rows.map(row => {
+      try {
+        return JSON.parse(row.data);
+      } catch {
+        return null;
+      }
+    }).filter(Boolean);
   }
 
   getCurrentMinute(symbol) {
-    const ts = minuteStart(Date.now());
-    return this.minutes.get(`${symbol}:${ts}`) || null;
-  }
+    const ts = minuteTs();
 
-  async connect() {
-    if (
-      !this.running ||
-      this.connecting ||
-      (
-        this.ws &&
-        this.ws.readyState === WebSocket.OPEN
+    const key = `${symbol}:${ts}`;
+
+    const inMemory =
+      this.minutes.get(key);
+
+    if (inMemory) {
+      return inMemory;
+    }
+
+    const rows = this.ctx.storage.sql
+      .exec(
+        `
+        SELECT data
+        FROM minutes
+        WHERE symbol = ?
+        AND ts = ?
+        LIMIT 1
+        `,
+        symbol,
+        ts
       )
-    ) return;
+      .toArray();
 
-    this.connecting = true;
+    if (!rows.length) return null;
 
     try {
-      const ws =
-        new WebSocket(BYBIT_WS);
-
-      this.ws = ws;
-
-      ws.addEventListener(
-        "open",
-        () => {
-          this.onOpen().catch(
-            e => console.error(e)
-          );
-        }
-      );
-
-      ws.addEventListener(
-        "message",
-        e => {
-          this.onMessage(e.data).catch(
-            err => {
-              this.errors++;
-              this.owner.stats.errors++;
-              console.error(err);
-            }
-          );
-        }
-      );
-
-      ws.addEventListener(
-        "error",
-        () => {
-          this.errors++;
-          this.owner.stats.errors++;
-        }
-      );
-
-      ws.addEventListener(
-        "close",
-        () => {
-          this.connecting = false;
-          this.ws = null;
-
-          if (this.running) {
-            this.scheduleReconnect();
-          }
-        }
-      );
+      return JSON.parse(rows[0].data);
     } catch {
-      this.connecting = false;
-      this.errors++;
-      this.owner.stats.errors++;
-      this.scheduleReconnect();
+      return null;
     }
   }
 
-  async onOpen() {
-    this.connecting = false;
-    this.connectedAt = Date.now();
+  getHistoryFootprint(symbol, hours) {
+    const stored =
+      this.loadMinutes(
+        symbol,
+        hours
+      ).map(aggregateFootprint);
 
-    this.owner.stats.reconnects++;
+    const current =
+      this.getCurrentMinute(symbol);
 
-    this.reconnectDelay =
-      RECONNECT_MIN_MS;
+    if (current) {
+      const currentFp =
+        aggregateFootprint(current);
 
-    const topics = [];
+      const idx =
+        stored.findIndex(
+          x =>
+            num(x.time) ===
+            num(currentFp.time)
+        );
 
-    for (const s of this.symbols) {
-      topics.push(`publicTrade.${s}`);
-      topics.push(`orderbook.${ORDERBOOK_DEPTH}.${s}`);
-      topics.push(`allLiquidation.${s}`);
+      if (idx >= 0) {
+        stored[idx] = currentFp;
+      } else {
+        stored.push(currentFp);
+      }
+    }
+
+    return stored
+      .filter(Boolean)
+      .sort(
+        (a, b) =>
+          num(a.time) -
+          num(b.time)
+      );
+  }
+
+  getLatestFootprint(symbol) {
+    const arr =
+      this.getHistoryFootprint(
+        symbol,
+        24
+      );
+
+    return arr.length
+      ? arr[arr.length - 1]
+      : null;
+  }
+
+  async collectSymbolREST(symbol) {
+    try {
+      const u = new URL(
+        `${BYBIT_API}/v5/market/recent-trade`
+      );
+
+      u.searchParams.set(
+        "category",
+        "linear"
+      );
+
+      u.searchParams.set(
+        "symbol",
+        symbol
+      );
+
+      u.searchParams.set(
+        "limit",
+        "1000"
+      );
+
+      const r = await fetch(
+        u.toString()
+      );
+
+      const data =
+        await r.json();
+
+      if (
+        data.retCode !== 0
+      ) {
+        throw new Error(
+          data.retMsg ||
+          "Bybit error"
+        );
+      }
+
+      const trades =
+        data?.result?.list || [];
+
+      const grouped =
+        new Map();
+
+      for (const t of trades) {
+        const ts =
+          minuteTs(
+            num(t.time)
+          );
+
+        if (!grouped.has(ts)) {
+          grouped.set(
+            ts,
+            emptyMinute(
+              symbol,
+              ts
+            )
+          );
+        }
+
+        addTrade(
+          grouped.get(ts),
+          {
+            price: num(t.price),
+            size: num(t.size),
+            side: t.side
+          }
+        );
+      }
+
+      for (const m of grouped.values()) {
+        this.saveMinute(m);
+      }
+
+      return true;
+
+    } catch (e) {
+      console.error(
+        "REST COLLECT ERROR",
+        symbol,
+        e
+      );
+
+      return false;
+    }
+  }
+}
+
+
+class CollectorShard {
+
+  constructor(ctx, env, owner, symbols) {
+    this.ctx = ctx;
+    this.env = env;
+    this.owner = owner;
+    this.symbols = symbols;
+
+    this.ws = null;
+    this.connected = false;
+
+    this.retry = RECONNECT_MIN_MS;
+    this.lastSnapshot = 0;
+
+    this.minutes = new Map();
+    this.books = new Map();
+  }
+
+  getMinute(symbol, ts = Date.now()) {
+    const mt = minuteTs(ts);
+    const key = `${symbol}:${mt}`;
+
+    if (!this.minutes.has(key)) {
+      this.minutes.set(
+        key,
+        emptyMinute(
+          symbol,
+          mt
+        )
+      );
+    }
+
+    return this.minutes.get(key);
+  }
+
+  getBook(symbol) {
+    if (!this.books.has(symbol)) {
+      this.books.set(
+        symbol,
+        {
+          bids: new Map(),
+          asks: new Map(),
+          updateId: 0
+        }
+      );
+    }
+
+    return this.books.get(symbol);
+  }
+
+  async start() {
+    await this.connect();
+  }
+
+  async connect() {
+    try {
+      const response =
+        await fetch(
+          BYBIT_WS,
+          {
+            headers: {
+              Upgrade: "websocket"
+            }
+          }
+        );
+
+      if (
+        response.status !== 101 ||
+        !response.webSocket
+      ) {
+        throw new Error(
+          `WebSocket HTTP ${response.status}`
+        );
+      }
+
+      this.ws =
+        response.webSocket;
+
+      this.ws.accept();
+
+      this.connected = true;
+      this.retry =
+        RECONNECT_MIN_MS;
+
+      this.subscribe();
+
+      this.ws.addEventListener(
+        "message",
+        event => {
+          this.onMessage(
+            event.data
+          );
+        }
+      );
+
+      this.ws.addEventListener(
+        "close",
+        () => {
+          this.connected = false;
+          this.reconnect();
+        }
+      );
+
+      this.ws.addEventListener(
+        "error",
+        () => {
+          this.connected = false;
+
+          try {
+            this.ws.close();
+          } catch {}
+
+          this.reconnect();
+        }
+      );
+
+      this.ctx.waitUntil(
+        this.heartbeat()
+      );
+
+      this.ctx.waitUntil(
+        this.flushLoop()
+      );
+
+    } catch (e) {
+      console.error(
+        "WS CONNECT ERROR",
+        e
+      );
+
+      this.connected = false;
+
+      this.reconnect();
+    }
+  }
+
+  subscribe() {
+    if (!this.ws) return;
+
+    const args = [];
+
+    for (const symbol of this.symbols) {
+      args.push(
+        `publicTrade.${symbol}`
+      );
+
+      args.push(
+        `orderbook.50.${symbol}`
+      );
+
+      args.push(
+        `allLiquidation.${symbol}`
+      );
     }
 
     for (
       let i = 0;
-      i < topics.length;
-      i += WS_SUB_CHUNK
+      i < args.length;
+      i += 200
     ) {
-      if (
-        !this.ws ||
-        this.ws.readyState !== WebSocket.OPEN
-      ) return;
+      const chunk =
+        args.slice(
+          i,
+          i + 200
+        );
 
-      this.ws.send(
-        JSON.stringify({
-          op: "subscribe",
-          args: topics.slice(
-            i,
-            i + WS_SUB_CHUNK
-          )
-        })
-      );
-
-      await new Promise(
-        r => setTimeout(r, 100)
-      );
+      try {
+        this.ws.send(
+          JSON.stringify({
+            op: "subscribe",
+            args: chunk
+          })
+        );
+      } catch {}
     }
   }
 
-  scheduleReconnect() {
-    if (
-      !this.running ||
-      this.reconnectTimer
-    ) return;
-
-    const delay =
-      this.reconnectDelay +
-      Math.floor(Math.random() * 1000);
-
-    this.reconnectDelay =
-      Math.min(
-        RECONNECT_MAX_MS,
-        this.reconnectDelay * 2
+  async heartbeat() {
+    while (
+      this.connected &&
+      this.ws
+    ) {
+      await new Promise(
+        resolve =>
+          setTimeout(
+            resolve,
+            20000
+          )
       );
 
-    this.reconnectTimer =
-      setTimeout(
-        () => {
-          this.reconnectTimer = null;
-          this.connect().catch(() => {});
-        },
-        delay
-      );
+      if (
+        !this.connected ||
+        !this.ws
+      ) {
+        break;
+      }
+
+      try {
+        this.ws.send(
+          JSON.stringify({
+            op: "ping"
+          })
+        );
+      } catch {
+        break;
+      }
+    }
   }
 
-  async onMessage(raw) {
-    this.messageCount++;
-    this.owner.stats.messages++;
+  async reconnect() {
+    const wait =
+      this.retry;
 
+    this.retry =
+      Math.min(
+        RECONNECT_MAX_MS,
+        this.retry * 2
+      );
+
+    await new Promise(
+      resolve =>
+        setTimeout(
+          resolve,
+          wait
+        )
+    );
+
+    if (!this.connected) {
+      await this.connect();
+    }
+  }
+
+  onMessage(raw) {
     let msg;
 
     try {
       msg =
         typeof raw === "string"
           ? JSON.parse(raw)
-          : raw;
+          : JSON.parse(
+              new TextDecoder().decode(raw)
+            );
     } catch {
       return;
     }
 
-    if (!msg) return;
-
-    if (msg.op === "ping") {
-      if (
-        this.ws &&
-        this.ws.readyState === WebSocket.OPEN
-      ) {
-        this.ws.send(
-          JSON.stringify({
-            op: "pong"
-          })
-        );
-      }
-      return;
-    }
-
-    if (msg.success === false) {
-      this.errors++;
-      this.owner.stats.errors++;
+    if (
+      msg.op === "pong" ||
+      msg.success === true
+    ) {
       return;
     }
 
@@ -1348,999 +1829,338 @@ class CollectorShard {
       String(msg.topic || "");
 
     if (
-      topic.startsWith("publicTrade.")
+      topic.startsWith(
+        "publicTrade."
+      )
     ) {
-      await this.handleTrades(msg);
+      this.handleTrades(msg);
       return;
     }
 
     if (
-      topic.startsWith("orderbook.")
+      topic.startsWith(
+        "orderbook."
+      )
     ) {
-      await this.handleOrderbook(msg);
+      this.handleOrderbook(msg);
       return;
     }
 
     if (
-      topic.startsWith("allLiquidation.")
+      topic.startsWith(
+        "allLiquidation."
+      )
     ) {
-      await this.handleLiquidation(msg);
+      this.handleLiquidation(msg);
     }
   }
 
-  isDuplicate(symbol, trade) {
-    const id =
-      String(
-        trade?.i ??
-        trade?.execId ??
-        `${trade?.T}-${trade?.p}-${trade?.v}-${trade?.S}`
-      );
+  handleTrades(msg) {
+    const topic =
+      String(msg.topic || "");
 
-    const last =
-      this.lastTradeId.get(symbol);
+    const symbol =
+      topic.split(".").pop();
 
-    if (last === id) return true;
-
-    this.lastTradeId.set(symbol, id);
-
-    return false;
-  }
-
-  getMinute(symbol, ts) {
-    const ms = minuteStart(ts);
-    const key = `${symbol}:${ms}`;
-
-    let m = this.minutes.get(key);
-
-    if (!m) {
-      m = emptyMinute(symbol, ms);
-
-      const previous =
-        this.owner.latest(symbol);
-
-      if (previous) {
-        m.cumulativeDelta =
-          num(previous.cumulativeDelta);
-
-        m.cumulativeDeltaValue =
-          num(previous.cumulativeDeltaValue);
-      }
-
-      this.minutes.set(key, m);
-    }
-
-    return m;
-  }
-
-  ensureLevel(m, price) {
-    const key = priceKey(price);
-
-    if (!m.levels[key]) {
-      m.levels[key] = {
-        price: num(price),
-
-        bidVolume: 0,
-        askVolume: 0,
-
-        bidValue: 0,
-        askValue: 0,
-
-        bidTrades: 0,
-        askTrades: 0,
-
-        delta: 0,
-        deltaValue: 0,
-
-        totalVolume: 0,
-        totalValue: 0
-      };
-    }
-
-    return m.levels[key];
-  }
-
-  applyTrade(symbol, t) {
-    const ts = num(t.T, Date.now());
-    const price = num(t.p);
-    const size = num(t.v);
-    const side = String(t.S || "");
-
-    if (price <= 0 || size <= 0) return;
-
-    const value = price * size;
-    const m = this.getMinute(symbol, ts);
-
-    if (!m.open) {
-      m.open = price;
-      m.high = price;
-      m.low = price;
-      m.close = price;
-    } else {
-      m.high = Math.max(m.high, price);
-      m.low = Math.min(m.low, price);
-      m.close = price;
-    }
-
-    m.tradeCount++;
-
-    const l =
-      this.ensureLevel(m, price);
-
-    l.totalVolume += size;
-    l.totalValue += value;
-
-    if (side === "Buy") {
-      m.buyVolume += size;
-      m.buyValue += value;
-
-      l.askVolume += size;
-      l.askValue += value;
-      l.askTrades++;
-    } else if (side === "Sell") {
-      m.sellVolume += size;
-      m.sellValue += value;
-
-      l.bidVolume += size;
-      l.bidValue += value;
-      l.bidTrades++;
-    } else {
-      return;
-    }
-
-    l.delta =
-      l.askVolume -
-      l.bidVolume;
-
-    l.deltaValue =
-      l.askValue -
-      l.bidValue;
-
-    m.delta =
-      m.buyVolume -
-      m.sellVolume;
-
-    m.deltaValue =
-      m.buyValue -
-      m.sellValue;
-
-    m.cumulativeDelta +=
-      side === "Buy"
-        ? size
-        : -size;
-
-    m.cumulativeDeltaValue +=
-      side === "Buy"
-        ? value
-        : -value;
-
-    m.largestTradeValue =
-      Math.max(
-        m.largestTradeValue,
-        value
-      );
-  }
-
-  async handleTrades(msg) {
     const list =
-      Array.isArray(msg.data)
-        ? msg.data
-        : [];
+      msg.data || [];
+
+    if (!symbol) return;
 
     for (const t of list) {
-      const symbol =
-        normalizeSymbol(t.s);
+      const id =
+        t.i ||
+        t.execId ||
+        `${t.T}:${t.p}:${t.v}:${t.S}`;
 
-      if (
-        !symbol ||
-        !validSymbol(symbol)
-      ) continue;
+      const last =
+        this.owner.lastTradeIds
+          .get(symbol);
 
-      if (
-        this.isDuplicate(symbol, t)
-      ) continue;
+      if (last === id) {
+        continue;
+      }
 
-      this.applyTrade(symbol, t);
+      this.owner.lastTradeIds
+        .set(symbol, id);
 
-      this.tradeCount++;
-      this.owner.stats.trades++;
+      const price =
+        num(t.p);
+
+      const size =
+        num(t.v);
+
+      const side =
+        t.S ||
+        t.side ||
+        "";
+
+      if (!price || !size) {
+        continue;
+      }
+
+      const m =
+        this.getMinute(
+          symbol,
+          num(t.T) ||
+          Date.now()
+        );
+
+      addTrade(
+        m,
+        {
+          price,
+          size,
+          side
+        }
+      );
     }
-
-    await this.flush();
   }
 
-  ensureBook(symbol) {
-    let b = this.books.get(symbol);
+  handleOrderbook(msg) {
+    const topic =
+      String(msg.topic || "");
 
-    if (!b) {
-      b = {
-        symbol,
-        bids: new Map(),
-        asks: new Map(),
-        initialized: false,
-        lastUpdateId: 0,
-        lastSeq: 0,
-        lastSnapshot: 0,
-        snapshotCount: 0,
-        bestBid: 0,
-        bestAsk: 0,
-        bidLiquidity: 0,
-        askLiquidity: 0,
-        bidSamples: [],
-        askSamples: []
-      };
+    const symbol =
+      topic.split(".").pop();
 
-      this.books.set(symbol, b);
+    if (!symbol) return;
+
+    const data =
+      msg.data || {};
+
+    const book =
+      this.getBook(symbol);
+
+    if (
+      data.u !== undefined
+    ) {
+      book.updateId =
+        num(data.u);
     }
 
-    return b;
-  }
+    if (
+      data.b &&
+      Array.isArray(data.b)
+    ) {
+      for (
+        const row of data.b
+      ) {
+        const price =
+          String(row[0]);
 
-  applySide(map, levels) {
-    if (!Array.isArray(levels)) return;
+        const size =
+          num(row[1]);
 
-    for (const row of levels) {
-      if (
-        !Array.isArray(row) ||
-        row.length < 2
-      ) continue;
+        if (!price) continue;
 
-      const p = num(row[0]);
-      const s = num(row[1]);
-
-      if (p <= 0) continue;
-
-      const k = priceKey(p);
-
-      if (s <= 0) {
-        map.delete(k);
-      } else {
-        map.set(k, {
-          price: p,
-          size: s
-        });
+        if (size === 0) {
+          book.bids.delete(
+            price
+          );
+        } else {
+          book.bids.set(
+            price,
+            size
+          );
+        }
       }
     }
-  }
 
-  bookMetrics(book) {
+    if (
+      data.a &&
+      Array.isArray(data.a)
+    ) {
+      for (
+        const row of data.a
+      ) {
+        const price =
+          String(row[0]);
+
+        const size =
+          num(row[1]);
+
+        if (!price) continue;
+
+        if (size === 0) {
+          book.asks.delete(
+            price
+          );
+        } else {
+          book.asks.set(
+            price,
+            size
+          );
+        }
+      }
+    }
+
     const bids =
-      [...book.bids.values()]
-        .sort((a, b) => b.price - a.price);
+      Array.from(
+        book.bids.entries()
+      )
+      .map(
+        ([price, size]) => ({
+          price: num(price),
+          size,
+          value:
+            num(price) * size
+        })
+      )
+      .sort(
+        (a, b) =>
+          b.price - a.price
+      )
+      .slice(
+        0,
+        ORDERBOOK_DEPTH
+      );
 
     const asks =
-      [...book.asks.values()]
-        .sort((a, b) => a.price - b.price);
-
-    const bidLiquidity =
-      bids.reduce(
-        (s, x) => s + x.price * x.size,
-        0
+      Array.from(
+        book.asks.entries()
+      )
+      .map(
+        ([price, size]) => ({
+          price: num(price),
+          size,
+          value:
+            num(price) * size
+        })
+      )
+      .sort(
+        (a, b) =>
+          a.price - b.price
+      )
+      .slice(
+        0,
+        ORDERBOOK_DEPTH
       );
 
-    const askLiquidity =
-      asks.reduce(
-        (s, x) => s + x.price * x.size,
-        0
+    const m =
+      this.getMinute(
+        symbol
       );
 
-    book.bestBid =
-      bids[0]?.price || 0;
-
-    book.bestAsk =
-      asks[0]?.price || 0;
-
-    book.bidLiquidity =
-      bidLiquidity;
-
-    book.askLiquidity =
-      askLiquidity;
-
-    book.bidSamples.push(
-      bidLiquidity
-    );
-
-    book.askSamples.push(
-      askLiquidity
-    );
-
-    if (book.bidSamples.length > 60)
-      book.bidSamples.shift();
-
-    if (book.askSamples.length > 60)
-      book.askSamples.shift();
-
-    return {
+    m.orderbook = {
       bids,
       asks,
-      bidLiquidity,
-      askLiquidity
+      bestBid:
+        bids[0]?.price || 0,
+      bestAsk:
+        asks[0]?.price || 0,
+      bidLiquidity:
+        bids.reduce(
+          (a, x) =>
+            a + num(x.value),
+          0
+        ),
+      askLiquidity:
+        asks.reduce(
+          (a, x) =>
+            a + num(x.value),
+          0
+        )
     };
   }
 
-  async handleOrderbook(msg) {
-    this.orderbookCount++;
-    this.owner.stats.orderbookMessages++;
+  handleLiquidation(msg) {
+    const topic =
+      String(msg.topic || "");
 
     const symbol =
-      normalizeSymbol(
-        String(msg.topic || "")
-          .split(".")
-          .pop()
-      );
-
-    if (!symbol) return;
-
-    const data = msg.data || {};
-    const type = String(msg.type || "");
-
-    const book =
-      this.ensureBook(symbol);
-
-    if (type === "snapshot") {
-      book.bids.clear();
-      book.asks.clear();
-
-      this.applySide(
-        book.bids,
-        data.b
-      );
-
-      this.applySide(
-        book.asks,
-        data.a
-      );
-
-      book.initialized = true;
-      book.lastUpdateId = num(data.u);
-      book.lastSeq = num(data.seq);
-    } else if (type === "delta") {
-      if (!book.initialized) return;
-
-      this.applySide(
-        book.bids,
-        data.b
-      );
-
-      this.applySide(
-        book.asks,
-        data.a
-      );
-
-      const seq = num(data.seq);
-
-      if (
-        seq &&
-        book.lastSeq &&
-        seq < book.lastSeq
-      ) {
-        book.bids.clear();
-        book.asks.clear();
-        book.initialized = false;
-        return;
-      }
-
-      book.lastSeq = seq || book.lastSeq;
-      book.lastUpdateId =
-        num(data.u) ||
-        book.lastUpdateId;
-    } else {
-      return;
-    }
-
-    const metrics =
-      this.bookMetrics(book);
-
-    const ts =
-      num(data.ts, Date.now());
-
-    const m =
-      this.getMinute(symbol, ts);
-
-    m.bookSnapshotCount++;
-
-    m.lastBestBid =
-      metrics.bids[0]?.price || 0;
-
-    m.lastBestAsk =
-      metrics.asks[0]?.price || 0;
-
-    m.maxBidLiquidity =
-      Math.max(
-        m.maxBidLiquidity,
-        metrics.bidLiquidity
-      );
-
-    m.maxAskLiquidity =
-      Math.max(
-        m.maxAskLiquidity,
-        metrics.askLiquidity
-      );
-
-    m.avgBidLiquidity =
-      average(book.bidSamples);
-
-    m.avgAskLiquidity =
-      average(book.askSamples);
-
-    if (
-      Date.now() -
-      book.lastSnapshot >=
-      SNAPSHOT_MS
-    ) {
-      book.lastSnapshot = Date.now();
-
-      m.bookSnapshots.push({
-        ts,
-
-        bestBid:
-          metrics.bids[0]?.price || 0,
-
-        bestAsk:
-          metrics.asks[0]?.price || 0,
-
-        bidLiquidity:
-          metrics.bidLiquidity,
-
-        askLiquidity:
-          metrics.askLiquidity,
-
-        bids:
-          metrics.bids
-            .slice(0, BOOK_SNAPSHOT_LEVELS)
-            .map(x => [x.price, x.size]),
-
-        asks:
-          metrics.asks
-            .slice(0, BOOK_SNAPSHOT_LEVELS)
-            .map(x => [x.price, x.size])
-      });
-
-      if (m.bookSnapshots.length > 12) {
-        m.bookSnapshots =
-          m.bookSnapshots.slice(-12);
-      }
-
-      book.snapshotCount++;
-    }
-
-    await this.flush();
-  }
-
-  async handleLiquidation(msg) {
-    const symbol =
-      normalizeSymbol(
-        String(msg.topic || "")
-          .split(".")
-          .pop()
-      );
+      topic.split(".").pop();
 
     if (!symbol) return;
 
     const list =
       Array.isArray(msg.data)
         ? msg.data
-        : [];
+        : [msg.data];
+
+    const m =
+      this.getMinute(symbol);
 
     for (const x of list) {
-      const ts = num(x.T, Date.now());
-      const price = num(x.p);
-      const size = num(x.v);
-      const side = String(x.S || "");
+      if (!x) continue;
 
-      if (price <= 0 || size <= 0) continue;
+      const side =
+        String(
+          x.S ||
+          x.side ||
+          ""
+        ).toLowerCase();
 
-      const value = price * size;
-      const m = this.getMinute(symbol, ts);
+      const qty =
+        num(
+          x.v ||
+          x.qty ||
+          x.size
+        );
 
-      if (side === "Sell") {
-        m.liquidationSellVolume += size;
-        m.liquidationSellValue += value;
-        m.liquidationSellCount++;
-      } else if (side === "Buy") {
-        m.liquidationBuyVolume += size;
-        m.liquidationBuyValue += value;
-        m.liquidationBuyCount++;
+      if (side === "buy") {
+        m.liquidations.buy += qty;
+      } else if (
+        side === "sell"
+      ) {
+        m.liquidations.sell += qty;
       }
 
-      this.liquidationCount++;
-      this.owner.stats.liquidations++;
+      m.liquidations.count += 1;
     }
-
-    await this.flush();
   }
 
-  finalize(m) {
-    m.delta =
-      m.buyVolume -
-      m.sellVolume;
+  async flushLoop() {
+    let lastMinute = minuteTs();
 
-    m.deltaValue =
-      m.buyValue -
-      m.sellValue;
-
-    const trades =
-      Math.max(1, m.tradeCount);
-
-    const avgValue =
-      (
-        m.buyValue +
-        m.sellValue
-      ) / trades;
-
-    const threshold =
-      Math.max(
-        avgValue * BLOCK_MULTIPLIER,
-        m.largestTradeValue * 0.5
+    while (this.connected) {
+      await new Promise(
+        resolve =>
+          setTimeout(
+            resolve,
+            SNAPSHOT_MS
+          )
       );
 
-    m.blockThreshold =
-      threshold;
+      const current =
+        minuteTs();
 
-    const blocks = [];
+      for (
+        const [
+          key,
+          m
+        ] of this.minutes
+      ) {
+        if (
+          m.ts < current
+        ) {
+          this.owner.saveMinute(
+            m
+          );
 
-    if (threshold > 0) {
-      for (const l of Object.values(m.levels)) {
-        if (l.totalValue >= threshold) {
-          blocks.push({
-            price: l.price,
-            value: l.totalValue,
-            volume: l.totalVolume,
-
-            bidVolume: l.bidVolume,
-            askVolume: l.askVolume,
-
-            delta:
-              l.askVolume -
-              l.bidVolume,
-
-            deltaValue:
-              l.askValue -
-              l.bidValue,
-
-            bidTrades: l.bidTrades,
-            askTrades: l.askTrades
-          });
+          this.minutes.delete(
+            key
+          );
         }
       }
-    }
 
-    blocks.sort(
-      (a, b) => b.value - a.value
-    );
-
-    m.blocks =
-      blocks.slice(
-        0,
-        MAX_BLOCKS_PER_MINUTE
-      );
-
-    return m;
-  }
-
-  async flush() {
-    const current =
-      minuteStart(Date.now());
-
-    const cutoff =
-      current - MINUTE_MS;
-
-    const retention =
-      current -
-      RETENTION_MINUTES *
-      MINUTE_MS;
-
-    const done = [];
-
-    for (const [key, m] of this.minutes) {
-      if (m.ts <= cutoff) {
-        done.push([key, m]);
+      if (
+        current !==
+        lastMinute
+      ) {
+        lastMinute =
+          current;
       }
-    }
 
-    for (const [key, m] of done) {
-      this.finalize(m);
-
-      this.owner.saveMinute(m);
-
-      this.minutes.delete(key);
-
-      this.owner.deleteOld(
-        m.symbol,
-        retention
-      );
+      if (
+        Date.now() -
+        this.lastSnapshot >
+        60000
+      ) {
+        this.owner.cleanup();
+        this.lastSnapshot =
+          Date.now();
+      }
     }
   }
 }
-
-export default {
-  async fetch(request, env, ctx) {
-    const url =
-      new URL(request.url);
-
-    if (request.method === "OPTIONS") {
-      return new Response(null, {
-        status: 204,
-        headers: {
-          "access-control-allow-origin": "*",
-          "access-control-allow-methods": "GET,POST,OPTIONS",
-          "access-control-allow-headers": "content-type"
-        }
-      });
-    }
-
-    if (url.pathname === "/api/health") {
-      let collectorStatus = null;
-
-      try {
-        const id =
-          env.COLLECTOR.idFromName("MAIN");
-
-        const stub =
-          env.COLLECTOR.get(id);
-
-        const r =
-          await stub.fetch(
-            new Request(
-              new URL(
-                "/status",
-                request.url
-              ),
-              request
-            )
-          );
-
-        collectorStatus =
-          await r.json();
-      } catch {}
-
-      return json({
-        ok: true,
-        service:
-          "Bybit Personal Collector",
-        version: VERSION,
-        d1: !!env.COLLECTOR,
-        collector:
-          collectorStatus,
-        time: Date.now()
-      });
-    }
-
-    if (url.pathname === "/api/test-bybit") {
-      try {
-        const d =
-          await bybit(
-            "/v5/market/time"
-          );
-
-        return json({
-          ok: true,
-          bybit: d
-        });
-      } catch (e) {
-        return json({
-          ok: false,
-          error: String(e?.message || e)
-        }, 502);
-      }
-    }
-
-    const id =
-      env.COLLECTOR.idFromName("MAIN");
-
-    const stub =
-      env.COLLECTOR.get(id);
-
-    if (url.pathname === "/api/init") {
-      return stub.fetch(
-        new Request(
-          new URL(
-            "/init",
-            request.url
-          ),
-          request
-        )
-      );
-    }
-
-    if (url.pathname === "/api/status") {
-      return stub.fetch(
-        new Request(
-          new URL(
-            "/status",
-            request.url
-          ),
-          request
-        )
-      );
-    }
-
-    if (url.pathname === "/api/symbols") {
-      return stub.fetch(
-        new Request(
-          new URL(
-            "/symbols",
-            request.url
-          ),
-          request
-        )
-      );
-    }
-
-    if (
-      url.pathname ===
-      "/api/history-footprint"
-    ) {
-      const target =
-        new URL(
-          "/history-footprint",
-          request.url
-        );
-
-      target.search =
-        url.search;
-
-      return stub.fetch(
-        new Request(
-          target,
-          request
-        )
-      );
-    }
-
-    if (url.pathname === "/api/latest") {
-      const target =
-        new URL(
-          "/latest",
-          request.url
-        );
-
-      target.search =
-        url.search;
-
-      return stub.fetch(
-        new Request(
-          target,
-          request
-        )
-      );
-    }
-
-    if (url.pathname === "/api/history") {
-      const target =
-        new URL(
-          "/history",
-          request.url
-        );
-
-      target.search =
-        url.search;
-
-      return stub.fetch(
-        new Request(
-          target,
-          request
-        )
-      );
-    }
-
-    if (url.pathname === "/api/cleanup") {
-      return stub.fetch(
-        new Request(
-          new URL(
-            "/cleanup",
-            request.url
-          ),
-          request
-        )
-      );
-    }
-
-    if (url.pathname === "/api/collect") {
-      const symbol =
-        normalizeSymbol(
-          url.searchParams.get("symbol")
-        );
-
-      if (!symbol) {
-        return json({
-          ok: false,
-          error: "symbol required"
-        }, 400);
-      }
-
-      try {
-        const d =
-          await analyzeSymbol(
-            symbol,
-            url.searchParams.get("interval") || "1",
-            stub
-          );
-
-        return json({
-          ok: true,
-          collected: true,
-          symbol,
-          footprints:
-            d.footprints
-        });
-      } catch (e) {
-        return json({
-          ok: false,
-          error: String(e?.message || e)
-        }, 502);
-      }
-    }
-
-    if (
-      url.pathname ===
-      "/api/analyze"
-    ) {
-      const symbol =
-        normalizeSymbol(
-          url.searchParams.get("symbol")
-        );
-
-      const interval =
-        String(
-          url.searchParams.get("interval") ||
-          "5"
-        );
-
-      if (!symbol) {
-        return json({
-          ok: false,
-          error: "symbol required"
-        }, 400);
-      }
-
-      try {
-        const data =
-          await analyzeSymbol(
-            symbol,
-            interval,
-            stub
-          );
-
-        return json(data);
-      } catch (e) {
-        return json({
-          ok: false,
-          error: String(e?.message || e)
-        }, 502);
-      }
-    }
-
-    if (
-      url.pathname ===
-      "/api/live"
-    ) {
-      const symbol =
-        normalizeSymbol(
-          url.searchParams.get("symbol")
-        );
-
-      const interval =
-        String(
-          url.searchParams.get("interval") ||
-          "5"
-        );
-
-      if (!symbol) {
-        return json({
-          ok: false,
-          error: "symbol required"
-        }, 400);
-      }
-
-      try {
-        const data =
-          await analyzeSymbol(
-            symbol,
-            interval,
-            stub
-          );
-
-        return json(data);
-      } catch (e) {
-        return json({
-          ok: false,
-          error: String(e?.message || e)
-        }, 502);
-      }
-    }
-
-    if (url.pathname === "/api/scan") {
-      try {
-        const symbols =
-          await getLinearSymbols();
-
-        const offset =
-          Math.max(
-            0,
-            num(
-              url.searchParams.get(
-                "offset"
-              )
-            )
-          );
-
-        const batch =
-          symbols.slice(
-            offset,
-            offset + 20
-          );
-
-        const results = [];
-
-        for (const symbol of batch) {
-          try {
-            const d =
-              await analyzeSymbol(
-                symbol,
-                "15",
-                stub
-              );
-
-            const deltaPercent =
-              num(
-                d.currentFlow?.deltaPercent
-              );
-
-            let score =
-              50 +
-              clamp(
-                deltaPercent * 1.5,
-                -40,
-                40
-              );
-
-            if (
-              d.signal === "BUY"
-            ) score += 10;
-
-            if (
-              d.signal === "SELL"
-            ) score += 10;
-
-            score =
-              clamp(
-                Math.round(score),
-                0,
-                100
-              );
-
-            results.push({
-              symbol,
-              score,
-              signal: d.signal,
-              price: d.lastPrice,
-              deltaPercent,
-              pressure: d.flowPressure,
-              absorption: d.absorption
-            });
-          } catch {}
-        }
-
-        results.sort(
-          (a, b) =>
-            b.score -
-            a.score
-        );
-
-        return json({
-          ok: true,
-          offset,
-          count: results.length,
-          results
-        });
-      } catch (e) {
-        return json({
-          ok: false,
-          error: String(e?.message || e)
-        }, 502);
-      }
-    }
-
-    return env.ASSETS.fetch(request);
-  }
-};
