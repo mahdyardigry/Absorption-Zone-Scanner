@@ -1,4050 +1,1332 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="fa" dir="rtl">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport"
-      content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <title>Bybit Smart Money Order Flow</title>
 
 <style>
-*{
-  box-sizing:border-box;
-  -webkit-tap-highlight-color:transparent;
-}
-
-html,body{
-  margin:0;
-  padding:0;
-  width:100%;
-  min-height:100%;
-  background:#071018;
-  color:#e8f0f7;
-  font-family:Tahoma,Arial,sans-serif;
-}
-
-body{overflow-x:hidden}
-
-button,input,select{font:inherit}
+*{box-sizing:border-box}
+html,body{margin:0;background:#071018;color:#e8eef5;font-family:Tahoma,Arial,sans-serif}
+body{min-height:100vh}
+button,input{font:inherit}
 button{cursor:pointer}
-
-.app{
-  width:100%;
-  max-width:1500px;
-  margin:auto;
-  padding:12px;
-}
-
-.header{
-  background:linear-gradient(135deg,#101d29,#0a141d);
-  border:1px solid #223545;
-  border-radius:18px;
-  padding:16px;
-  margin-bottom:10px;
-}
-
-.header h1{
-  margin:0 0 6px;
-  font-size:21px;
-}
-
-.header p{
-  margin:0;
-  color:#91a5b5;
-  font-size:12px;
-}
-
-.toolbar{
-  display:flex;
-  flex-wrap:wrap;
-  gap:8px;
-  align-items:center;
-  background:#0d1822;
-  border:1px solid #203341;
-  border-radius:15px;
-  padding:10px;
-  margin-bottom:10px;
-}
-
-.symbol{
-  flex:1;
-  min-width:140px;
-}
-
-input,select{
-  width:100%;
-  background:#071018;
-  color:#eaf4fa;
-  border:1px solid #294052;
-  border-radius:10px;
-  padding:10px;
-  outline:none;
-}
-
-.btn{
-  border:1px solid #2b4457;
-  background:#132431;
-  color:#e8f5fc;
-  padding:9px 13px;
-  border-radius:10px;
-  font-weight:bold;
-}
-
-.btn:active{transform:scale(.97)}
-
-.btn.primary{
-  background:#0d4936;
-  border-color:#16825d;
-}
-
-.btn.danger{
-  background:#4c1820;
-  border-color:#8d2b38;
-}
-
-.tf.active{
-  background:#075a42;
-  border-color:#16b77d;
-}
-
-.status{
-  width:100%;
-  padding:8px 10px;
-  border-radius:9px;
-  background:#0a202b;
-  color:#83d7f2;
-  font-size:12px;
-}
-
-.chart-panel{
-  position:relative;
-  background:#09131c;
-  border:1px solid #233747;
-  border-radius:18px;
-  overflow:hidden;
-  margin-bottom:10px;
-}
-
-.chart-head{
-  min-height:48px;
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:8px;
-  padding:8px 10px;
-  border-bottom:1px solid #1d303e;
-}
-
-.chart-title{
-  font-weight:bold;
-  font-size:14px;
-}
-
-.chart-actions{
-  display:flex;
-  gap:6px;
-  align-items:center;
-}
-
-.fullscreen-btn{
-  width:46px;
-  height:42px;
-  border-radius:11px;
-  border:1px solid #3b6075;
-  background:#122735;
-  color:#fff;
-  font-size:25px;
-  line-height:1;
-}
-
-.canvas-box{
-  position:relative;
-  width:100%;
-  height:380px;
-  overflow:hidden;
-  background:#050b11;
-}
-
-#chart{
-  display:block;
-  width:100%;
-  height:100%;
-  touch-action:none;
-  user-select:none;
-  -webkit-user-select:none;
-}
-
-.crosshair{
-  position:absolute;
-  top:8px;
-  left:8px;
-  z-index:5;
-  pointer-events:none;
-  background:rgba(4,10,15,.86);
-  border:1px solid #294454;
-  padding:6px 8px;
-  border-radius:8px;
-  font-size:11px;
-  color:#dcebf4;
-}
-
-.chart-help{
-  padding:7px 10px;
-  color:#718898;
-  font-size:10px;
-  border-top:1px solid #172832;
-}
-
-/* =====================================================
-   SELECTED FOOTPRINT
-===================================================== */
-
-.selected-footprint{
-  background:linear-gradient(180deg,#0c1822,#08121a);
-  border-top:1px solid #294151;
-  padding:12px;
-}
-
-.fp-title{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:8px;
-  margin-bottom:8px;
-}
-
-.fp-title strong{
-  font-size:15px;
-}
-
-.fp-meta{
-  color:#8095a5;
-  font-size:11px;
-  margin-bottom:10px;
-  line-height:1.8;
-}
-
-.fp-scroll{
-  width:100%;
-  overflow:auto;
-  -webkit-overflow-scrolling:touch;
-  padding-bottom:5px;
-}
-
-.fp-board{
-  min-width:1120px;
-  display:grid;
-  grid-template-columns:
-    150px
-    1fr
-    190px
-    1fr
-    150px;
-  gap:5px;
-  align-items:stretch;
-}
-
-.fp-side{
-  display:flex;
-  flex-direction:column;
-  gap:4px;
-}
-
-.fp-side-title{
-  text-align:center;
-  padding:7px 4px;
-  border-radius:8px;
-  font-weight:bold;
-  margin-bottom:4px;
-  min-height:34px;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-}
-
-.fp-side-title.sell{
-  color:#ff5f6d;
-  background:#31151b;
-  border:1px solid #65242e;
-}
-
-.fp-side-title.buy{
-  color:#2ee89c;
-  background:#103429;
-  border:1px solid #1c7655;
-}
-
-.fp-side-title.delta{
-  color:#f2d35e;
-  background:#2b2510;
-  border:1px solid #665b25;
-}
-
-.fp-side-title.volume{
-  color:#55c9f4;
-  background:#102833;
-  border:1px solid #28576d;
-}
-
-.fp-level{
-  min-height:38px;
-  display:grid;
-  grid-template-columns:1fr 72px;
-  align-items:center;
-  gap:5px;
-  border-radius:7px;
-  padding:3px 6px;
-}
-
-.fp-level.sell{
-  background:#1a1014;
-  border-right:2px solid #e44b59;
-}
-
-.fp-level.buy{
-  background:#0c1b16;
-  border-left:2px solid #1bc889;
-}
-
-.fp-number{
-  font-size:12px;
-  font-weight:bold;
-  white-space:nowrap;
-}
-
-.fp-number.red{color:#ff5664}
-.fp-number.green{color:#27df94}
-
-.fp-delta{
-  font-size:10px;
-  text-align:center;
-  border-radius:5px;
-  padding:4px 2px;
-}
-
-.fp-delta.neg{
-  color:#ff6b75;
-  background:#30151a;
-}
-
-.fp-delta.pos{
-  color:#35e4a0;
-  background:#10372a;
-}
-
-/* =====================================================
-   FOOTPRINT CANDLE
-===================================================== */
-
-.fp-candle-wrap{
-  position:relative;
-  min-height:38px;
-  height:100%;
-  background:#081019;
-  border-left:1px solid #1b303d;
-  border-right:1px solid #1b303d;
-  overflow:hidden;
-}
-
-.fp-candle-axis{
-  position:absolute;
-  inset:0;
-  display:flex;
-  flex-direction:column;
-}
-
-.fp-price-row{
-  flex:1;
-  min-height:38px;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  width:100%;
-  color:#93a7b6;
-  font-size:10px;
-  border-top:1px dashed #263b48;
-  position:relative;
-  z-index:1;
-}
-
-.fp-price-row:first-child{
-  border-top:0;
-}
-
-.fp-price-label{
-  background:rgba(5,11,17,.82);
-  padding:1px 3px;
-  border-radius:3px;
-}
-
-.fp-candle-visual{
-  position:absolute;
-  left:50%;
-  transform:translateX(-50%);
-  top:var(--wick-top);
-  height:var(--wick-height);
-  width:34px;
-  z-index:3;
-  pointer-events:none;
-}
-
-.fp-candle-wick{
-  position:absolute;
-  left:50%;
-  top:0;
-  bottom:0;
-  width:2px;
-  transform:translateX(-50%);
-  background:#dce7ed;
-  box-shadow:0 0 2px rgba(255,255,255,.25);
-}
-
-.fp-candle-body{
-  position:absolute;
-  left:2px;
-  right:2px;
-  top:var(--body-top);
-  height:var(--body-height);
-  min-height:2px;
-  border-radius:3px;
-}
-
-.fp-candle-body.bull{
-  background:rgba(32,201,135,.48);
-  border:1px solid rgba(90,240,187,.9);
-  box-shadow:0 0 5px rgba(32,201,135,.12);
-}
-
-.fp-candle-body.bear{
-  background:rgba(231,76,92,.48);
-  border:1px solid rgba(255,124,136,.9);
-  box-shadow:0 0 5px rgba(231,76,92,.12);
-}
-
-/* =====================================================
-   HISTOGRAMS
-===================================================== */
-
-.fp-hist{
-  min-height:38px;
-  display:flex;
-  align-items:center;
-  gap:5px;
-  padding:3px 5px;
-  border-radius:7px;
-  background:#09131b;
-  border:1px solid #182b37;
-  overflow:hidden;
-}
-
-.fp-hist-bar-box{
-  flex:1;
-  height:24px;
-  position:relative;
-  overflow:hidden;
-  border-radius:4px;
-  background:#0b1821;
-}
-
-.fp-hist-zero{
-  position:absolute;
-  top:0;
-  bottom:0;
-  left:50%;
-  width:1px;
-  background:#405361;
-  z-index:2;
-}
-
-.fp-hist-bar{
-  position:absolute;
-  top:3px;
-  bottom:3px;
-  border-radius:3px;
-  min-width:1px;
-}
-
-.fp-hist-bar.pos{
-  left:50%;
-  background:rgba(39,223,148,.72);
-}
-
-.fp-hist-bar.neg{
-  right:50%;
-  background:rgba(255,86,102,.72);
-}
-
-.fp-hist-value{
-  width:54px;
-  text-align:center;
-  font-size:10px;
-  font-weight:bold;
-  white-space:nowrap;
-}
-
-.fp-hist-value.pos{color:#35e4a0}
-.fp-hist-value.neg{color:#ff6976}
-
-.fp-volume-bar{
-  position:relative;
-  flex:1;
-  height:24px;
-  background:#0b1821;
-  border-radius:4px;
-  overflow:hidden;
-}
-
-.fp-volume-fill{
-  position:absolute;
-  top:3px;
-  bottom:3px;
-  right:0;
-  border-radius:3px;
-  background:rgba(85,201,244,.40);
-}
-
-.fp-volume-value{
-  width:54px;
-  text-align:center;
-  font-size:10px;
-  font-weight:bold;
-  color:#65cff4;
-  white-space:nowrap;
-}
-
-/* =====================================================
-   TOTALS
-===================================================== */
-
-.fp-empty{
-  padding:25px;
-  text-align:center;
-  color:#708594;
-  background:#09131b;
-  border:1px dashed #28404f;
-  border-radius:10px;
-}
-
-.fp-totals{
-  margin-top:12px;
-  display:grid;
-  grid-template-columns:repeat(4,1fr);
-  gap:7px;
-}
-
-.fp-total{
-  padding:10px;
-  background:#0a141d;
-  border:1px solid #253b49;
-  border-radius:9px;
-  text-align:center;
-}
-
-.fp-total span{
-  display:block;
-  color:#718694;
-  font-size:10px;
-  margin-bottom:5px;
-}
-
-.fp-total b{font-size:13px}
-.fp-total.buy b{color:#28df95}
-.fp-total.sell b{color:#ff5967}
-.fp-total.delta b{color:#f4d35e}
-
-/* =====================================================
-   CARDS
-===================================================== */
-
-.cards{
-  display:grid;
-  grid-template-columns:repeat(4,minmax(0,1fr));
-  gap:8px;
-  margin-bottom:10px;
-}
-
-.card{
-  background:#0c1822;
-  border:1px solid #213644;
-  border-radius:13px;
-  padding:11px;
-  min-height:85px;
-}
-
-.card .label{
-  color:#718797;
-  font-size:10px;
-  margin-bottom:6px;
-}
-
-.card .value{
-  font-size:16px;
-  font-weight:bold;
-}
-
-.green{color:#27df94!important}
-.red{color:#ff5665!important}
-.yellow{color:#f3d45c!important}
-.blue{color:#55c9f4!important}
-
-/* =====================================================
-   CONTROLS
-===================================================== */
-
-.controls{
-  background:#0c1822;
-  border:1px solid #203644;
-  border-radius:14px;
-  padding:10px;
-  margin-bottom:10px;
-}
-
-.control-row{
-  display:flex;
-  flex-wrap:wrap;
-  align-items:center;
-  gap:8px;
-}
-
-.layers{
-  display:flex;
-  flex-wrap:wrap;
-  gap:6px;
-  margin-top:8px;
-}
-
-.layer{
-  border:1px solid #28404e;
-  background:#0a141c;
-  color:#9cafbc;
-  border-radius:8px;
-  padding:7px 9px;
-  font-size:10px;
-}
-
-.layer.active{
-  color:#dffbf3;
-  border-color:#167d5b;
-  background:#0d3025;
-}
-
-/* =====================================================
-   TABLES
-===================================================== */
-
-.section{
-  background:#0c1822;
-  border:1px solid #213644;
-  border-radius:14px;
-  padding:10px;
-  margin-bottom:10px;
-  overflow:hidden;
-}
-
-.section h3{
-  margin:0 0 8px;
-  font-size:14px;
-}
-
-.table-scroll{
-  overflow:auto;
-  -webkit-overflow-scrolling:touch;
-}
-
-table{
-  width:100%;
-  border-collapse:collapse;
-  min-width:650px;
-}
-
-th,td{
-  padding:7px;
-  border-bottom:1px solid #1a2d39;
-  text-align:center;
-  font-size:10px;
-}
-
-th{
-  color:#718998;
-  background:#0a141c;
-}
-
-.scan-results{
-  display:grid;
-  gap:5px;
-}
-
-.scan-item{
-  display:grid;
-  grid-template-columns:1.2fr .7fr .7fr 1fr;
-  gap:5px;
-  align-items:center;
-  padding:8px;
-  border:1px solid #203542;
-  border-radius:8px;
-  background:#09131b;
-}
-
-.scan-item span{
-  font-size:10px;
-  text-align:center;
-}
-
-/* =====================================================
-   FULLSCREEN
-===================================================== */
-
-.chart-panel:fullscreen{
-  width:100vw;
-  height:100vh;
-  max-width:none;
-  margin:0;
-  border-radius:0;
-  background:#050b11;
-  display:flex;
-  flex-direction:column;
-}
-
-.chart-panel:fullscreen .chart-head{
-  flex:0 0 52px;
-}
-
-.chart-panel:fullscreen .canvas-box{
-  flex:1;
-  height:auto;
-  min-height:0;
-}
-
-.chart-panel:fullscreen .selected-footprint{
-  flex:0 0 auto;
-  max-height:42vh;
-  overflow:auto;
-}
-
-.chart-panel:fullscreen .chart-help{
-  flex:0 0 auto;
-}
-
-.chart-panel.fs-fallback{
-  position:fixed;
-  z-index:999999;
-  inset:0;
-  width:100vw;
-  height:100vh;
-  margin:0;
-  border-radius:0;
-}
-
-/* =====================================================
-   MOBILE
-===================================================== */
-
-@media(max-width:800px){
-
-  .app{padding:7px}
-
-  .header{padding:12px}
-
-  .header h1{font-size:18px}
-
-  .toolbar{padding:7px}
-
-  .cards{
-    grid-template-columns:repeat(2,minmax(0,1fr));
-  }
-
-  .canvas-box{height:360px}
-
-  .fp-board{
-    min-width:1050px;
-  }
-
-  .fp-totals{
-    grid-template-columns:repeat(2,1fr);
-  }
-}
-
-@media(max-width:480px){
-
-  .canvas-box{height:330px}
-
-  .cards{
-    grid-template-columns:repeat(2,minmax(0,1fr));
-  }
-
-  .card{min-height:75px}
-
-  .card .value{font-size:14px}
-
-  .fullscreen-btn{
-    width:50px;
-    height:44px;
-    font-size:27px;
-  }
-}
-
-@media(orientation:landscape) and (max-width:900px){
-
-  .chart-panel:fullscreen .canvas-box{
-    min-height:0;
-  }
-
-  .chart-panel:fullscreen .selected-footprint{
-    max-height:32vh;
-  }
+.app{max-width:1600px;margin:auto;padding:12px}
+header,.toolbar,.panel,.card,.scan-panel{
+ background:#0d1721;border:1px solid #1d2b38;border-radius:14px
+}
+header{padding:16px;margin-bottom:10px}
+h1{margin:0 0 6px;font-size:21px}
+.sub{color:#8ea1b3;font-size:12px}
+.toolbar{padding:10px;display:flex;gap:7px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
+input,button{border:1px solid #263746;background:#101d28;color:#eef5fb;border-radius:9px;padding:9px 12px}
+input{width:130px}
+button:hover{filter:brightness(1.15)}
+button.active{border-color:#31d17c;box-shadow:0 0 0 1px #31d17c inset}
+#status{font-size:12px;color:#6f8190;margin-right:auto}
+.panel{padding:10px;margin-bottom:10px}
+.chart-wrap{position:relative;width:100%;height:min(65vh,650px);min-height:360px;background:#050b10;border-radius:10px;overflow:hidden;touch-action:none}
+canvas{display:block;width:100%;height:100%}
+.full{position:absolute;left:10px;top:10px;z-index:5}
+.footprint{margin-top:10px;background:#071019;border:1px solid #1b2a36;border-radius:10px;padding:10px}
+.fp-title{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.fp-grid{display:grid;grid-template-columns:1fr 260px 1fr;gap:8px;align-items:center;margin-top:10px}
+.fp-side{min-height:220px;max-height:380px;overflow:auto}
+.level{display:grid;grid-template-columns:1fr 75px 75px 70px;gap:4px;font-size:10px;padding:2px 4px;border-bottom:1px solid #111d27}
+.bid{color:#ff6675}
+.ask{color:#35e58a}
+.delta{font-weight:bold}
+.candlebox{height:240px;position:relative;background:#04090d;border-radius:8px}
+.fp-candle{position:absolute;left:50%;transform:translateX(-50%);width:26px}
+.fp-wick{position:absolute;left:12px;width:2px;background:#aaa}
+.fp-body{position:absolute;left:2px;width:22px;border-radius:2px}
+.totals{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:8px}
+.total{background:#0d1822;padding:8px;border-radius:8px;text-align:center;font-size:11px}
+.total b{display:block;font-size:14px;margin-top:4px}
+.cards{display:grid;grid-template-columns:repeat(8,1fr);gap:8px;margin-bottom:10px}
+.card{padding:10px;min-height:80px}
+.card span{display:block;color:#8295a6;font-size:11px}
+.card b{display:block;font-size:17px;margin-top:8px}
+.green{color:#35e58a!important}.red{color:#ff6675!important}.yellow{color:#ffd166!important}
+.scan-panel{padding:10px;margin-bottom:10px}
+.scan-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.results{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px;margin-top:10px}
+.result{padding:9px;background:#101d28;border:1px solid #20313e;border-radius:9px}
+.trades{overflow:auto;max-height:360px}
+table{width:100%;border-collapse:collapse;font-size:11px}
+th,td{padding:7px;border-bottom:1px solid #182632;text-align:center}
+th{position:sticky;top:0;background:#0d1721}
+.help{font-size:11px;color:#728698;margin-top:7px}
+.layerbar{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.layerbar button{font-size:10px;padding:6px 8px}
+@media(max-width:1000px){.cards{grid-template-columns:repeat(4,1fr)}}
+@media(max-width:650px){
+ .app{padding:6px}
+ header{padding:12px}
+ h1{font-size:17px}
+ .chart-wrap{height:55vh;min-height:320px}
+ .fp-grid{grid-template-columns:1fr}
+ .candlebox{height:200px}
+ .totals{grid-template-columns:repeat(2,1fr)}
+ .cards{grid-template-columns:repeat(2,1fr)}
+ input{width:110px}
 }
 </style>
 </head>
 
 <body>
-
 <div class="app">
 
-<header class="header">
-  <h1>📊 اسکنر شخصی Bybit — Smart Money Order Flow</h1>
-  <p>
-    تحلیل واقعی بازار بر پایه معاملات، Order Book، Delta، Absorption و Footprint
-  </p>
+<header>
+<h1>📊 اسکنر شخصی Bybit — Smart Money Order Flow</h1>
+<div class="sub">تحلیل واقعی بازار بر پایه معاملات، Order Book، Delta، Absorption و Footprint</div>
 </header>
 
 <div class="toolbar">
+<input id="symbol" value="BTCUSDT" autocomplete="off">
+<button id="analyzeBtn">🔎 تحلیل</button>
+<button id="liveBtn">🟢 Live</button>
+<button id="stopBtn">⏹ توقف</button>
 
-  <div class="symbol">
-    <input
-      id="symbol"
-      value="BTCUSDT"
-      autocomplete="off"
-      placeholder="BTCUSDT">
-  </div>
+<button class="tf active" data-tf="1">1m</button>
+<button class="tf" data-tf="3">3m</button>
+<button class="tf" data-tf="5">5m</button>
+<button class="tf" data-tf="15">15m</button>
 
-  <button class="btn primary" id="analyzeBtn">🔎 تحلیل</button>
-
-  <button class="btn" id="liveBtn">🟢 Live</button>
-
-  <button class="btn danger" id="stopBtn">■ توقف</button>
-
-  <button class="btn tf active" data-tf="1">1m</button>
-  <button class="btn tf" data-tf="3">3m</button>
-  <button class="btn tf" data-tf="5">5m</button>
-  <button class="btn tf" data-tf="15">15m</button>
-
-  <div id="status" class="status">
-    🔄 آماده اتصال به Worker...
-  </div>
-
+<span id="status">در حال اتصال...</span>
 </div>
 
-<section id="chartPanel" class="chart-panel">
+<div class="panel">
 
-  <div class="chart-head">
+<div class="chart-wrap" id="chartWrap">
+<button class="full" id="fullBtn">⛶</button>
+<canvas id="chart"></canvas>
+</div>
 
-    <div id="chartTitle" class="chart-title">
-      📈 BTCUSDT · 1m
-    </div>
+<div class="layerbar">
+<button data-layer="candles" class="active">🕯 کندل</button>
+<button data-layer="heatmap" class="active">🔥 Heatmap</button>
+<button data-layer="walls" class="active">🧱 Walls</button>
+<button data-layer="liquidity" class="active">💧 Liquidity</button>
+<button data-layer="absorption" class="active">🟡 Absorption</button>
+<button data-layer="sweep" class="active">🎯 Sweep</button>
+<button data-layer="blocks" class="active">🐋 Blocks</button>
+<button data-layer="delta" class="active">Δ Delta</button>
+<button data-layer="bidask" class="active">Bid/Ask</button>
+</div>
 
-    <div class="chart-actions">
+<div class="help">
+لمس و کشیدن = جابه‌جایی · دو انگشت = زوم · چرخ ماوس = زوم · دابل‌تپ = زوم · لمس کندل = Footprint
+</div>
 
-      <button
-        id="fullscreenBtn"
-        class="fullscreen-btn"
-        title="تمام صفحه">
-        ⛶
-      </button>
+<div class="footprint">
+<div class="fp-title">
+<b>📊 Footprint کندل انتخابی</b>
+<span id="fpTime">—</span>
+</div>
 
-    </div>
+<div class="fp-grid">
+<div class="fp-side" id="fpBid"></div>
+<div class="candlebox" id="fpCandle"></div>
+<div class="fp-side" id="fpAsk"></div>
+</div>
 
-  </div>
+<div class="totals">
+<div class="total">Volume<b id="fpVolume">0</b></div>
+<div class="total green">Ask / Buy<b id="fpBuy">0</b></div>
+<div class="total red">Bid / Sell<b id="fpSell">0</b></div>
+<div class="total">Delta<b id="fpDelta">0</b></div>
+</div>
+</div>
+</div>
 
-  <div class="canvas-box">
+<div class="cards">
+<div class="card"><span>Price</span><b id="price">—</b></div>
+<div class="card"><span>Buy / Ask Aggressor</span><b class="green" id="buy">—</b></div>
+<div class="card"><span>Sell / Bid Aggressor</span><b class="red" id="sell">—</b></div>
+<div class="card"><span>Delta</span><b id="delta">—</b></div>
+<div class="card"><span>Bid Book</span><b class="red" id="bidBook">—</b></div>
+<div class="card"><span>Ask Book</span><b class="green" id="askBook">—</b></div>
+<div class="card"><span>Absorption</span><b id="absorption">—</b></div>
+<div class="card"><span>Score / Signal</span><b id="signal">—</b></div>
+</div>
 
-    <canvas id="chart"></canvas>
+<div class="scan-panel">
+<div class="scan-row">
+<b>🔎 اسکن بازار</b>
+<button id="scanStart">▶ شروع اسکن</button>
+<button id="scanStop">⏹ توقف اسکن</button>
+<span id="scanState">متوقف</span>
+</div>
+<div class="results" id="results"></div>
+</div>
 
-    <div id="crosshair" class="crosshair">
-      —
-    </div>
-
-  </div>
-
-  <div class="chart-help">
-    لمس و کشیدن = حرکت نمودار · دو انگشت = Zoom · چرخ موس = Zoom · ضربه روی کندل = Footprint
-  </div>
-
-  <div id="selectedFootprint" class="selected-footprint">
-
-    <div class="fp-title">
-      <strong>🎯 Footprint کندل انتخاب‌شده</strong>
-
-      <span id="fpMode" class="blue">
-        Bid × Ask · Delta × Volume
-      </span>
-    </div>
-
-    <div id="fpMeta" class="fp-meta">
-      یک کندل را انتخاب کنید.
-    </div>
-
-    <div id="fpContent">
-
-      <div class="fp-empty">
-        برای مشاهده Footprint روی یکی از کندل‌ها لمس کنید.
-      </div>
-
-    </div>
-
-  </div>
-
-</section>
-
-<section class="cards">
-
-  <div class="card">
-    <div class="label">قیمت</div>
-    <div id="priceValue" class="value">—</div>
-  </div>
-
-  <div class="card">
-    <div class="label">Buy / Ask Aggressor</div>
-    <div id="buyValue" class="value green">—</div>
-  </div>
-
-  <div class="card">
-    <div class="label">Sell / Bid Aggressor</div>
-    <div id="sellValue" class="value red">—</div>
-  </div>
-
-  <div class="card">
-    <div class="label">Delta</div>
-    <div id="deltaValue" class="value yellow">—</div>
-  </div>
-
-  <div class="card">
-    <div class="label">Bid Book</div>
-    <div id="bidBook" class="value green">—</div>
-  </div>
-
-  <div class="card">
-    <div class="label">Ask Book</div>
-    <div id="askBook" class="value red">—</div>
-  </div>
-
-  <div class="card">
-    <div class="label">Absorption</div>
-    <div id="absorptionValue" class="value">—</div>
-  </div>
-
-  <div class="card">
-    <div class="label">Score / Signal</div>
-    <div id="scoreValue" class="value">—</div>
-  </div>
-
-</section>
-
-<section class="controls">
-
-  <div class="control-row">
-
-    <button class="btn" id="scanBtn">
-      🔎 شروع اسکن
-    </button>
-
-    <button class="btn danger" id="scanStopBtn">
-      ■ توقف اسکن
-    </button>
-
-    <button class="btn" id="soundBtn">
-      🔊 صدا
-    </button>
-
-  </div>
-
-  <div class="layers">
-
-    <button class="layer active" data-layer="candles">
-      🕯️ کندل
-    </button>
-
-    <button class="layer active" data-layer="heatmap">
-      🌡️ Heatmap
-    </button>
-
-    <button class="layer active" data-layer="walls">
-      🧱 Walls
-    </button>
-
-    <button class="layer active" data-layer="liquidity">
-      💧 Liquidity
-    </button>
-
-    <button class="layer active" data-layer="absorption">
-      🧲 Absorption
-    </button>
-
-    <button class="layer active" data-layer="sweep">
-      🧹 Sweep
-    </button>
-
-    <button class="layer active" data-layer="blocks">
-      🧱 Blocks
-    </button>
-
-    <button class="layer active" data-layer="delta">
-      Δ Delta
-    </button>
-
-    <button class="layer active" data-layer="bidask">
-      Bid / Ask
-    </button>
-
-  </div>
-
-</section>
-
-<section class="section">
-
-  <h3>🎯 نتایج اسکن</h3>
-
-  <div id="scanResults" class="scan-results">
-    هنوز اسکن شروع نشده است.
-  </div>
-
-</section>
-
-<section class="section">
-
-  <h3>📊 معاملات واقعی Bybit</h3>
-
-  <div class="table-scroll">
-
-    <table>
-
-      <thead>
-        <tr>
-          <th>زمان</th>
-          <th>قیمت</th>
-          <th>حجم</th>
-          <th>ارزش</th>
-          <th>نوع</th>
-        </tr>
-      </thead>
-
-      <tbody id="tradesBody">
-        <tr>
-          <td colspan="5">—</td>
-        </tr>
-      </tbody>
-
-    </table>
-
-  </div>
-
-</section>
+<div class="panel">
+<b>📈 معاملات واقعی Bybit</b>
+<div class="trades">
+<table>
+<thead>
+<tr>
+<th>زمان</th>
+<th>قیمت</th>
+<th>حجم</th>
+<th>ارزش</th>
+<th>سمت</th>
+</tr>
+</thead>
+<tbody id="tradeBody"></tbody>
+</table>
+</div>
+</div>
 
 </div>
 
 <script>
 "use strict";
 
-/* =====================================================
-   CONFIG
-===================================================== */
+const API=location.origin;
 
-const API = location.origin;
+let symbol="BTCUSDT";
+let interval="1";
+let data=null;
 
-let symbol = "BTCUSDT";
-let interval = "1";
-let data = null;
-let liveTimer = null;
-let scanTimer = null;
-let scanOffset = 0;
-let selectedIndex = -1;
-let soundEnabled = true;
+let liveTimer=null;
+let scanTimer=null;
+let scanOffset=0;
 
-const layers = {
-  candles:true,
-  heatmap:true,
-  walls:true,
-  liquidity:true,
-  absorption:true,
-  sweep:true,
-  blocks:true,
-  delta:true,
-  bidask:true
+let selectedIndex=-1;
+
+const canvas=document.getElementById("chart");
+const ctx=canvas.getContext("2d");
+
+const layers={
+ candles:true,
+ heatmap:true,
+ walls:true,
+ liquidity:true,
+ absorption:true,
+ sweep:true,
+ blocks:true,
+ delta:true,
+ bidask:true
 };
 
-/* =====================================================
-   DOM
-===================================================== */
+let viewStart=0;
+let viewCount=70;
 
-const $ = id =>
-  document.getElementById(id);
+let pointers=new Map();
+let dragStart=null;
+let moved=false;
+let pinchStart=null;
+let lastTap=0;
+let crosshair=null;
 
-const canvas =
-  $("chart");
-
-const ctx =
-  canvas.getContext("2d");
-
-const chartPanel =
-  $("chartPanel");
-
-const statusEl =
-  $("status");
-
-const crosshair =
-  $("crosshair");
-
-const symbolInput =
-  $("symbol");
-
-/* =====================================================
-   FORMAT
-===================================================== */
-
-function num(v,d=0){
-
-  const x = Number(v);
-
-  return Number.isFinite(x)
-    ? x
-    : d;
+function num(v){
+ const x=Number(v);
+ return Number.isFinite(x)?x:0;
 }
 
-function fmt(v,digits=2){
-
-  v = num(v);
-
-  if (!Number.isFinite(v)){
-    return "0";
-  }
-
-  const abs =
-    Math.abs(v);
-
-  if (abs >= 1000000000){
-    return (
-      (v / 1000000000)
-        .toFixed(2) + "B"
-    );
-  }
-
-  if (abs >= 1000000){
-    return (
-      (v / 1000000)
-        .toFixed(2) + "M"
-    );
-  }
-
-  if (abs >= 1000){
-    return (
-      (v / 1000)
-        .toFixed(2) + "K"
-    );
-  }
-
-  if (abs > 0 && abs < 0.001){
-    return v.toExponential(2);
-  }
-
-  return v.toLocaleString(
-    "en-US",
-    {
-      maximumFractionDigits:digits
-    }
-  );
+function fmt(v,d=2){
+ v=num(v);
+ if(Math.abs(v)>=1000000000)return (v/1e9).toFixed(2)+"B";
+ if(Math.abs(v)>=1000000)return (v/1e6).toFixed(2)+"M";
+ if(Math.abs(v)>=1000)return (v/1000).toFixed(2)+"K";
+ return v.toFixed(d);
 }
 
 function priceFmt(v){
-
-  v = num(v);
-
-  if (!v) return "0";
-
-  if (Math.abs(v) < 0.01){
-    return v.toFixed(8);
-  }
-
-  if (Math.abs(v) < 1){
-    return v.toFixed(6);
-  }
-
-  if (Math.abs(v) < 100){
-    return v.toFixed(4);
-  }
-
-  return v.toFixed(2);
+ v=num(v);
+ if(v>=1000)return v.toFixed(2);
+ if(v>=1)return v.toFixed(4);
+ if(v>=.01)return v.toFixed(5);
+ if(v>=.0001)return v.toFixed(7);
+ return v.toFixed(10);
 }
 
 function signed(v){
-
-  v = num(v);
-
-  return (
-    v >= 0 ? "+" : ""
-  ) + fmt(v);
+ return num(v)>=0?"+"+fmt(v):fmt(v);
 }
 
 function timeText(t){
-
-  if (!t) return "—";
-
-  return new Date(t)
-    .toLocaleString(
-      "fa-IR",
-      {
-        hour:"2-digit",
-        minute:"2-digit",
-        second:"2-digit"
-      }
-    );
-}
-
-/* =====================================================
-   NORMALIZE
-===================================================== */
-
-function normalizeCandle(c){
-
-  return {
-    time:num(c.time),
-    open:num(c.open),
-    high:num(c.high),
-    low:num(c.low),
-    close:num(c.close),
-    volume:num(c.volume),
-    flowVolume:num(c.flowVolume),
-    buyVolume:num(c.buyVolume),
-    sellVolume:num(c.sellVolume),
-    buyValue:num(c.buyValue),
-    sellValue:num(c.sellValue),
-    delta:num(c.delta),
-    deltaValue:num(c.deltaValue),
-    deltaPercent:num(c.deltaPercent),
-    tradeCount:num(c.tradeCount),
-
-    footprint:
-      Array.isArray(c.footprint)
-        ? c.footprint
-        : [],
-
-    imbalances:
-      Array.isArray(c.imbalances)
-        ? c.imbalances
-        : []
-  };
+ if(!t)return "—";
+ return new Date(num(t)).toLocaleTimeString("fa-IR",{
+  hour:"2-digit",
+  minute:"2-digit",
+  second:"2-digit"
+ });
 }
 
 function getCandles(){
+ if(!data)return [];
+ if(Array.isArray(data.selectedCandles))return data.selectedCandles;
 
-  if (!data) return [];
+ if(Array.isArray(data.candles)){
+  return data.candles;
+ }
 
-  let candles =
-    data.selectedCandles;
+ const key="tf"+interval;
 
-  if (Array.isArray(candles)){
+ if(data.candles?.[key]){
+  return data.candles[key];
+ }
 
-    return candles.map(
-      normalizeCandle
-    );
-  }
-
-  if (Array.isArray(data.candles)){
-
-    return data.candles.map(
-      normalizeCandle
-    );
-  }
-
-  return [];
+ return [];
 }
 
 function getFootprint(index){
+ const candles=getCandles();
+ const c=candles[index];
+ if(!c)return null;
 
-  const candles =
-    getCandles();
-
-  const candle =
-    candles[index];
-
-  if (!candle){
-    return null;
-  }
-
-  if (
-    Array.isArray(candle.footprint) &&
-    candle.footprint.length
-  ){
-
-    return {
-      time:candle.time,
-      open:candle.open,
-      high:candle.high,
-      low:candle.low,
-      close:candle.close,
-      levels:candle.footprint,
-      buyVolume:candle.buyVolume,
-      sellVolume:candle.sellVolume,
-      flowVolume:candle.flowVolume,
-      delta:candle.delta,
-      deltaValue:candle.deltaValue
-    };
-  }
-
-  const fps =
-    Array.isArray(data.footprints)
-      ? data.footprints
-      : data.footprint?.candles || [];
-
-  const fp =
-    fps.find(
-      x =>
-        num(x.time) ===
-        num(candle.time)
-    );
-
-  return fp || {
-    time:candle.time,
-    open:candle.open,
-    high:candle.high,
-    low:candle.low,
-    close:candle.close,
-    levels:[],
-    buyVolume:candle.buyVolume,
-    sellVolume:candle.sellVolume,
-    flowVolume:candle.flowVolume,
-    delta:candle.delta,
-    deltaValue:candle.deltaValue
+ if(Array.isArray(c.footprint)&&c.footprint.length){
+  return {
+   ...c,
+   levels:c.footprint
   };
+ }
+
+ const fps=Array.isArray(data?.footprints)
+  ?data.footprints
+  :Array.isArray(data?.footprint)
+   ?data.footprint
+   :Array.isArray(data?.footprint?.candles)
+    ?data.footprint.candles
+    :[];
+
+ return fps.find(x=>String(x.time)===String(c.time))||{
+  ...c,
+  levels:[]
+ };
 }
-
-/* =====================================================
-   LEVEL NORMALIZATION
-===================================================== */
-
-function getLevels(fp){
-
-  if (!fp) return [];
-
-  const raw =
-    fp.levels ||
-    fp.rows ||
-    fp.priceLevels ||
-    [];
-
-  if (!Array.isArray(raw)){
-    return [];
-  }
-
-  return raw
-    .map(x => {
-
-      if (Array.isArray(x)){
-
-        const price = num(x[0]);
-        const bid = num(x[1]);
-        const ask = num(x[2]);
-
-        const delta =
-          x[3] !== undefined
-            ? num(x[3])
-            : ask - bid;
-
-        return {
-          price,
-          bid,
-          ask,
-          bidValue:0,
-          askValue:0,
-          delta,
-          deltaValue:0,
-          volume:bid + ask,
-
-          side:
-            delta > 0
-              ? "BUY"
-              : delta < 0
-                ? "SELL"
-                : "NEUTRAL"
-        };
-      }
-
-      const bid =
-        num(
-          x.bidVolume ??
-          x.bid ??
-          x.sellVolume
-        );
-
-      const ask =
-        num(
-          x.askVolume ??
-          x.ask ??
-          x.buyVolume
-        );
-
-      const bidValue =
-        num(
-          x.bidValue ??
-          x.bidNotional ??
-          x.sellValue
-        );
-
-      const askValue =
-        num(
-          x.askValue ??
-          x.askNotional ??
-          x.buyValue
-        );
-
-      const delta =
-        x.delta !== undefined
-          ? num(x.delta)
-          : ask - bid;
-
-      return {
-        price:num(x.price),
-
-        bid,
-        ask,
-
-        bidValue,
-        askValue,
-
-        delta,
-
-        deltaValue:
-          x.deltaValue !== undefined
-            ? num(x.deltaValue)
-            : askValue - bidValue,
-
-        volume:
-          num(
-            x.totalVolume ??
-            x.volume ??
-            bid + ask
-          ),
-
-        side:
-          x.side ||
-          (
-            delta > 0
-              ? "BUY"
-              : delta < 0
-                ? "SELL"
-                : "NEUTRAL"
-          )
-      };
-    })
-    .filter(
-      x => x.price > 0
-    )
-    .sort(
-      (a,b) =>
-        b.price - a.price
-    );
-}
-
-/* =====================================================
-   RESIZE
-===================================================== */
 
 function resizeCanvas(){
+ const r=canvas.getBoundingClientRect();
+ const dpr=Math.min(window.devicePixelRatio||1,3);
 
-  const rect =
-    canvas.getBoundingClientRect();
+ canvas.width=Math.max(1,Math.floor(r.width*dpr));
+ canvas.height=Math.max(1,Math.floor(r.height*dpr));
 
-  const dpr =
-    Math.max(
-      1,
-      Math.min(
-        3,
-        window.devicePixelRatio || 1
-      )
-    );
-
-  canvas.width =
-    Math.round(
-      rect.width * dpr
-    );
-
-  canvas.height =
-    Math.round(
-      rect.height * dpr
-    );
-
-  ctx.setTransform(
-    dpr,
-    0,
-    0,
-    dpr,
-    0,
-    0
-  );
-
-  drawChart();
+ ctx.setTransform(dpr,0,0,dpr,0,0);
+ drawChart();
 }
-
-window.addEventListener(
-  "resize",
-  resizeCanvas
-);
-
-/* =====================================================
-   VIEW
-===================================================== */
-
-let viewStart = 0;
-let viewCount = 70;
 
 function clampView(){
+ const candles=getCandles();
 
-  const candles =
-    getCandles();
+ if(!candles.length){
+  viewStart=0;
+  return;
+ }
 
-  if (!candles.length){
-
-    viewStart = 0;
-
-    return;
-  }
-
-  viewCount =
-    Math.max(
-      10,
-      Math.min(
-        viewCount,
-        candles.length
-      )
-    );
-
-  viewStart =
-    Math.max(
-      0,
-      Math.min(
-        viewStart,
-        candles.length -
-        viewCount
-      )
-    );
+ viewCount=Math.max(10,Math.min(viewCount,candles.length));
+ viewStart=Math.max(
+  0,
+  Math.min(viewStart,candles.length-viewCount)
+ );
 }
 
-/* =====================================================
-   CHART
-===================================================== */
+function visibleCandles(){
+ const c=getCandles();
+ clampView();
+ return c.slice(viewStart,viewStart+viewCount);
+}
 
-function drawChart(){
+function priceRange(candles){
+ if(!candles.length)return {low:0,high:1};
 
-  const w =
-    canvas.clientWidth;
+ let low=Math.min(...candles.map(x=>num(x.low)));
+ let high=Math.max(...candles.map(x=>num(x.high)));
 
-  const h =
-    canvas.clientHeight;
+ const pad=(high-low||1)*.08;
 
-  ctx.clearRect(
-    0,
-    0,
-    w,
-    h
+ return {
+  low:low-pad,
+  high:high+pad
+ };
+}
+
+function yPrice(price,range,h,top,bottom){
+ return top+(range.high-price)/(range.high-range.low)*(h-top-bottom);
+}
+
+function xCandle(i,count,w,left,right){
+ return left+(i+.5)*(w-left-right)/count;
+}
+
+function drawGrid(w,h,left,right,top,bottom,range){
+ ctx.strokeStyle="#15232e";
+ ctx.fillStyle="#687d8e";
+ ctx.font="10px Tahoma";
+
+ for(let i=0;i<=6;i++){
+  const p=range.low+(range.high-range.low)*i/6;
+  const y=yPrice(p,range,h,top,bottom);
+
+  ctx.beginPath();
+  ctx.moveTo(left,y);
+  ctx.lineTo(w-right,y);
+  ctx.stroke();
+
+  ctx.fillText(priceFmt(p),w-right+5,y+3);
+ }
+}
+
+function drawHeatmap(candles,w,h,left,right,top,bottom,range){
+ if(!layers.heatmap)return;
+
+ let max=0;
+
+ for(const c of candles){
+  max=Math.max(max,Math.abs(num(c.deltaPercent)));
+ }
+
+ max=Math.max(max,1);
+
+ const cw=(w-left-right)/candles.length;
+
+ candles.forEach((c,i)=>{
+  const strength=Math.min(
+   1,
+   Math.abs(num(c.deltaPercent))/max
   );
 
-  ctx.fillStyle =
-    "#050b11";
+  if(!strength)return;
+
+  ctx.fillStyle=
+   c.delta>=0
+    ?`rgba(35,229,138,${.025+.10*strength})`
+    :`rgba(255,72,92,${.025+.10*strength})`;
 
   ctx.fillRect(
-    0,
-    0,
-    w,
-    h
+   left+i*cw,
+   top,
+   Math.max(1,cw-1),
+   h-top-bottom
   );
-
-  const candles =
-    getCandles();
-
-  if (!candles.length){
-
-    ctx.fillStyle =
-      "#617686";
-
-    ctx.font =
-      "14px Tahoma";
-
-    ctx.textAlign =
-      "center";
-
-    ctx.fillText(
-      "داده‌ای برای نمایش وجود ندارد",
-      w / 2,
-      h / 2
-    );
-
-    return;
-  }
-
-  clampView();
-
-  const visible =
-    candles.slice(
-      viewStart,
-      viewStart + viewCount
-    );
-
-  if (!visible.length){
-    return;
-  }
-
-  const left = 55;
-  const right = 15;
-  const top = 20;
-
-  const bottom =
-    layers.delta
-      ? 55
-      : 22;
-
-  const chartW =
-    w - left - right;
-
-  const chartH =
-    h - top - bottom;
-
-  let min =
-    Math.min(
-      ...visible.map(
-        c => c.low
-      )
-    );
-
-  let max =
-    Math.max(
-      ...visible.map(
-        c => c.high
-      )
-    );
-
-  if (
-    !Number.isFinite(min) ||
-    !Number.isFinite(max)
-  ){
-    return;
-  }
-
-  const pad =
-    (max - min || 1) * .08;
-
-  min -= pad;
-  max += pad;
-
-  const py =
-    price =>
-      top +
-      (
-        max - price
-      ) /
-      (
-        max - min
-      ) *
-      chartH;
-
-  const step =
-    chartW /
-    visible.length;
-
-  const bodyW =
-    Math.max(
-      2,
-      Math.min(
-        16,
-        step * .55
-      )
-    );
-
-  ctx.strokeStyle =
-    "#14232d";
-
-  ctx.lineWidth = 1;
-
-  for (
-    let i = 0;
-    i <= 6;
-    i++
-  ){
-
-    const y =
-      top +
-      chartH * i / 6;
-
-    ctx.beginPath();
-
-    ctx.moveTo(
-      left,
-      y
-    );
-
-    ctx.lineTo(
-      w - right,
-      y
-    );
-
-    ctx.stroke();
-
-    const price =
-      max -
-      (
-        max - min
-      ) * i / 6;
-
-    ctx.fillStyle =
-      "#6c808d";
-
-    ctx.font =
-      "9px Arial";
-
-    ctx.textAlign =
-      "right";
-
-    ctx.fillText(
-      priceFmt(price),
-      left - 5,
-      y + 3
-    );
-  }
-
-  visible.forEach(
-    (c,i) => {
-
-      const x =
-        left +
-        step * i +
-        step / 2;
-
-      const yOpen =
-        py(c.open);
-
-      const yClose =
-        py(c.close);
-
-      const yHigh =
-        py(c.high);
-
-      const yLow =
-        py(c.low);
-
-      const bull =
-        c.close >= c.open;
-
-      if (
-        layers.heatmap &&
-        c.delta !== 0
-      ){
-
-        const strength =
-          Math.min(
-            1,
-            Math.abs(
-              num(c.deltaPercent)
-            ) / 100
-          );
-
-        ctx.fillStyle =
-          c.delta >= 0
-            ? `rgba(22,190,126,${.035 + strength*.08})`
-            : `rgba(235,72,88,${.035 + strength*.08})`;
-
-        ctx.fillRect(
-          x - step * .45,
-          top,
-          step * .9,
-          chartH
-        );
-      }
-
-      ctx.strokeStyle =
-        bull
-          ? "#26cf91"
-          : "#ed5663";
-
-      ctx.lineWidth = 1;
-
-      ctx.beginPath();
-
-      ctx.moveTo(
-        x,
-        yHigh
-      );
-
-      ctx.lineTo(
-        x,
-        yLow
-      );
-
-      ctx.stroke();
-
-      ctx.fillStyle =
-        bull
-          ? "#16a979"
-          : "#c73e4d";
-
-      const bh =
-        Math.max(
-          1,
-          Math.abs(
-            yClose -
-            yOpen
-          )
-        );
-
-      ctx.fillRect(
-        x - bodyW / 2,
-        Math.min(
-          yOpen,
-          yClose
-        ),
-        bodyW,
-        bh
-      );
-
-      if (layers.delta){
-
-        const d =
-          num(c.delta);
-
-        ctx.fillStyle =
-          d >= 0
-            ? "#28df94"
-            : "#ff5866";
-
-        ctx.font =
-          "8px Arial";
-
-        ctx.textAlign =
-          "center";
-
-        ctx.fillText(
-          signed(d),
-          x,
-          h - 27
-        );
-      }
-
-      if (
-        i %
-        Math.max(
-          1,
-          Math.floor(
-            visible.length / 8
-          )
-        ) === 0
-      ){
-
-        ctx.fillStyle =
-          "#667b89";
-
-        ctx.font =
-          "8px Arial";
-
-        ctx.fillText(
-          new Date(
-            c.time
-          ).toLocaleTimeString(
-            "fa-IR",
-            {
-              hour:"2-digit",
-              minute:"2-digit"
-            }
-          ),
-          x,
-          h - 8
-        );
-      }
-
-      if (
-        viewStart + i ===
-        selectedIndex
-      ){
-
-        ctx.strokeStyle =
-          "#f2d35e";
-
-        ctx.lineWidth = 2;
-
-        ctx.strokeRect(
-          x - bodyW / 2 - 4,
-          Math.min(
-            yOpen,
-            yClose
-          ) - 4,
-          bodyW + 8,
-          bh + 8
-        );
-      }
-    }
-  );
-
-  if (layers.delta){
-
-    const dy =
-      h - 46;
-
-    ctx.strokeStyle =
-      "#263c49";
-
-    ctx.beginPath();
-
-    ctx.moveTo(
-      left,
-      dy
-    );
-
-    ctx.lineTo(
-      w - right,
-      dy
-    );
-
-    ctx.stroke();
-
-    ctx.fillStyle =
-      "#657986";
-
-    ctx.font =
-      "8px Arial";
-
-    ctx.textAlign =
-      "left";
-
-    ctx.fillText(
-      "Delta",
-      left + 3,
-      dy + 15
-    );
-  }
-
-  if (
-    layers.bidask &&
-    data?.orderbook
-  ){
-
-    drawOrderbook(
-      w,
-      h,
-      left,
-      right,
-      min,
-      max,
-      py
-    );
-  }
-
-  if (
-    layers.walls &&
-    data?.wall
-  ){
-
-    drawWalls(
-      w,
-      min,
-      max,
-      py
-    );
-  }
-
-  if (
-    selectedIndex >= viewStart &&
-    selectedIndex <
-      viewStart + viewCount
-  ){
-
-    const local =
-      selectedIndex -
-      viewStart;
-
-    const x =
-      left +
-      step * local +
-      step / 2;
-
-    ctx.strokeStyle =
-      "rgba(244,211,94,.45)";
-
-    ctx.setLineDash([
-      4,
-      4
-    ]);
-
-    ctx.beginPath();
-
-    ctx.moveTo(
-      x,
-      top
-    );
-
-    ctx.lineTo(
-      x,
-      h - bottom
-    );
-
-    ctx.stroke();
-
-    ctx.setLineDash([]);
-  }
+ });
 }
 
-/* =====================================================
-   ORDERBOOK
-===================================================== */
+function drawOrderBook(w,h,left,right,top,bottom,range){
+ if(!layers.bidask||!data?.orderbook)return;
 
-function drawOrderbook(
-  w,
-  h,
-  left,
-  right,
-  min,
-  max,
-  py
-){
+ const bids=data.orderbook.bids||[];
+ const asks=data.orderbook.asks||[];
 
-  const book =
-    data.orderbook;
+ const all=[...bids,...asks];
 
-  const asks =
-    book.asks || [];
+ if(!all.length)return;
 
-  const bids =
-    book.bids || [];
+ const max=Math.max(...all.map(x=>num(x.value)),1);
 
-  const maxV =
-    Math.max(
-      1,
-      ...asks
-        .concat(bids)
-        .map(
-          x => num(x.value)
-        )
-    );
+ for(const x of bids){
+  const y=yPrice(x.price,range,h,top,bottom);
 
-  const maxBars =
-    Math.min(
-      20,
-      Math.max(
-        asks.length,
-        bids.length
-      )
-    );
+  if(y<top||y>h-bottom)continue;
 
-  for (
-    let i = 0;
-    i < maxBars;
-    i++
-  ){
+  const len=(x.value/max)*Math.min(110,(w-left-right)*.18);
 
-    const a = asks[i];
-    const b = bids[i];
+  ctx.fillStyle="rgba(255,65,83,.16)";
+  ctx.fillRect(left,y-2,len,4);
+ }
 
-    if (a){
+ for(const x of asks){
+  const y=yPrice(x.price,range,h,top,bottom);
 
-      const y =
-        py(a.price);
+  if(y<top||y>h-bottom)continue;
 
-      if (
-        y >= 0 &&
-        y <= h
-      ){
+  const len=(x.value/max)*Math.min(110,(w-left-right)*.18);
 
-        const width =
-          Math.min(
-            w * .14,
-            (
-              a.value / maxV
-            ) * w * .14
-          );
-
-        ctx.fillStyle =
-          "rgba(240,75,90,.18)";
-
-        ctx.fillRect(
-          w - right - width,
-          y - 2,
-          width,
-          4
-        );
-      }
-    }
-
-    if (b){
-
-      const y =
-        py(b.price);
-
-      if (
-        y >= 0 &&
-        y <= h
-      ){
-
-        const width =
-          Math.min(
-            w * .14,
-            (
-              b.value / maxV
-            ) * w * .14
-          );
-
-        ctx.fillStyle =
-          "rgba(35,218,146,.18)";
-
-        ctx.fillRect(
-          left,
-          y - 2,
-          width,
-          4
-        );
-      }
-    }
-  }
+  ctx.fillStyle="rgba(40,225,132,.16)";
+  ctx.fillRect(w-right-len,y-2,len,4);
+ }
 }
 
-/* =====================================================
-   WALLS
-===================================================== */
+function drawWalls(w,h,left,right,top,bottom,range){
+ if(!layers.walls||!data?.wall)return;
 
-function drawWalls(
-  w,
-  min,
-  max,
-  py
-){
+ const walls=[
+  [data.wall.nearBuyWall,"#ff4f62"],
+  [data.wall.nearSellWall,"#35e58a"]
+ ];
 
-  const wall =
-    data.wall;
+ for(const [wall,color] of walls){
+  if(!wall?.price)continue;
 
-  if (wall.nearBuyWall){
+  const y=yPrice(wall.price,range,h,top,bottom);
 
-    const y =
-      py(
-        wall.nearBuyWall.price
-      );
+  if(y<top||y>h-bottom)continue;
 
-    if (
-      y >= 0 &&
-      y <= canvas.clientHeight
-    ){
+  ctx.strokeStyle=color;
+  ctx.lineWidth=1.5;
+  ctx.setLineDash([6,4]);
 
-      ctx.strokeStyle =
-        "rgba(37,224,148,.7)";
-
-      ctx.setLineDash([
-        7,
-        5
-      ]);
-
-      ctx.beginPath();
-
-      ctx.moveTo(
-        55,
-        y
-      );
-
-      ctx.lineTo(
-        canvas.clientWidth - 15,
-        y
-      );
-
-      ctx.stroke();
-    }
-  }
-
-  if (wall.nearSellWall){
-
-    const y =
-      py(
-        wall.nearSellWall.price
-      );
-
-    if (
-      y >= 0 &&
-      y <= canvas.clientHeight
-    ){
-
-      ctx.strokeStyle =
-        "rgba(255,80,96,.7)";
-
-      ctx.beginPath();
-
-      ctx.moveTo(
-        55,
-        y
-      );
-
-      ctx.lineTo(
-        canvas.clientWidth - 15,
-        y
-      );
-
-      ctx.stroke();
-    }
-  }
+  ctx.beginPath();
+  ctx.moveTo(left,y);
+  ctx.lineTo(w-right,y);
+  ctx.stroke();
 
   ctx.setLineDash([]);
+
+  ctx.fillStyle=color;
+  ctx.font="10px Tahoma";
+  ctx.fillText(
+   `${priceFmt(wall.price)}  ${fmt(wall.value)}`,
+   left+5,
+   y-4
+  );
+ }
 }
 
-/* =====================================================
-   SELECTED FOOTPRINT
-   EXACT OHLC POSITIONING
-===================================================== */
+function drawLiquidity(w,h,left,right,top,bottom,range){
+ if(!layers.liquidity)return;
 
-function renderSelectedFootprint(index){
+ const zones=data?.liquidityZones||[];
 
-  const box =
-    $("fpContent");
+ for(const z of zones.slice(0,30)){
+  const y=yPrice(z.price,range,h,top,bottom);
 
-  const candles =
-    getCandles();
+  if(y<top||y>h-bottom)continue;
 
-  const c =
-    candles[index];
+  ctx.strokeStyle=z.side==="BUY"
+   ?"rgba(255,65,83,.28)"
+   :"rgba(53,229,138,.28)";
 
-  if (!c){
-
-    box.innerHTML =
-      `<div class="fp-empty">
-        یک کندل را انتخاب کنید.
-      </div>`;
-
-    return;
-  }
-
-  const fp =
-    getFootprint(index);
-
-  const levels =
-    getLevels(fp);
-
-  $("fpMeta").innerHTML =
-    `
-      <b>${symbol}</b>
-      · ${interval}m
-      · ${timeText(c.time)}
-      <br>
-      O: ${priceFmt(c.open)}
-      &nbsp; H: ${priceFmt(c.high)}
-      &nbsp; L: ${priceFmt(c.low)}
-      &nbsp; C: ${priceFmt(c.close)}
-      &nbsp; Δ: ${signed(c.delta)}
-    `;
-
-  if (!levels.length){
-
-    box.innerHTML =
-      `
-      <div class="fp-empty">
-        برای این کندل در داده‌های دریافت‌شده معامله‌ای ثبت نشده است.
-      </div>
-
-      <div class="fp-totals">
-
-        <div class="fp-total">
-          <span>Volume</span>
-          <b>
-            ${fmt(
-              c.flowVolume ||
-              c.volume
-            )}
-          </b>
-        </div>
-
-        <div class="fp-total buy">
-          <span>Buy / Ask</span>
-          <b>
-            ${fmt(c.buyVolume)}
-          </b>
-        </div>
-
-        <div class="fp-total sell">
-          <span>Sell / Bid</span>
-          <b>
-            ${fmt(c.sellVolume)}
-          </b>
-        </div>
-
-        <div class="fp-total delta">
-          <span>Delta</span>
-          <b>
-            ${signed(c.delta)}
-          </b>
-        </div>
-
-      </div>
-      `;
-
-    return;
-  }
-
-  const maxLevels =
-    Math.min(
-      levels.length,
-      80
-    );
-
-  const shown =
-    levels.slice(
-      0,
-      maxLevels
-    );
-
-  /*
-   * Range واقعی خود کندل:
-   * High تا Low
-   */
-  const high =
-    num(c.high);
-
-  const low =
-    num(c.low);
-
-  const candleRange =
-    Math.max(
-      high - low,
-      0.0000000001
-    );
-
-  /*
-   * برای هیستوگرام Fixed Range:
-   * بیشترین قدرمطلق Delta در همان کندل
-   */
-  const maxDelta =
-    Math.max(
-      1,
-      ...shown.map(
-        l =>
-          Math.abs(
-            num(l.delta)
-          )
-      )
-    );
-
-  /*
-   * بیشترین Volume در همان کندل
-   */
-  const maxVolume =
-    Math.max(
-      1,
-      ...shown.map(
-        l =>
-          Math.abs(
-            num(l.volume)
-          )
-      )
-    );
-
-  /*
-   * جای دقیق OHLC روی ردیف‌های Footprint.
-   *
-   * high = بالای کندل
-   * low  = پایین کندل
-   * open/close = محل واقعی بدنه
-   */
-  function candlePercent(price){
-
-    return (
-      (
-        high - num(price)
-      ) /
-      candleRange
-    ) * 100;
-  }
-
-  let rows = "";
-  let buyRows = "";
-  let deltaRows = "";
-  let volumeRows = "";
-  let priceRows = "";
-
-  for (
-    const l of shown
-  ){
-
-    const delta =
-      num(l.delta);
-
-    const volume =
-      num(
-        l.volume ||
-        (
-          num(l.bid) +
-          num(l.ask)
-        )
-      );
-
-    const deltaAbs =
-      Math.abs(delta);
-
-    const deltaWidth =
-      Math.max(
-        0,
-        Math.min(
-          50,
-          deltaAbs /
-          maxDelta *
-          50
-        )
-      );
-
-    const volumeWidth =
-      Math.max(
-        0,
-        Math.min(
-          100,
-          Math.abs(volume) /
-          maxVolume *
-          100
-        )
-      );
-
-    rows +=
-      `
-      <div class="fp-level sell">
-
-        <div class="fp-number red">
-          ${fmt(l.bid)}
-        </div>
-
-        <div
-          class="fp-delta ${
-            delta < 0
-              ? "neg"
-              : "pos"
-          }">
-          ${signed(delta)}
-        </div>
-
-      </div>
-      `;
-
-    buyRows +=
-      `
-      <div class="fp-level buy">
-
-        <div class="fp-number green">
-          ${fmt(l.ask)}
-        </div>
-
-        <div
-          class="fp-delta ${
-            delta >= 0
-              ? "pos"
-              : "neg"
-          }">
-          ${signed(delta)}
-        </div>
-
-      </div>
-      `;
-
-    deltaRows +=
-      `
-      <div class="fp-hist">
-
-        <div
-          class="fp-hist-value ${
-            delta >= 0
-              ? "pos"
-              : "neg"
-          }">
-          ${signed(delta)}
-        </div>
-
-        <div class="fp-hist-bar-box">
-
-          <div class="fp-hist-zero"></div>
-
-          <div
-            class="fp-hist-bar ${
-              delta >= 0
-                ? "pos"
-                : "neg"
-            }"
-            style="
-              width:${deltaWidth}%;
-            ">
-          </div>
-
-        </div>
-
-      </div>
-      `;
-
-    volumeRows +=
-      `
-      <div class="fp-hist">
-
-        <div class="fp-volume-bar">
-
-          <div
-            class="fp-volume-fill"
-            style="
-              width:${volumeWidth}%;
-            ">
-          </div>
-
-        </div>
-
-        <div class="fp-volume-value">
-          ${fmt(volume)}
-        </div>
-
-      </div>
-      `;
-
-    priceRows +=
-      `
-      <div class="fp-price-row">
-
-        <span class="fp-price-label">
-          ${priceFmt(l.price)}
-        </span>
-
-      </div>
-      `;
-  }
-
-  /*
-   * اگر Worker level هایی خارج از High/Low
-   * داده باشد، کندل همچنان دقیقاً بر اساس OHLC
-   * خود کندل اصلی رسم می‌شود.
-   */
-  const openPct =
-    Math.max(
-      0,
-      Math.min(
-        100,
-        candlePercent(c.open)
-      )
-    );
-
-  const closePct =
-    Math.max(
-      0,
-      Math.min(
-        100,
-        candlePercent(c.close)
-      )
-    );
-
-  const highPct = 0;
-  const lowPct = 100;
-
-  const bodyTop =
-    Math.min(
-      openPct,
-      closePct
-    );
-
-  const bodyBottom =
-    Math.max(
-      openPct,
-      closePct
-    );
-
-  const bodyHeight =
-    Math.max(
-      0.8,
-      bodyBottom - bodyTop
-    );
-
-  const bullish =
-    c.close >= c.open;
-
-  /*
-   * padding کوچک فقط برای اینکه wick
-   * دقیقاً به لبه High/Low نچسبد.
-   * نسبت High/Low همچنان دقیق حفظ می‌شود.
-   */
-  const candleStyle =
-    `
-      --wick-top:${highPct}%;
-      --wick-height:${Math.max(
-        1,
-        lowPct - highPct
-      )}%;
-
-      --body-top:${bodyTop}%;
-      --body-height:${bodyHeight}%;
-    `;
-
-  box.innerHTML =
-    `
-    <div class="fp-scroll">
-
-      <div class="fp-board">
-
-        <!-- DELTA FIXED RANGE -->
-
-        <div class="fp-side">
-
-          <div class="fp-side-title delta">
-            Δ DELTA
-          </div>
-
-          ${deltaRows}
-
-        </div>
-
-        <!-- BID -->
-
-        <div class="fp-side">
-
-          <div class="fp-side-title sell">
-            🔴 SELL / BID
-          </div>
-
-          ${rows}
-
-        </div>
-
-        <!-- EXACT CANDLE -->
-
-        <div class="fp-candle-wrap">
-
-          <div class="fp-candle-axis">
-            ${priceRows}
-          </div>
-
-          <div
-            class="fp-candle-visual"
-            style="${candleStyle}">
-
-            <div class="fp-candle-wick"></div>
-
-            <div
-              class="fp-candle-body ${
-                bullish
-                  ? "bull"
-                  : "bear"
-              }">
-            </div>
-
-          </div>
-
-        </div>
-
-        <!-- ASK -->
-
-        <div class="fp-side">
-
-          <div class="fp-side-title buy">
-            🟢 BUY / ASK
-          </div>
-
-          ${buyRows}
-
-        </div>
-
-        <!-- VOLUME -->
-
-        <div class="fp-side">
-
-          <div class="fp-side-title volume">
-            VOLUME
-          </div>
-
-          ${volumeRows}
-
-        </div>
-
-      </div>
-
-    </div>
-
-    <div class="fp-totals">
-
-      <div class="fp-total">
-
-        <span>
-          Total Volume
-        </span>
-
-        <b>
-          ${fmt(
-            fp.flowVolume ||
-            fp.volume ||
-            c.flowVolume ||
-            c.volume
-          )}
-        </b>
-
-      </div>
-
-      <div class="fp-total buy">
-
-        <span>
-          Total Buy / Ask
-        </span>
-
-        <b>
-          ${fmt(
-            fp.buyVolume ||
-            c.buyVolume
-          )}
-        </b>
-
-      </div>
-
-      <div class="fp-total sell">
-
-        <span>
-          Total Sell / Bid
-        </span>
-
-        <b>
-          ${fmt(
-            fp.sellVolume ||
-            c.sellVolume
-          )}
-        </b>
-
-      </div>
-
-      <div class="fp-total delta">
-
-        <span>
-          Total Delta
-        </span>
-
-        <b>
-          ${signed(
-            fp.delta ??
-            c.delta
-          )}
-        </b>
-
-      </div>
-
-    </div>
-    `;
+  ctx.beginPath();
+  ctx.moveTo(left,y);
+  ctx.lineTo(w-right,y);
+  ctx.stroke();
+ }
 }
 
-/* =====================================================
-   UPDATE CARDS
-===================================================== */
+function drawBlocks(w,h,left,right,top,bottom,range){
+ if(!layers.blocks)return;
+
+ const blocks=data?.blocks||[];
+
+ for(const b of blocks.slice(-20)){
+  const y=yPrice(b.price,range,h,top,bottom);
+
+  if(y<top||y>h-bottom)continue;
+
+  ctx.fillStyle=b.aggressor==="BUY"
+   ?"rgba(53,229,138,.75)"
+   :"rgba(255,70,90,.75)";
+
+  ctx.beginPath();
+  ctx.arc(left+18,y,4,0,Math.PI*2);
+  ctx.fill();
+ }
+}
+
+function drawCandleStats(c,x,w,range,h,top,bottom){
+ if(!layers.bidask)return;
+
+ const y=yPrice(c.high,range,h,top,bottom);
+ const low=yPrice(c.low,range,h,top,bottom);
+
+ const base=Math.min(
+  55,
+  Math.max(25,w*.8)
+ );
+
+ const ask=num(c.buyVolume);
+ const bid=num(c.sellVolume);
+ const delta=num(c.delta);
+
+ ctx.font="8px Tahoma";
+ ctx.textAlign="center";
+
+ ctx.fillStyle="#35e58a";
+ ctx.fillText(
+  `A ${fmt(ask,1)}`,
+  x,
+  Math.max(top+9,y-4)
+ );
+
+ ctx.fillStyle="#ff6675";
+ ctx.fillText(
+  `B ${fmt(bid,1)}`,
+  x,
+  Math.min(h-bottom-17,low+12)
+ );
+
+ if(layers.delta){
+  ctx.fillStyle=delta>=0?"#35e58a":"#ff6675";
+  ctx.fillText(
+   `Δ ${signed(delta)}`,
+   x,
+   h-bottom+11
+  );
+
+  ctx.fillStyle="#90a4b5";
+  ctx.fillText(
+   `V ${fmt(c.flowVolume||c.volume,1)}`,
+   x,
+   h-bottom+22
+  );
+ }
+
+ ctx.textAlign="left";
+}
+
+function drawChart(){
+ const r=canvas.getBoundingClientRect();
+ const w=r.width;
+ const h=r.height;
+
+ ctx.clearRect(0,0,w,h);
+
+ const candles=visibleCandles();
+
+ if(!candles.length){
+  ctx.fillStyle="#6e8292";
+  ctx.font="13px Tahoma";
+  ctx.fillText("داده‌ای برای نمایش وجود ندارد",20,30);
+  return;
+ }
+
+ const left=55;
+ const right=70;
+ const top=25;
+ const bottom=55;
+
+ const range=priceRange(candles);
+
+ drawGrid(w,h,left,right,top,bottom,range);
+ drawHeatmap(candles,w,h,left,right,top,bottom,range);
+ drawOrderBook(w,h,left,right,top,bottom,range);
+ drawLiquidity(w,h,left,right,top,bottom,range);
+ drawWalls(w,h,left,right,top,bottom,range);
+
+ const usable=(w-left-right)/candles.length;
+ const bodyW=Math.max(2,Math.min(18,usable*.62));
+
+ candles.forEach((c,i)=>{
+  const x=xCandle(i,candles.length,w,left,right);
+
+  const high=yPrice(c.high,range,h,top,bottom);
+  const low=yPrice(c.low,range,h,top,bottom);
+  const open=yPrice(c.open,range,h,top,bottom);
+  const close=yPrice(c.close,range,h,top,bottom);
+
+  if(layers.candles){
+   ctx.strokeStyle=c.close>=c.open
+    ?"rgba(53,229,138,.9)"
+    :"rgba(255,102,117,.9)";
+
+   ctx.lineWidth=1;
+
+   ctx.beginPath();
+   ctx.moveTo(x,high);
+   ctx.lineTo(x,low);
+   ctx.stroke();
+
+   const y=Math.min(open,close);
+   const bh=Math.max(1,Math.abs(close-open));
+
+   ctx.fillStyle=c.close>=c.open
+    ?"rgba(53,229,138,.85)"
+    :"rgba(255,102,117,.85)";
+
+   ctx.fillRect(
+    x-bodyW/2,
+    y,
+    bodyW,
+    bh
+   );
+  }
+
+  drawCandleStats(
+   c,
+   x,
+   usable,
+   range,
+   h,
+   top,
+   bottom
+  );
+
+  if(i===selectedIndex-viewStart){
+   ctx.strokeStyle="#ffd166";
+   ctx.lineWidth=2;
+   ctx.strokeRect(
+    x-bodyW*.75,
+    high-5,
+    bodyW*1.5,
+    low-high+10
+   );
+  }
+
+  if(layers.absorption&&data?.absorption?.detected&&
+     i===candles.length-1){
+   ctx.fillStyle="#ffd166";
+   ctx.beginPath();
+   ctx.arc(x,high-12,6,0,Math.PI*2);
+   ctx.fill();
+  }
+ });
+
+ drawBlocks(w,h,left,right,top,bottom,range);
+
+ if(layers.sweep&&data?.sweep?.detected){
+  const y=yPrice(
+   data.sweep.price,
+   range,
+   h,
+   top,
+   bottom
+  );
+
+  ctx.strokeStyle="#ffd166";
+  ctx.setLineDash([3,3]);
+  ctx.beginPath();
+  ctx.moveTo(left,y);
+  ctx.lineTo(w-right,y);
+  ctx.stroke();
+  ctx.setLineDash([]);
+ }
+
+ ctx.fillStyle="#708494";
+ ctx.font="9px Tahoma";
+
+ candles.forEach((c,i)=>{
+  if(i%Math.max(1,Math.floor(candles.length/7))!==0)return;
+
+  const x=xCandle(i,candles.length,w,left,right);
+
+  ctx.fillText(
+   timeText(c.time),
+   x-18,
+   h-8
+  );
+ });
+
+ if(crosshair){
+  const x=crosshair.x;
+  const y=crosshair.y;
+
+  ctx.strokeStyle="rgba(200,220,235,.3)";
+  ctx.setLineDash([4,4]);
+
+  ctx.beginPath();
+  ctx.moveTo(x,top);
+  ctx.lineTo(x,h-bottom);
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.moveTo(left,y);
+  ctx.lineTo(w-right,y);
+  ctx.stroke();
+
+  ctx.setLineDash([]);
+ }
+}
+
+function pointerIndex(clientX){
+ const r=canvas.getBoundingClientRect();
+ const left=55;
+ const right=70;
+ const candles=getCandles();
+
+ const usable=r.width-left-right;
+
+ let i=Math.floor(
+  (clientX-r.left-left)/usable*viewCount
+ );
+
+ i=clamp(i,0,Math.max(0,viewCount-1));
+
+ return viewStart+i;
+}
+
+function selectIndex(i){
+ const candles=getCandles();
+
+ if(!candles.length)return;
+
+ selectedIndex=clamp(i,0,candles.length-1);
+
+ renderSelectedFootprint();
+ drawChart();
+}
+
+function zoomAt(clientX,factor){
+ const candles=getCandles();
+
+ if(!candles.length)return;
+
+ const r=canvas.getBoundingClientRect();
+ const left=55;
+ const right=70;
+
+ const ratio=clamp(
+  (clientX-r.left-left)/(r.width-left-right),
+  0,
+  1
+ );
+
+ const center=viewStart+ratio*viewCount;
+ const next=clamp(
+  Math.round(viewCount*factor),
+  12,
+  candles.length
+ );
+
+ viewStart=Math.round(
+  center-ratio*next
+ );
+
+ viewCount=next;
+
+ clampView();
+ drawChart();
+}
+
+canvas.addEventListener("pointerdown",e=>{
+ canvas.setPointerCapture?.(e.pointerId);
+
+ pointers.set(e.pointerId,{
+  x:e.clientX,
+  y:e.clientY
+ });
+
+ moved=false;
+
+ if(pointers.size===1){
+  dragStart={
+   x:e.clientX,
+   y:e.clientY,
+   start:viewStart
+  };
+ }
+
+ if(pointers.size===2){
+  const p=[...pointers.values()];
+
+  pinchStart={
+   distance:Math.hypot(
+    p[0].x-p[1].x,
+    p[0].y-p[1].y
+   ),
+   count:viewCount
+  };
+
+  dragStart=null;
+ }
+});
+
+canvas.addEventListener("pointermove",e=>{
+ if(!pointers.has(e.pointerId))return;
+
+ pointers.set(e.pointerId,{
+  x:e.clientX,
+  y:e.clientY
+ });
+
+ crosshair={
+  x:e.clientX-canvas.getBoundingClientRect().left,
+  y:e.clientY-canvas.getBoundingClientRect().top
+ };
+
+ if(pointers.size===2&&pinchStart){
+  const p=[...pointers.values()];
+
+  const distance=Math.hypot(
+   p[0].x-p[1].x,
+   p[0].y-p[1].y
+  );
+
+  if(Math.abs(distance-pinchStart.distance)>3){
+   moved=true;
+
+   const factor=pinchStart.distance/distance;
+
+   viewCount=clamp(
+    Math.round(pinchStart.count*factor),
+    12,
+    getCandles().length
+   );
+
+   clampView();
+   drawChart();
+  }
+
+  return;
+ }
+
+ if(pointers.size===1&&dragStart){
+  const dx=e.clientX-dragStart.x;
+
+  if(Math.abs(dx)>5)moved=true;
+
+  const r=canvas.getBoundingClientRect();
+  const pxPerCandle=
+   (r.width-125)/viewCount;
+
+  if(Math.abs(dx)>2){
+   viewStart=
+    dragStart.start-
+    Math.round(dx/pxPerCandle);
+
+   clampView();
+   drawChart();
+  }
+ }
+});
+
+function pointerEnd(e){
+ const start=pointers.get(e.pointerId);
+
+ pointers.delete(e.pointerId);
+
+ if(pointers.size<2)pinchStart=null;
+
+ if(start&&pointers.size===0&&!moved){
+  const now=Date.now();
+
+  if(now-lastTap<320){
+   zoomAt(e.clientX,.72);
+   lastTap=0;
+  }else{
+   lastTap=now;
+   selectIndex(pointerIndex(e.clientX));
+  }
+ }
+
+ dragStart=null;
+}
+
+canvas.addEventListener("pointerup",pointerEnd);
+canvas.addEventListener("pointercancel",pointerEnd);
+
+canvas.addEventListener("pointerleave",()=>{
+ crosshair=null;
+ drawChart();
+});
+
+canvas.addEventListener("wheel",e=>{
+ e.preventDefault();
+ zoomAt(
+  e.clientX,
+  e.deltaY>0?1.15:.86
+ );
+},{passive:false});
+
+function renderSelectedFootprint(){
+ const fp=getFootprint(selectedIndex);
+
+ if(!fp){
+  document.getElementById("fpTime").textContent="—";
+  return;
+ }
+
+ document.getElementById("fpTime").textContent=
+  `${timeText(fp.time)} · ${interval}m`;
+
+ document.getElementById("fpVolume").textContent=
+  fmt(fp.flowVolume??fp.volume,2);
+
+ document.getElementById("fpBuy").textContent=
+  fmt(fp.buyVolume,2);
+
+ document.getElementById("fpSell").textContent=
+  fmt(fp.sellVolume,2);
+
+ const delta=num(fp.delta);
+
+ const deltaEl=document.getElementById("fpDelta");
+
+ deltaEl.textContent=signed(delta);
+ deltaEl.className=delta>=0?"green":"red";
+
+ const levels=Array.isArray(fp.levels)
+  ?fp.levels
+  :Array.isArray(fp.footprint)
+   ?fp.footprint
+   :[];
+
+ const bid=document.getElementById("fpBid");
+ const ask=document.getElementById("fpAsk");
+
+ bid.innerHTML="";
+ ask.innerHTML="";
+
+ const sorted=[...levels].sort((a,b)=>num(b.price)-num(a.price));
+
+ for(const l of sorted.slice(0,80)){
+  const d=num(l.delta);
+
+  const common=document.createElement("div");
+  common.className="level";
+
+  common.innerHTML=`
+   <span>${priceFmt(l.price)}</span>
+   <span class="red">${fmt(l.bidVolume,1)}</span>
+   <span class="green">${fmt(l.askVolume,1)}</span>
+   <span class="${d>=0?"green":"red"}">${signed(d)}</span>
+  `;
+
+  bid.appendChild(common.cloneNode(true));
+  ask.appendChild(common);
+ }
+
+ renderFootprintCandle(fp);
+}
+
+function renderFootprintCandle(fp){
+ const box=document.getElementById("fpCandle");
+ box.innerHTML="";
+
+ const prices=[
+  num(fp.high),
+  num(fp.low),
+  num(fp.open),
+  num(fp.close)
+ ];
+
+ const high=Math.max(...prices);
+ const low=Math.min(...prices);
+ const range=high-low||1;
+
+ const wick=document.createElement("div");
+ wick.className="fp-wick";
+
+ const wickTop=10;
+ const wickHeight=180;
+
+ wick.style.top=
+  (wickTop+(high-high)/range*wickHeight)+"px";
+
+ wick.style.height=
+  ((high-low)/range*wickHeight)+"px";
+
+ const body=document.createElement("div");
+ body.className="fp-body";
+
+ const openY=wickTop+(high-fp.open)/range*wickHeight;
+ const closeY=wickTop+(high-fp.close)/range*wickHeight;
+
+ body.style.top=Math.min(openY,closeY)+"px";
+ body.style.height=Math.max(3,Math.abs(openY-closeY))+"px";
+
+ body.style.background=
+  fp.close>=fp.open
+   ?"rgba(53,229,138,.85)"
+   :"rgba(255,102,117,.85)";
+
+ box.appendChild(wick);
+ box.appendChild(body);
+}
 
 function updateCards(){
+ if(!data)return;
 
-  if (!data) return;
+ const ticker=data.ticker||{};
+ const flow=data.currentFlow||data.flow||{};
+ const wall=data.wall||{};
+ const absorption=data.absorption||{};
+ const score=num(data.score);
 
-  const ticker =
-    data.ticker || {};
+ document.getElementById("price").textContent=
+  priceFmt(ticker.lastPrice||data.price);
 
-  const flow =
-    data.currentFlow ||
-    data.flow ||
-    {};
+ document.getElementById("buy").textContent=
+  fmt(flow.buyVolume,2);
 
-  const wall =
-    data.wall || {};
+ document.getElementById("sell").textContent=
+  fmt(flow.sellVolume,2);
 
-  const absorption =
-    data.absorption || {};
+ const d=document.getElementById("delta");
+ d.textContent=signed(flow.delta);
+ d.className=flow.delta>=0?"green":"red";
 
-  $("priceValue").textContent =
-    priceFmt(
-      data.price ||
-      ticker.lastPrice
-    );
+ document.getElementById("bidBook").textContent=
+  fmt(wall.buyLiquidity,0);
 
-  $("buyValue").textContent =
-    fmt(flow.buyVolume);
+ document.getElementById("askBook").textContent=
+  fmt(wall.sellLiquidity,0);
 
-  $("sellValue").textContent =
-    fmt(flow.sellVolume);
+ const a=document.getElementById("absorption");
 
-  const d =
-    num(flow.delta);
+ if(absorption.detected){
+  a.textContent=`${absorption.type||"Absorption"} ${absorption.side}`;
+  a.className=absorption.side==="BUY"?"green":"red";
+ }else{
+  a.textContent="NONE";
+  a.className="yellow";
+ }
 
-  $("deltaValue").textContent =
-    signed(d);
+ const s=document.getElementById("signal");
 
-  $("deltaValue").className =
-    "value " +
-    (
-      d >= 0
-        ? "green"
-        : "red"
-    );
+ s.textContent=
+  `${score} / ${data.signal||"WAIT"}`;
 
-  $("bidBook").textContent =
-    fmt(wall.buyLiquidity);
-
-  $("askBook").textContent =
-    fmt(wall.sellLiquidity);
-
-  $("absorptionValue").textContent =
-    absorption.detected
-      ? (
-          absorption.type +
-          " · " +
-          absorption.side
-        )
-      : "NONE";
-
-  $("absorptionValue").className =
-    "value " +
-    (
-      absorption.detected
-        ? (
-            absorption.side === "BUY"
-              ? "green"
-              : "red"
-          )
-        : ""
-    );
-
-  const score =
-    num(data.score);
-
-  $("scoreValue").textContent =
-    data.score !== undefined
-      ? `${score} · ${data.signal || "WAIT"}`
-      : "—";
-
-  $("scoreValue").className =
-    "value " +
-    (
-      data.signal === "BUY"
-        ? "green"
-        : data.signal === "SELL"
-          ? "red"
-          : "yellow"
-    );
+ s.className=
+  data.signal==="BUY"
+   ?"green"
+   :data.signal==="SELL"
+    ?"red"
+    :"yellow";
 }
-
-/* =====================================================
-   TRADES
-===================================================== */
 
 function renderTrades(){
+ const body=document.getElementById("tradeBody");
+ body.innerHTML="";
 
-  const body =
-    $("tradesBody");
+ const trades=data?.trades||[];
 
-  const trades =
-    Array.isArray(data?.trades)
-      ? data.trades
-          .slice(-80)
-          .reverse()
-      : [];
+ for(const t of trades.slice(-80).reverse()){
+  const tr=document.createElement("tr");
 
-  if (!trades.length){
+  const buy=t.side==="BUY";
 
-    body.innerHTML =
-      `
-      <tr>
-        <td colspan="5">
-          معامله‌ای دریافت نشد.
-        </td>
-      </tr>
-      `;
+  tr.innerHTML=`
+   <td>${timeText(t.time)}</td>
+   <td>${priceFmt(t.price)}</td>
+   <td>${fmt(t.size,4)}</td>
+   <td>${fmt(t.price*t.size,2)}</td>
+   <td class="${buy?"green":"red"}">${buy?"BUY":"SELL"}</td>
+  `;
 
-    return;
-  }
-
-  body.innerHTML =
-    trades.map(
-      t => {
-
-        const side =
-          String(
-            t.side || ""
-          ).toUpperCase();
-
-        const buy =
-          side === "BUY";
-
-        const value =
-          num(t.price) *
-          num(t.size);
-
-        return `
-        <tr>
-
-          <td>
-            ${timeText(t.time)}
-          </td>
-
-          <td>
-            ${priceFmt(t.price)}
-          </td>
-
-          <td>
-            ${fmt(t.size)}
-          </td>
-
-          <td>
-            ${fmt(value)}
-          </td>
-
-          <td class="${
-            buy
-              ? "green"
-              : "red"
-          }">
-
-            ${
-              buy
-                ? "🟢 BUY / ASK"
-                : "🔴 SELL / BID"
-            }
-
-          </td>
-
-        </tr>
-        `;
-      }
-    ).join("");
+  body.appendChild(tr);
+ }
 }
 
-/* =====================================================
-   LOAD ANALYSIS
-===================================================== */
+function mergeResult(result){
+ data=result;
+
+ const candles=getCandles();
+
+ if(selectedIndex<0||selectedIndex>=candles.length)
+  selectedIndex=candles.length-1;
+
+ clampView();
+
+ updateCards();
+ renderTrades();
+ renderSelectedFootprint();
+ drawChart();
+}
 
 async function loadAnalysis(){
+ stopLive();
 
-  symbol =
-    String(
-      symbolInput.value ||
-      "BTCUSDT"
-    )
-      .toUpperCase()
-      .replace(
-        /[^A-Z0-9]/g,
-        ""
-      );
+ symbol=document.getElementById("symbol").value
+  .trim()
+  .toUpperCase()
+  .replace(/[^A-Z0-9]/g,"");
 
-  symbolInput.value =
-    symbol;
+ document.getElementById("status").textContent=
+  "🟡 در حال دریافت داده...";
 
-  setStatus(
-    "🔄 دریافت اطلاعات واقعی Bybit..."
+ try{
+  const r=await fetch(
+   `${API}/api/analyze?symbol=${encodeURIComponent(symbol)}&interval=${interval}`,
+   {cache:"no-store"}
   );
 
-  try {
+  const result=await r.json();
 
-    const url =
-      `${API}/api/analyze` +
-      `?symbol=${encodeURIComponent(symbol)}` +
-      `&interval=${interval}`;
+  if(!result.ok)throw new Error(result.error||"خطا");
 
-    const res =
-      await fetch(
-        url,
-        {
-          cache:"no-store"
-        }
-      );
+  mergeResult(result);
 
-    const result =
-      await res.json();
+  selectedIndex=getCandles().length-1;
+  viewCount=Math.min(70,getCandles().length);
+  viewStart=Math.max(0,getCandles().length-viewCount);
 
-    if (
-      !res.ok ||
-      !result.ok
-    ){
+  renderSelectedFootprint();
+  drawChart();
 
-      throw new Error(
-        result.error ||
-        "خطا در Worker"
-      );
-    }
-
-    data =
-      result;
-
-    const candles =
-      getCandles();
-
-    selectedIndex =
-      candles.length - 1;
-
-    viewCount =
-      Math.min(
-        70,
-        candles.length
-      );
-
-    viewStart =
-      Math.max(
-        0,
-        candles.length -
-        viewCount
-      );
-
-    $("chartTitle")
-      .textContent =
-      `📈 ${symbol} · ${interval}m`;
-
-    updateCards();
-
-    renderTrades();
-
-    renderSelectedFootprint(
-      selectedIndex
-    );
-
-    setStatus(
-      `🟢 اتصال برقرار است — ${symbol} · ${interval}m`
-    );
-
-    resizeCanvas();
-
-  } catch(error){
-
-    console.error(error);
-
-    setStatus(
-      `🔴 ${error.message}`
-    );
-  }
+  document.getElementById("status").textContent=
+   `🟢 ${symbol} · ${interval}m · Bybit`;
+ }catch(e){
+  document.getElementById("status").textContent=
+   "🔴 "+e.message;
+ }
 }
-
-/* =====================================================
-   LIVE
-===================================================== */
 
 async function loadLive(){
+ if(!symbol)return;
 
-  if (!symbol){
-    return;
-  }
+ try{
+  const r=await fetch(
+   `${API}/api/live?symbol=${encodeURIComponent(symbol)}&interval=${interval}`,
+   {cache:"no-store"}
+  );
 
-  try {
+  const result=await r.json();
 
-    const url =
-      `${API}/api/live` +
-      `?symbol=${encodeURIComponent(symbol)}` +
-      `&interval=${interval}`;
+  if(result.ok){
+   const oldIndex=selectedIndex;
 
-    const res =
-      await fetch(
-        url,
-        {
-          cache:"no-store"
-        }
-      );
+   mergeResult(result);
 
-    const result =
-      await res.json();
-
-    if (
-      !res.ok ||
-      !result.ok
-    ){
-
-      throw new Error(
-        result.error ||
-        "Live error"
-      );
-    }
-
-    data =
-      {
-        ...data,
-        ...result,
-
-        selectedCandles:
-          result.candles
-      };
-
-    const candles =
-      getCandles();
-
-    if (selectedIndex < 0){
-
-      selectedIndex =
-        candles.length - 1;
-    }
-
-    updateCards();
-
-    renderTrades();
-
-    renderSelectedFootprint(
-      selectedIndex
+   selectedIndex=
+    Math.min(
+     oldIndex<0?getCandles().length-1:oldIndex,
+     getCandles().length-1
     );
 
-    drawChart();
-
-  } catch(error){
-
-    console.error(
-      "LIVE",
-      error
-    );
+   renderSelectedFootprint();
+   drawChart();
   }
+ }catch{}
 }
 
-/* =====================================================
-   START LIVE
-===================================================== */
-
 function startLive(){
-
-  stopLive();
-
-  loadLive();
-
-  liveTimer =
-    setInterval(
-      loadLive,
-      3000
-    );
-
-  $("liveBtn")
-    .classList.add(
-      "primary"
-    );
-
-  setStatus(
-    `🟢 Live فعال — ${symbol}`
-  );
+ stopLive();
+ loadLive();
+ liveTimer=setInterval(loadLive,3000);
 }
 
 function stopLive(){
-
-  if (liveTimer){
-
-    clearInterval(
-      liveTimer
-    );
-
-    liveTimer = null;
-  }
-
-  $("liveBtn")
-    .classList.remove(
-      "primary"
-    );
-}
-
-/* =====================================================
-   SCANNER
-===================================================== */
-
-async function runScan(){
-
-  if (scanTimer){
-    return;
-  }
-
-  setStatus(
-    "🔎 اسکن بازار..."
-  );
-
-  scanOffset = 0;
-
-  await scanOnce();
-
-  scanTimer =
-    setInterval(
-      scanOnce,
-      8000
-    );
+ if(liveTimer){
+  clearInterval(liveTimer);
+  liveTimer=null;
+ }
 }
 
 async function scanOnce(){
+ try{
+  const r=await fetch(
+   `${API}/api/scan?offset=${scanOffset}`,
+   {cache:"no-store"}
+  );
 
-  try {
+  const x=await r.json();
 
-    const res =
-      await fetch(
-        `${API}/api/scan?offset=${scanOffset}`,
-        {
-          cache:"no-store"
-        }
-      );
+  if(!x.ok)return;
 
-    const result =
-      await res.json();
+  scanOffset=x.nextOffset||0;
 
-    if (
-      !res.ok ||
-      !result.ok
-    ){
+  const box=document.getElementById("results");
+  box.innerHTML="";
 
-      throw new Error(
-        result.error ||
-        "Scan error"
-      );
-    }
+  for(const item of x.results||[]){
+   const div=document.createElement("div");
+   div.className="result";
 
-    scanOffset =
-      result.nextOffset ||
-      0;
+   div.innerHTML=`
+    <b>${item.symbol}</b>
+    <div>Score: <strong>${item.score}</strong></div>
+    <div class="${item.signal==="BUY"?"green":item.signal==="SELL"?"red":"yellow"}">
+     ${item.signal}
+    </div>
+    <div>Δ: ${signed(item.delta)}</div>
+    <div>${fmt(item.deltaPercent,1)}%</div>
+   `;
 
-    renderScan(
-      result.results ||
-      []
-    );
+   div.onclick=()=>{
+    document.getElementById("symbol").value=item.symbol;
+    loadAnalysis();
+   };
 
-    setStatus(
-      `🔎 اسکن فعال · ${result.offset}/${result.totalSymbols}`
-    );
-
-  } catch(error){
-
-    setStatus(
-      `🔴 Scan: ${error.message}`
-    );
+   box.appendChild(div);
   }
+ }catch{}
+}
+
+function startScan(){
+ stopScan();
+ scanOffset=0;
+
+ document.getElementById("scanState").textContent=
+  "🟢 در حال اسکن";
+
+ scanOnce();
+ scanTimer=setInterval(scanOnce,8000);
 }
 
 function stopScan(){
+ if(scanTimer){
+  clearInterval(scanTimer);
+  scanTimer=null;
+ }
 
-  if (scanTimer){
-
-    clearInterval(
-      scanTimer
-    );
-
-    scanTimer = null;
-  }
-
-  setStatus(
-    "⏹ اسکن متوقف شد"
-  );
+ document.getElementById("scanState").textContent=
+  "متوقف";
 }
 
-function renderScan(results){
+document.querySelectorAll(".tf").forEach(btn=>{
+ btn.onclick=async()=>{
+  document.querySelectorAll(".tf")
+   .forEach(x=>x.classList.remove("active"));
 
-  const box =
-    $("scanResults");
+  btn.classList.add("active");
 
-  if (!results.length){
+  interval=btn.dataset.tf;
 
-    box.innerHTML =
-      `
-      <div class="scan-item">
-        <span>
-          نتیجه‌ای بالاتر از حد فیلتر وجود ندارد
-        </span>
-      </div>
-      `;
-
-    return;
-  }
-
-  box.innerHTML =
-    results.map(
-      x => {
-
-        const buy =
-          x.signal === "BUY";
-
-        const delta =
-          num(x.delta);
-
-        return `
-        <div class="scan-item">
-
-          <span>
-            <b>${x.symbol}</b>
-          </span>
-
-          <span>
-            Score:
-            <b>${x.score}</b>
-          </span>
-
-          <span class="${
-            buy
-              ? "green"
-              : "red"
-          }">
-            ${x.signal}
-          </span>
-
-          <span class="${
-            delta >= 0
-              ? "green"
-              : "red"
-          }">
-            Δ ${signed(delta)}
-          </span>
-
-        </div>
-        `;
-      }
-    ).join("");
-}
-
-/* =====================================================
-   STATUS
-===================================================== */
-
-function setStatus(text){
-  statusEl.textContent = text;
-}
-
-/* =====================================================
-   TIMEFRAME
-===================================================== */
-
-document
-  .querySelectorAll(".tf")
-  .forEach(btn => {
-
-    btn.addEventListener(
-      "click",
-      async () => {
-
-        document
-          .querySelectorAll(".tf")
-          .forEach(
-            b =>
-              b.classList.remove(
-                "active"
-              )
-          );
-
-        btn.classList.add(
-          "active"
-        );
-
-        interval =
-          btn.dataset.tf;
-
-        stopLive();
-
-        await loadAnalysis();
-      }
-    );
-  });
-
-/* =====================================================
-   LAYERS
-===================================================== */
-
-document
-  .querySelectorAll(".layer")
-  .forEach(btn => {
-
-    btn.addEventListener(
-      "click",
-      () => {
-
-        const key =
-          btn.dataset.layer;
-
-        layers[key] =
-          !layers[key];
-
-        btn.classList.toggle(
-          "active",
-          layers[key]
-        );
-
-        drawChart();
-      }
-    );
-  });
-
-/* =====================================================
-   ANALYZE
-===================================================== */
-
-$("analyzeBtn")
-  .addEventListener(
-    "click",
-    async () => {
-
-      stopLive();
-
-      await loadAnalysis();
-    }
-  );
-
-symbolInput
-  .addEventListener(
-    "keydown",
-    e => {
-
-      if (e.key === "Enter"){
-
-        $("analyzeBtn")
-          .click();
-      }
-    }
-  );
-
-/* =====================================================
-   LIVE BUTTON
-===================================================== */
-
-$("liveBtn")
-  .addEventListener(
-    "click",
-    () => {
-
-      startLive();
-    }
-  );
-
-$("stopBtn")
-  .addEventListener(
-    "click",
-    () => {
-
-      stopLive();
-
-      setStatus(
-        "⏹ Live متوقف شد"
-      );
-    }
-  );
-
-/* =====================================================
-   SCANNER BUTTONS
-===================================================== */
-
-$("scanBtn")
-  .addEventListener(
-    "click",
-    runScan
-  );
-
-$("scanStopBtn")
-  .addEventListener(
-    "click",
-    stopScan
-  );
-
-/* =====================================================
-   SOUND
-===================================================== */
-
-$("soundBtn")
-  .addEventListener(
-    "click",
-    () => {
-
-      soundEnabled =
-        !soundEnabled;
-
-      $("soundBtn")
-        .textContent =
-        soundEnabled
-          ? "🔊 صدا"
-          : "🔇 بی‌صدا";
-    }
-  );
-
-/* =====================================================
-   FULLSCREEN
-===================================================== */
-
-async function enterFullscreen(){
-
-  try {
-
-    if (
-      document.fullscreenElement
-    ){
-
-      await document.exitFullscreen();
-
-      return;
-    }
-
-    if (
-      chartPanel.requestFullscreen
-    ){
-
-      await chartPanel
-        .requestFullscreen();
-
-      try {
-
-        if (
-          screen.orientation &&
-          screen.orientation.lock
-        ){
-
-          await screen.orientation
-            .lock("landscape");
-        }
-
-      } catch(e){
-
-        console.log(
-          "Orientation lock unavailable"
-        );
-      }
-
-    } else {
-
-      chartPanel
-        .classList.add(
-          "fs-fallback"
-        );
-    }
-
-  } catch(error){
-
-    console.error(
-      "fullscreen",
-      error
-    );
-
-    chartPanel
-      .classList.toggle(
-        "fs-fallback"
-      );
-  }
-}
-
-$("fullscreenBtn")
-  .addEventListener(
-    "click",
-    enterFullscreen
-  );
-
-document.addEventListener(
-  "fullscreenchange",
-  () => {
-
-    const fs =
-      !!document.fullscreenElement;
-
-    $("fullscreenBtn")
-      .textContent =
-      fs
-        ? "✕"
-        : "⛶";
-
-    if (!fs){
-
-      try {
-
-        if (
-          screen.orientation &&
-          screen.orientation.unlock
-        ){
-
-          screen.orientation.unlock();
-        }
-
-      } catch(e){}
-
-      chartPanel
-        .classList.remove(
-          "fs-fallback"
-        );
-    }
-
-    setTimeout(
-      resizeCanvas,
-      100
-    );
-  }
-);
-
-/* =====================================================
-   TOUCH / MOUSE ENGINE
-===================================================== */
-
-const pointers =
-  new Map();
-
-let dragStartX = 0;
-let dragStartView = 0;
-let pinchStartDistance = 0;
-let pinchStartCount = 0;
-let moved = false;
-let lastTap = 0;
-
-function distance(a,b){
-
-  return Math.hypot(
-    a.x - b.x,
-    a.y - b.y
-  );
-}
-
-function pointerList(){
-
-  return [
-    ...pointers.values()
-  ];
-}
-
-function selectFromPointer(clientX){
-
-  const rect =
-    canvas.getBoundingClientRect();
-
-  const candles =
-    getCandles();
-
-  if (!candles.length){
-    return;
-  }
-
-  const x =
-    clientX -
-    rect.left;
-
-  const left = 55;
-
-  const chartW =
-    rect.width - 70;
-
-  const step =
-    chartW / viewCount;
-
-  let local =
-    Math.floor(
-      (
-        x - left
-      ) / step
-    );
-
-  local =
-    Math.max(
-      0,
-      Math.min(
-        viewCount - 1,
-        local
-      )
-    );
-
-  selectedIndex =
-    viewStart + local;
-
-  renderSelectedFootprint(
-    selectedIndex
-  );
-
-  drawChart();
-}
-
-canvas.addEventListener(
-  "pointerdown",
-  e => {
-
-    canvas.setPointerCapture(
-      e.pointerId
-    );
-
-    pointers.set(
-      e.pointerId,
-      {
-        x:e.clientX,
-        y:e.clientY
-      }
-    );
-
-    moved = false;
-
-    if (
-      pointers.size === 1
-    ){
-
-      dragStartX =
-        e.clientX;
-
-      dragStartView =
-        viewStart;
-    }
-
-    if (
-      pointers.size === 2
-    ){
-
-      const p =
-        pointerList();
-
-      pinchStartDistance =
-        distance(
-          p[0],
-          p[1]
-        );
-
-      pinchStartCount =
-        viewCount;
-    }
-  }
-);
-
-canvas.addEventListener(
-  "pointermove",
-  e => {
-
-    if (
-      !pointers.has(
-        e.pointerId
-      )
-    ){
-      return;
-    }
-
-    pointers.set(
-      e.pointerId,
-      {
-        x:e.clientX,
-        y:e.clientY
-      }
-    );
-
-    const p =
-      pointerList();
-
-    if (p.length === 2){
-
-      const d =
-        distance(
-          p[0],
-          p[1]
-        );
-
-      if (
-        pinchStartDistance > 0
-      ){
-
-        const ratio =
-          pinchStartDistance /
-          Math.max(
-            10,
-            d
-          );
-
-        viewCount =
-          Math.round(
-            pinchStartCount *
-            ratio
-          );
-
-        viewCount =
-          Math.max(
-            10,
-            Math.min(
-              150,
-              viewCount
-            )
-          );
-
-        const center =
-          viewStart +
-          viewCount / 2;
-
-        viewStart =
-          Math.round(
-            center -
-            viewCount / 2
-          );
-
-        clampView();
-
-        moved = true;
-
-        drawChart();
-      }
-
-      return;
-    }
-
-    if (p.length === 1){
-
-      const dx =
-        e.clientX -
-        dragStartX;
-
-      if (Math.abs(dx) > 5){
-
-        moved = true;
-
-        const rect =
-          canvas.getBoundingClientRect();
-
-        const chartW =
-          rect.width - 70;
-
-        const step =
-          chartW / viewCount;
-
-        const shift =
-          Math.round(
-            -dx / step
-          );
-
-        viewStart =
-          dragStartView +
-          shift;
-
-        clampView();
-
-        drawChart();
-      }
-
-      updateCrosshair(
-        e.clientX,
-        e.clientY
-      );
-    }
-  }
-);
-
-function finishPointer(e){
-
-  const wasMoved =
-    moved;
-
-  pointers.delete(
-    e.pointerId
-  );
-
-  if (
-    pointers.size < 2
-  ){
-
-    pinchStartDistance = 0;
-  }
-
-  if (
-    !wasMoved &&
-    pointers.size === 0
-  ){
-
-    const now =
-      Date.now();
-
-    const doubleTap =
-      now - lastTap < 300;
-
-    lastTap = now;
-
-    if (doubleTap){
-
-      zoomAt(
-        e.clientX,
-        0.7
-      );
-
-    } else {
-
-      selectFromPointer(
-        e.clientX
-      );
-    }
-  }
-}
-
-canvas.addEventListener(
-  "pointerup",
-  finishPointer
-);
-
-canvas.addEventListener(
-  "pointercancel",
-  finishPointer
-);
-
-canvas.addEventListener(
-  "pointerleave",
-  () => {
-
-    crosshair.style.display =
-      "none";
-  }
-);
-
-canvas.addEventListener(
-  "pointermove",
-  e => {
-
-    updateCrosshair(
-      e.clientX,
-      e.clientY
-    );
-  }
-);
-
-/* =====================================================
-   CROSSHAIR
-===================================================== */
-
-function updateCrosshair(
-  clientX,
-  clientY
-){
-
-  const rect =
-    canvas.getBoundingClientRect();
-
-  const candles =
-    getCandles();
-
-  if (!candles.length){
-    return;
-  }
-
-  const x =
-    clientX -
-    rect.left;
-
-  const left = 55;
-
-  const chartW =
-    rect.width - 70;
-
-  const step =
-    chartW / viewCount;
-
-  let local =
-    Math.floor(
-      (
-        x - left
-      ) / step
-    );
-
-  local =
-    Math.max(
-      0,
-      Math.min(
-        viewCount - 1,
-        local
-      )
-    );
-
-  const idx =
-    viewStart + local;
-
-  const c =
-    candles[idx];
-
-  if (!c){
-    return;
-  }
-
-  crosshair.style.display =
-    "block";
-
-  crosshair.style.left =
-    Math.max(
-      5,
-      Math.min(
-        rect.width - 180,
-        x + 8
-      )
-    ) + "px";
-
-  crosshair.style.top =
-    Math.max(
-      5,
-      Math.min(
-        rect.height - 50,
-        clientY -
-        rect.top +
-        8
-      )
-    ) + "px";
-
-  crosshair.textContent =
-    `${timeText(c.time)} · O ${priceFmt(c.open)} · H ${priceFmt(c.high)} · L ${priceFmt(c.low)} · C ${priceFmt(c.close)} · Δ ${signed(c.delta)}`;
-}
-
-/* =====================================================
-   WHEEL ZOOM
-===================================================== */
-
-canvas.addEventListener(
-  "wheel",
-  e => {
-
-    e.preventDefault();
-
-    const factor =
-      e.deltaY > 0
-        ? 1.12
-        : 0.88;
-
-    zoomAt(
-      e.clientX,
-      factor
-    );
-  },
-  {
-    passive:false
-  }
-);
-
-function zoomAt(
-  clientX,
-  factor
-){
-
-  const rect =
-    canvas.getBoundingClientRect();
-
-  const x =
-    clientX -
-    rect.left;
-
-  const left = 55;
-
-  const chartW =
-    rect.width - 70;
-
-  const oldCount =
-    viewCount;
-
-  const local =
-    (
-      x - left
-    ) /
-    (
-      chartW /
-      oldCount
-    );
-
-  const centerIndex =
-    viewStart + local;
-
-  viewCount =
-    Math.round(
-      oldCount * factor
-    );
-
-  viewCount =
-    Math.max(
-      10,
-      Math.min(
-        150,
-        viewCount
-      )
-    );
-
-  viewStart =
-    Math.round(
-      centerIndex -
-      (
-        local *
-        viewCount /
-        oldCount
-      )
-    );
-
-  clampView();
-
-  drawChart();
-}
-
-/* =====================================================
-   INITIAL
-===================================================== */
-
-(async function(){
-
-  resizeCanvas();
+  selectedIndex=-1;
 
   await loadAnalysis();
+  startLive();
+ };
+});
 
+document.getElementById("analyzeBtn").onclick=async()=>{
+ await loadAnalysis();
+ startLive();
+};
+
+document.getElementById("liveBtn").onclick=()=>{
+ startLive();
+};
+
+document.getElementById("stopBtn").onclick=()=>{
+ stopLive();
+};
+
+document.getElementById("scanStart").onclick=startScan;
+document.getElementById("scanStop").onclick=stopScan;
+
+document.getElementById("symbol").addEventListener("keydown",e=>{
+ if(e.key==="Enter")
+  document.getElementById("analyzeBtn").click();
+});
+
+document.querySelectorAll("[data-layer]").forEach(btn=>{
+ btn.onclick=()=>{
+  const key=btn.dataset.layer;
+
+  layers[key]=!layers[key];
+
+  btn.classList.toggle(
+   "active",
+   layers[key]
+  );
+
+  drawChart();
+ };
+});
+
+document.getElementById("fullBtn").onclick=async()=>{
+ const wrap=document.getElementById("chartWrap");
+
+ try{
+  if(!document.fullscreenElement){
+   await wrap.requestFullscreen?.();
+  }else{
+   await document.exitFullscreen?.();
+  }
+ }catch{
+  wrap.classList.toggle("fallback-full");
+ }
+};
+
+document.addEventListener("fullscreenchange",()=>{
+ setTimeout(resizeCanvas,100);
+});
+
+window.addEventListener("resize",resizeCanvas);
+
+(async()=>{
+ resizeCanvas();
+
+ await loadAnalysis();
+
+ startLive();
 })();
 </script>
-
 </body>
 </html>
