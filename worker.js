@@ -1,5 +1,3 @@
-// worker.js
-
 import { DurableObject } from "cloudflare:workers";
 
 const BYBIT_API = "https://api.bybit.com";
