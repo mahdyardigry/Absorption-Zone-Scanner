@@ -1,8 +1,24 @@
 {
-  "name": "absorption-zone-scanner",
+  "name": "bybit-smart-money-orderflow",
   "main": "worker.js",
-  "compatibility_date": "2026-09-03",
+  "compatibility_date": "2026-09-04",
+
   "assets": {
-    "directory": "./public"
+    "directory": "./public",
+    "binding": "ASSETS"
+  },
+
+  "d1_databases": [
+    {
+      "binding": "FOOTPRINT_DB",
+      "database_name": "bybit-footprint",
+      "database_id": "YOUR_D1_DATABASE_ID"
+    }
+  ],
+
+  "triggers": {
+    "crons": [
+      "* * * * *"
+    ]
   }
 }
