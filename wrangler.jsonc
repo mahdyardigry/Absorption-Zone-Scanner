@@ -2,8 +2,27 @@
   "name": "absorption-zone-scanner",
   "main": "worker.js",
   "compatibility_date": "2026-09-04",
+
   "assets": {
     "directory": "./public",
     "binding": "ASSETS"
-  }
+  },
+
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "COLLECTOR",
+        "class_name": "CollectorDO"
+      }
+    ]
+  },
+
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": [
+        "CollectorDO"
+      ]
+    }
+  ]
 }
