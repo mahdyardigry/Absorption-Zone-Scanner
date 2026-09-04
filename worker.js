@@ -1,9 +1,11 @@
 // worker.js
 
+import { DurableObject } from "cloudflare:workers";
+
 const BYBIT_API = "https://api.bybit.com";
 const BYBIT_WS = "wss://stream.bybit.com/v5/public/linear";
 
-const VERSION = "BYBIT-PERSONAL-COLLECTOR-V1";
+const VERSION = "BYBIT-PERSONAL-COLLECTOR-V2";
 
 const MAX_SYMBOLS = 1000;
 const WS_SHARDS = 6;
@@ -65,8 +67,10 @@ async function api(path, params = {}) {
     }
   }
 
-  const url =
-    `${BYBIT_API}${path}?${q.toString()}`;
+  const query = q.toString();
+  const url = query
+    ? `${BYBIT_API}${path}?${query}`
+    : `${BYBIT_API}${path}`;
 
   const response = await fetch(url, {
     method: "GET",
@@ -90,29 +94,59 @@ async function api(path, params = {}) {
     );
   }
 
-  return data.result;
+  return data.result || {};
 }
 
 async function getSymbols() {
-  const result =
-    await api(
+  const all = [];
+  let cursor = "";
+
+  for (let page = 0; page < 10; page++) {
+    const params = {
+      category: "linear",
+      status: "Trading",
+      limit: 1000
+    };
+
+    if (cursor) {
+      params.cursor = cursor;
+    }
+
+    const result = await api(
       "/v5/market/instruments-info",
-      {
-        category: "linear",
-        status: "Trading",
-        limit: 1000
-      }
+      params
     );
 
-  return (result?.list || [])
-    .filter(x =>
-      x.status === "Trading" &&
-      x.quoteCoin === "USDT" &&
-      x.contractType === "LinearPerpetual"
+    const list = Array.isArray(result.list)
+      ? result.list
+      : [];
+
+    all.push(...list);
+
+    cursor =
+      result.nextPageCursor || "";
+
+    if (!cursor || !list.length) {
+      break;
+    }
+
+    if (all.length >= MAX_SYMBOLS) {
+      break;
+    }
+  }
+
+  return [
+    ...new Set(
+      all
+        .filter(x =>
+          x.status === "Trading" &&
+          x.quoteCoin === "USDT" &&
+          x.contractType === "LinearPerpetual"
+        )
+        .map(x => x.symbol)
+        .filter(safeSymbol)
     )
-    .map(x => x.symbol)
-    .filter(safeSymbol)
-    .slice(0, MAX_SYMBOLS);
+  ].slice(0, MAX_SYMBOLS);
 }
 
 function emptyMinute(symbol, ts) {
@@ -163,16 +197,20 @@ function emptyMinute(symbol, ts) {
     avgBidLiquidity: 0,
     avgAskLiquidity: 0,
 
+    bookSnapshotCount: 0,
+
     lastBestBid: 0,
     lastBestAsk: 0,
 
-    blockThreshold: 0
+    blockThreshold: 0,
+
+    previousCvd: 0,
+    previousCvdValue: 0
   };
 }
 
 function ensureLevel(minute, price) {
-  const key =
-    priceKey(price);
+  const key = priceKey(price);
 
   if (!minute.levels[key]) {
     minute.levels[key] = {
@@ -199,17 +237,13 @@ function ensureLevel(minute, price) {
 }
 
 function applyTrade(minute, trade) {
-  const price =
-    n(trade.price);
+  const price = n(trade.price);
+  const size = n(trade.size);
 
-  const size =
-    n(trade.size);
-
-  const value =
-    n(
-      trade.value,
-      price * size
-    );
+  const value = n(
+    trade.value,
+    price * size
+  );
 
   if (
     price <= 0 ||
@@ -220,13 +254,7 @@ function applyTrade(minute, trade) {
 
   if (!minute.open) {
     minute.open = price;
-  }
-
-  if (!minute.high) {
     minute.high = price;
-  }
-
-  if (!minute.low) {
     minute.low = price;
   }
 
@@ -242,8 +270,7 @@ function applyTrade(minute, trade) {
       price
     );
 
-  minute.close =
-    price;
+  minute.close = price;
 
   minute.tradeCount++;
 
@@ -253,18 +280,15 @@ function applyTrade(minute, trade) {
       price
     );
 
-  level.totalVolume +=
-    size;
-
-  level.totalValue +=
-    value;
+  level.totalVolume += size;
+  level.totalValue += value;
 
   /*
     Bybit:
-    Buy  = aggressor buy
-    Sell = aggressor sell
+    Buy  = aggressive buyer
+    Sell = aggressive seller
 
-    در Footprint:
+    Footprint:
     ASK = Buy
     BID = Sell
   */
@@ -272,35 +296,21 @@ function applyTrade(minute, trade) {
   if (
     trade.side === "Buy"
   ) {
-    minute.buyVolume +=
-      size;
+    minute.buyVolume += size;
+    minute.buyValue += value;
 
-    minute.buyValue +=
-      value;
-
-    level.askVolume +=
-      size;
-
-    level.askValue +=
-      value;
-
+    level.askVolume += size;
+    level.askValue += value;
     level.askTrades++;
 
   } else if (
     trade.side === "Sell"
   ) {
-    minute.sellVolume +=
-      size;
+    minute.sellVolume += size;
+    minute.sellValue += value;
 
-    minute.sellValue +=
-      value;
-
-    level.bidVolume +=
-      size;
-
-    level.bidValue +=
-      value;
-
+    level.bidVolume += size;
+    level.bidValue += value;
     level.bidTrades++;
   }
 
@@ -326,9 +336,15 @@ function applyTrade(minute, trade) {
       value
     );
 
-  if (
+  const explicitBlock =
+    Boolean(trade.isBlockTrade);
+
+  const adaptiveBlock =
     minute.blockThreshold > 0 &&
-    value >= minute.blockThreshold &&
+    value >= minute.blockThreshold;
+
+  if (
+    (explicitBlock || adaptiveBlock) &&
     minute.blocks.length <
       MAX_BLOCKS_PER_MINUTE
   ) {
@@ -339,10 +355,7 @@ function applyTrade(minute, trade) {
       value,
       side: trade.side,
       id: trade.id || "",
-      isBlockTrade:
-        Boolean(
-          trade.isBlockTrade
-        ),
+      isBlockTrade: explicitBlock,
       isRPITrade:
         Boolean(
           trade.isRPITrade
@@ -352,15 +365,14 @@ function applyTrade(minute, trade) {
 }
 
 function finalizeMinute(
-  minute,
-  previousCvd
+  minute
 ) {
   minute.cumulativeDelta =
-    previousCvd +
+    minute.previousCvd +
     minute.delta;
 
   minute.cumulativeDeltaValue =
-    previousCvd +
+    minute.previousCvdValue +
     minute.deltaValue;
 
   const levels =
@@ -375,8 +387,7 @@ function finalizeMinute(
   const askLevels = {};
 
   for (
-    const level
-    of levels
+    const level of levels
   ) {
     const key =
       priceKey(
@@ -387,12 +398,16 @@ function finalizeMinute(
       level.bidVolume > 0
     ) {
       bidLevels[key] = {
+        price:
+          level.price,
         volume:
           level.bidVolume,
         value:
           level.bidValue,
         trades:
-          level.bidTrades
+          level.bidTrades,
+        delta:
+          level.delta
       };
     }
 
@@ -400,12 +415,16 @@ function finalizeMinute(
       level.askVolume > 0
     ) {
       askLevels[key] = {
+        price:
+          level.price,
         volume:
           level.askVolume,
         value:
           level.askValue,
         trades:
-          level.askTrades
+          level.askTrades,
+        delta:
+          level.delta
       };
     }
   }
@@ -417,43 +436,39 @@ function finalizeMinute(
     askLevels;
 
   delete minute.blockThreshold;
+  delete minute.previousCvd;
+  delete minute.previousCvdValue;
 
   return minute;
 }
 
 class CollectorShard {
 
-  constructor(state, env) {
+  constructor(
+    state,
+    env
+  ) {
+    this.state = state;
+    this.env = env;
 
-    this.state =
-      state;
+    this.symbols = [];
+    this.connections = new Map();
+    this.books = new Map();
+    this.minutes = new Map();
 
-    this.env =
-      env;
+    this.cvd = new Map();
+    this.cvdValue = new Map();
 
-    this.symbols =
-      [];
+    this.lastSnapshot = 0;
 
-    this.connections =
+    this.started = false;
+    this.connecting = false;
+
+    this.reconnectTimers =
       new Map();
 
-    this.books =
+    this.recentTradeIds =
       new Map();
-
-    this.minutes =
-      new Map();
-
-    this.cvd =
-      new Map();
-
-    this.lastSnapshot =
-      0;
-
-    this.started =
-      false;
-
-    this.connecting =
-      false;
 
     this.stats = {
       trades: 0,
@@ -461,12 +476,9 @@ class CollectorShard {
       liquidations: 0,
       errors: 0,
       reconnects: 0,
+      duplicates: 0,
       lastMessage: 0
     };
-
-    /*
-      SQLite
-    */
 
     this.state.storage.sql.exec(`
       CREATE TABLE IF NOT EXISTS minute_data (
@@ -530,60 +542,75 @@ class CollectorShard {
   }
 
   async initialize() {
-
-    if (
-      this.started
-    ) {
+    if (this.started) {
       return;
     }
 
-    this.started =
-      true;
+    this.started = true;
 
-    const storedSymbols =
-      await this.state.storage.get(
-        "symbols"
-      );
+    try {
+      const storedSymbols =
+        await this.state.storage.get(
+          "symbols"
+        );
 
-    if (
-      Array.isArray(
-        storedSymbols
-      ) &&
-      storedSymbols.length
-    ) {
-      this.symbols =
-        storedSymbols;
+      if (
+        Array.isArray(
+          storedSymbols
+        ) &&
+        storedSymbols.length
+      ) {
+        this.symbols =
+          storedSymbols;
+      }
+
+      await this.loadCvd();
+
+      if (
+        this.symbols.length
+      ) {
+        this.state.waitUntil(
+          this.connect()
+        );
+      }
+    } catch {
+      this.stats.errors++;
     }
-
-    await this.loadCvd();
-
-    this.state.waitUntil(
-      this.connect()
-    );
   }
 
   async loadCvd() {
-
     const rows =
       await this.state.storage.sql
         .exec(`
           SELECT
-            symbol,
-            cumulative_delta_value
-          FROM minute_data
-          WHERE minute IN (
-            SELECT MAX(minute)
+            m.symbol,
+            m.cumulative_delta,
+            m.cumulative_delta_value
+          FROM minute_data m
+          INNER JOIN (
+            SELECT
+              symbol,
+              MAX(minute) AS max_minute
             FROM minute_data
             GROUP BY symbol
-          )
+          ) x
+          ON
+            m.symbol = x.symbol
+            AND m.minute = x.max_minute
         `)
         .toArray();
 
     for (
-      const row
-      of rows
+      const row of rows
     ) {
       this.cvd.set(
+        row.symbol,
+        n(
+          row.cumulative_delta
+        )
+      );
+
+      this.cvdValue.set(
         row.symbol,
         n(
           row.cumulative_delta_value
@@ -595,8 +622,7 @@ class CollectorShard {
   async setSymbols(
     symbols
   ) {
-
-    this.symbols =
+    const normalized =
       [
         ...new Set(
           (symbols || [])
@@ -611,6 +637,12 @@ class CollectorShard {
         )
       ];
 
+    this.symbols =
+      normalized.slice(
+        0,
+        MAX_SYMBOLS
+      );
+
     await this.state.storage.put(
       "symbols",
       this.symbols
@@ -618,13 +650,17 @@ class CollectorShard {
 
     await this.disconnectAll();
 
+    this.books.clear();
+    this.minutes.clear();
+
+    this.connecting = false;
+
     this.state.waitUntil(
       this.connect()
     );
   }
 
   shardSymbols() {
-
     const output =
       Array.from(
         {
@@ -651,7 +687,6 @@ class CollectorShard {
   }
 
   async connect() {
-
     if (
       this.connecting
     ) {
@@ -664,11 +699,9 @@ class CollectorShard {
       return;
     }
 
-    this.connecting =
-      true;
+    this.connecting = true;
 
     try {
-
       const shards =
         this.shardSymbols();
 
@@ -678,27 +711,25 @@ class CollectorShard {
         shards.length;
         i++
       ) {
-
         if (
           !shards[i].length
         ) {
           continue;
         }
 
-        await this.connectShard(
-          i,
-          shards[i]
-        );
+        try {
+          await this.connectShard(
+            i,
+            shards[i]
+          );
+        } catch {
+          this.stats.errors++;
+        }
 
-        await sleep(
-          500
-        );
+        await sleep(500);
       }
-
     } finally {
-
-      this.connecting =
-        false;
+      this.connecting = false;
     }
   }
 
@@ -706,7 +737,6 @@ class CollectorShard {
     shardId,
     symbols
   ) {
-
     const old =
       this.connections.get(
         shardId
@@ -731,14 +761,11 @@ class CollectorShard {
     ws.addEventListener(
       "open",
       () => {
-
         const args = [];
 
         for (
-          const symbol
-          of symbols
+          const symbol of symbols
         ) {
-
           args.push(
             `publicTrade.${symbol}`
           );
@@ -751,11 +778,6 @@ class CollectorShard {
             `allLiquidation.${symbol}`
           );
         }
-
-        /*
-          Bybit subscription
-          chunks
-        */
 
         const chunks = [];
 
@@ -773,12 +795,9 @@ class CollectorShard {
         }
 
         for (
-          const chunk
-          of chunks
+          const chunk of chunks
         ) {
-
           try {
-
             ws.send(
               JSON.stringify({
                 op:
@@ -787,16 +806,17 @@ class CollectorShard {
                   chunk
               })
             );
-
           } catch {
-
             this.stats.errors++;
           }
         }
 
         this.stats.reconnects++;
 
-        this.sendPing(ws);
+        this.startPingLoop(
+          ws,
+          shardId
+        );
 
         this.state.waitUntil(
           this.saveStatus()
@@ -807,7 +827,6 @@ class CollectorShard {
     ws.addEventListener(
       "message",
       event => {
-
         this.state.waitUntil(
           this.handleMessage(
             event.data
@@ -819,12 +838,19 @@ class CollectorShard {
     ws.addEventListener(
       "close",
       () => {
+        if (
+          this.connections.get(
+            shardId
+          ) === ws
+        ) {
+          this.connections.delete(
+            shardId
+          );
+        }
 
-        this.state.waitUntil(
-          this.reconnectShard(
-            shardId,
-            symbols
-          )
+        this.scheduleReconnect(
+          shardId,
+          symbols
         );
       }
     );
@@ -832,56 +858,92 @@ class CollectorShard {
     ws.addEventListener(
       "error",
       () => {
-
         this.stats.errors++;
       }
     );
   }
 
-  async reconnectShard(
+  startPingLoop(
+    ws,
+    shardId
+  ) {
+    const loop = async () => {
+      while (
+        this.connections.get(
+          shardId
+        ) === ws
+      ) {
+        await sleep(20000);
+
+        if (
+          this.connections.get(
+            shardId
+          ) !== ws
+        ) {
+          break;
+        }
+
+        try {
+          ws.send(
+            JSON.stringify({
+              op: "ping"
+            })
+          );
+        } catch {
+          break;
+        }
+      }
+    };
+
+    this.state.waitUntil(
+      loop()
+    );
+  }
+
+  scheduleReconnect(
     shardId,
     symbols
   ) {
-
-    await sleep(
-      3000
-    );
-
-    try {
-
-      await this.connectShard(
-        shardId,
-        symbols
-      );
-
-    } catch {
-
-      this.stats.errors++;
+    if (
+      this.reconnectTimers.has(
+        shardId
+      )
+    ) {
+      return;
     }
-  }
 
-  sendPing(ws) {
+    const timer =
+      setTimeout(
+        () => {
+          this.reconnectTimers.delete(
+            shardId
+          );
 
-    try {
-
-      ws.send(
-        JSON.stringify({
-          op:
-            "ping"
-        })
+          this.state.waitUntil(
+            this.connectShard(
+              shardId,
+              symbols
+            )
+          );
+        },
+        3000 +
+        Math.floor(
+          Math.random() * 3000
+        )
       );
 
-    } catch {}
+    this.reconnectTimers.set(
+      shardId,
+      timer
+    );
   }
 
   async handleMessage(
     raw
   ) {
-
     let msg;
 
     try {
-
       msg =
         typeof raw === "string"
           ? JSON.parse(raw)
@@ -889,9 +951,7 @@ class CollectorShard {
               new TextDecoder()
                 .decode(raw)
             );
-
     } catch {
-
       return;
     }
 
@@ -901,6 +961,13 @@ class CollectorShard {
     if (
       msg.op === "pong"
     ) {
+      return;
+    }
+
+    if (
+      msg.success === false
+    ) {
+      this.stats.errors++;
       return;
     }
 
@@ -914,11 +981,9 @@ class CollectorShard {
         "publicTrade."
       )
     ) {
-
       await this.handleTrades(
         msg
       );
-
       return;
     }
 
@@ -927,11 +992,9 @@ class CollectorShard {
         "orderbook."
       )
     ) {
-
       await this.handleOrderbook(
         msg
       );
-
       return;
     }
 
@@ -940,11 +1003,9 @@ class CollectorShard {
         "allLiquidation."
       )
     ) {
-
       await this.handleLiquidation(
         msg
       );
-
       return;
     }
   }
@@ -952,7 +1013,6 @@ class CollectorShard {
   async handleTrades(
     msg
   ) {
-
     const list =
       Array.isArray(
         msg.data
@@ -961,15 +1021,12 @@ class CollectorShard {
         : [];
 
     for (
-      const t
-      of list
+      const t of list
     ) {
-
       const symbol =
         String(
           t.s || ""
-        )
-          .toUpperCase();
+        ).toUpperCase();
 
       if (!symbol) {
         continue;
@@ -980,6 +1037,22 @@ class CollectorShard {
           t.T,
           Date.now()
         );
+
+      const id =
+        String(
+          t.i ||
+          `${symbol}-${time}-${t.p}-${t.v}-${t.S}`
+        );
+
+      if (
+        this.isDuplicateTrade(
+          symbol,
+          id
+        )
+      ) {
+        this.stats.duplicates++;
+        continue;
+      }
 
       const minute =
         minuteStart(
@@ -994,22 +1067,25 @@ class CollectorShard {
           key
         )
       ) {
-
         const m =
           emptyMinute(
             symbol,
             time
           );
 
-        const previousCvd =
+        m.previousCvd =
           n(
             this.cvd.get(
               symbol
             )
           );
 
-        m.previousCvd =
-          previousCvd;
+        m.previousCvdValue =
+          n(
+            this.cvdValue.get(
+              symbol
+            )
+          );
 
         const history =
           await this.getRecentTradeValues(
@@ -1028,8 +1104,10 @@ class CollectorShard {
             : 0;
 
         m.blockThreshold =
-          average *
-          BLOCK_MULTIPLIER;
+          average > 0
+            ? average *
+              BLOCK_MULTIPLIER
+            : 0;
 
         this.minutes.set(
           key,
@@ -1043,10 +1121,7 @@ class CollectorShard {
         );
 
       const trade = {
-
-        id:
-          t.i ||
-          `${time}-${t.p}-${t.v}`,
+        id,
 
         time,
 
@@ -1083,11 +1158,67 @@ class CollectorShard {
     await this.flushOldMinutes();
   }
 
+  isDuplicateTrade(
+    symbol,
+    id
+  ) {
+    let set =
+      this.recentTradeIds.get(
+        symbol
+      );
+
+    if (!set) {
+      set = new Map();
+
+      this.recentTradeIds.set(
+        symbol,
+        set
+      );
+    }
+
+    if (
+      set.has(id)
+    ) {
+      return true;
+    }
+
+    set.set(
+      id,
+      Date.now()
+    );
+
+    if (
+      set.size > 5000
+    ) {
+      const entries =
+        [...set.entries()]
+          .sort(
+            (a, b) =>
+              a[1] - b[1]
+          );
+
+      const removeCount =
+        entries.length -
+        3000;
+
+      for (
+        let i = 0;
+        i < removeCount;
+        i++
+      ) {
+        set.delete(
+          entries[i][0]
+        );
+      }
+    }
+
+    return false;
+  }
+
   async getRecentTradeValues(
     symbol,
     limit = 20
   ) {
-
     const rows =
       await this.state.storage.sql
         .exec(
@@ -1118,13 +1249,13 @@ class CollectorShard {
   async handleOrderbook(
     msg
   ) {
-
     const data =
       msg.data || {};
 
     const symbol =
       String(
-        data.s || ""
+        data.s ||
+        ""
       ).toUpperCase();
 
     if (!symbol) {
@@ -1136,7 +1267,6 @@ class CollectorShard {
         symbol
       )
     ) {
-
       this.books.set(
         symbol,
         {
@@ -1149,8 +1279,14 @@ class CollectorShard {
           updateId:
             0,
 
+          sequence:
+            0,
+
           lastTs:
-            0
+            0,
+
+          initialized:
+            false
         }
       );
     }
@@ -1169,15 +1305,13 @@ class CollectorShard {
       type ===
       "snapshot"
     ) {
-
       book.bids.clear();
       book.asks.clear();
 
       for (
-        const row
-        of data.b || []
+        const row of
+        data.b || []
       ) {
-
         const price =
           n(row[0]);
 
@@ -1188,7 +1322,6 @@ class CollectorShard {
           price > 0 &&
           size > 0
         ) {
-
           book.bids.set(
             priceKey(price),
             {
@@ -1200,10 +1333,9 @@ class CollectorShard {
       }
 
       for (
-        const row
-        of data.a || []
+        const row of
+        data.a || []
       ) {
-
         const price =
           n(row[0]);
 
@@ -1214,7 +1346,6 @@ class CollectorShard {
           price > 0 &&
           size > 0
         ) {
-
           book.asks.set(
             priceKey(price),
             {
@@ -1225,21 +1356,34 @@ class CollectorShard {
         }
       }
 
+      book.initialized =
+        true;
+
     } else if (
       type ===
       "delta"
     ) {
+      if (
+        !book.initialized
+      ) {
+        return;
+      }
 
       for (
-        const row
-        of data.b || []
+        const row of
+        data.b || []
       ) {
-
         const price =
           n(row[0]);
 
         const size =
           n(row[1]);
+
+        if (
+          price <= 0
+        ) {
+          continue;
+        }
 
         const key =
           priceKey(price);
@@ -1247,13 +1391,10 @@ class CollectorShard {
         if (
           size === 0
         ) {
-
           book.bids.delete(
             key
           );
-
         } else {
-
           book.bids.set(
             key,
             {
@@ -1265,15 +1406,20 @@ class CollectorShard {
       }
 
       for (
-        const row
-        of data.a || []
+        const row of
+        data.a || []
       ) {
-
         const price =
           n(row[0]);
 
         const size =
           n(row[1]);
+
+        if (
+          price <= 0
+        ) {
+          continue;
+        }
 
         const key =
           priceKey(price);
@@ -1281,13 +1427,10 @@ class CollectorShard {
         if (
           size === 0
         ) {
-
           book.asks.delete(
             key
           );
-
         } else {
-
           book.asks.set(
             key,
             {
@@ -1300,7 +1443,16 @@ class CollectorShard {
     }
 
     book.updateId =
-      n(data.u);
+      n(
+        data.u,
+        book.updateId
+      );
+
+    book.sequence =
+      n(
+        data.seq,
+        book.sequence
+      );
 
     book.lastTs =
       n(
@@ -1318,7 +1470,6 @@ class CollectorShard {
       this.lastSnapshot >=
       SNAPSHOT_MS
     ) {
-
       this.lastSnapshot =
         now;
 
@@ -1335,6 +1486,11 @@ class CollectorShard {
     book,
     time
   ) {
+    if (
+      !book.initialized
+    ) {
+      return;
+    }
 
     const bids =
       [
@@ -1403,13 +1559,29 @@ class CollectorShard {
         key
       )
     ) {
-
-      this.minutes.set(
-        key,
+      const m =
         emptyMinute(
           symbol,
           time
-        )
+        );
+
+      m.previousCvd =
+        n(
+          this.cvd.get(
+            symbol
+          )
+        );
+
+      m.previousCvdValue =
+        n(
+          this.cvdValue.get(
+            symbol
+          )
+        );
+
+      this.minutes.set(
+        key,
+        m
       );
     }
 
@@ -1418,44 +1590,69 @@ class CollectorShard {
         key
       );
 
-    m.bookSnapshots.push({
-
-      time,
-
-      bestBid,
-
-      bestAsk,
-
-      bidLiquidity,
-
-      askLiquidity,
-
-      bids:
-        bids.map(
-          x => [
-            x.price,
-            x.size
-          ]
-        ),
-
-      asks:
-        asks.map(
-          x => [
-            x.price,
-            x.size
-          ]
-        )
-    });
+    /*
+      برای کاهش حجم ذخیره:
+      حداکثر 12 snapshot در دقیقه
+      یعنی یک snapshot هر 5 ثانیه.
+    */
 
     if (
-      m.bookSnapshots.length >
-      20
+      m.bookSnapshots.length <
+      12
     ) {
+      m.bookSnapshots.push({
+        time,
 
-      m.bookSnapshots =
-        m.bookSnapshots.slice(
-          -20
-        );
+        bestBid,
+        bestAsk,
+
+        bidLiquidity,
+        askLiquidity,
+
+        bids:
+          bids.map(
+            x => [
+              x.price,
+              x.size
+            ]
+          ),
+
+        asks:
+          asks.map(
+            x => [
+              x.price,
+              x.size
+            ]
+          )
+      });
+    } else {
+      m.bookSnapshots.shift();
+
+      m.bookSnapshots.push({
+        time,
+
+        bestBid,
+        bestAsk,
+
+        bidLiquidity,
+        askLiquidity,
+
+        bids:
+          bids.map(
+            x => [
+              x.price,
+              x.size
+            ]
+          ),
+
+        asks:
+          asks.map(
+            x => [
+              x.price,
+              x.size
+            ]
+          )
+      });
     }
 
     m.maxBidLiquidity =
@@ -1470,21 +1667,30 @@ class CollectorShard {
         askLiquidity
       );
 
+    m.bookSnapshotCount++;
+
+    const count =
+      m.bookSnapshotCount;
+
     m.avgBidLiquidity =
-      m.avgBidLiquidity === 0
-        ? bidLiquidity
-        : (
-            m.avgBidLiquidity +
-            bidLiquidity
-          ) / 2;
+      (
+        (
+          m.avgBidLiquidity *
+          (count - 1)
+        ) +
+        bidLiquidity
+      ) /
+      count;
 
     m.avgAskLiquidity =
-      m.avgAskLiquidity === 0
-        ? askLiquidity
-        : (
-            m.avgAskLiquidity +
-            askLiquidity
-          ) / 2;
+      (
+        (
+          m.avgAskLiquidity *
+          (count - 1)
+        ) +
+        askLiquidity
+      ) /
+      count;
 
     m.lastBestBid =
       bestBid;
@@ -1496,7 +1702,6 @@ class CollectorShard {
   async handleLiquidation(
     msg
   ) {
-
     const data =
       msg.data;
 
@@ -1508,10 +1713,8 @@ class CollectorShard {
           : [];
 
     for (
-      const x
-      of list
+      const x of list
     ) {
-
       const symbol =
         String(
           x.s || ""
@@ -1540,13 +1743,29 @@ class CollectorShard {
           key
         )
       ) {
-
-        this.minutes.set(
-          key,
+        const m =
           emptyMinute(
             symbol,
             time
-          )
+          );
+
+        m.previousCvd =
+          n(
+            this.cvd.get(
+              symbol
+            )
+          );
+
+        m.previousCvdValue =
+          n(
+            this.cvdValue.get(
+              symbol
+            )
+          );
+
+        this.minutes.set(
+          key,
+          m
         );
       }
 
@@ -1561,29 +1780,34 @@ class CollectorShard {
       const price =
         n(x.p);
 
+      if (
+        size <= 0 ||
+        price <= 0
+      ) {
+        continue;
+      }
+
       const value =
-        size * price;
+        size *
+        price;
 
       const side =
         String(
           x.S || ""
-        );
+        ).trim();
 
       if (
         side === "Buy"
       ) {
-
         m.liquidationBuyVolume +=
           size;
 
         m.liquidationBuyValue +=
           value;
-      }
 
-      if (
+      } else if (
         side === "Sell"
       ) {
-
         m.liquidationSellVolume +=
           size;
 
@@ -1600,7 +1824,6 @@ class CollectorShard {
   }
 
   async flushOldMinutes() {
-
     const now =
       minuteStart(
         Date.now()
@@ -1612,12 +1835,10 @@ class CollectorShard {
       const [key, m]
       of this.minutes
     ) {
-
       if (
         m.minute <
         now
       ) {
-
         ready.push(
           [key, m]
         );
@@ -1628,23 +1849,18 @@ class CollectorShard {
       const [key, m]
       of ready
     ) {
-
       try {
-
-        const previous =
-          n(
-            this.cvd.get(
-              m.symbol
-            )
-          );
-
         const finalized =
           finalizeMinute(
-            m,
-            previous
+            m
           );
 
         this.cvd.set(
+          m.symbol,
+          finalized.cumulativeDelta
+        );
+
+        this.cvdValue.set(
           m.symbol,
           finalized.cumulativeDeltaValue
         );
@@ -1658,7 +1874,6 @@ class CollectorShard {
         );
 
       } catch {
-
         this.stats.errors++;
       }
     }
@@ -1667,9 +1882,7 @@ class CollectorShard {
   }
 
   async saveMinute(m) {
-
     const payload = {
-
       symbol:
         m.symbol,
 
@@ -1759,6 +1972,9 @@ class CollectorShard {
 
       avgAskLiquidity:
         m.avgAskLiquidity,
+
+      bookSnapshotCount:
+        m.bookSnapshotCount,
 
       lastBestBid:
         m.lastBestBid,
@@ -1875,7 +2091,6 @@ class CollectorShard {
   }
 
   async cleanup() {
-
     const cutoff =
       Date.now() -
       RETENTION_MINUTES *
@@ -1895,7 +2110,6 @@ class CollectorShard {
     from,
     to
   ) {
-
     const rows =
       await this.state.storage.sql
         .exec(
@@ -1915,16 +2129,12 @@ class CollectorShard {
 
     return rows.map(
       row => {
-
         try {
-
           return JSON.parse(
             row.payload ||
             "{}"
           );
-
         } catch {
-
           return {};
         }
       }
@@ -1934,7 +2144,6 @@ class CollectorShard {
   async latest(
     symbol
   ) {
-
     const rows =
       await this.state.storage.sql
         .exec(
@@ -1956,19 +2165,15 @@ class CollectorShard {
     }
 
     try {
-
       return JSON.parse(
         rows[0].payload
       );
-
     } catch {
-
       return null;
     }
   }
 
   async status() {
-
     const rows =
       await this.state.storage.sql
         .exec(
@@ -1984,7 +2189,6 @@ class CollectorShard {
         .toArray();
 
     return {
-
       ok:
         true,
 
@@ -2006,7 +2210,6 @@ class CollectorShard {
   }
 
   async saveStatus() {
-
     await this.state.storage.put(
       "collector_status",
       {
@@ -2026,24 +2229,32 @@ class CollectorShard {
   }
 
   async disconnectAll() {
-
     for (
-      const ws
-      of this.connections.values()
+      const ws of
+      this.connections.values()
     ) {
-
       try {
         ws.close();
       } catch {}
     }
 
     this.connections.clear();
+
+    for (
+      const timer of
+      this.reconnectTimers.values()
+    ) {
+      try {
+        clearTimeout(timer);
+      } catch {}
+    }
+
+    this.reconnectTimers.clear();
   }
 
   async fetch(
     request
   ) {
-
     await this.initialize();
 
     const url =
@@ -2058,37 +2269,50 @@ class CollectorShard {
       path ===
       "/init"
     ) {
+      try {
+        const symbols =
+          await getSymbols();
 
-      const symbols =
-        await getSymbols();
+        await this.setSymbols(
+          symbols
+        );
 
-      await this.setSymbols(
-        symbols
-      );
+        return json({
+          ok:
+            true,
 
-      return json({
-        ok:
-          true,
+          version:
+            VERSION,
 
-        version:
-          VERSION,
+          symbols:
+            symbols.length,
 
-        symbols:
-          symbols.length,
+          sample:
+            symbols.slice(
+              0,
+              20
+            )
+        });
 
-        sample:
-          symbols.slice(
-            0,
-            20
-          )
-      });
+      } catch (error) {
+        return json(
+          {
+            ok:
+              false,
+
+            error:
+              error?.message ||
+              String(error)
+          },
+          500
+        );
+      }
     }
 
     if (
       path ===
       "/symbols"
     ) {
-
       return json({
         ok:
           true,
@@ -2102,7 +2326,6 @@ class CollectorShard {
       path ===
       "/status"
     ) {
-
       return json(
         await this.status()
       );
@@ -2112,7 +2335,6 @@ class CollectorShard {
       path ===
       "/latest"
     ) {
-
       const symbol =
         String(
           url.searchParams.get(
@@ -2127,7 +2349,6 @@ class CollectorShard {
           symbol
         )
       ) {
-
         return json(
           {
             ok:
@@ -2141,7 +2362,6 @@ class CollectorShard {
       }
 
       return json({
-
         ok:
           true,
 
@@ -2156,7 +2376,6 @@ class CollectorShard {
       path ===
       "/history"
     ) {
-
       const symbol =
         String(
           url.searchParams.get(
@@ -2171,7 +2390,6 @@ class CollectorShard {
           symbol
         )
       ) {
-
         return json(
           {
             ok:
@@ -2203,7 +2421,6 @@ class CollectorShard {
         );
 
       return json({
-
         ok:
           true,
 
@@ -2242,7 +2459,6 @@ export class CollectorDO
     ctx,
     env
   ) {
-
     super(
       ctx,
       env
@@ -2258,7 +2474,6 @@ export class CollectorDO
   async fetch(
     request
   ) {
-
     return this.collector.fetch(
       request
     );
@@ -2266,17 +2481,14 @@ export class CollectorDO
 }
 
 export default {
-
   async fetch(
     request,
     env
   ) {
-
     if (
       request.method ===
       "OPTIONS"
     ) {
-
       return new Response(
         null,
         {
@@ -2306,9 +2518,7 @@ export default {
       url.pathname ===
       "/api/health"
     ) {
-
       return json({
-
         ok:
           true,
 
@@ -2334,7 +2544,6 @@ export default {
       url.pathname ===
       "/api/init"
     ) {
-
       const target =
         new URL(
           request.url
@@ -2352,7 +2561,6 @@ export default {
       url.pathname ===
       "/api/status"
     ) {
-
       const target =
         new URL(
           request.url
@@ -2370,7 +2578,6 @@ export default {
       url.pathname ===
       "/api/symbols"
     ) {
-
       const target =
         new URL(
           request.url
@@ -2388,7 +2595,6 @@ export default {
       url.pathname ===
       "/api/latest"
     ) {
-
       const target =
         new URL(
           request.url
@@ -2406,7 +2612,6 @@ export default {
       url.pathname ===
       "/api/history"
     ) {
-
       const target =
         new URL(
           request.url
