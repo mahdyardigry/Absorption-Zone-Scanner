@@ -1,4 +1,3 @@
-<!-- public/index.html -->
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -26,8 +25,7 @@ body{
   overflow-x:hidden;
 }
 
-button,
-input{
+button,input{
   font:inherit;
 }
 
@@ -155,15 +153,18 @@ input{
 .canvas-wrap{
   position:relative;
   width:100%;
-  height:360px;
+  height:390px;
   overflow:hidden;
   touch-action:none;
+  user-select:none;
+  -webkit-user-select:none;
 }
 
 #chart{
   display:block;
   width:100%;
   height:100%;
+  touch-action:none;
 }
 
 .crosshair{
@@ -259,6 +260,10 @@ input{
   color:#46c8ff !important;
 }
 
+/* =========================
+   FOOTPRINT
+========================= */
+
 .footprint-box{
   width:100%;
   margin-top:9px;
@@ -299,75 +304,89 @@ input{
 .fp-viewport{
   position:relative;
   width:100%;
-  min-height:250px;
-  max-height:48vh;
+  min-height:310px;
+  max-height:58vh;
   overflow:auto;
   direction:ltr;
-  touch-action:none;
+  touch-action:pan-x pan-y;
   overscroll-behavior:contain;
+  -webkit-overflow-scrolling:touch;
 }
 
 .fp-board{
   position:relative;
   width:100%;
-  min-width:760px;
-  padding:8px;
+  min-width:920px;
+  padding:10px;
+  transform-origin:top left;
+}
+
+.fp-content{
+  width:100%;
 }
 
 .fp-grid{
   display:grid;
-  grid-template-columns:1fr 180px 1fr;
-  gap:5px;
+  grid-template-columns:minmax(190px,1fr) 260px minmax(190px,1fr);
+  gap:8px;
   direction:ltr;
+  align-items:stretch;
 }
 
 .fp-side{
   direction:ltr;
+  min-width:0;
 }
 
 .fp-side-title{
-  height:28px;
+  height:32px;
   display:flex;
   align-items:center;
   justify-content:center;
   font-size:11px;
   font-weight:bold;
   border-bottom:1px solid #243744;
+  background:#0b1720;
+  border-radius:7px 7px 0 0;
 }
 
-.fp-row{
+.fp-level-row{
   display:grid;
-  grid-template-columns:1fr 1fr;
-  min-height:27px;
+  grid-template-columns:1fr;
+  min-height:30px;
   border-bottom:1px solid #162733;
   align-items:center;
+  position:relative;
+}
+
+.fp-level-value{
+  padding:4px 7px;
+  direction:ltr;
+  text-align:center;
   font-size:11px;
+  font-weight:700;
+  white-space:nowrap;
+  position:relative;
+  z-index:2;
 }
 
-.fp-row div{
-  padding:3px 5px;
-  direction:ltr;
-  text-align:center;
+.fp-level-bar{
+  position:absolute;
+  top:4px;
+  bottom:4px;
+  border-radius:3px;
+  opacity:.20;
+  pointer-events:none;
 }
 
-.fp-bid{
-  color:#ff5d65;
+.fp-level-bar.bid{
+  right:3px;
+  background:#ff5962;
 }
 
-.fp-ask{
-  color:#43df78;
-}
-
-.fp-delta{
-  color:#c7d3dd;
-  font-size:10px;
-}
-
-.fp-price{
-  direction:ltr;
-  text-align:center;
-  color:#b8c6d1;
-  font-size:10px;
+.fp-level-bar.ask{
+  left:3px;
+  background:#43df78;
 }
 
 .fp-center{
@@ -377,50 +396,170 @@ input{
   min-height:100%;
 }
 
+.fp-price-head{
+  height:32px;
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  align-items:center;
+  border-bottom:1px solid #243744;
+  background:#0b1720;
+  border-radius:7px 7px 0 0;
+}
+
+.fp-price-head div{
+  text-align:center;
+  font-size:10px;
+  color:#8093a2;
+}
+
 .fp-candle{
   position:relative;
   width:100%;
-  min-height:250px;
+  min-height:calc(var(--fp-row-height,30px) * 1);
+  overflow:visible;
 }
 
-.fp-candle-line{
-  position:absolute;
-  width:2px;
-  left:50%;
-  transform:translateX(-50%);
-  background:#9fb0bd;
+.fp-candle-stage{
+  position:relative;
+  width:100%;
+  min-height:var(--fp-candle-height,600px);
 }
 
-.fp-candle-body{
+.fp-wick{
   position:absolute;
   left:50%;
   transform:translateX(-50%);
-  width:34px;
-  border-radius:4px;
+  width:3px;
+  background:#b7c4cc;
+  border-radius:3px;
+}
+
+.fp-body{
+  position:absolute;
+  left:50%;
+  transform:translateX(-50%);
+  width:58px;
+  min-height:8px;
+  border-radius:5px;
+  z-index:3;
+  box-shadow:
+    0 0 0 1px rgba(255,255,255,.18),
+    0 0 18px rgba(255,255,255,.04);
+}
+
+.fp-price-column{
+  position:absolute;
+  inset:0;
+  z-index:4;
+  pointer-events:none;
+}
+
+.fp-price-row{
+  position:absolute;
+  left:0;
+  right:0;
+  height:30px;
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  align-items:center;
+}
+
+.fp-price-row span{
+  font-size:9px;
+  text-align:center;
+  direction:ltr;
+  color:#aebdca;
+  font-weight:700;
+}
+
+.fp-inside-bid{
+  color:#ff5962 !important;
+  text-shadow:0 0 5px rgba(0,0,0,.9);
+}
+
+.fp-inside-ask{
+  color:#43df78 !important;
+  text-shadow:0 0 5px rgba(0,0,0,.9);
 }
 
 .fp-candle-info{
   position:absolute;
-  bottom:5px;
+  bottom:7px;
   left:0;
   right:0;
   text-align:center;
-  font-size:10px;
-  color:#8599a8;
+  font-size:9px;
+  line-height:15px;
+  color:#8b9da9;
+  direction:ltr;
+  z-index:8;
+  pointer-events:none;
 }
 
-.fp-empty{
-  padding:40px 15px;
+.fp-delta-column{
+  direction:ltr;
+}
+
+.fp-delta-row{
+  min-height:30px;
+  display:grid;
+  grid-template-columns:88px 1fr;
+  gap:5px;
+  align-items:center;
+  border-bottom:1px solid #162733;
+  padding:0 5px;
+}
+
+.fp-delta-value{
+  direction:ltr;
   text-align:center;
-  color:#728797;
-  font-size:12px;
+  font-size:10px;
+  font-weight:800;
+  white-space:nowrap;
+}
+
+.fp-delta-track{
+  height:14px;
+  width:100%;
+  background:#0b1720;
+  border-radius:4px;
+  overflow:hidden;
+  position:relative;
+}
+
+.fp-delta-bar{
+  height:100%;
+  border-radius:4px;
+  min-width:1px;
+  transition:none;
+}
+
+.fp-delta-bar.buy{
+  background:#35df72;
+}
+
+.fp-delta-bar.sell{
+  background:#ff5962;
+}
+
+.fp-delta-axis{
+  position:absolute;
+  top:0;
+  bottom:0;
+  left:50%;
+  width:1px;
+  background:#3a4a56;
+}
+
+.fp-level-highlight{
+  background:rgba(255,255,255,.035);
 }
 
 .fp-totals{
   display:grid;
-  grid-template-columns:repeat(5,1fr);
+  grid-template-columns:repeat(6,1fr);
   gap:6px;
-  margin-top:8px;
+  margin-top:9px;
 }
 
 .fp-total{
@@ -442,6 +581,17 @@ input{
   margin-top:4px;
   direction:ltr;
 }
+
+.fp-empty{
+  padding:40px 15px;
+  text-align:center;
+  color:#728797;
+  font-size:12px;
+}
+
+/* =========================
+   SCAN / TRADES
+========================= */
 
 .scan-panel,
 .trades-panel{
@@ -503,8 +653,7 @@ table{
   font-size:10px;
 }
 
-th,
-td{
+th,td{
   padding:7px;
   border-bottom:1px solid #172832;
   text-align:center;
@@ -521,6 +670,10 @@ th{
   .stats{
     grid-template-columns:repeat(4,1fr);
   }
+
+  .fp-grid{
+    grid-template-columns:200px 250px 200px;
+  }
 }
 
 @media(max-width:800px){
@@ -529,19 +682,19 @@ th{
   }
 
   .canvas-wrap{
-    height:330px;
+    height:350px;
   }
 
   .stats{
     grid-template-columns:repeat(4,1fr);
   }
 
-  .fp-grid{
-    grid-template-columns:1fr 150px 1fr;
+  .fp-board{
+    min-width:820px;
   }
 
-  .fp-board{
-    min-width:700px;
+  .fp-grid{
+    grid-template-columns:180px 230px 180px;
   }
 }
 
@@ -555,7 +708,7 @@ th{
   }
 
   .canvas-wrap{
-    height:300px;
+    height:320px;
   }
 
   .stats{
@@ -563,7 +716,17 @@ th{
   }
 
   .fp-viewport{
-    min-height:235px;
+    min-height:290px;
+    max-height:65vh;
+  }
+
+  .fp-board{
+    min-width:760px;
+  }
+
+  .fp-grid{
+    grid-template-columns:160px 210px 160px;
+    gap:5px;
   }
 
   .fp-totals{
@@ -601,7 +764,9 @@ th{
 
   <div class="header">
     <div>
-      <div class="title">📊 اسکنر شخصی Bybit — Smart Money Order Flow</div>
+      <div class="title">
+        📊 اسکنر شخصی Bybit — Smart Money Order Flow
+      </div>
       <div class="subtitle">
         داده واقعی Bybit · Candle · Order Book · Aggressor Flow · Footprint · Liquidity
       </div>
@@ -655,60 +820,25 @@ th{
       </div>
 
       <div class="help">
-        کشیدن = حرکت · چرخش/پینچ = زوم · لمس کندل = انتخاب Footprint
+        کشیدن = حرکت · پینچ/چرخش = زوم · لمس کندل = انتخاب Footprint
       </div>
 
     </div>
 
     <div class="layers">
 
-      <button class="layer active" data-layer="candles">
-        🕯 کندل
-      </button>
-
-      <button class="layer active" data-layer="footprint">
-        📊 Footprint
-      </button>
-
-      <button class="layer active" data-layer="heatmap">
-        🌡 Heatmap
-      </button>
-
-      <button class="layer active" data-layer="walls">
-        🧱 Walls
-      </button>
-
-      <button class="layer active" data-layer="liquidity">
-        💧 Liquidity
-      </button>
-
-      <button class="layer active" data-layer="zones">
-        🟨 Zones
-      </button>
-
-      <button class="layer active" data-layer="sweep">
-        🎯 Sweep
-      </button>
-
-      <button class="layer active" data-layer="absorption">
-        🧲 Absorption
-      </button>
-
-      <button class="layer active" data-layer="blocks">
-        🧱 Blocks
-      </button>
-
-      <button class="layer active" data-layer="trades">
-        • Trades
-      </button>
-
-      <button class="layer active" data-layer="delta">
-        Δ Delta
-      </button>
-
-      <button class="layer active" data-layer="bidask">
-        Bid × Ask
-      </button>
+      <button class="layer active" data-layer="candles">🕯 کندل</button>
+      <button class="layer active" data-layer="footprint">📊 Footprint</button>
+      <button class="layer active" data-layer="heatmap">🌡 Heatmap</button>
+      <button class="layer active" data-layer="walls">🧱 Walls</button>
+      <button class="layer active" data-layer="liquidity">💧 Liquidity</button>
+      <button class="layer active" data-layer="zones">🟨 Zones</button>
+      <button class="layer active" data-layer="sweep">🎯 Sweep</button>
+      <button class="layer active" data-layer="absorption">🧲 Absorption</button>
+      <button class="layer active" data-layer="blocks">🧱 Blocks</button>
+      <button class="layer active" data-layer="trades">• Trades</button>
+      <button class="layer active" data-layer="delta">Δ Delta</button>
+      <button class="layer active" data-layer="bidask">Bid × Ask</button>
 
     </div>
 
@@ -784,7 +914,7 @@ th{
 
       <div id="fpBoard" class="fp-board">
 
-        <div id="fpContent">
+        <div id="fpContent" class="fp-content">
           <div class="fp-empty">
             کندل را انتخاب کنید
           </div>
@@ -822,6 +952,7 @@ th{
   <section class="trades-panel">
 
     <div class="panel-head">
+
       <div class="panel-title">
         📡 معاملات واقعی اخیر Bybit
       </div>
@@ -829,11 +960,13 @@ th{
       <div id="tradeInfo" class="fp-meta">
         —
       </div>
+
     </div>
 
     <div class="trade-wrap">
 
       <table>
+
         <thead>
           <tr>
             <th>Time</th>
@@ -845,6 +978,7 @@ th{
         </thead>
 
         <tbody id="tradeBody"></tbody>
+
       </table>
 
     </div>
@@ -856,216 +990,239 @@ th{
 <script>
 "use strict";
 
-const API = location.origin;
+const API=location.origin;
 
-let symbol = "BTCUSDT";
-let interval = "1";
+let symbol="BTCUSDT";
+let interval="1";
 
-let data = null;
-let liveTimer = null;
-let scanTimer = null;
+let data=null;
+let liveTimer=null;
+let scanTimer=null;
 
-let selectedIndex = -1;
+let selectedIndex=-1;
 
-let viewCount = 70;
-let viewStart = 0;
+let viewCount=70;
+let viewStart=0;
 
-let dpr = Math.max(
+let dpr=Math.max(
   1,
-  Math.min(3, window.devicePixelRatio || 1)
+  Math.min(
+    3,
+    window.devicePixelRatio||1
+  )
 );
 
-const layers = {
-  candles: true,
-  footprint: true,
-  heatmap: true,
-  walls: true,
-  liquidity: true,
-  zones: true,
-  sweep: true,
-  absorption: true,
-  blocks: true,
-  trades: true,
-  delta: true,
-  bidask: true
+const layers={
+  candles:true,
+  footprint:true,
+  heatmap:true,
+  walls:true,
+  liquidity:true,
+  zones:true,
+  sweep:true,
+  absorption:true,
+  blocks:true,
+  trades:true,
+  delta:true,
+  bidask:true
 };
 
-const canvas = document.getElementById("chart");
-const ctx = canvas.getContext("2d");
+const canvas=
+  document.getElementById("chart");
 
-const canvasWrap =
+const ctx=
+  canvas.getContext("2d",{
+    alpha:false
+  });
+
+const canvasWrap=
   document.getElementById("canvasWrap");
 
-const crosshair =
+const crosshair=
   document.getElementById("crosshair");
 
-const crossV =
+const crossV=
   document.getElementById("crossV");
 
-const crossH =
+const crossH=
   document.getElementById("crossH");
 
-const statusEl =
+const statusEl=
   document.getElementById("status");
 
-const fpViewport =
+const fpViewport=
   document.getElementById("fpViewport");
 
-const fpBoard =
+const fpBoard=
   document.getElementById("fpBoard");
 
-function esc(value) {
-  return String(value ?? "")
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
+function esc(value){
+  return String(value??"")
+    .replace(/&/g,"&amp;")
+    .replace(/</g,"&lt;")
+    .replace(/>/g,"&gt;")
+    .replace(/"/g,"&quot;");
 }
 
-function num(value, digits = 2) {
-  const x = Number(value);
+function num(value,digits=2){
+  const x=Number(value);
 
-  if (!Number.isFinite(x)) return "0";
+  if(!Number.isFinite(x))return"0";
 
-  if (Math.abs(x) >= 1000000) {
-    return (x / 1000000).toFixed(2) + "M";
+  if(Math.abs(x)>=1000000){
+    return(x/1000000).toFixed(2)+"M";
   }
 
-  if (Math.abs(x) >= 1000) {
-    return (x / 1000).toFixed(2) + "K";
+  if(Math.abs(x)>=1000){
+    return(x/1000).toFixed(2)+"K";
   }
 
   return x.toFixed(digits);
 }
 
-function fullNum(value, digits = 4) {
-  const x = Number(value);
+function fullNum(value,digits=4){
+  const x=Number(value);
 
-  if (!Number.isFinite(x)) return "0";
+  if(!Number.isFinite(x))return"0";
 
   return x.toLocaleString(
     "en-US",
     {
-      maximumFractionDigits: digits
+      maximumFractionDigits:digits
     }
   );
 }
 
-function normalizeCandle(c) {
-  return {
-    time: Number(c?.time || 0),
-    open: Number(c?.open || 0),
-    high: Number(c?.high || 0),
-    low: Number(c?.low || 0),
-    close: Number(c?.close || 0),
-    volume: Number(c?.volume || 0),
-    turnover: Number(c?.turnover || 0),
+function normalizeCandle(c){
+  return{
+    time:Number(c?.time||0),
+    open:Number(c?.open||0),
+    high:Number(c?.high||0),
+    low:Number(c?.low||0),
+    close:Number(c?.close||0),
+    volume:Number(c?.volume||0),
+    turnover:Number(c?.turnover||0),
 
-    buyVolume: Number(c?.buyVolume || 0),
-    sellVolume: Number(c?.sellVolume || 0),
-    delta: Number(c?.delta || 0),
-    deltaValue: Number(c?.deltaValue || 0),
-    totalVolume: Number(
-      c?.totalVolume ??
-      c?.flowVolume ??
+    buyVolume:Number(c?.buyVolume||0),
+    sellVolume:Number(c?.sellVolume||0),
+    delta:Number(c?.delta||0),
+    deltaValue:Number(c?.deltaValue||0),
+
+    totalVolume:Number(
+      c?.totalVolume??
+      c?.flowVolume??
       0
     ),
-    totalValue: Number(
-      c?.totalValue ??
+
+    totalValue:Number(
+      c?.totalValue??
       0
     )
   };
 }
 
-function getCandles() {
-  return (data?.candles || [])
+function getCandles(){
+  return(data?.candles||[])
     .map(normalizeCandle);
 }
 
-function getFootprint(index) {
-  return data?.footprints?.[index] || null;
+function getFootprint(index){
+  return data?.footprints?.[index]||null;
 }
 
-function getLevels(fp) {
+function getLevels(fp){
   return Array.isArray(fp?.levels)
-    ? fp.levels
-    : [];
+    ?fp.levels
+    :[];
 }
 
-function setStatus(text, ok = true) {
-  statusEl.textContent = text;
-  statusEl.className =
-    "status " + (ok ? "ok" : "bad");
+function setStatus(text,ok=true){
+  statusEl.textContent=text;
+  statusEl.className=
+    "status "+(ok?"ok":"bad");
 }
 
-function formatTime(ms) {
-  if (!ms) return "—";
+function formatTime(ms){
+  if(!ms)return"—";
 
   return new Date(ms)
     .toLocaleTimeString(
       "fa-IR",
       {
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit"
+        hour:"2-digit",
+        minute:"2-digit",
+        second:"2-digit"
       }
     );
 }
 
-function formatDate(ms) {
-  if (!ms) return "—";
+function formatDate(ms){
+  if(!ms)return"—";
 
   return new Date(ms)
     .toLocaleString(
       "fa-IR",
       {
-        month: "2-digit",
-        day: "2-digit",
-        hour: "2-digit",
-        minute: "2-digit"
+        month:"2-digit",
+        day:"2-digit",
+        hour:"2-digit",
+        minute:"2-digit"
       }
     );
 }
 
-function priceDigits() {
-  const p =
-    Number(data?.instrument?.tickSize || 0);
+function priceDigits(){
+  const p=Number(
+    data?.instrument?.tickSize||0
+  );
 
-  if (!p) return 4;
+  if(!p)return 4;
 
-  const s = String(p);
+  const s=String(p);
 
-  if (!s.includes(".")) return 0;
+  if(!s.includes("."))return 0;
 
   return s.split(".")[1]
-    .replace(/0+$/, "")
+    .replace(/0+$/,"")
     .length;
 }
 
-function priceFormat(v) {
-  return fullNum(v, priceDigits());
+function priceFormat(v){
+  return fullNum(
+    v,
+    priceDigits()
+  );
 }
 
-function resizeCanvas() {
-  const rect =
+function resizeCanvas(){
+  const rect=
     canvasWrap.getBoundingClientRect();
 
-  dpr = Math.max(
+  dpr=Math.max(
     1,
-    Math.min(3, window.devicePixelRatio || 1)
+    Math.min(
+      3,
+      window.devicePixelRatio||1
+    )
   );
 
-  canvas.width =
-    Math.max(1, Math.floor(rect.width * dpr));
+  canvas.width=
+    Math.max(
+      1,
+      Math.floor(rect.width*dpr)
+    );
 
-  canvas.height =
-    Math.max(1, Math.floor(rect.height * dpr));
+  canvas.height=
+    Math.max(
+      1,
+      Math.floor(rect.height*dpr)
+    );
 
-  canvas.style.width =
-    rect.width + "px";
+  canvas.style.width=
+    rect.width+"px";
 
-  canvas.style.height =
-    rect.height + "px";
+  canvas.style.height=
+    rect.height+"px";
 
   ctx.setTransform(
     dpr,
@@ -1079,224 +1236,248 @@ function resizeCanvas() {
   drawChart();
 }
 
-function getVisible() {
-  const candles = getCandles();
+function getVisible(){
+  const candles=getCandles();
 
-  if (!candles.length) {
-    return {
-      candles: [],
-      start: 0,
-      end: 0
+  if(!candles.length){
+    return{
+      candles:[],
+      start:0,
+      end:0
     };
   }
 
-  viewCount = Math.max(
+  viewCount=Math.max(
     10,
-    Math.min(viewCount, candles.length)
-  );
-
-  viewStart = Math.max(
-    0,
     Math.min(
-      viewStart,
-      Math.max(0, candles.length - viewCount)
+      viewCount,
+      candles.length
     )
   );
 
-  const start = Math.floor(viewStart);
-  const end = Math.min(
-    candles.length,
-    start + Math.floor(viewCount)
+  viewStart=Math.max(
+    0,
+    Math.min(
+      viewStart,
+      Math.max(
+        0,
+        candles.length-viewCount
+      )
+    )
   );
 
-  return {
-    candles: candles.slice(start, end),
+  const start=Math.floor(viewStart);
+
+  const end=Math.min(
+    candles.length,
+    start+Math.floor(viewCount)
+  );
+
+  return{
+    candles:candles.slice(
+      start,
+      end
+    ),
     start,
     end
   };
 }
 
-function chartGeometry() {
-  const rect =
+function chartGeometry(){
+  const rect=
     canvasWrap.getBoundingClientRect();
 
-  return {
-    width: rect.width,
-    height: rect.height,
-    left: 55,
-    right: 18,
-    top: 20,
-    bottom: 55
+  return{
+    width:rect.width,
+    height:rect.height,
+    left:58,
+    right:18,
+    top:20,
+    bottom:58
   };
 }
 
-function visiblePriceRange(visible) {
-  if (!visible.candles.length) {
-    return {
-      min: 0,
-      max: 1
+function visiblePriceRange(visible){
+  if(!visible.candles.length){
+    return{
+      min:0,
+      max:1
     };
   }
 
-  let min = Infinity;
-  let max = -Infinity;
+  let min=Infinity;
+  let max=-Infinity;
 
-  for (const c of visible.candles) {
-    min = Math.min(min, c.low);
-    max = Math.max(max, c.high);
+  for(const c of visible.candles){
+    min=Math.min(min,c.low);
+    max=Math.max(max,c.high);
   }
 
-  const bookPrices = [];
-
-  if (layers.bidask) {
-    for (const x of data?.orderbook?.bids || []) {
-      bookPrices.push(Number(x.price));
+  if(layers.bidask){
+    for(const x of data?.orderbook?.bids||[]){
+      min=Math.min(min,Number(x.price));
+      max=Math.max(max,Number(x.price));
     }
 
-    for (const x of data?.orderbook?.asks || []) {
-      bookPrices.push(Number(x.price));
-    }
-  }
-
-  for (const x of bookPrices) {
-    if (Number.isFinite(x)) {
-      min = Math.min(min, x);
-      max = Math.max(max, x);
+    for(const x of data?.orderbook?.asks||[]){
+      min=Math.min(min,Number(x.price));
+      max=Math.max(max,Number(x.price));
     }
   }
 
-  const range =
-    Math.max(
-      max - min,
-      Math.abs(max) * 0.0001,
-      0.00000001
-    );
+  const range=Math.max(
+    max-min,
+    Math.abs(max)*0.0001,
+    0.00000001
+  );
 
-  const pad = range * 0.08;
+  const pad=range*0.08;
 
-  return {
-    min: min - pad,
-    max: max + pad
+  return{
+    min:min-pad,
+    max:max+pad
   };
 }
 
-function priceY(price, range, g) {
-  const h =
-    g.height -
-    g.top -
+function priceY(price,range,g){
+  const h=
+    g.height-
+    g.top-
     g.bottom;
 
-  if (!h || range.max === range.min) {
-    return g.top + h / 2;
+  if(
+    !h||
+    range.max===range.min
+  ){
+    return g.top+h/2;
   }
 
-  return g.top +
-    (range.max - price) /
-    (range.max - range.min) *
-    h;
+  return g.top+
+    (
+      (range.max-price)/
+      (range.max-range.min)
+    )*h;
 }
 
-function xForIndex(localIndex, visibleLength, g) {
-  const chartW =
-    g.width -
-    g.left -
+function xForIndex(
+  localIndex,
+  visibleLength,
+  g
+){
+  const chartW=
+    g.width-
+    g.left-
     g.right;
 
-  const step =
-    chartW /
-    Math.max(1, visibleLength);
+  const step=
+    chartW/
+    Math.max(
+      1,
+      visibleLength
+    );
 
-  return g.left +
-    step * localIndex +
-    step / 2;
+  return g.left+
+    step*localIndex+
+    step/2;
 }
 
-function candleStep(g, count) {
-  return (
-    g.width -
-    g.left -
+function candleStep(g,count){
+  return(
+    g.width-
+    g.left-
     g.right
-  ) / Math.max(1, count);
+  )/Math.max(1,count);
 }
 
-function drawGrid(g, range) {
+function drawGrid(g,range){
   ctx.save();
 
-  ctx.strokeStyle = "#162631";
-  ctx.lineWidth = 1;
+  ctx.strokeStyle="#162631";
+  ctx.lineWidth=1;
 
-  const rows = 7;
+  const rows=7;
 
-  for (let i = 0; i <= rows; i++) {
-    const y =
-      g.top +
-      (g.height - g.top - g.bottom) *
-      i / rows;
+  for(let i=0;i<=rows;i++){
+    const y=
+      g.top+
+      (
+        g.height-
+        g.top-
+        g.bottom
+      )*i/rows;
 
     ctx.beginPath();
-    ctx.moveTo(g.left, y);
+    ctx.moveTo(g.left,y);
     ctx.lineTo(
-      g.width - g.right,
+      g.width-g.right,
       y
     );
     ctx.stroke();
 
-    const p =
-      range.max -
-      (range.max - range.min) *
-      i / rows;
+    const p=
+      range.max-
+      (
+        range.max-range.min
+      )*i/rows;
 
-    ctx.fillStyle = "#607584";
-    ctx.font = "10px Tahoma";
-    ctx.textAlign = "left";
+    ctx.fillStyle="#607584";
+    ctx.font="10px Tahoma";
+    ctx.textAlign="left";
+
     ctx.fillText(
       priceFormat(p),
       4,
-      y + 3
+      y+3
     );
   }
 
   ctx.restore();
 }
 
-function drawHeatmap(g, visible, range) {
-  if (!layers.heatmap) return;
+function drawHeatmap(
+  g,
+  visible,
+  range
+){
+  if(!layers.heatmap)return;
 
-  const heat =
-    data?.heatmap || [];
+  const heat=data?.heatmap||[];
 
-  if (!heat.length) return;
-
-  const step =
-    candleStep(g, visible.candles.length);
+  if(!heat.length)return;
 
   ctx.save();
 
-  for (const x of heat) {
-    const y =
-      priceY(x.price, range, g);
+  for(const x of heat){
+    const y=priceY(
+      x.price,
+      range,
+      g
+    );
 
-    if (
-      y < g.top ||
-      y > g.height - g.bottom
-    ) continue;
+    if(
+      y<g.top||
+      y>g.height-g.bottom
+    )continue;
 
-    const alpha =
-      0.03 +
+    const alpha=
+      0.03+
       Math.max(
         0,
-        Math.min(0.20, Number(x.intensity || 0) * 0.20)
+        Math.min(
+          0.20,
+          Number(x.intensity||0)*0.20
+        )
       );
 
-    ctx.fillStyle =
-      x.side === "BID"
-        ? `rgba(255,60,70,${alpha})`
-        : `rgba(50,220,110,${alpha})`;
+    ctx.fillStyle=
+      x.side==="BID"
+        ?`rgba(255,60,70,${alpha})`
+        :`rgba(50,220,110,${alpha})`;
 
     ctx.fillRect(
       g.left,
-      y - 5,
-      g.width - g.left - g.right,
+      y-5,
+      g.width-g.left-g.right,
       10
     );
   }
@@ -1304,89 +1485,111 @@ function drawHeatmap(g, visible, range) {
   ctx.restore();
 }
 
-function drawCandles(g, visible, range) {
-  if (!layers.candles) return;
+function drawCandles(
+  g,
+  visible,
+  range
+){
+  if(!layers.candles)return;
 
-  const step =
-    candleStep(g, visible.candles.length);
+  const step=
+    candleStep(
+      g,
+      visible.candles.length
+    );
 
-  const bodyW =
+  const bodyW=
     Math.max(
-      2,
-      Math.min(18, step * 0.62)
+      3,
+      Math.min(
+        20,
+        step*.64
+      )
     );
 
   ctx.save();
 
-  visible.candles.forEach((c, i) => {
+  visible.candles.forEach((c,i)=>{
 
-    const x =
-      xForIndex(
-        i,
-        visible.candles.length,
-        g
-      );
+    const x=xForIndex(
+      i,
+      visible.candles.length,
+      g
+    );
 
-    const yOpen =
-      priceY(c.open, range, g);
+    const yOpen=priceY(
+      c.open,
+      range,
+      g
+    );
 
-    const yClose =
-      priceY(c.close, range, g);
+    const yClose=priceY(
+      c.close,
+      range,
+      g
+    );
 
-    const yHigh =
-      priceY(c.high, range, g);
+    const yHigh=priceY(
+      c.high,
+      range,
+      g
+    );
 
-    const yLow =
-      priceY(c.low, range, g);
+    const yLow=priceY(
+      c.low,
+      range,
+      g
+    );
 
-    const bullish =
-      c.close >= c.open;
+    const bullish=
+      c.close>=c.open;
 
-    ctx.strokeStyle =
+    const candleColor=
       bullish
-        ? "#37dc72"
-        : "#ff555f";
+        ?"rgb(55,220,114)"
+        :"rgb(255,85,95)";
 
-    ctx.lineWidth = 1;
+    ctx.strokeStyle=candleColor;
+    ctx.lineWidth=1.2;
 
     ctx.beginPath();
-    ctx.moveTo(x, yHigh);
-    ctx.lineTo(x, yLow);
+    ctx.moveTo(x,yHigh);
+    ctx.lineTo(x,yLow);
     ctx.stroke();
 
-    const top =
-      Math.min(yOpen, yClose);
+    const top=Math.min(
+      yOpen,
+      yClose
+    );
 
-    const h =
-      Math.max(
-        1,
-        Math.abs(yClose - yOpen)
-      );
+    const h=Math.max(
+      1,
+      Math.abs(
+        yClose-yOpen
+      )
+    );
 
-    ctx.fillStyle =
-      bullish
-        ? "#37dc72"
-        : "#ff555f";
+    ctx.fillStyle=candleColor;
 
     ctx.fillRect(
-      x - bodyW / 2,
+      x-bodyW/2,
       top,
       bodyW,
       h
     );
 
-    if (
-      selectedIndex ===
-      visible.start + i
-    ) {
-      ctx.strokeStyle = "#ffffff";
-      ctx.lineWidth = 2;
+    if(
+      selectedIndex===
+      visible.start+i
+    ){
+      ctx.strokeStyle="#ffffff";
+      ctx.lineWidth=2;
 
       ctx.strokeRect(
-        x - bodyW / 2 - 3,
-        top - 3,
-        bodyW + 6,
-        h + 6
+        x-bodyW/2-4,
+        top-4,
+        bodyW+8,
+        h+8
       );
     }
   });
@@ -1394,61 +1597,65 @@ function drawCandles(g, visible, range) {
   ctx.restore();
 }
 
-function drawDelta(g, visible, range) {
-  if (!layers.delta) return;
+function drawDelta(
+  g,
+  visible,
+  range
+){
+  if(!layers.delta)return;
 
-  const step =
-    candleStep(g, visible.candles.length);
+  const step=
+    candleStep(
+      g,
+      visible.candles.length
+    );
 
   ctx.save();
 
-  visible.candles.forEach((c, i) => {
-    const x =
-      xForIndex(
-        i,
-        visible.candles.length,
-        g
-      );
+  visible.candles.forEach((c,i)=>{
 
-    const y =
-      g.height - 28;
-
-    const delta =
-      Number(c.delta || 0);
-
-    ctx.fillStyle =
-      delta >= 0
-        ? "#35df72"
-        : "#ff5962";
-
-    ctx.font = "9px Tahoma";
-    ctx.textAlign = "center";
-
-    ctx.fillText(
-      num(delta, 2),
-      x,
-      y
+    const x=xForIndex(
+      i,
+      visible.candles.length,
+      g
     );
 
-    if (i > 0) {
-      const p =
+    const delta=
+      Number(c.delta||0);
+
+    ctx.fillStyle=
+      delta>=0
+        ?"rgb(53,223,114)"
+        :"rgb(255,89,98)";
+
+    ctx.font="9px Tahoma";
+    ctx.textAlign="center";
+
+    ctx.fillText(
+      num(delta,2),
+      x,
+      g.height-29
+    );
+
+    if(i>0){
+      const previous=
         Number(
-          visible.candles[i - 1].delta || 0
+          visible.candles[i-1].delta||0
         );
 
-      ctx.strokeStyle =
-        delta >= p
-          ? "rgba(50,220,110,.35)"
-          : "rgba(255,80,90,.35)";
+      ctx.strokeStyle=
+        delta>=previous
+          ?"rgba(50,220,110,.35)"
+          :"rgba(255,80,90,.35)";
 
       ctx.beginPath();
       ctx.moveTo(
-        x - step,
-        g.height - 37
+        x-step,
+        g.height-38
       );
       ctx.lineTo(
         x,
-        g.height - 37
+        g.height-38
       );
       ctx.stroke();
     }
@@ -1457,75 +1664,83 @@ function drawDelta(g, visible, range) {
   ctx.restore();
 }
 
-function drawOrderbook(g, range) {
-  if (!layers.bidask) return;
+function drawOrderbook(g,range){
+  if(!layers.bidask)return;
 
-  const bids =
-    data?.orderbook?.bids || [];
+  const bids=
+    data?.orderbook?.bids||[];
 
-  const asks =
-    data?.orderbook?.asks || [];
+  const asks=
+    data?.orderbook?.asks||[];
 
-  const maxValue =
-    Math.max(
-      1,
-      ...bids.map(x => Number(x.value || 0)),
-      ...asks.map(x => Number(x.value || 0))
-    );
+  const maxValue=Math.max(
+    1,
+    ...bids.map(
+      x=>Number(x.value||0)
+    ),
+    ...asks.map(
+      x=>Number(x.value||0)
+    )
+  );
 
-  const baseWidth =
-    Math.min(
-      130,
-      g.width * 0.20
-    );
+  const baseWidth=Math.min(
+    130,
+    g.width*.20
+  );
 
   ctx.save();
 
-  for (const x of bids.slice(0, 25)) {
-    const y =
-      priceY(x.price, range, g);
+  for(const x of bids.slice(0,25)){
+    const y=priceY(
+      x.price,
+      range,
+      g
+    );
 
-    if (
-      y < g.top ||
-      y > g.height - g.bottom
-    ) continue;
+    if(
+      y<g.top||
+      y>g.height-g.bottom
+    )continue;
 
-    const w =
-      baseWidth *
-      Number(x.value || 0) /
+    const w=
+      baseWidth*
+      Number(x.value||0)/
       maxValue;
 
-    ctx.fillStyle =
+    ctx.fillStyle=
       "rgba(255,65,75,.20)";
 
     ctx.fillRect(
-      g.left - w,
-      y - 2,
+      g.left-w,
+      y-2,
       w,
       4
     );
   }
 
-  for (const x of asks.slice(0, 25)) {
-    const y =
-      priceY(x.price, range, g);
+  for(const x of asks.slice(0,25)){
+    const y=priceY(
+      x.price,
+      range,
+      g
+    );
 
-    if (
-      y < g.top ||
-      y > g.height - g.bottom
-    ) continue;
+    if(
+      y<g.top||
+      y>g.height-g.bottom
+    )continue;
 
-    const w =
-      baseWidth *
-      Number(x.value || 0) /
+    const w=
+      baseWidth*
+      Number(x.value||0)/
       maxValue;
 
-    ctx.fillStyle =
+    ctx.fillStyle=
       "rgba(50,220,110,.20)";
 
     ctx.fillRect(
-      g.width - g.right,
-      y - 2,
+      g.width-g.right,
+      y-2,
       w,
       4
     );
@@ -1534,62 +1749,66 @@ function drawOrderbook(g, range) {
   ctx.restore();
 }
 
-function drawWalls(g, range) {
-  if (!layers.walls) return;
+function drawWalls(g,range){
+  if(!layers.walls)return;
 
-  const buy =
-    data?.wall?.buyWalls || [];
+  const buy=
+    data?.wall?.buyWalls||[];
 
-  const sell =
-    data?.wall?.sellWalls || [];
+  const sell=
+    data?.wall?.sellWalls||[];
 
   ctx.save();
 
-  for (const x of buy.slice(0, 8)) {
-    const y =
-      priceY(x.price, range, g);
+  for(const x of buy.slice(0,8)){
+    const y=priceY(
+      x.price,
+      range,
+      g
+    );
 
-    if (
-      y < g.top ||
-      y > g.height - g.bottom
-    ) continue;
+    if(
+      y<g.top||
+      y>g.height-g.bottom
+    )continue;
 
-    ctx.strokeStyle =
+    ctx.strokeStyle=
       "rgba(255,80,90,.75)";
 
-    ctx.lineWidth = 1.5;
-
+    ctx.lineWidth=1.5;
     ctx.setLineDash([7,5]);
 
     ctx.beginPath();
-    ctx.moveTo(g.left, y);
+    ctx.moveTo(g.left,y);
     ctx.lineTo(
-      g.width - g.right,
+      g.width-g.right,
       y
     );
     ctx.stroke();
   }
 
-  for (const x of sell.slice(0, 8)) {
-    const y =
-      priceY(x.price, range, g);
+  for(const x of sell.slice(0,8)){
+    const y=priceY(
+      x.price,
+      range,
+      g
+    );
 
-    if (
-      y < g.top ||
-      y > g.height - g.bottom
-    ) continue;
+    if(
+      y<g.top||
+      y>g.height-g.bottom
+    )continue;
 
-    ctx.strokeStyle =
+    ctx.strokeStyle=
       "rgba(55,225,115,.75)";
 
-    ctx.lineWidth = 1.5;
-
+    ctx.lineWidth=1.5;
     ctx.setLineDash([7,5]);
 
     ctx.beginPath();
-    ctx.moveTo(g.left, y);
+    ctx.moveTo(g.left,y);
     ctx.lineTo(
-      g.width - g.right,
+      g.width-g.right,
       y
     );
     ctx.stroke();
@@ -1600,57 +1819,64 @@ function drawWalls(g, range) {
   ctx.restore();
 }
 
-function drawLiquidityZones(g, range) {
-  if (!layers.liquidity && !layers.zones) {
+function drawLiquidityZones(
+  g,
+  range
+){
+  if(
+    !layers.liquidity&&
+    !layers.zones
+  ){
     return;
   }
 
-  const zones =
-    data?.zones || [];
+  const zones=data?.zones||[];
 
   ctx.save();
 
-  for (const z of zones.slice(0, 25)) {
-    const y =
-      priceY(z.price, range, g);
+  for(const z of zones.slice(0,25)){
+    const y=priceY(
+      z.price,
+      range,
+      g
+    );
 
-    if (
-      y < g.top ||
-      y > g.height - g.bottom
-    ) continue;
+    if(
+      y<g.top||
+      y>g.height-g.bottom
+    )continue;
 
-    const strength =
-      Math.min(
-        1,
-        Number(z.strength || 0) / 10
-      );
+    const strength=Math.min(
+      1,
+      Number(z.strength||0)/10
+    );
 
-    if (layers.liquidity) {
-      ctx.fillStyle =
-        z.side === "BUY"
-          ? `rgba(255,70,80,${0.04 + strength * .12})`
-          : `rgba(50,220,110,${0.04 + strength * .12})`;
+    if(layers.liquidity){
+      ctx.fillStyle=
+        z.side==="BUY"
+          ?`rgba(255,70,80,${0.04+strength*.12})`
+          :`rgba(50,220,110,${0.04+strength*.12})`;
 
       ctx.fillRect(
         g.left,
-        y - 4,
-        g.width - g.left - g.right,
+        y-4,
+        g.width-g.left-g.right,
         8
       );
     }
 
-    if (layers.zones) {
-      ctx.strokeStyle =
-        z.side === "BUY"
-          ? "rgba(255,80,90,.42)"
-          : "rgba(50,220,110,.42)";
+    if(layers.zones){
+      ctx.strokeStyle=
+        z.side==="BUY"
+          ?"rgba(255,80,90,.42)"
+          :"rgba(50,220,110,.42)";
 
-      ctx.lineWidth = 1;
+      ctx.lineWidth=1;
 
       ctx.beginPath();
-      ctx.moveTo(g.left, y);
+      ctx.moveTo(g.left,y);
       ctx.lineTo(
-        g.width - g.right,
+        g.width-g.right,
         y
       );
       ctx.stroke();
@@ -1660,151 +1886,155 @@ function drawLiquidityZones(g, range) {
   ctx.restore();
 }
 
-function drawSweep(g, range) {
-  if (!layers.sweep) return;
+function drawSweep(g,range){
+  if(!layers.sweep)return;
 
-  const sweep =
-    data?.sweep;
+  const sweep=data?.sweep;
 
-  if (!sweep?.detected) return;
+  if(!sweep?.detected)return;
 
-  const y =
-    priceY(
-      Number(sweep.price),
-      range,
-      g
-    );
+  const y=priceY(
+    Number(sweep.price),
+    range,
+    g
+  );
 
   ctx.save();
 
-  ctx.strokeStyle =
-    sweep.type === "BUY_SWEEP"
-      ? "#3be478"
-      : "#ff5b64";
+  ctx.strokeStyle=
+    sweep.type==="BUY_SWEEP"
+      ?"rgb(59,228,120)"
+      :"rgb(255,91,100)";
 
-  ctx.lineWidth = 2;
-
+  ctx.lineWidth=2;
   ctx.setLineDash([4,4]);
 
   ctx.beginPath();
-  ctx.moveTo(g.left, y);
+  ctx.moveTo(g.left,y);
   ctx.lineTo(
-    g.width - g.right,
+    g.width-g.right,
     y
   );
   ctx.stroke();
 
   ctx.setLineDash([]);
 
-  ctx.font = "11px Tahoma";
-  ctx.fillStyle =
-    sweep.type === "BUY_SWEEP"
-      ? "#3be478"
-      : "#ff5b64";
+  ctx.font="11px Tahoma";
+  ctx.fillStyle=
+    sweep.type==="BUY_SWEEP"
+      ?"rgb(59,228,120)"
+      :"rgb(255,91,100)";
 
-  ctx.textAlign = "right";
+  ctx.textAlign="right";
 
   ctx.fillText(
-    sweep.type === "BUY_SWEEP"
-      ? "BUY SWEEP"
-      : "SELL SWEEP",
-    g.width - g.right - 4,
-    y - 5
+    sweep.type==="BUY_SWEEP"
+      ?"BUY SWEEP"
+      :"SELL SWEEP",
+    g.width-g.right-4,
+    y-5
   );
 
   ctx.restore();
 }
 
-function drawAbsorption(g, range) {
-  if (!layers.absorption) return;
+function drawAbsorption(g,range){
+  if(!layers.absorption)return;
 
-  const a =
-    data?.absorption;
+  const a=data?.absorption;
 
-  if (!a?.detected) return;
+  if(!a?.detected)return;
 
-  const price =
-    Number(data?.ticker?.last || 0);
+  const price=
+    Number(
+      data?.ticker?.last||0
+    );
 
-  const y =
-    priceY(price, range, g);
+  const y=priceY(
+    price,
+    range,
+    g
+  );
 
   ctx.save();
 
-  ctx.fillStyle =
-    a.type === "BUY_ABSORPTION"
-      ? "rgba(50,220,110,.9)"
-      : "rgba(255,70,80,.9)";
+  ctx.fillStyle=
+    a.type==="BUY_ABSORPTION"
+      ?"rgb(50,220,110)"
+      :"rgb(255,70,80)";
 
   ctx.beginPath();
+
   ctx.arc(
-    g.left + 12,
+    g.left+12,
     y,
     6,
     0,
-    Math.PI * 2
+    Math.PI*2
   );
 
   ctx.fill();
 
-  ctx.font = "10px Tahoma";
-  ctx.textAlign = "left";
+  ctx.font="10px Tahoma";
+  ctx.textAlign="left";
 
   ctx.fillText(
-    a.type === "BUY_ABSORPTION"
-      ? "BUY ABSORPTION"
-      : "SELL ABSORPTION",
-    g.left + 23,
-    y + 3
+    a.type==="BUY_ABSORPTION"
+      ?"BUY ABSORPTION"
+      :"SELL ABSORPTION",
+    g.left+23,
+    y+3
   );
 
   ctx.restore();
 }
 
-function drawBlocks(g, range) {
-  if (!layers.blocks) return;
+function drawBlocks(g,range){
+  if(!layers.blocks)return;
 
-  const blocks =
-    data?.blocks?.blocks || [];
+  const blocks=
+    data?.blocks?.blocks||[];
 
-  if (!blocks.length) return;
+  if(!blocks.length)return;
 
   ctx.save();
 
-  for (const b of blocks.slice(0, 30)) {
-    const y =
-      priceY(
-        Number(b.price),
-        range,
-        g
-      );
+  for(const b of blocks.slice(0,30)){
+    const y=priceY(
+      Number(b.price),
+      range,
+      g
+    );
 
-    if (
-      y < g.top ||
-      y > g.height - g.bottom
-    ) continue;
+    if(
+      y<g.top||
+      y>g.height-g.bottom
+    )continue;
 
-    ctx.fillStyle =
-      b.side === "BUY"
-        ? "rgba(50,220,110,.85)"
-        : "rgba(255,70,80,.85)";
+    ctx.fillStyle=
+      b.side==="BUY"
+        ?"rgba(50,220,110,.85)"
+        :"rgba(255,70,80,.85)";
 
     ctx.beginPath();
 
     ctx.arc(
-      g.width - g.right - 7,
+      g.width-g.right-7,
       y,
       Math.max(
         2,
         Math.min(
           7,
           Math.log10(
-            Math.max(1, Number(b.value || 1))
+            Math.max(
+              1,
+              Number(b.value||1)
+            )
           )
         )
       ),
       0,
-      Math.PI * 2
+      Math.PI*2
     );
 
     ctx.fill();
@@ -1813,148 +2043,145 @@ function drawBlocks(g, range) {
   ctx.restore();
 }
 
-function drawTrades(g, range) {
-  if (!layers.trades) return;
+function drawTrades(g,range){
+  if(!layers.trades)return;
 
-  const trades =
-    data?.trades || [];
+  const trades=data?.trades||[];
 
-  if (!trades.length) return;
+  if(!trades.length)return;
 
-  const visible =
-    getVisible();
+  const visible=getVisible();
 
-  const startTime =
-    visible.candles[0]?.time || 0;
+  const startTime=
+    visible.candles[0]?.time||0;
 
-  const endTime =
+  const endTime=
     visible.candles[
-      visible.candles.length - 1
-    ]?.time || 0;
+      visible.candles.length-1
+    ]?.time||0;
 
-  const lastEnd =
-    endTime + (
-      Number(data?.interval || interval) *
-      60 *
-      1000
-    );
+  const intervalMsValue=
+    Number(
+      data?.interval||
+      interval
+    )*60*1000;
 
-  const local =
-    trades.filter(t =>
-      t.time >= startTime &&
-      t.time <= lastEnd
-    );
+  const lastEnd=
+    endTime+intervalMsValue;
+
+  const local=trades.filter(t=>
+    t.time>=startTime&&
+    t.time<=lastEnd
+  );
 
   ctx.save();
 
-  for (const t of local.slice(-120)) {
+  for(const t of local.slice(-120)){
 
-    const index =
-      visible.candles.findIndex(c =>
-        t.time >= c.time &&
-        t.time <
-        c.time +
-        Number(data?.interval || interval) *
-        60 *
-        1000
+    const index=
+      visible.candles.findIndex(c=>
+        t.time>=c.time&&
+        t.time<
+          c.time+
+          intervalMsValue
       );
 
-    if (index < 0) continue;
+    if(index<0)continue;
 
-    const x =
-      xForIndex(
-        index,
-        visible.candles.length,
-        g
-      );
+    const x=xForIndex(
+      index,
+      visible.candles.length,
+      g
+    );
 
-    const y =
-      priceY(
-        Number(t.price),
-        range,
-        g
-      );
+    const y=priceY(
+      Number(t.price),
+      range,
+      g
+    );
 
-    const side =
-      String(t.side).toUpperCase();
+    const side=
+      String(t.side)
+        .toUpperCase();
 
-    ctx.fillStyle =
-      side === "BUY"
-        ? "rgba(50,225,110,.65)"
-        : "rgba(255,70,80,.65)";
+    ctx.fillStyle=
+      side==="BUY"
+        ?"rgba(50,225,110,.65)"
+        :"rgba(255,70,80,.65)";
 
-    const size =
-      Math.max(
-        1.5,
-        Math.min(
-          6,
-          Math.sqrt(
-            Math.max(
-              1,
-              Number(t.value || 1)
+    const size=Math.max(
+      1.5,
+      Math.min(
+        6,
+        Math.sqrt(
+          Math.max(
+            1,
+            Number(t.value||1)
+          )
+        )/
+        Math.sqrt(
+          Math.max(
+            1,
+            Number(
+              data?.blocks?.threshold||1
             )
-          ) /
-          Math.sqrt(
-            Math.max(
-              1,
-              Number(
-                data?.blocks?.threshold ||
-                1
-              )
-            )
-          ) *
-          8
-        )
-      );
+          )
+        )*8
+      )
+    );
 
     ctx.beginPath();
+
     ctx.arc(
       x,
       y,
       size,
       0,
-      Math.PI * 2
+      Math.PI*2
     );
+
     ctx.fill();
   }
 
   ctx.restore();
 }
 
-function drawSelected(g, visible) {
-  if (
-    selectedIndex < visible.start ||
-    selectedIndex >= visible.end
-  ) {
+function drawSelected(
+  g,
+  visible
+){
+  if(
+    selectedIndex<visible.start||
+    selectedIndex>=visible.end
+  ){
     return;
   }
 
-  const local =
-    selectedIndex -
-    visible.start;
+  const local=
+    selectedIndex-visible.start;
 
-  const x =
-    xForIndex(
-      local,
-      visible.candles.length,
-      g
-    );
+  const x=xForIndex(
+    local,
+    visible.candles.length,
+    g
+  );
 
   ctx.save();
 
-  ctx.strokeStyle =
+  ctx.strokeStyle=
     "rgba(255,255,255,.55)";
 
-  ctx.lineWidth = 1;
-
+  ctx.lineWidth=1;
   ctx.setLineDash([3,4]);
 
   ctx.beginPath();
-  ctx.moveTo(x, g.top);
+
+  ctx.moveTo(x,g.top);
   ctx.lineTo(
     x,
-    g.height - g.bottom
+    g.height-g.bottom
   );
+
   ctx.stroke();
 
   ctx.setLineDash([]);
@@ -1962,11 +2189,10 @@ function drawSelected(g, visible) {
   ctx.restore();
 }
 
-function drawChart() {
-  if (!canvas || !ctx) return;
+function drawChart(){
+  if(!canvas||!ctx)return;
 
-  const g =
-    chartGeometry();
+  const g=chartGeometry();
 
   ctx.clearRect(
     0,
@@ -1975,8 +2201,7 @@ function drawChart() {
     g.height
   );
 
-  ctx.fillStyle =
-    "#09131d";
+  ctx.fillStyle="#09131d";
 
   ctx.fillRect(
     0,
@@ -1985,226 +2210,166 @@ function drawChart() {
     g.height
   );
 
-  const visible =
-    getVisible();
+  const visible=getVisible();
 
-  if (!visible.candles.length) {
-    ctx.fillStyle = "#64798a";
-    ctx.font = "12px Tahoma";
-    ctx.textAlign = "center";
+  if(!visible.candles.length){
+    ctx.fillStyle="#64798a";
+    ctx.font="12px Tahoma";
+    ctx.textAlign="center";
+
     ctx.fillText(
       "داده‌ای برای نمایش وجود ندارد",
-      g.width / 2,
-      g.height / 2
+      g.width/2,
+      g.height/2
     );
+
     return;
   }
 
-  const range =
+  const range=
     visiblePriceRange(
       visible
     );
 
-  drawGrid(
-    g,
-    range
-  );
-
-  drawLiquidityZones(
-    g,
-    range
-  );
-
-  drawHeatmap(
-    g,
-    visible,
-    range
-  );
-
-  drawOrderbook(
-    g,
-    range
-  );
-
-  drawCandles(
-    g,
-    visible,
-    range
-  );
-
-  drawTrades(
-    g,
-    range
-  );
-
-  drawBlocks(
-    g,
-    range
-  );
-
-  drawWalls(
-    g,
-    range
-  );
-
-  drawSweep(
-    g,
-    range
-  );
-
-  drawAbsorption(
-    g,
-    range
-  );
-
-  drawDelta(
-    g,
-    visible,
-    range
-  );
-
-  drawSelected(
-    g,
-    visible
-  );
+  drawGrid(g,range);
+  drawLiquidityZones(g,range);
+  drawHeatmap(g,visible,range);
+  drawOrderbook(g,range);
+  drawCandles(g,visible,range);
+  drawTrades(g,range);
+  drawBlocks(g,range);
+  drawWalls(g,range);
+  drawSweep(g,range);
+  drawAbsorption(g,range);
+  drawDelta(g,visible,range);
+  drawSelected(g,visible);
 }
 
-function updateCards() {
-  const ticker =
-    data?.ticker || {};
+function updateCards(){
+  const ticker=data?.ticker||{};
+  const flow=data?.currentFlow||{};
+  const wall=data?.wall||{};
+  const absorption=data?.absorption||{};
 
-  const flow =
-    data?.currentFlow || {};
-
-  const wall =
-    data?.wall || {};
-
-  const absorption =
-    data?.absorption || {};
-
-  const score =
-    data?.score;
-
-  const signal =
-    data?.signal;
+  const score=data?.score;
+  const signal=data?.signal;
 
   document.getElementById(
     "priceCard"
-  ).textContent =
-    priceFormat(
-      ticker.last
-    );
+  ).textContent=
+    priceFormat(ticker.last);
 
   document.getElementById(
     "buyCard"
-  ).textContent =
+  ).textContent=
     `${num(flow.buyVolume,2)} · ${num(flow.buyValue,2)}`;
 
   document.getElementById(
     "sellCard"
-  ).textContent =
+  ).textContent=
     `${num(flow.sellVolume,2)} · ${num(flow.sellValue,2)}`;
 
-  const deltaEl =
+  const deltaEl=
     document.getElementById(
       "deltaCard"
     );
 
-  deltaEl.textContent =
+  deltaEl.textContent=
     `${num(flow.delta,2)} · ${num(flow.deltaPercent,2)}%`;
 
-  deltaEl.className =
-    "card-value " +
+  deltaEl.className=
+    "card-value "+
     (
-      Number(flow.delta) >= 0
-        ? "green"
-        : "red"
+      Number(flow.delta)>=0
+        ?"green"
+        :"red"
     );
 
   document.getElementById(
     "bidBookCard"
-  ).textContent =
+  ).textContent=
     `${num(wall.buyLiquidity,2)} · ${num(wall.buyShare,1)}%`;
 
   document.getElementById(
     "askBookCard"
-  ).textContent =
+  ).textContent=
     `${num(wall.sellLiquidity,2)} · ${num(wall.sellShare,1)}%`;
 
-  const absEl =
+  const absEl=
     document.getElementById(
       "absorptionCard"
     );
 
-  absEl.textContent =
+  absEl.textContent=
     absorption.detected
-      ? absorption.type
-      : "NONE";
+      ?absorption.type
+      :"NONE";
 
-  absEl.className =
-    "card-value " +
+  absEl.className=
+    "card-value "+
     (
-      absorption.type === "BUY_ABSORPTION"
-        ? "green"
-        : absorption.type === "SELL_ABSORPTION"
-          ? "red"
-          : ""
+      absorption.type==="BUY_ABSORPTION"
+        ?"green"
+        :absorption.type==="SELL_ABSORPTION"
+          ?"red"
+          :""
     );
 
-  const scoreEl =
+  const scoreEl=
     document.getElementById(
       "scoreCard"
     );
 
-  if (
-    score !== undefined &&
-    score !== null
-  ) {
-    scoreEl.textContent =
-      `${score} · ${signal || "WAIT"}`;
+  if(
+    score!==undefined&&
+    score!==null
+  ){
+    scoreEl.textContent=
+      `${score} · ${signal||"WAIT"}`;
 
-    scoreEl.className =
-      "card-value " +
+    scoreEl.className=
+      "card-value "+
       (
-        signal === "BUY" ||
-        signal === "WATCH_BUY"
-          ? "green"
-          : signal === "SELL" ||
-            signal === "WATCH_SELL"
-            ? "red"
-            : "yellow"
+        signal==="BUY"||
+        signal==="WATCH_BUY"
+          ?"green"
+          :signal==="SELL"||
+            signal==="WATCH_SELL"
+            ?"red"
+            :"yellow"
       );
-  } else {
-    scoreEl.textContent = "—";
+  }else{
+    scoreEl.textContent="—";
   }
 }
 
-function renderTrades() {
-  const body =
+function renderTrades(){
+  const body=
     document.getElementById(
       "tradeBody"
     );
 
-  const trades =
-    data?.trades || [];
+  const trades=data?.trades||[];
 
-  body.innerHTML = "";
+  body.innerHTML="";
 
-  for (const t of trades.slice(-80).reverse()) {
+  for(
+    const t of trades.slice(-80).reverse()
+  ){
 
-    const tr =
+    const tr=
       document.createElement("tr");
 
-    const side =
-      String(t.side || "")
+    const side=
+      String(t.side||"")
         .toUpperCase();
 
-    const sideClass =
-      side === "BUY"
-        ? "green"
-        : "red";
+    const sideClass=
+      side==="BUY"
+        ?"green"
+        :"red";
 
-    tr.innerHTML = `
+    tr.innerHTML=`
       <td>${esc(formatTime(t.time))}</td>
       <td class="${sideClass}">
         ${esc(side)}
@@ -2219,27 +2384,49 @@ function renderTrades() {
 
   document.getElementById(
     "tradeInfo"
-  ).textContent =
+  ).textContent=
     `${trades.length} معامله`;
 }
 
-function renderSelectedFootprint(index) {
-  const content =
+/* ==========================================================
+   FOOTPRINT RENDER
+   ========================================================== */
+
+let fpScale=1;
+
+function applyFpScale(){
+  fpBoard.style.width=
+    `${100/fpScale}%`;
+
+  fpBoard.style.transform=
+    `scale(${fpScale})`;
+
+  fpBoard.style.transformOrigin=
+    "top left";
+
+  const baseHeight=
+    fpBoard.scrollHeight||500;
+
+  fpBoard.style.marginBottom=
+    `${Math.max(
+      0,
+      baseHeight*(fpScale-1)
+    )}px`;
+}
+
+function renderSelectedFootprint(index){
+
+  const content=
     document.getElementById(
       "fpContent"
     );
 
-  const candles =
-    getCandles();
+  const candles=getCandles();
+  const candle=candles[index];
+  const fp=getFootprint(index);
 
-  const candle =
-    candles[index];
-
-  const fp =
-    getFootprint(index);
-
-  if (!candle) {
-    content.innerHTML = `
+  if(!candle){
+    content.innerHTML=`
       <div class="fp-empty">
         کندلی انتخاب نشده است
       </div>
@@ -2250,20 +2437,20 @@ function renderSelectedFootprint(index) {
 
   document.getElementById(
     "fpMeta"
-  ).textContent =
+  ).textContent=
     `${symbol} · ${interval}m · ${formatDate(candle.time)}`;
 
-  const levels =
-    getLevels(fp);
+  const levels=getLevels(fp);
 
-  const realTradeCount =
-    Number(
-      fp?.tradeCount ||
-      0
-    );
+  const realTradeCount=
+    Number(fp?.tradeCount||0);
 
-  if (!fp || !realTradeCount || !levels.length) {
-    content.innerHTML = `
+  if(
+    !fp||
+    !realTradeCount||
+    !levels.length
+  ){
+    content.innerHTML=`
       <div class="fp-empty">
         برای این کندل معامله واقعی Bybit در نمونه دریافتی موجود نیست.
         <br>
@@ -2274,231 +2461,449 @@ function renderSelectedFootprint(index) {
     return;
   }
 
-  const ordered =
-    [...levels].sort(
-      (a,b) =>
-        Number(b.price) -
-        Number(a.price)
-    );
+  const ordered=
+    [...levels]
+      .sort(
+        (a,b)=>
+          Number(b.price)-
+          Number(a.price)
+      );
 
-  const maxPrice =
-    Math.max(
-      candle.high,
-      ...ordered.map(x => Number(x.price))
-    );
+  const high=Math.max(
+    Number(candle.high),
+    ...ordered.map(
+      x=>Number(x.price)
+    )
+  );
 
-  const minPrice =
-    Math.min(
-      candle.low,
-      ...ordered.map(x => Number(x.price))
-    );
+  const low=Math.min(
+    Number(candle.low),
+    ...ordered.map(
+      x=>Number(x.price)
+    )
+  );
 
-  const range =
-    Math.max(
-      0.00000001,
-      maxPrice - minPrice
-    );
+  const range=Math.max(
+    high-low,
+    0.00000001
+  );
 
-  const fpRows =
-    ordered.map(level => {
-
-      const bid =
-        Number(
-          level.bidVolume || 0
-        );
-
-      const ask =
-        Number(
-          level.askVolume || 0
-        );
-
-      const delta =
-        Number(
-          level.delta ??
-          ask - bid
-        );
-
-      const deltaClass =
-        delta >= 0
-          ? "green"
-          : "red";
-
-      return `
-        <div class="fp-row">
-          <div class="fp-bid">
-            ${num(bid,3)}
-          </div>
-
-          <div class="fp-delta ${deltaClass}">
-            ${delta >= 0 ? "+" : ""}
-            ${num(delta,3)}
-          </div>
-        </div>
-
-        <div class="fp-row">
-          <div class="fp-price">
-            ${priceFormat(level.price)}
-          </div>
-
-          <div class="fp-ask">
-            ${num(ask,3)}
-          </div>
-        </div>
-      `;
-    }).join("");
-
-  const bodyTop =
-    Math.min(
-      235,
-      Math.max(
-        45,
-        (
-          Number(candle.high) -
-          Number(candle.close)
-        ) /
-        range *
-        220
-      )
-    );
-
-  const bodyBottom =
-    Math.min(
-      235,
-      Math.max(
-        5,
-        (
-          Number(candle.high) -
-          Math.max(
-            Number(candle.open),
-            Number(candle.close)
+  const maxAbsDelta=Math.max(
+    0.00000001,
+    ...ordered.map(
+      level=>
+        Math.abs(
+          Number(
+            level.delta||0
           )
-        ) /
-        range *
-        220
+        )
+    )
+  );
+
+  const maxBid=Math.max(
+    0.00000001,
+    ...ordered.map(
+      level=>
+        Number(
+          level.bidVolume||0
+        )
+    )
+  );
+
+  const maxAsk=Math.max(
+    0.00000001,
+    ...ordered.map(
+      level=>
+        Number(
+          level.askVolume||0
+        )
+    )
+  );
+
+  /*
+   * Candle stage:
+   * ارتفاع ثابت و هر price level دقیقاً یک ردیف دارد.
+   */
+  const rowHeight=30;
+  const candleHeight=
+    Math.max(
+      420,
+      ordered.length*rowHeight+20
+    );
+
+  const priceToTop=price=>{
+    return(
+      (high-Number(price))/
+      range
+    )*
+    candleHeight;
+  };
+
+  const bodyTop=
+    priceToTop(
+      Math.max(
+        candle.open,
+        candle.close
       )
     );
 
-  const bodyTopPx =
-    Math.min(
-      bodyTop,
-      bodyBottom
+  const bodyBottom=
+    priceToTop(
+      Math.min(
+        candle.open,
+        candle.close
+      )
     );
 
-  const bodyBottomPx =
+  const bodyHeight=
     Math.max(
-      bodyTop,
-      bodyBottom
+      8,
+      bodyBottom-bodyTop
     );
 
-  const bodyHeight =
-    Math.max(
-      4,
-      bodyBottomPx - bodyTopPx
-    );
+  const wickTop=
+    priceToTop(high);
 
-  const bullish =
-    candle.close >= candle.open;
+  const wickBottom=
+    priceToTop(low);
 
-  content.innerHTML = `
+  const bullish=
+    Number(candle.close)>=
+    Number(candle.open);
 
-    <div class="fp-grid">
+  /*
+   * ردیف‌های سمت SELL/BID
+   */
+  const bidRows=ordered.map(level=>{
+
+    const bid=
+      Number(level.bidVolume||0);
+
+    const percent=
+      bid/maxBid*100;
+
+    const delta=
+      Number(
+        level.delta??(
+          Number(level.askVolume||0)-
+          bid
+        )
+      );
+
+    const highlight=
+      bid>0
+        ?" fp-level-highlight"
+        :"";
+
+    return`
+      <div class="fp-level-row${highlight}">
+        <div
+          class="fp-level-bar bid"
+          style="width:${percent}%"
+        ></div>
+
+        <div class="fp-level-value fp-bid">
+          ${num(bid,3)}
+        </div>
+      </div>
+    `;
+  }).join("");
+
+  /*
+   * ردیف‌های سمت BUY/ASK
+   */
+  const askRows=ordered.map(level=>{
+
+    const ask=
+      Number(level.askVolume||0);
+
+    const percent=
+      ask/maxAsk*100;
+
+    const highlight=
+      ask>0
+        ?" fp-level-highlight"
+        :"";
+
+    return`
+      <div class="fp-level-row${highlight}">
+        <div
+          class="fp-level-bar ask"
+          style="width:${percent}%"
+        ></div>
+
+        <div class="fp-level-value fp-ask">
+          ${num(ask,3)}
+        </div>
+      </div>
+    `;
+  }).join("");
+
+  /*
+   * Price + Bid/Ask داخل خود کندل
+   */
+  const insideRows=ordered.map(level=>{
+
+    const price=Number(level.price);
+
+    const bid=
+      Number(level.bidVolume||0);
+
+    const ask=
+      Number(level.askVolume||0);
+
+    const top=
+      priceToTop(price);
+
+    return`
+      <div
+        class="fp-price-row"
+        style="
+          top:${Math.max(
+            0,
+            top-rowHeight/2
+          )}px;
+        "
+      >
+        <span class="fp-inside-bid">
+          ${bid>0?num(bid,2):"·"}
+        </span>
+
+        <span class="fp-inside-ask">
+          ${ask>0?num(ask,2):"·"}
+        </span>
+      </div>
+    `;
+  }).join("");
+
+  /*
+   * Delta + Fixed Volume style histogram
+   * سمت راست
+   */
+  const deltaRows=ordered.map(level=>{
+
+    const delta=
+      Number(
+        level.delta??(
+          Number(level.askVolume||0)-
+          Number(level.bidVolume||0)
+        )
+      );
+
+    const abs=Math.abs(delta);
+
+    const width=
+      abs/maxAbsDelta*100;
+
+    const positive=delta>=0;
+
+    return`
+      <div class="fp-delta-row">
+
+        <div
+          class="fp-delta-value ${
+            positive
+              ?"green"
+              :"red"
+          }"
+        >
+          ${positive?"+":""}${num(delta,3)}
+        </div>
+
+        <div class="fp-delta-track">
+
+          <div class="fp-delta-axis"></div>
+
+          <div
+            class="fp-delta-bar ${
+              positive
+                ?"buy"
+                :"sell"
+            }"
+            style="
+              width:${Math.max(
+                abs>0?1:0,
+                width
+              )}%;
+            "
+          ></div>
+
+        </div>
+
+      </div>
+    `;
+  }).join("");
+
+  content.innerHTML=`
+
+    <div
+      class="fp-grid"
+      style="
+        --fp-row-height:${rowHeight}px;
+        --fp-candle-height:${candleHeight}px;
+      "
+    >
+
+      <!-- SELL / BID -->
 
       <div class="fp-side">
 
         <div class="fp-side-title red">
-          SELL / BID
+          🔴 SELL / BID
         </div>
 
-        ${ordered.map(level => `
-          <div class="fp-row">
-            <div class="fp-bid">
-              ${num(level.bidVolume,3)}
-            </div>
-
-            <div class="fp-delta ${
-              Number(level.delta || 0) >= 0
-                ? "green"
-                : "red"
-            }">
-              ${
-                Number(level.delta || 0) >= 0
-                  ? "+"
-                  : ""
-              }${num(level.delta,3)}
-            </div>
-          </div>
-        `).join("")}
+        ${bidRows}
 
       </div>
 
+      <!-- CENTER CANDLE -->
+
       <div class="fp-center">
 
-        <div class="fp-side-title">
-          PRICE
+        <div class="fp-price-head">
+
+          <div class="red">
+            BID
+          </div>
+
+          <div class="green">
+            ASK
+          </div>
+
         </div>
 
-        <div class="fp-candle">
+        <div
+          class="fp-candle-stage"
+          style="
+            height:${candleHeight}px;
+          "
+        >
 
           <div
-            class="fp-candle-line"
+            class="fp-wick"
             style="
-              top:8px;
-              bottom:8px;
+              top:${wickTop}px;
+              height:${Math.max(
+                2,
+                wickBottom-wickTop
+              )}px;
             "
           ></div>
 
           <div
-            class="fp-candle-body"
+            class="fp-body"
             style="
-              top:${bodyTopPx}px;
+              top:${bodyTop}px;
               height:${bodyHeight}px;
               background:${
                 bullish
-                  ? "#35dc72"
-                  : "#ff5962"
+                  ?"rgb(53,220,114)"
+                  :"rgb(255,89,98)"
               };
             "
           ></div>
 
+          <div class="fp-price-column">
+            ${insideRows}
+          </div>
+
           <div class="fp-candle-info">
+
             O ${priceFormat(candle.open)}
             ·
             H ${priceFormat(candle.high)}
             <br>
+
             L ${priceFormat(candle.low)}
             ·
             C ${priceFormat(candle.close)}
+
           </div>
 
         </div>
 
       </div>
 
-      <div class="fp-side">
+      <!-- DELTA + HISTOGRAM -->
 
-        <div class="fp-side-title green">
-          BUY / ASK
+      <div class="fp-side fp-delta-column">
+
+        <div class="fp-side-title blue">
+          Δ DELTA · FIXED VOLUME
         </div>
 
-        ${ordered.map(level => `
-          <div class="fp-row">
-            <div class="fp-ask">
-              ${num(level.askVolume,3)}
-            </div>
+        ${deltaRows}
 
-            <div class="fp-delta ${
-              Number(level.delta || 0) >= 0
-                ? "green"
-                : "red"
-            }">
-              ${
-                Number(level.delta || 0) >= 0
-                  ? "+"
-                  : ""
-              }${num(level.delta,3)}
+      </div>
+
+      <!-- ASK COLUMN BELOW/ADDITIONAL -->
+    </div>
+
+    <div
+      style="
+        display:grid;
+        grid-template-columns:1fr;
+        margin-top:8px;
+      "
+    >
+
+      <div
+        class="fp-side"
+        style="
+          border:1px solid #1f3440;
+          border-radius:8px;
+          overflow:hidden;
+        "
+      >
+
+        <div class="fp-side-title green">
+          🟢 BUY / ASK
+        </div>
+
+        <div
+          style="
+            display:grid;
+            grid-template-columns:repeat(${Math.max(
+              1,
+              Math.min(
+                6,
+                ordered.length
+              )
+            )},1fr);
+          "
+        >
+          ${ordered.slice(0,6).map(level=>`
+            <div
+              style="
+                min-height:38px;
+                border-bottom:1px solid #162733;
+                padding:5px;
+                text-align:center;
+              "
+            >
+              <div
+                style="
+                  color:#7f919f;
+                  font-size:8px;
+                  direction:ltr;
+                "
+              >
+                ${priceFormat(level.price)}
+              </div>
+
+              <div
+                class="fp-ask"
+                style="
+                  font-size:11px;
+                  font-weight:bold;
+                  direction:ltr;
+                "
+              >
+                ${num(level.askVolume,3)}
+              </div>
             </div>
-          </div>
-        `).join("")}
+          `).join("")}
+        </div>
 
       </div>
 
@@ -2510,6 +2915,7 @@ function renderSelectedFootprint(index) {
         <div class="fp-total-label">
           BID / SELL
         </div>
+
         <div class="fp-total-value red">
           ${num(fp.sellVolume,3)}
         </div>
@@ -2519,6 +2925,7 @@ function renderSelectedFootprint(index) {
         <div class="fp-total-label">
           ASK / BUY
         </div>
+
         <div class="fp-total-value green">
           ${num(fp.buyVolume,3)}
         </div>
@@ -2528,15 +2935,18 @@ function renderSelectedFootprint(index) {
         <div class="fp-total-label">
           DELTA
         </div>
-        <div class="fp-total-value ${
-          Number(fp.delta || 0) >= 0
-            ? "green"
-            : "red"
-        }">
+
+        <div
+          class="fp-total-value ${
+            Number(fp.delta||0)>=0
+              ?"green"
+              :"red"
+          }"
+        >
           ${
-            Number(fp.delta || 0) >= 0
-              ? "+"
-              : ""
+            Number(fp.delta||0)>=0
+              ?"+"
+              :""
           }${num(fp.delta,3)}
         </div>
       </div>
@@ -2545,6 +2955,7 @@ function renderSelectedFootprint(index) {
         <div class="fp-total-label">
           VOLUME
         </div>
+
         <div class="fp-total-value">
           ${num(fp.flowVolume,3)}
         </div>
@@ -2552,8 +2963,19 @@ function renderSelectedFootprint(index) {
 
       <div class="fp-total">
         <div class="fp-total-label">
+          VALUE
+        </div>
+
+        <div class="fp-total-value">
+          ${num(fp.totalValue,2)}
+        </div>
+      </div>
+
+      <div class="fp-total">
+        <div class="fp-total-label">
           TRADES
         </div>
+
         <div class="fp-total-value">
           ${fullNum(realTradeCount,0)}
         </div>
@@ -2562,50 +2984,51 @@ function renderSelectedFootprint(index) {
     </div>
   `;
 
-  fpViewport.scrollTop = 0;
+  requestAnimationFrame(()=>{
+    applyFpScale();
+    fpViewport.scrollTop=0;
+  });
 }
 
-function selectFromPointer(clientX) {
-  const rect =
+/* ==========================================================
+   CHART TOUCH / ZOOM / PAN
+   ========================================================== */
+
+function selectFromPointer(clientX){
+  const rect=
     canvasWrap.getBoundingClientRect();
 
-  const g =
-    chartGeometry();
+  const g=chartGeometry();
+  const visible=getVisible();
 
-  const visible =
-    getVisible();
+  if(!visible.candles.length)return;
 
-  if (!visible.candles.length) {
-    return;
-  }
-
-  const x =
-    clientX -
+  const x=
+    clientX-
     rect.left;
 
-  const chartW =
-    g.width -
-    g.left -
+  const chartW=
+    g.width-
+    g.left-
     g.right;
 
-  const step =
-    chartW /
+  const step=
+    chartW/
     Math.max(
       1,
       visible.candles.length
     );
 
-  const local =
-    Math.floor(
-      (x - g.left) / step
-    );
+  const local=Math.floor(
+    (x-g.left)/step
+  );
 
-  if (
-    local >= 0 &&
-    local < visible.candles.length
-  ) {
-    selectedIndex =
-      visible.start + local;
+  if(
+    local>=0&&
+    local<visible.candles.length
+  ){
+    selectedIndex=
+      visible.start+local;
 
     renderSelectedFootprint(
       selectedIndex
@@ -2615,19 +3038,20 @@ function selectFromPointer(clientX) {
   }
 }
 
-function zoomAt(factor, clientX) {
-  const candles =
-    getCandles();
+function zoomAt(
+  factor,
+  clientX
+){
+  const candles=getCandles();
 
-  if (!candles.length) return;
+  if(!candles.length)return;
 
-  const rect =
+  const rect=
     canvasWrap.getBoundingClientRect();
 
-  const g =
-    chartGeometry();
+  const g=chartGeometry();
 
-  const oldCount =
+  const oldCount=
     Math.max(
       10,
       Math.min(
@@ -2636,158 +3060,168 @@ function zoomAt(factor, clientX) {
       )
     );
 
-  const chartW =
-    g.width -
-    g.left -
+  const chartW=
+    g.width-
+    g.left-
     g.right;
 
-  const x =
-    Math.max(
-      0,
-      Math.min(
-        chartW,
-        clientX -
-        rect.left -
+  const x=Math.max(
+    0,
+    Math.min(
+      chartW,
+      clientX-
+        rect.left-
         g.left
-      )
-    );
+    )
+  );
 
-  const ratio =
+  const ratio=
     chartW
-      ? x / chartW
-      : 0.5;
+      ?x/chartW
+      :0.5;
 
-  const center =
-    viewStart +
-    ratio * oldCount;
+  const center=
+    viewStart+
+    ratio*oldCount;
 
-  const newCount =
+  const newCount=
     Math.max(
       10,
       Math.min(
         candles.length,
         Math.round(
-          oldCount * factor
+          oldCount*factor
         )
       )
     );
 
-  viewCount =
-    newCount;
+  viewCount=newCount;
 
-  viewStart =
-    center -
-    ratio * newCount;
+  viewStart=
+    center-
+    ratio*newCount;
 
-  viewStart =
-    Math.max(
-      0,
-      Math.min(
-        viewStart,
-        candles.length -
-        newCount
-      )
-    );
+  viewStart=Math.max(
+    0,
+    Math.min(
+      viewStart,
+      candles.length-newCount
+    )
+  );
 
   drawChart();
 }
 
-function moveView(delta) {
-  const candles =
-    getCandles();
+function moveView(delta){
+  const candles=getCandles();
 
-  if (!candles.length) return;
+  if(!candles.length)return;
 
-  viewStart =
-    Math.max(
-      0,
-      Math.min(
-        candles.length - viewCount,
-        viewStart + delta
-      )
-    );
+  viewStart=Math.max(
+    0,
+    Math.min(
+      candles.length-viewCount,
+      viewStart+delta
+    )
+  );
 
   drawChart();
 }
 
-let pointerState = {
-  active: false,
-  moved: false,
-  startX: 0,
-  startY: 0,
-  startView: 0,
-  pointerId: null
+const pointers=new Map();
+
+let pinchState=null;
+
+let pointerState={
+  active:false,
+  moved:false,
+  startX:0,
+  startY:0,
+  startView:0,
+  pointerId:null,
+  selecting:false
 };
-
-let pointers = new Map();
-
-let pinchState = null;
 
 canvasWrap.addEventListener(
   "pointerdown",
-  e => {
+  e=>{
+
+    e.preventDefault();
 
     pointers.set(
       e.pointerId,
       {
-        x: e.clientX,
-        y: e.clientY
+        x:e.clientX,
+        y:e.clientY
       }
     );
 
-    canvasWrap.setPointerCapture(
-      e.pointerId
-    );
+    try{
+      canvasWrap.setPointerCapture(
+        e.pointerId
+      );
+    }catch{}
 
-    if (pointers.size === 2) {
+    if(pointers.size===2){
 
-      const pts =
-        [...pointers.values()];
+      const pts=[
+        ...pointers.values()
+      ];
 
-      const dx =
-        pts[0].x - pts[1].x;
+      const dx=
+        pts[0].x-pts[1].x;
 
-      const dy =
-        pts[0].y - pts[1].y;
+      const dy=
+        pts[0].y-pts[1].y;
 
-      const distance =
-        Math.sqrt(
-          dx * dx +
-          dy * dy
-        );
+      const distance=Math.hypot(
+        dx,
+        dy
+      );
 
-      pinchState = {
+      pinchState={
         distance,
-        count: viewCount,
-        centerX:
-          (pts[0].x + pts[1].x) / 2
+        count:viewCount
       };
+
+      pointerState.active=false;
 
       return;
     }
 
-    pointerState = {
-      active: true,
-      moved: false,
-      startX: e.clientX,
-      startY: e.clientY,
-      startView: viewStart,
-      pointerId: e.pointerId
+    pointerState={
+      active:true,
+      moved:false,
+      startX:e.clientX,
+      startY:e.clientY,
+      startView:viewStart,
+      pointerId:e.pointerId,
+      selecting:true
     };
 
-    crosshair.style.display =
-      "block";
+    const rect=
+      canvasWrap.getBoundingClientRect();
+
+    crossV.style.left=
+      `${e.clientX-rect.left}px`;
+
+    crossH.style.top=
+      `${e.clientY-rect.top}px`;
+
+    crosshair.style.display="block";
   },
-  { passive:false }
+  {
+    passive:false
+  }
 );
 
 canvasWrap.addEventListener(
   "pointermove",
-  e => {
+  e=>{
 
-    if (
-      pointers.has(e.pointerId)
-    ) {
+    e.preventDefault();
+
+    if(pointers.has(e.pointerId)){
       pointers.set(
         e.pointerId,
         {
@@ -2797,239 +3231,212 @@ canvasWrap.addEventListener(
       );
     }
 
-    if (pointers.size >= 2) {
+    if(pointers.size>=2){
 
-      const pts =
-        [...pointers.values()];
+      const pts=[
+        ...pointers.values()
+      ];
 
-      const dx =
-        pts[0].x - pts[1].x;
+      const dx=
+        pts[0].x-pts[1].x;
 
-      const dy =
-        pts[0].y - pts[1].y;
+      const dy=
+        pts[0].y-pts[1].y;
 
-      const distance =
-        Math.sqrt(
-          dx * dx +
-          dy * dy
-        );
+      const distance=Math.hypot(
+        dx,
+        dy
+      );
 
-      if (
-        pinchState &&
-        pinchState.distance > 0
-      ) {
-        const factor =
-          pinchState.distance /
+      if(
+        pinchState&&
+        pinchState.distance>0&&
+        distance>0
+      ){
+
+        const factor=
+          pinchState.distance/
           distance;
 
-        const centerX =
-          (pts[0].x + pts[1].x) /
-          2;
+        const centerX=
+          (
+            pts[0].x+
+            pts[1].x
+          )/2;
 
         zoomAt(
           factor,
           centerX
         );
 
-        pinchState.distance =
+        pinchState.distance=
           distance;
       }
 
       return;
     }
 
-    const rect =
+    const rect=
       canvasWrap.getBoundingClientRect();
 
-    const x =
-      e.clientX -
+    const x=
+      e.clientX-
       rect.left;
 
-    const y =
-      e.clientY -
+    const y=
+      e.clientY-
       rect.top;
 
-    crossV.style.left =
-      x + "px";
+    crossV.style.left=
+      `${x}px`;
 
-    crossH.style.top =
-      y + "px";
+    crossH.style.top=
+      `${y}px`;
 
-    if (!pointerState.active) {
+    if(!pointerState.active){
       return;
     }
 
-    const dx =
-      e.clientX -
+    const dx=
+      e.clientX-
       pointerState.startX;
 
-    const dy =
-      e.clientY -
+    const dy=
+      e.clientY-
       pointerState.startY;
 
-    if (
-      Math.abs(dx) > 5 ||
-      Math.abs(dy) > 5
-    ) {
-      pointerState.moved = true;
+    if(
+      Math.abs(dx)>6||
+      Math.abs(dy)>6
+    ){
+      pointerState.moved=true;
     }
 
-    if (
-      Math.abs(dx) >
+    /*
+     * حرکت افقی = Pan
+     */
+    if(
+      Math.abs(dx)>
       Math.abs(dy)
-    ) {
+    ){
 
-      const candles =
-        getCandles();
+      const candles=getCandles();
 
-      const g =
-        chartGeometry();
+      const g=chartGeometry();
 
-      const step =
+      const step=
         candleStep(
           g,
           viewCount
         );
 
-      const delta =
+      const delta=
         step
-          ? dx / step
-          : 0;
+          ?dx/step
+          :0;
 
-      viewStart =
-        pointerState.startView -
+      viewStart=
+        pointerState.startView-
         delta;
 
-      viewStart =
-        Math.max(
-          0,
-          Math.min(
-            candles.length -
-            viewCount,
-            viewStart
-          )
-        );
+      viewStart=Math.max(
+        0,
+        Math.min(
+          candles.length-viewCount,
+          viewStart
+        )
+      );
 
       drawChart();
     }
   },
-  { passive:false }
+  {
+    passive:false
+  }
 );
+
+function finishPointer(e){
+
+  pointers.delete(
+    e.pointerId
+  );
+
+  if(pointers.size<2){
+    pinchState=null;
+  }
+
+  if(
+    pointerState.active&&
+    !pointerState.moved&&
+    pointers.size===0
+  ){
+    selectFromPointer(
+      e.clientX
+    );
+  }
+
+  pointerState.active=false;
+
+  if(!pointers.size){
+    crosshair.style.display="none";
+  }
+}
 
 canvasWrap.addEventListener(
   "pointerup",
-  e => {
-
-    pointers.delete(
-      e.pointerId
-    );
-
-    if (pointers.size < 2) {
-      pinchState = null;
-    }
-
-    if (
-      pointerState.active &&
-      !pointerState.moved
-    ) {
-      selectFromPointer(
-        e.clientX
-      );
-    }
-
-    pointerState.active = false;
-
-    if (!pointers.size) {
-      crosshair.style.display =
-        "none";
-    }
-  },
-  { passive:false }
+  finishPointer,
+  {
+    passive:false
+  }
 );
 
 canvasWrap.addEventListener(
   "pointercancel",
-  e => {
-
+  e=>{
     pointers.delete(
       e.pointerId
     );
 
-    if (!pointers.size) {
-      pointerState.active = false;
-      pinchState = null;
-      crosshair.style.display =
-        "none";
+    if(!pointers.size){
+      pointerState.active=false;
+      pinchState=null;
+      crosshair.style.display="none";
     }
   }
 );
 
 canvasWrap.addEventListener(
   "wheel",
-  e => {
-
+  e=>{
     e.preventDefault();
 
     zoomAt(
-      e.deltaY > 0
-        ? 1.15
-        : 0.87,
+      e.deltaY>0
+        ?1.15
+        :0.87,
       e.clientX
     );
-
   },
-  { passive:false }
-);
-
-let lastTap = 0;
-
-canvasWrap.addEventListener(
-  "pointerup",
-  e => {
-
-    const now =
-      Date.now();
-
-    if (
-      now - lastTap <
-      320
-    ) {
-      zoomAt(
-        0.75,
-        e.clientX
-      );
-    }
-
-    lastTap = now;
+  {
+    passive:false
   }
 );
+
+/* ==========================================================
+   FOOTPRINT ZOOM
+   ========================================================== */
 
 document
   .getElementById("fpPlus")
   .addEventListener(
     "click",
-    () => {
-      const board =
-        document.getElementById(
-          "fpBoard"
-        );
+    ()=>{
+      fpScale=Math.min(
+        2.5,
+        fpScale*1.18
+      );
 
-      const current =
-        Number(
-          board.dataset.scale || 1
-        );
-
-      const next =
-        Math.min(
-          2.5,
-          current * 1.2
-        );
-
-      board.dataset.scale =
-        String(next);
-
-      board.style.zoom =
-        String(next);
+      applyFpScale();
     }
   );
 
@@ -3037,29 +3444,13 @@ document
   .getElementById("fpMinus")
   .addEventListener(
     "click",
-    () => {
+    ()=>{
+      fpScale=Math.max(
+        0.65,
+        fpScale/1.18
+      );
 
-      const board =
-        document.getElementById(
-          "fpBoard"
-        );
-
-      const current =
-        Number(
-          board.dataset.scale || 1
-        );
-
-      const next =
-        Math.max(
-          0.6,
-          current / 1.2
-        );
-
-      board.dataset.scale =
-        String(next);
-
-      board.style.zoom =
-        String(next);
+      applyFpScale();
     }
   );
 
@@ -3067,39 +3458,30 @@ document
   .getElementById("fpReset")
   .addEventListener(
     "click",
-    () => {
+    ()=>{
+      fpScale=1;
+      applyFpScale();
 
-      const board =
-        document.getElementById(
-          "fpBoard"
-        );
-
-      board.dataset.scale =
-        "1";
-
-      board.style.zoom =
-        "1";
-
-      fpViewport.scrollTop =
-        0;
-
-      fpViewport.scrollLeft =
-        0;
+      fpViewport.scrollTop=0;
+      fpViewport.scrollLeft=0;
     }
   );
 
+/* ==========================================================
+   LAYERS
+   ========================================================== */
+
 document
   .querySelectorAll(".layer")
-  .forEach(btn => {
+  .forEach(btn=>{
 
     btn.addEventListener(
       "click",
-      () => {
-
-        const name =
+      ()=>{
+        const name=
           btn.dataset.layer;
 
-        layers[name] =
+        layers[name]=
           !layers[name];
 
         btn.classList.toggle(
@@ -3107,15 +3489,15 @@ document
           layers[name]
         );
 
-        if (
-          name === "footprint"
-        ) {
+        if(
+          name==="footprint"
+        ){
           document
             .querySelector(".footprint-box")
-            .style.display =
+            .style.display=
               layers.footprint
-                ? "block"
-                : "none";
+                ?"block"
+                :"none";
         }
 
         drawChart();
@@ -3123,17 +3505,20 @@ document
     );
   });
 
+/* ==========================================================
+   TIMEFRAMES
+   ========================================================== */
+
 document
   .querySelectorAll(".tf")
-  .forEach(btn => {
+  .forEach(btn=>{
 
     btn.addEventListener(
       "click",
-      async () => {
-
+      async()=>{
         document
           .querySelectorAll(".tf")
-          .forEach(x =>
+          .forEach(x=>
             x.classList.remove(
               "active"
             )
@@ -3143,7 +3528,7 @@ document
           "active"
         );
 
-        interval =
+        interval=
           btn.dataset.tf;
 
         await loadAnalysis();
@@ -3176,47 +3561,48 @@ document
   .getElementById("symbol")
   .addEventListener(
     "keydown",
-    e => {
-      if (
-        e.key === "Enter"
-      ) {
+    e=>{
+      if(e.key==="Enter"){
         loadAnalysis();
       }
     }
   );
 
-async function loadAnalysis() {
+/* ==========================================================
+   ANALYSIS
+   ========================================================== */
+
+async function loadAnalysis(){
 
   stopLive();
 
-  symbol =
+  symbol=
     document
       .getElementById("symbol")
       .value
       .trim()
       .toUpperCase();
 
-  if (!symbol) {
-    symbol = "BTCUSDT";
+  if(!symbol){
+    symbol="BTCUSDT";
 
     document
       .getElementById("symbol")
-      .value =
-      symbol;
+      .value=symbol;
   }
 
   setStatus(
     "🔄 دریافت داده واقعی Bybit..."
   );
 
-  try {
+  try{
 
-    const url =
-      `${API}/api/analyze` +
-      `?symbol=${encodeURIComponent(symbol)}` +
+    const url=
+      `${API}/api/analyze`+
+      `?symbol=${encodeURIComponent(symbol)}`+
       `&interval=${encodeURIComponent(interval)}`;
 
-    const response =
+    const response=
       await fetch(
         url,
         {
@@ -3224,22 +3610,21 @@ async function loadAnalysis() {
         }
       );
 
-    const result =
+    const result=
       await response.json();
 
-    if (!response.ok) {
+    if(!response.ok){
       throw new Error(
-        result.error ||
+        result.error||
         "Analysis error"
       );
     }
 
-    data = result;
+    data=result;
 
-    const candles =
-      getCandles();
+    const candles=getCandles();
 
-    viewCount =
+    viewCount=
       Math.min(
         70,
         Math.max(
@@ -3248,26 +3633,25 @@ async function loadAnalysis() {
         )
       );
 
-    viewStart =
-      Math.max(
-        0,
-        candles.length -
-        viewCount
-      );
+    viewStart=Math.max(
+      0,
+      candles.length-viewCount
+    );
 
-    selectedIndex =
-      candles.length - 1;
+    selectedIndex=
+      candles.length-1;
 
     document
       .getElementById(
         "chartTitle"
       )
-      .textContent =
-      `${symbol} · ${interval}m`;
+      .textContent=
+        `${symbol} · ${interval}m`;
 
     updateCards();
-
     renderTrades();
+
+    fpScale=1;
 
     renderSelectedFootprint(
       selectedIndex
@@ -3279,55 +3663,64 @@ async function loadAnalysis() {
 
     resizeCanvas();
 
-  } catch (error) {
+  }catch(error){
 
     setStatus(
-      "🔴 " +
-      (error?.message || "خطا"),
+      "🔴 "+
+      (
+        error?.message||
+        "خطا"
+      ),
       false
     );
   }
 }
 
-async function loadLive() {
+/* ==========================================================
+   LIVE
+   ========================================================== */
 
-  try {
+async function loadLive(){
 
-    const response =
+  try{
+
+    const response=
       await fetch(
-        `${API}/api/live` +
-        `?symbol=${encodeURIComponent(symbol)}` +
+        `${API}/api/live`+
+        `?symbol=${encodeURIComponent(symbol)}`+
         `&interval=${encodeURIComponent(interval)}`,
         {
           cache:"no-store"
         }
       );
 
-    const result =
+    const result=
       await response.json();
 
-    if (!response.ok) {
+    if(!response.ok){
       throw new Error(
-        result.error ||
+        result.error||
         "Live error"
       );
     }
 
-    data = result;
+    data=result;
 
-    const candles =
-      getCandles();
+    const candles=getCandles();
 
-    if (
-      selectedIndex < 0 ||
-      selectedIndex >= candles.length
-    ) {
-      selectedIndex =
-        candles.length - 1;
+    /*
+     * اگر کاربر کندل خاصی انتخاب کرده،
+     * تا زمانی که index معتبر است همان انتخاب حفظ می‌شود.
+     */
+    if(
+      selectedIndex<0||
+      selectedIndex>=candles.length
+    ){
+      selectedIndex=
+        candles.length-1;
     }
 
     updateCards();
-
     renderTrades();
 
     renderSelectedFootprint(
@@ -3340,7 +3733,7 @@ async function loadLive() {
       "🟢 Live · Bybit"
     );
 
-  } catch (error) {
+  }catch(error){
 
     setStatus(
       "🔴 Live قطع شد",
@@ -3349,37 +3742,41 @@ async function loadLive() {
   }
 }
 
-function startLive() {
+function startLive(){
 
   stopLive();
 
   loadLive();
 
-  liveTimer =
+  liveTimer=
     setInterval(
       loadLive,
       3000
     );
 }
 
-function stopLive() {
+function stopLive(){
 
-  if (liveTimer) {
+  if(liveTimer){
     clearInterval(
       liveTimer
     );
 
-    liveTimer = null;
+    liveTimer=null;
   }
 }
 
-let scanOffset = 0;
+/* ==========================================================
+   SCANNER
+   ========================================================== */
 
-async function runScan() {
+let scanOffset=0;
 
-  try {
+async function runScan(){
 
-    const response =
+  try{
+
+    const response=
       await fetch(
         `${API}/api/scan?offset=${scanOffset}`,
         {
@@ -3387,48 +3784,50 @@ async function runScan() {
         }
       );
 
-    const result =
+    const result=
       await response.json();
 
-    if (!response.ok) {
+    if(!response.ok){
       throw new Error(
-        result.error ||
+        result.error||
         "Scan error"
       );
     }
 
-    scanOffset =
+    scanOffset=
       Number(
-        result.nextOffset || 0
+        result.nextOffset||0
       );
 
     renderScan(
-      result.results || []
+      result.results||[]
     );
 
-  } catch (error) {
+  }catch(error){
 
     document
       .getElementById(
         "scanList"
       )
-      .innerHTML = `
+      .innerHTML=`
         <div class="fp-empty">
-          خطا در اسکن: ${esc(error.message)}
+          خطا در اسکن:
+          ${esc(error.message)}
         </div>
       `;
   }
 }
 
-function renderScan(results) {
+function renderScan(results){
 
-  const box =
+  const box=
     document.getElementById(
       "scanList"
     );
 
-  if (!results.length) {
-    box.innerHTML = `
+  if(!results.length){
+
+    box.innerHTML=`
       <div class="fp-empty">
         در این Batch سیگنال بالای 55 پیدا نشد.
       </div>
@@ -3437,26 +3836,27 @@ function renderScan(results) {
     return;
   }
 
-  box.innerHTML =
-    results.map(r => {
+  box.innerHTML=
+    results.map(r=>{
 
-      const score =
-        Number(r.score || 0);
+      const score=
+        Number(r.score||0);
 
-      const cls =
-        r.signal === "BUY" ||
-        r.signal === "WATCH_BUY"
-          ? "green"
-          : r.signal === "SELL" ||
-            r.signal === "WATCH_SELL"
-            ? "red"
-            : "yellow";
+      const cls=
+        r.signal==="BUY"||
+        r.signal==="WATCH_BUY"
+          ?"green"
+          :r.signal==="SELL"||
+            r.signal==="WATCH_SELL"
+            ?"red"
+            :"yellow";
 
-      return `
+      return`
         <div
           class="scan-row"
           data-symbol="${esc(r.symbol)}"
         >
+
           <div>
             ${esc(r.symbol)}
           </div>
@@ -3474,29 +3874,28 @@ function renderScan(results) {
           </div>
 
           <div>
-            ${esc(r.absorption || "NONE")}
+            ${esc(r.absorption||"NONE")}
           </div>
+
         </div>
       `;
     }).join("");
 
   box
     .querySelectorAll(".scan-row")
-    .forEach(row => {
+    .forEach(row=>{
 
       row.addEventListener(
         "click",
-        async () => {
-
-          const s =
+        async()=>{
+          const s=
             row.dataset.symbol;
 
           document
             .getElementById(
               "symbol"
             )
-            .value =
-            s;
+            .value=s;
 
           await loadAnalysis();
         }
@@ -3508,19 +3907,18 @@ document
   .getElementById("scanStart")
   .addEventListener(
     "click",
-    () => {
-
-      if (scanTimer) {
+    ()=>{
+      if(scanTimer){
         clearInterval(
           scanTimer
         );
       }
 
-      scanOffset = 0;
+      scanOffset=0;
 
       runScan();
 
-      scanTimer =
+      scanTimer=
         setInterval(
           runScan,
           8000
@@ -3532,62 +3930,64 @@ document
   .getElementById("scanStop")
   .addEventListener(
     "click",
-    () => {
-
-      if (scanTimer) {
+    ()=>{
+      if(scanTimer){
         clearInterval(
           scanTimer
         );
 
-        scanTimer = null;
+        scanTimer=null;
       }
     }
   );
+
+/* ==========================================================
+   FULLSCREEN
+   ========================================================== */
 
 document
   .getElementById("fullscreenBtn")
   .addEventListener(
     "click",
-    async () => {
+    async()=>{
 
-      const panel =
+      const panel=
         document.getElementById(
           "chartPanel"
         );
 
-      try {
+      try{
 
-        if (
-          !document.fullscreenElement
-        ) {
+        if(!document.fullscreenElement){
+
           await panel.requestFullscreen();
 
-          try {
-            if (
-              screen.orientation &&
+          try{
+            if(
+              screen.orientation&&
               screen.orientation.lock
-            ) {
+            ){
               await screen.orientation.lock(
                 "landscape"
               );
             }
-          } catch {}
+          }catch{}
 
-        } else {
+        }else{
 
           await document.exitFullscreen();
 
-          try {
-            if (
-              screen.orientation &&
+          try{
+            if(
+              screen.orientation&&
               screen.orientation.unlock
-            ) {
+            ){
               screen.orientation.unlock();
             }
-          } catch {}
+          }catch{}
         }
 
-      } catch {}
+      }catch{}
 
       setTimeout(
         resizeCanvas,
@@ -3598,7 +3998,7 @@ document
 
 document.addEventListener(
   "fullscreenchange",
-  () => {
+  ()=>{
     setTimeout(
       resizeCanvas,
       150
@@ -3608,7 +4008,7 @@ document.addEventListener(
 
 window.addEventListener(
   "resize",
-  () => {
+  ()=>{
     setTimeout(
       resizeCanvas,
       50
@@ -3618,7 +4018,7 @@ window.addEventListener(
 
 window.addEventListener(
   "orientationchange",
-  () => {
+  ()=>{
     setTimeout(
       resizeCanvas,
       200
@@ -3626,13 +4026,17 @@ window.addEventListener(
   }
 );
 
-(async function init() {
+/* ==========================================================
+   INITIALIZE
+   ========================================================== */
+
+(async function init(){
 
   resizeCanvas();
 
-  try {
+  try{
 
-    const response =
+    const response=
       await fetch(
         `${API}/api/health`,
         {
@@ -3640,13 +4044,13 @@ window.addEventListener(
         }
       );
 
-    if (response.ok) {
+    if(response.ok){
       setStatus(
         "🟢 Worker آنلاین است"
       );
     }
 
-  } catch {}
+  }catch{}
 
   await loadAnalysis();
 
