@@ -2,114 +2,117 @@ import { DurableObject } from "cloudflare:workers";
 
 const BYBIT = "https://api.bybit.com";
 const BYBIT_WS = "wss://stream.bybit.com/v5/public/linear";
-const VERSION = "ABSORPTION-ORDERFLOW-MAP-V7";
 
-const TF = "5";
-const TF15 = "15";
+const VERSION = "ABSORPTION-ORDERFLOW-MAP-V8";
+
+const TF = "1";
 const TF3 = "3";
-const TF1 = "1";
+const TF5 = "5";
+const TF15 = "15";
+
+const ALLOWED_INTERVALS = ["1", "3", "5", "15", "30", "60"];
 
 const KLINE_LIMIT = 240;
 const CHART_LIMIT = 180;
 const TRADE_LIMIT = 1000;
 const ORDERBOOK_LIMIT = 50;
+
 const SCAN_BATCH = 20;
 const MAX_SYMBOLS = 200;
+
 const FOOTPRINT_MAX_LEVELS = 80;
 const HEATMAP_LEVELS = 50;
+
 const RETENTION_MINUTES = 1440;
 const ORDERBOOK_SNAPSHOT_MS = 5000;
-const WS_RECONNECT_MIN = 3000;
+
+const WS_RECONNECT_BASE = 2000;
 const WS_RECONNECT_MAX = 30000;
 const WS_SUB_CHUNK = 200;
 
-const ALLOWED_INTERVALS = ["1", "3", "5", "15", "30", "60"];
+const instrumentCache = new Map();
 
-const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
-
-function json(data, status = 200) {
+function json(data, status = 200, extra = {}) {
   return new Response(JSON.stringify(data), {
     status,
     headers: {
       "content-type": "application/json; charset=utf-8",
-      "cache-control": "no-store, no-cache, must-revalidate",
-      "access-control-allow-origin": "*",
-      "access-control-allow-methods": "GET,POST,OPTIONS",
-      "access-control-allow-headers": "*"
+      "cache-control": "no-store",
+      ...extra
     }
   });
 }
 
-function n(v, d = 0) {
+function n(v, fallback = 0) {
   const x = Number(v);
-  return Number.isFinite(x) ? x : d;
+  return Number.isFinite(x) ? x : fallback;
 }
 
-function clamp(v, a, b) {
-  return Math.max(a, Math.min(b, v));
+function clamp(v, min, max) {
+  return Math.max(min, Math.min(max, v));
+}
+
+function avg(arr) {
+  if (!Array.isArray(arr) || !arr.length) return 0;
+  return arr.reduce((a, b) => a + n(b), 0) / arr.length;
+}
+
+function sum(arr, fn = x => x) {
+  if (!Array.isArray(arr)) return 0;
+  return arr.reduce((a, x) => a + n(fn(x)), 0);
 }
 
 function pct(a, b) {
-  return b ? (a / b) * 100 : 0;
+  const aa = n(a);
+  const bb = n(b);
+  if (!bb) return 0;
+  return (aa / bb) * 100;
 }
 
-function avg(a) {
-  return a.length
-    ? a.reduce((x, y) => x + y, 0) / a.length
-    : 0;
-}
-
-function sum(a) {
-  return a.reduce((x, y) => x + n(y), 0);
-}
-
-function normalizeSymbol(v) {
-  return String(v || "")
+function normalizeSymbol(symbol) {
+  return String(symbol || "")
+    .trim()
     .toUpperCase()
     .replace(/[^A-Z0-9]/g, "");
 }
 
-function normalizeInterval(v) {
-  const x = String(v || TF);
-  return ALLOWED_INTERVALS.includes(x) ? x : TF;
+function normalizeInterval(interval) {
+  const x = String(interval || "1");
+  return ALLOWED_INTERVALS.includes(x) ? x : "1";
 }
 
-function intervalMs(v) {
-  return Number(normalizeInterval(v)) * 60000;
+function intervalMs(interval) {
+  return Math.max(1, Number(interval)) * 60 * 1000;
 }
 
-function priceDecimals(step) {
-  step = n(step);
-  if (!step) return 8;
-
-  const s = String(step);
-
-  if (!s.includes(".")) return 0;
-
-  return Math.min(
-    16,
-    Math.max(
-      0,
-      s.split(".")[1].replace(/0+$/, "").length
-    )
-  );
+function minuteStart(ts) {
+  const x = n(ts, Date.now());
+  return Math.floor(x / 60000) * 60000;
 }
 
-function roundToStep(price, step) {
-  price = n(price);
-  step = n(step);
+function priceDecimals(price, tickSize) {
+  const tick = String(tickSize || "");
+  if (tick.includes(".")) {
+    return tick.split(".")[1].replace(/0+$/, "").length;
+  }
 
-  if (!price || !step) return price;
+  const p = n(price);
 
-  return Number(
-    (Math.round(price / step) * step)
-      .toFixed(priceDecimals(step))
-  );
+  if (p >= 1000) return 2;
+  if (p >= 1) return 4;
+  if (p >= 0.01) return 5;
+  if (p >= 0.0001) return 7;
+  return 10;
 }
 
-/* =========================================================
-   BYBIT REST
-========================================================= */
+function roundToStep(value, step) {
+  const v = n(value);
+  const s = n(step);
+
+  if (!s) return v;
+
+  return Math.round(v / s) * s;
+}
 
 async function bybit(path, params = {}) {
   const url = new URL(BYBIT + path);
@@ -124,9 +127,14 @@ async function bybit(path, params = {}) {
     }
   }
 
-  const response = await fetch(url, {
+  const response = await fetch(url.toString(), {
+    method: "GET",
     headers: {
       accept: "application/json"
+    },
+    cf: {
+      cacheTtl: 0,
+      cacheEverything: false
     }
   });
 
@@ -136,18 +144,20 @@ async function bybit(path, params = {}) {
 
   const data = await response.json();
 
-  if (data.retCode !== 0) {
+  if (n(data.retCode) !== 0) {
     throw new Error(
-      data.retMsg || `Bybit error ${data.retCode}`
+      data.retMsg ||
+      `Bybit error ${data.retCode}`
     );
   }
 
   return data;
 }
 
-const instrumentCache = new Map();
-
-async function instrumentInfo(category, symbol) {
+async function instrumentInfo(
+  category = "linear",
+  symbol = ""
+) {
   const key = `${category}:${symbol}`;
 
   if (instrumentCache.has(key)) {
@@ -162,37 +172,22 @@ async function instrumentInfo(category, symbol) {
     }
   );
 
-  const item = data?.result?.list?.[0];
+  const item =
+    data?.result?.list?.[0] || null;
 
-  const result = item
-    ? {
-        symbol: item.symbol,
-        tickSize: n(item.priceFilter?.tickSize),
-        minPrice: n(item.priceFilter?.minPrice),
-        maxPrice: n(item.priceFilter?.maxPrice),
-        qtyStep: n(item.lotSizeFilter?.qtyStep)
-      }
-    : {
-        symbol,
-        tickSize: 0,
-        minPrice: 0,
-        maxPrice: 0,
-        qtyStep: 0
-      };
+  if (item) {
+    instrumentCache.set(key, item);
+  }
 
-  instrumentCache.set(key, result);
-
-  return result;
+  return item;
 }
 
 async function kline(
   category,
   symbol,
-  interval = TF,
+  interval,
   limit = KLINE_LIMIT
 ) {
-  interval = normalizeInterval(interval);
-
   const data = await bybit(
     "/v5/market/kline",
     {
@@ -203,27 +198,26 @@ async function kline(
     }
   );
 
-  return (data?.result?.list || [])
-    .map(x => ({
-      time: n(x[0]),
-      open: n(x[1]),
-      high: n(x[2]),
-      low: n(x[3]),
-      close: n(x[4]),
-      volume: n(x[5]),
-      turnover: n(x[6])
+  const list =
+    data?.result?.list || [];
+
+  return list
+    .map(row => ({
+      time: n(row[0]),
+      open: n(row[1]),
+      high: n(row[2]),
+      low: n(row[3]),
+      close: n(row[4]),
+      volume: n(row[5]),
+      turnover: n(row[6])
     }))
-    .filter(x =>
-      x.time > 0 &&
-      x.open > 0 &&
-      x.high > 0 &&
-      x.low > 0 &&
-      x.close > 0
-    )
     .sort((a, b) => a.time - b.time);
 }
 
-async function ticker(category, symbol) {
+async function ticker(
+  category,
+  symbol
+) {
   const data = await bybit(
     "/v5/market/tickers",
     {
@@ -232,19 +226,7 @@ async function ticker(category, symbol) {
     }
   );
 
-  const item = data?.result?.list?.[0] || {};
-
-  return {
-    symbol,
-    lastPrice: n(item.lastPrice),
-    markPrice: n(item.markPrice),
-    indexPrice: n(item.indexPrice),
-    turnover24h: n(item.turnover24h),
-    volume24h: n(item.volume24h),
-    price24hPcnt: n(item.price24hPcnt),
-    openInterest: n(item.openInterest),
-    fundingRate: n(item.fundingRate)
-  };
+  return data?.result?.list?.[0] || {};
 }
 
 async function trades(
@@ -262,46 +244,24 @@ async function trades(
   );
 
   return (data?.result?.list || [])
-    .map(x => ({
-      id:
-        x.execId ||
-        x.id ||
-        `${x.time}-${x.price}-${x.size}`,
-
-      time: n(x.time),
-      price: n(x.price),
-      size: n(x.size),
-
-      side: String(x.side || "")
-        .trim()
-        .toUpperCase(),
-
-      isBlockTrade:
-        x.isBlockTrade === true ||
-        x.isBlockTrade === "true",
-
-      isRPITrade:
-        x.isRPITrade === true ||
-        x.isRPITrade === "true"
+    .map(t => ({
+      id: t.i || "",
+      time: n(t.T),
+      price: n(t.p),
+      size: n(t.v),
+      side: String(t.S || "").toUpperCase(),
+      isBlockTrade: Boolean(t.isBlockTrade)
     }))
-    .filter(x =>
-      x.time > 0 &&
-      x.price > 0 &&
-      x.size > 0 &&
-      (x.side === "BUY" || x.side === "SELL")
-    )
+    .filter(x => x.price > 0 && x.size >= 0)
     .sort((a, b) => a.time - b.time);
 }
 
 function aggressorSide(trade) {
-  const side = String(
-    trade?.side || ""
-  ).toUpperCase();
+  const side =
+    String(trade?.side || "")
+      .toUpperCase();
 
-  if (side === "BUY") return "BUY";
-  if (side === "SELL") return "SELL";
-
-  return "UNKNOWN";
+  return side === "BUY" ? "BUY" : "SELL";
 }
 
 async function orderbook(
@@ -321,420 +281,264 @@ async function orderbook(
   const result = data?.result || {};
 
   const bids = (result.b || [])
-    .map(x => {
-      const price = n(x[0]);
-      const size = n(x[1]);
-
-      return {
-        price,
-        size,
-        value: price * size
-      };
-    })
-    .filter(x =>
-      x.price > 0 &&
-      x.size > 0
-    );
+    .map(x => ({
+      price: n(x[0]),
+      size: n(x[1])
+    }))
+    .filter(x => x.price > 0)
+    .map(x => ({
+      ...x,
+      value: x.price * x.size
+    }));
 
   const asks = (result.a || [])
-    .map(x => {
-      const price = n(x[0]);
-      const size = n(x[1]);
-
-      return {
-        price,
-        size,
-        value: price * size
-      };
-    })
-    .filter(x =>
-      x.price > 0 &&
-      x.size > 0
-    );
+    .map(x => ({
+      price: n(x[0]),
+      size: n(x[1])
+    }))
+    .filter(x => x.price > 0)
+    .map(x => ({
+      ...x,
+      value: x.price * x.size
+    }));
 
   return {
+    ts: n(result.ts, Date.now()),
+    u: n(result.u),
+    seq: n(result.seq),
     bids,
     asks,
     bestBid: bids[0]?.price || 0,
-    bestAsk: asks[0]?.price || 0,
-    timestamp: n(data.time, Date.now())
+    bestAsk: asks[0]?.price || 0
   };
 }
 
-/* =========================================================
-   FLOW
-========================================================= */
+function flowFromTrades(list) {
+  const arr = Array.isArray(list) ? list : [];
 
-function flowFromTrades(
-  list,
-  start = 0,
-  end = Infinity
-) {
   let buyVolume = 0;
   let sellVolume = 0;
 
-  let buyValue = 0;
-  let sellValue = 0;
+  let buyNotional = 0;
+  let sellNotional = 0;
 
   let buyTrades = 0;
   let sellTrades = 0;
 
-  let firstTime = 0;
-  let lastTime = 0;
+  let largeBuyVolume = 0;
+  let largeSellVolume = 0;
 
-  for (const trade of list || []) {
-    if (
-      trade.time < start ||
-      trade.time > end
-    ) {
-      continue;
-    }
+  let blockBuyVolume = 0;
+  let blockSellVolume = 0;
 
-    if (!firstTime) {
-      firstTime = trade.time;
-    }
+  const notionals = arr
+    .map(t => n(t.price) * n(t.size))
+    .filter(x => x > 0);
 
-    lastTime = trade.time;
+  const averageNotional = avg(notionals);
 
-    const value =
-      trade.price *
-      trade.size;
+  const sortedNotionals =
+    [...notionals].sort((a, b) => a - b);
 
-    if (
-      aggressorSide(trade) === "BUY"
-    ) {
-      buyVolume += trade.size;
-      buyValue += value;
+  const p95 =
+    sortedNotionals.length
+      ? sortedNotionals[
+          Math.floor(
+            (sortedNotionals.length - 1) * 0.95
+          )
+        ]
+      : 0;
+
+  const largeThreshold =
+    Math.max(
+      averageNotional * 5,
+      p95
+    );
+
+  for (const trade of arr) {
+    const side = aggressorSide(trade);
+    const volume = n(trade.size);
+    const notional =
+      n(trade.price) * volume;
+
+    if (side === "BUY") {
+      buyVolume += volume;
+      buyNotional += notional;
       buyTrades++;
-    }
 
-    if (
-      aggressorSide(trade) === "SELL"
-    ) {
-      sellVolume += trade.size;
-      sellValue += value;
+      if (notional >= largeThreshold) {
+        largeBuyVolume += volume;
+      }
+
+      if (trade.isBlockTrade) {
+        blockBuyVolume += volume;
+      }
+    } else {
+      sellVolume += volume;
+      sellNotional += notional;
       sellTrades++;
+
+      if (notional >= largeThreshold) {
+        largeSellVolume += volume;
+      }
+
+      if (trade.isBlockTrade) {
+        blockSellVolume += volume;
+      }
     }
   }
 
-  const totalVolume =
-    buyVolume +
-    sellVolume;
-
-  const totalValue =
-    buyValue +
-    sellValue;
+  const volume =
+    buyVolume + sellVolume;
 
   const delta =
-    buyVolume -
-    sellVolume;
+    buyVolume - sellVolume;
 
-  const deltaValue =
-    buyValue -
-    sellValue;
+  const deltaPercent =
+    pct(delta, volume);
+
+  let pressure = "NEUTRAL";
+
+  if (deltaPercent >= 10) {
+    pressure = "BUY_PRESSURE";
+  } else if (deltaPercent <= -10) {
+    pressure = "SELL_PRESSURE";
+  }
 
   return {
     buyVolume,
     sellVolume,
-
-    buyValue,
-    sellValue,
-
-    buyNotional: buyValue,
-    sellNotional: sellValue,
-
-    totalVolume,
-    flowVolume: totalVolume,
-
-    totalValue,
-
-    delta,
-    deltaValue,
-
-    deltaPercent:
-      pct(delta, totalVolume),
-
-    deltaValuePercent:
-      pct(deltaValue, totalValue),
-
-    buyShare:
-      pct(buyVolume, totalVolume),
-
-    sellShare:
-      pct(sellVolume, totalVolume),
-
+    volume,
+    buyNotional,
+    sellNotional,
+    notional:
+      buyNotional + sellNotional,
     buyTrades,
     sellTrades,
-
-    tradeCount:
-      buyTrades +
-      sellTrades,
-
-    firstTime,
-    lastTime
+    delta,
+    deltaPercent,
+    pressure,
+    largeBuyVolume,
+    largeSellVolume,
+    blockBuyVolume,
+    blockSellVolume,
+    averageNotional,
+    largeThreshold
   };
 }
 
-/* =========================================================
-   FOOTPRINT
-========================================================= */
-
 function createLevel(price) {
   return {
-    price,
-
+    price: n(price),
     bidVolume: 0,
     askVolume: 0,
-
-    bidValue: 0,
-    askValue: 0,
-
-    bidTrades: 0,
-    askTrades: 0,
-
-    totalVolume: 0,
-    totalValue: 0,
-
     delta: 0,
-    deltaValue: 0,
-
-    imbalance: 0,
-    side: "NEUTRAL"
+    volume: 0,
+    buyTrades: 0,
+    sellTrades: 0
   };
 }
 
 function buildFootprints(
   candles,
   tradeList,
-  interval,
-  tickSize
+  tickSize = 0
 ) {
-  const duration =
-    intervalMs(interval);
-
-  const maps = new Map();
-
-  for (const candle of candles || []) {
-    maps.set(
-      candle.time,
-      new Map()
-    );
-  }
-
-  for (const trade of tradeList || []) {
-    const candleTime =
-      Math.floor(
-        trade.time / duration
-      ) * duration;
-
-    const map =
-      maps.get(candleTime);
-
-    if (!map) continue;
-
-    const price =
-      tickSize
-        ? roundToStep(
-            trade.price,
-            tickSize
-          )
-        : trade.price;
-
-    let level =
-      map.get(price);
-
-    if (!level) {
-      level =
-        createLevel(price);
-
-      map.set(price, level);
-    }
-
-    const value =
-      trade.price *
-      trade.size;
-
-    level.totalVolume +=
-      trade.size;
-
-    level.totalValue +=
-      value;
-
-    if (
-      aggressorSide(trade) === "BUY"
-    ) {
-      level.askVolume +=
-        trade.size;
-
-      level.askValue +=
-        value;
-
-      level.askTrades++;
-    }
-
-    if (
-      aggressorSide(trade) === "SELL"
-    ) {
-      level.bidVolume +=
-        trade.size;
-
-      level.bidValue +=
-        value;
-
-      level.bidTrades++;
-    }
-  }
-
   const result = [];
 
-  let cumulativeDeltaValue = 0;
-
   for (const candle of candles || []) {
-    const map =
-      maps.get(candle.time) ||
-      new Map();
+    const levels = new Map();
 
-    let buyVolume = 0;
-    let sellVolume = 0;
+    const relevant =
+      (tradeList || []).filter(
+        t =>
+          t.time >= candle.time &&
+          t.time <
+            candle.time +
+              intervalMs(
+                candle.interval || "1"
+              )
+      );
 
-    let buyValue = 0;
-    let sellValue = 0;
+    for (const trade of relevant) {
+      const rawPrice =
+        n(trade.price);
 
-    let buyTrades = 0;
-    let sellTrades = 0;
+      const price =
+        tickSize
+          ? roundToStep(
+              rawPrice,
+              tickSize
+            )
+          : rawPrice;
 
-    const levels = [];
+      const key = String(price);
 
-    for (const level of map.values()) {
+      if (!levels.has(key)) {
+        levels.set(
+          key,
+          createLevel(price)
+        );
+      }
+
+      const level = levels.get(key);
+      const volume = n(trade.size);
+
+      if (
+        aggressorSide(trade) ===
+        "BUY"
+      ) {
+        level.askVolume += volume;
+        level.buyTrades++;
+      } else {
+        level.bidVolume += volume;
+        level.sellTrades++;
+      }
+
+      level.volume += volume;
       level.delta =
         level.askVolume -
         level.bidVolume;
-
-      level.deltaValue =
-        level.askValue -
-        level.bidValue;
-
-      if (level.bidVolume > 0) {
-        level.imbalance =
-          level.askVolume /
-          level.bidVolume;
-      } else {
-        level.imbalance =
-          level.askVolume > 0
-            ? Infinity
-            : 0;
-      }
-
-      level.side =
-        level.askVolume >
-        level.bidVolume
-          ? "BUY"
-          : level.bidVolume >
-            level.askVolume
-            ? "SELL"
-            : "NEUTRAL";
-
-      buyVolume +=
-        level.askVolume;
-
-      sellVolume +=
-        level.bidVolume;
-
-      buyValue +=
-        level.askValue;
-
-      sellValue +=
-        level.bidValue;
-
-      buyTrades +=
-        level.askTrades;
-
-      sellTrades +=
-        level.bidTrades;
-
-      levels.push(level);
     }
 
-    levels.sort(
-      (a, b) =>
-        b.price - a.price
-    );
-
-    const flowVolume =
-      buyVolume +
-      sellVolume;
-
-    const totalValue =
-      buyValue +
-      sellValue;
-
-    const delta =
-      buyVolume -
-      sellVolume;
-
-    const deltaValue =
-      buyValue -
-      sellValue;
-
-    cumulativeDeltaValue +=
-      deltaValue;
-
-    const imbalances =
-      levels.filter(level =>
-        level.imbalance >= 3 ||
-        (
-          level.bidVolume > 0 &&
-          level.askVolume /
-            level.bidVolume <=
-            1 / 3
+    const levelArray =
+      [...levels.values()]
+        .sort(
+          (a, b) =>
+            b.price - a.price
         )
+        .slice(
+          0,
+          FOOTPRINT_MAX_LEVELS
+        );
+
+    const buyVolume =
+      sum(
+        levelArray,
+        x => x.askVolume
+      );
+
+    const sellVolume =
+      sum(
+        levelArray,
+        x => x.bidVolume
       );
 
     result.push({
-      time: candle.time,
-
-      open: candle.open,
-      high: candle.high,
-      low: candle.low,
-      close: candle.close,
-
-      volume: candle.volume,
-
-      flowVolume,
-
+      ...candle,
+      levels: levelArray,
+      footprint: levelArray,
       buyVolume,
       sellVolume,
-
-      buyValue,
-      sellValue,
-
-      buyTrades,
-      sellTrades,
-
-      tradeCount:
-        buyTrades +
-        sellTrades,
-
-      totalValue,
-
-      delta,
-      deltaValue,
-
+      flowVolume:
+        buyVolume + sellVolume,
+      delta:
+        buyVolume - sellVolume,
       deltaPercent:
-        pct(delta, flowVolume),
-
-      deltaValuePercent:
-        pct(deltaValue, totalValue),
-
-      cumulativeDeltaValue,
-
-      levels:
-        levels.slice(
-          0,
-          FOOTPRINT_MAX_LEVELS
-        ),
-
-      imbalances
+        pct(
+          buyVolume - sellVolume,
+          buyVolume + sellVolume
+        )
     });
   }
 
@@ -743,117 +547,108 @@ function buildFootprints(
 
 function candleSeries(
   candles,
-  footprints
+  tradeList
 ) {
-  const footprintMap =
-    new Map(
-      (footprints || [])
-        .map(x => [
-          x.time,
-          x
-        ])
-    );
+  return (candles || []).map(c => {
+    const relevant =
+      (tradeList || []).filter(
+        t =>
+          t.time >= c.time &&
+          t.time <
+            c.time + 60000
+      );
 
-  let cumulativeDelta =
-    0;
+    const flow =
+      flowFromTrades(relevant);
 
-  return (candles || []).map(
-    candle => {
-      const fp =
-        footprintMap.get(
-          candle.time
-        );
-
-      cumulativeDelta +=
-        fp?.deltaValue || 0;
-
-      return {
-        ...candle,
-
-        flowVolume:
-          fp?.flowVolume || 0,
-
-        buyVolume:
-          fp?.buyVolume || 0,
-
-        sellVolume:
-          fp?.sellVolume || 0,
-
-        buyValue:
-          fp?.buyValue || 0,
-
-        sellValue:
-          fp?.sellValue || 0,
-
-        delta:
-          fp?.delta || 0,
-
-        deltaValue:
-          fp?.deltaValue || 0,
-
-        deltaPercent:
-          fp?.deltaPercent || 0,
-
-        tradeCount:
-          fp?.tradeCount || 0,
-
-        cumulativeDeltaValue:
-          cumulativeDelta,
-
-        footprint:
-          fp?.levels || [],
-
-        imbalances:
-          fp?.imbalances || []
-      };
-    }
-  );
+    return {
+      ...c,
+      buyVolume: flow.buyVolume,
+      sellVolume: flow.sellVolume,
+      flowVolume: flow.volume,
+      delta: flow.delta,
+      deltaPercent:
+        flow.deltaPercent
+    };
+  });
 }
 
-/* =========================================================
-   ORDER BOOK
-========================================================= */
-
 function median(values) {
-  if (!values.length) return 0;
+  const a = (values || [])
+    .map(n)
+    .filter(x => x > 0)
+    .sort((x, y) => x - y);
 
-  const sorted =
-    [...values]
-      .sort((a, b) => a - b);
+  if (!a.length) return 0;
 
-  const middle =
-    Math.floor(
-      sorted.length / 2
-    );
+  const mid =
+    Math.floor(a.length / 2);
 
-  return sorted.length % 2
-    ? sorted[middle]
-    : (
-        sorted[middle - 1] +
-        sorted[middle]
-      ) / 2;
+  return a.length % 2
+    ? a[mid]
+    : (a[mid - 1] + a[mid]) / 2;
 }
 
 function wallAnalysis(book) {
-  const bids =
-    book?.bids || [];
+  const bids = book?.bids || [];
+  const asks = book?.asks || [];
 
-  const asks =
-    book?.asks || [];
+  const bidValues =
+    bids.map(x => n(x.value));
+
+  const askValues =
+    asks.map(x => n(x.value));
+
+  const bidMedian =
+    median(bidValues);
+
+  const askMedian =
+    median(askValues);
+
+  const buyThreshold =
+    Math.max(
+      bidMedian * 4,
+      avg(bidValues) * 3
+    );
+
+  const sellThreshold =
+    Math.max(
+      askMedian * 4,
+      avg(askValues) * 3
+    );
+
+  const buyWalls =
+    bids
+      .filter(
+        x =>
+          x.value >=
+          buyThreshold
+      )
+      .sort(
+        (a, b) =>
+          b.value - a.value
+      );
+
+  const sellWalls =
+    asks
+      .filter(
+        x =>
+          x.value >=
+          sellThreshold
+      )
+      .sort(
+        (a, b) =>
+          b.value - a.value
+      );
 
   const buyLiquidity =
-    sum(
-      bids.map(x => x.value)
-    );
+    sum(bids, x => x.value);
 
   const sellLiquidity =
-    sum(
-      asks.map(x => x.value)
-    );
+    sum(asks, x => x.value);
 
   const totalLiquidity =
-    buyLiquidity +
-    sellLiquidity;
+    buyLiquidity + sellLiquidity;
 
   const buyShare =
     pct(
@@ -867,79 +662,30 @@ function wallAnalysis(book) {
       totalLiquidity
     );
 
-  const bidMedian =
-    median(
-      bids.map(x => x.value)
-    );
+  let pressure = "NEUTRAL";
 
-  const askMedian =
-    median(
-      asks.map(x => x.value)
-    );
-
-  const buyWalls =
-    bids
-      .filter(x =>
-        bidMedian > 0 &&
-        x.value >=
-          bidMedian * 4
-      )
-      .sort(
-        (a, b) =>
-          b.value - a.value
-      )
-      .slice(0, 20);
-
-  const sellWalls =
-    asks
-      .filter(x =>
-        askMedian > 0 &&
-        x.value >=
-          askMedian * 4
-      )
-      .sort(
-        (a, b) =>
-          b.value - a.value
-      )
-      .slice(0, 20);
-
-  const pressure =
-    buyShare >
-    sellShare + 8
-      ? "BUY_PRESSURE"
-      : sellShare >
-        buyShare + 8
-        ? "SELL_PRESSURE"
-        : "NEUTRAL";
+  if (buyShare > sellShare + 8) {
+    pressure = "BUY_PRESSURE";
+  } else if (
+    sellShare >
+    buyShare + 8
+  ) {
+    pressure = "SELL_PRESSURE";
+  }
 
   return {
     buyLiquidity,
     sellLiquidity,
     totalLiquidity,
-
     buyShare,
     sellShare,
-
-    imbalance:
-      buyShare -
-      sellShare,
-
     pressure,
-
     buyWalls,
     sellWalls,
-
     nearBuyWall:
       buyWalls[0] || null,
-
     nearSellWall:
-      sellWalls[0] || null,
-
-    bestBid:
-      book?.bestBid || 0,
-
-    bestAsk:
-      book?.bestAsk || 0
+      sellWalls[0] || null
   };
 }
 
@@ -952,485 +698,368 @@ function liquidityHeatmap(book) {
     (book?.asks || [])
       .slice(0, HEATMAP_LEVELS);
 
-  const maxValue =
+  const all =
+    [...bids, ...asks];
+
+  const max =
     Math.max(
-      ...bids.map(
-        x => x.value
-      ),
-      ...asks.map(
-        x => x.value
-      ),
-      1
+      1,
+      ...all.map(x => n(x.value))
     );
 
-  return {
-    bids: bids.map(x => ({
-      ...x,
-      intensity:
-        clamp(
-          x.value /
-            maxValue,
-          0,
-          1
-        )
-    })),
-
-    asks: asks.map(x => ({
-      ...x,
-      intensity:
-        clamp(
-          x.value /
-            maxValue,
-          0,
-          1
-        )
-    })),
-
-    maxValue
-  };
+  return all.map(x => ({
+    price: x.price,
+    size: x.size,
+    value: x.value,
+    side:
+      bids.includes(x)
+        ? "BUY"
+        : "SELL",
+    intensity:
+      x.value / max
+  }));
 }
 
-function liquidityZones(
-  book,
-  price = 0
-) {
-  const bids =
-    book?.bids || [];
-
-  const asks =
-    book?.asks || [];
-
-  const bidMedian =
-    median(
-      bids.map(x => x.value)
-    );
-
-  const askMedian =
-    median(
-      asks.map(x => x.value)
-    );
+function liquidityZones(book) {
+  const walls =
+    wallAnalysis(book);
 
   const zones = [];
 
-  for (const x of bids) {
-    if (
-      bidMedian > 0 &&
-      x.value >=
-        bidMedian * 2
-    ) {
-      zones.push({
-        side: "BUY",
-        price: x.price,
-        value: x.value,
-
-        distancePercent:
-          price
-            ? Math.abs(
-                pct(
-                  x.price - price,
-                  price
-                )
-              )
-            : 0
-      });
-    }
+  for (const x of walls.buyWalls.slice(0, 20)) {
+    zones.push({
+      side: "BUY",
+      price: x.price,
+      size: x.size,
+      value: x.value,
+      strength: x.value
+    });
   }
 
-  for (const x of asks) {
-    if (
-      askMedian > 0 &&
-      x.value >=
-        askMedian * 2
-    ) {
-      zones.push({
-        side: "SELL",
-        price: x.price,
-        value: x.value,
-
-        distancePercent:
-          price
-            ? Math.abs(
-                pct(
-                  x.price - price,
-                  price
-                )
-              )
-            : 0
-      });
-    }
+  for (const x of walls.sellWalls.slice(0, 20)) {
+    zones.push({
+      side: "SELL",
+      price: x.price,
+      size: x.size,
+      value: x.value,
+      strength: x.value
+    });
   }
 
-  return zones
-    .sort(
-      (a, b) =>
-        b.value - a.value
-    )
-    .slice(0, 50);
+  return zones.sort(
+    (a, b) =>
+      b.strength - a.strength
+  );
 }
 
-/* =========================================================
-   ANALYSIS
-========================================================= */
+function candleStats(candles) {
+  const c =
+    candles?.[candles.length - 1];
 
-function candleStats(candle) {
-  const range =
-    Math.max(
-      0,
-      candle.high -
-        candle.low
-    );
+  if (!c) {
+    return {
+      body: 0,
+      range: 0,
+      upperWick: 0,
+      lowerWick: 0,
+      bodyPercent: 0
+    };
+  }
 
   const body =
     Math.abs(
-      candle.close -
-      candle.open
+      c.close - c.open
     );
 
+  const range =
+    Math.max(
+      0,
+      c.high - c.low
+    );
+
+  const upperWick =
+    c.high -
+    Math.max(c.open, c.close);
+
+  const lowerWick =
+    Math.min(c.open, c.close) -
+    c.low;
+
   return {
-    range,
     body,
-
+    range,
+    upperWick,
+    lowerWick,
     bodyPercent:
-      pct(body, range),
-
-    upperWick:
-      candle.high -
-      Math.max(
-        candle.open,
-        candle.close
-      ),
-
-    lowerWick:
-      Math.min(
-        candle.open,
-        candle.close
-      ) -
-      candle.low,
-
-    bullish:
-      candle.close >=
-      candle.open
+      pct(body, range)
   };
 }
 
 function detectSweep(candles) {
-  if (
-    candles.length < 5
-  ) {
+  if (!candles || candles.length < 5) {
     return {
       detected: false,
-      side: "NONE",
-      price: 0,
-      strength: 0
+      side: null,
+      price: 0
     };
   }
 
-  const current =
-    candles.at(-1);
+  const last =
+    candles[candles.length - 1];
 
   const previous =
-    candles.slice(-6, -1);
+    candles.slice(
+      Math.max(0, candles.length - 6),
+      -1
+    );
 
   const previousHigh =
     Math.max(
-      ...previous.map(
-        x => x.high
-      )
+      ...previous.map(x => n(x.high))
     );
 
   const previousLow =
     Math.min(
-      ...previous.map(
-        x => x.low
-      )
+      ...previous.map(x => n(x.low))
     );
 
-  const range =
-    current.high -
-    current.low || 1;
-
   if (
-    current.high >
-      previousHigh &&
-    current.close <
-      previousHigh
+    last.high > previousHigh &&
+    last.close < previousHigh
   ) {
     return {
       detected: true,
       side: "SELL",
-      type: "HIGH_SWEEP",
-      price: current.high,
-      strength:
-        pct(
-          current.high -
-            current.close,
-          range
-        )
+      price: last.high,
+      type: "HIGH_SWEEP"
     };
   }
 
   if (
-    current.low <
-      previousLow &&
-    current.close >
-      previousLow
+    last.low < previousLow &&
+    last.close > previousLow
   ) {
     return {
       detected: true,
       side: "BUY",
-      type: "LOW_SWEEP",
-      price: current.low,
-      strength:
-        pct(
-          current.close -
-            current.low,
-          range
-        )
+      price: last.low,
+      type: "LOW_SWEEP"
     };
   }
 
   return {
     detected: false,
-    side: "NONE",
+    side: null,
     price: 0,
-    strength: 0
+    type: null
   };
 }
 
 function detectTradeSweep(
-  list
+  tradesList,
+  book
 ) {
-  const recent =
-    list.slice(-50);
-
-  let buy = 0;
-  let sell = 0;
-
-  for (const trade of recent) {
-    const value =
-      trade.price *
-      trade.size;
-
-    if (
-      aggressorSide(trade) ===
-      "BUY"
-    ) {
-      buy += value;
-    }
-
-    if (
-      aggressorSide(trade) ===
-      "SELL"
-    ) {
-      sell += value;
-    }
-  }
-
-  if (
-    buy > sell * 2
-  ) {
+  if (!tradesList?.length) {
     return {
-      detected: true,
-      side: "BUY",
-      value: buy,
-      ratio:
-        sell
-          ? buy / sell
-          : Infinity
+      detected: false
     };
   }
 
+  const flow =
+    flowFromTrades(
+      tradesList.slice(-150)
+    );
+
+  const bestBid =
+    n(book?.bestBid);
+
+  const bestAsk =
+    n(book?.bestAsk);
+
   if (
-    sell > buy * 2
+    flow.sellVolume >
+      flow.buyVolume * 2 &&
+    bestBid > 0
   ) {
     return {
       detected: true,
       side: "SELL",
-      value: sell,
-      ratio:
-        buy
-          ? sell / buy
-          : Infinity
+      price: bestBid,
+      delta: flow.delta
+    };
+  }
+
+  if (
+    flow.buyVolume >
+      flow.sellVolume * 2 &&
+    bestAsk > 0
+  ) {
+    return {
+      detected: true,
+      side: "BUY",
+      price: bestAsk,
+      delta: flow.delta
     };
   }
 
   return {
-    detected: false,
-    side: "NONE",
-    value:
-      Math.max(
-        buy,
-        sell
-      ),
-    ratio: 1
+    detected: false
   };
 }
 
 function detectAbsorption(
   candles,
-  flow,
-  book
+  flow
 ) {
-  const candle =
-    candles.at(-1);
-
-  if (!candle) {
-    return {
-      detected: false,
-      side: "NONE",
-      strength: 0
-    };
-  }
-
   const stats =
-    candleStats(candle);
+    candleStats(candles);
 
   if (
-    flow.deltaPercent > 20 &&
-    stats.bodyPercent < 35 &&
-    book.buyShare <
-      book.sellShare + 5
+    !stats.range ||
+    !flow?.volume
   ) {
     return {
-      detected: true,
-      side: "SELL",
-      type: "BUY_ABSORPTION",
-
-      strength:
-        clamp(
-          Math.abs(
-            flow.deltaPercent
-          ) +
-            (35 -
-              stats.bodyPercent),
-          0,
-          100
-        ),
-
-      price: candle.close,
-      range: stats.range
+      detected: false,
+      side: null,
+      type: null
     };
   }
 
+  const bodyRatio =
+    stats.body /
+    stats.range;
+
+  const deltaPct =
+    n(flow.deltaPercent);
+
   if (
-    flow.deltaPercent < -20 &&
-    stats.bodyPercent < 35 &&
-    book.sellShare <
-      book.buyShare + 5
+    bodyRatio < 0.35 &&
+    deltaPct <= -15
   ) {
     return {
       detected: true,
       side: "BUY",
-      type: "SELL_ABSORPTION",
-
+      type: "BUY_ABSORPTION",
       strength:
-        clamp(
-          Math.abs(
-            flow.deltaPercent
-          ) +
-            (35 -
-              stats.bodyPercent),
-          0,
-          100
-        ),
+        Math.abs(deltaPct)
+    };
+  }
 
-      price: candle.close,
-      range: stats.range
+  if (
+    bodyRatio < 0.35 &&
+    deltaPct >= 15
+  ) {
+    return {
+      detected: true,
+      side: "SELL",
+      type: "SELL_ABSORPTION",
+      strength:
+        Math.abs(deltaPct)
     };
   }
 
   return {
     detected: false,
-    side: "NONE",
-    strength: 0,
-    price: candle.close
+    side: null,
+    type: null,
+    strength: 0
   };
 }
 
 function sma(values, period) {
-  if (!values.length) return 0;
+  const arr =
+    (values || []).map(n);
+
+  if (!arr.length) return 0;
+
+  const p =
+    Math.max(
+      1,
+      Math.min(
+        period,
+        arr.length
+      )
+    );
 
   return avg(
-    values.slice(-period)
+    arr.slice(
+      arr.length - p
+    )
   );
 }
 
 function ema(values, period) {
-  if (!values.length) return 0;
+  const arr =
+    (values || []).map(n);
 
-  const data =
-    values.slice(
-      Math.max(
-        0,
-        values.length -
-          period * 3
+  if (!arr.length) return 0;
+
+  const p =
+    Math.max(
+      1,
+      Math.min(
+        period,
+        arr.length
       )
     );
 
-  if (!data.length) return 0;
-
   const k =
-    2 / (period + 1);
+    2 / (p + 1);
 
-  let result =
-    data[0];
+  let value =
+    arr
+      .slice(0, p)
+      .reduce(
+        (a, b) => a + b,
+        0
+      ) / p;
 
   for (
-    let i = 1;
-    i < data.length;
+    let i = p;
+    i < arr.length;
     i++
   ) {
-    result =
-      data[i] * k +
-      result * (1 - k);
+    value =
+      arr[i] * k +
+      value * (1 - k);
   }
 
-  return result;
+  return value;
 }
 
-function atr(
-  candles,
-  period = 14
-) {
+function atr(candles, period = 14) {
   if (
+    !candles ||
     candles.length < 2
   ) {
     return 0;
   }
 
-  const ranges = [];
+  const tr = [];
 
   for (
     let i = 1;
     i < candles.length;
     i++
   ) {
-    const current =
-      candles[i];
+    const c = candles[i];
+    const p = candles[i - 1];
 
-    const previous =
-      candles[i - 1];
-
-    ranges.push(
+    tr.push(
       Math.max(
-        current.high -
-          current.low,
-
+        c.high - c.low,
         Math.abs(
-          current.high -
-            previous.close
+          c.high - p.close
         ),
-
         Math.abs(
-          current.low -
-            previous.close
+          c.low - p.close
         )
       )
     );
   }
 
   return sma(
-    ranges,
+    tr,
     period
   );
 }
@@ -1440,397 +1069,364 @@ function rsi(
   period = 14
 ) {
   if (
-    candles.length <
-    period + 1
+    !candles ||
+    candles.length < period + 1
   ) {
     return 50;
   }
 
-  let gain = 0;
-  let loss = 0;
+  const closes =
+    candles.map(
+      x => n(x.close)
+    );
+
+  let gains = 0;
+  let losses = 0;
 
   for (
-    let i =
-      candles.length -
-      period;
-
-    i <
-      candles.length;
-
+    let i = 1;
+    i <= period;
     i++
   ) {
-    const change =
-      candles[i].close -
-      candles[i - 1].close;
+    const diff =
+      closes[i] -
+      closes[i - 1];
 
-    if (change >= 0) {
-      gain += change;
+    if (diff >= 0) {
+      gains += diff;
     } else {
-      loss +=
-        Math.abs(change);
+      losses +=
+        Math.abs(diff);
     }
   }
 
-  if (!loss) return 100;
+  let avgGain =
+    gains / period;
+
+  let avgLoss =
+    losses / period;
+
+  for (
+    let i = period + 1;
+    i < closes.length;
+    i++
+  ) {
+    const diff =
+      closes[i] -
+      closes[i - 1];
+
+    const gain =
+      diff > 0 ? diff : 0;
+
+    const loss =
+      diff < 0
+        ? Math.abs(diff)
+        : 0;
+
+    avgGain =
+      (avgGain * (period - 1) +
+        gain) /
+      period;
+
+    avgLoss =
+      (avgLoss * (period - 1) +
+        loss) /
+      period;
+  }
+
+  if (!avgLoss) return 100;
 
   const rs =
-    gain / loss;
+    avgGain / avgLoss;
 
-  return (
-    100 -
-    100 / (1 + rs)
-  );
+  return 100 -
+    100 / (1 + rs);
 }
 
 function structure(candles) {
-  if (
-    candles.length < 20
-  ) {
+  if (!candles?.length) {
     return {
-      trend: "NEUTRAL",
       direction: "NEUTRAL",
-      strength: 0
+      ma5: 0,
+      ma20: 0,
+      rsi: 50,
+      atr: 0
     };
   }
 
   const closes =
     candles.map(
-      x => x.close
+      x => n(x.close)
     );
 
-  const short =
+  const ma5 =
     sma(closes, 5);
-
-  const long =
-    sma(closes, 20);
-
-  const last =
-    closes.at(-1);
-
-  const averageRange =
-    atr(candles, 14) ||
-    1;
-
-  const strength =
-    clamp(
-      Math.abs(
-        last - long
-      ) /
-        averageRange *
-        25,
-      0,
-      100
-    );
-
-  if (
-    short > long &&
-    last > long
-  ) {
-    return {
-      trend: "BULLISH",
-      direction: "BUY",
-      strength
-    };
-  }
-
-  if (
-    short < long &&
-    last < long
-  ) {
-    return {
-      trend: "BEARISH",
-      direction: "SELL",
-      strength
-    };
-  }
-
-  return {
-    trend: "NEUTRAL",
-    direction: "NEUTRAL",
-    strength: 0
-  };
-}
-
-function entry1m(candles) {
-  if (
-    candles.length < 20
-  ) {
-    return {
-      direction: "WAIT",
-      price:
-        candles.at(-1)?.close ||
-        0,
-      confidence: 0
-    };
-  }
-
-  const closes =
-    candles.map(
-      x => x.close
-    );
 
   const ma20 =
     sma(closes, 20);
 
-  const last =
-    closes.at(-1);
+  const current =
+    closes[closes.length - 1];
 
-  const r =
-    rsi(candles, 14);
-
-  if (
-    last > ma20 &&
-    r >= 50
-  ) {
-    return {
-      direction: "BUY",
-      price: last,
-      confidence:
-        clamp(
-          50 +
-            (r - 50),
-          0,
-          100
-        ),
-      ma20,
-      rsi: r
-    };
-  }
+  let direction =
+    "NEUTRAL";
 
   if (
-    last < ma20 &&
-    r <= 50
+    current > ma20 &&
+    ma5 > ma20
   ) {
-    return {
-      direction: "SELL",
-      price: last,
-      confidence:
-        clamp(
-          50 +
-            (50 - r),
-          0,
-          100
-        ),
-      ma20,
-      rsi: r
-    };
+    direction = "BULLISH";
+  } else if (
+    current < ma20 &&
+    ma5 < ma20
+  ) {
+    direction = "BEARISH";
   }
 
   return {
-    direction: "WAIT",
-    price: last,
-    confidence: 40,
+    direction,
+    ma5,
     ma20,
-    rsi: r
+    rsi:
+      rsi(candles),
+    atr:
+      atr(candles)
   };
 }
 
-function pressureFromFlow(flow) {
+function entry1m(candles) {
+  if (!candles?.length) {
+    return {
+      direction: "WAIT",
+      ma20: 0,
+      price: 0,
+      rsi: 50
+    };
+  }
+
+  const closes =
+    candles.map(
+      x => n(x.close)
+    );
+
+  const price =
+    closes[closes.length - 1];
+
+  const ma20 =
+    sma(closes, 20);
+
+  const valueRsi =
+    rsi(candles);
+
+  let direction =
+    "WAIT";
+
   if (
-    flow.deltaPercent >= 10
+    price > ma20 &&
+    valueRsi >= 45
   ) {
-    return "BUY_PRESSURE";
+    direction = "BUY";
   }
 
   if (
-    flow.deltaPercent <= -10
+    price < ma20 &&
+    valueRsi <= 55
   ) {
-    return "SELL_PRESSURE";
+    direction = "SELL";
+  }
+
+  return {
+    direction,
+    price,
+    ma20,
+    rsi: valueRsi
+  };
+}
+
+function pressureFromFlow(
+  flow,
+  book
+) {
+  const tradePressure =
+    flow?.pressure ||
+    "NEUTRAL";
+
+  const bookPressure =
+    book?.pressure ||
+    "NEUTRAL";
+
+  if (
+    tradePressure ===
+      "BUY_PRESSURE" &&
+    bookPressure ===
+      "BUY_PRESSURE"
+  ) {
+    return "STRONG_BUY";
+  }
+
+  if (
+    tradePressure ===
+      "SELL_PRESSURE" &&
+    bookPressure ===
+      "SELL_PRESSURE"
+  ) {
+    return "STRONG_SELL";
+  }
+
+  if (
+    tradePressure ===
+      "BUY_PRESSURE" ||
+    bookPressure ===
+      "BUY_PRESSURE"
+  ) {
+    return "BUY";
+  }
+
+  if (
+    tradePressure ===
+      "SELL_PRESSURE" ||
+    bookPressure ===
+      "SELL_PRESSURE"
+  ) {
+    return "SELL";
   }
 
   return "NEUTRAL";
 }
 
 function movement(candles) {
-  if (
-    candles.length < 2
-  ) {
+  if (!candles?.length) {
     return {
-      percent: 0,
-      direction: "NEUTRAL"
+      change: 0,
+      changePercent: 0
     };
   }
 
-  const previous =
-    candles.at(-2).close;
+  const first =
+    candles[0];
 
-  const current =
-    candles.at(-1).close;
+  const last =
+    candles[candles.length - 1];
 
   const change =
-    pct(
-      current -
-        previous,
-      previous
-    );
+    last.close -
+    first.open;
 
   return {
-    percent: change,
-
-    direction:
-      change > 0
-        ? "UP"
-        : change < 0
-          ? "DOWN"
-          : "NEUTRAL"
+    change,
+    changePercent:
+      pct(
+        change,
+        first.open
+      )
   };
 }
 
-function supportResistance(
-  candles
-) {
+function supportResistance(candles) {
+  if (!candles?.length) {
+    return {
+      support: [],
+      resistance: []
+    };
+  }
+
   const lows =
-    [
-      ...new Set(
-        candles.map(
-          x => x.low
-        )
-      )
-    ]
-      .sort(
-        (a, b) => a - b
-      );
+    candles
+      .map(x => n(x.low))
+      .filter(x => x > 0)
+      .sort((a, b) => a - b);
 
   const highs =
-    [
-      ...new Set(
-        candles.map(
-          x => x.high
-        )
-      )
-    ]
-      .sort(
-        (a, b) => a - b
-      );
+    candles
+      .map(x => n(x.high))
+      .filter(x => x > 0)
+      .sort((a, b) => a - b);
 
   return {
-    supports:
-      lows
-        .slice(0, 8)
-        .sort(
-          (a, b) => b - a
-        ),
-
-    resistances:
-      highs
-        .slice(-8)
-        .sort(
-          (a, b) => a - b
-        )
+    support:
+      [...new Set(lows)]
+        .slice(0, 5),
+    resistance:
+      [...new Set(highs)]
+        .reverse()
+        .slice(0, 5)
   };
 }
 
 function structuralZone(
   candles,
-  price
+  currentPrice
 ) {
-  const recent =
-    candles.slice(-20);
-
-  if (
-    !recent.length ||
-    !price
-  ) {
-    return {
-      low: 0,
-      high: 0,
-      mid: 0,
-      type: "NONE"
-    };
+  if (!candles?.length) {
+    return null;
   }
 
-  const low =
-    Math.min(
-      ...recent.map(
-        x => x.low
-      )
+  const range =
+    atr(candles, 14) ||
+    Math.abs(
+      candles[candles.length - 1].high -
+      candles[candles.length - 1].low
     );
 
-  const high =
-    Math.max(
-      ...recent.map(
-        x => x.high
-      )
-    );
-
-  const mid =
-    (low + high) / 2;
+  if (!range) return null;
 
   return {
-    low,
-    high,
-    mid,
-
-    type:
-      price >= mid
-        ? "PREMIUM"
-        : "DISCOUNT"
+    low:
+      currentPrice - range,
+    high:
+      currentPrice + range,
+    center:
+      currentPrice,
+    width:
+      range
   };
 }
 
-function blockTrades(list) {
-  if (!list.length) return [];
+function blockTrades(
+  tradesList
+) {
+  const arr =
+    tradesList || [];
 
-  const values =
-    list
-      .map(
-        x =>
-          x.price *
-          x.size
-      )
-      .sort(
-        (a, b) => a - b
-      );
+  if (!arr.length) return [];
 
-  const average =
-    avg(values);
-
-  const p95 =
-    values[
-      Math.min(
-        values.length - 1,
-        Math.floor(
-          values.length *
-            0.95
-        )
-      )
-    ] || 0;
+  const notionals =
+    arr.map(
+      t =>
+        n(t.price) *
+        n(t.size)
+    );
 
   const threshold =
     Math.max(
-      average * 5,
-      p95
+      avg(notionals) * 5,
+      median(notionals)
     );
 
-  return list
-    .map(x => ({
-      ...x,
-
-      value:
-        x.price *
-        x.size,
-
-      aggressor:
-        aggressorSide(x)
-    }))
+  return arr
     .filter(
-      x =>
-        x.value >=
+      t =>
+        n(t.price) *
+          n(t.size) >=
         threshold
     )
-    .sort(
-      (a, b) =>
-        b.value -
-        a.value
-    )
-    .slice(0, 50);
+    .slice(-50)
+    .map(t => ({
+      time: t.time,
+      price: t.price,
+      size: t.size,
+      value:
+        t.price * t.size,
+      aggressor:
+        aggressorSide(t),
+      isBlockTrade:
+        Boolean(t.isBlockTrade)
+    }));
 }
 
-/* =========================================================
-   OI / FUNDING
-========================================================= */
-
-async function oiFunding(symbol) {
+async function oiFunding(
+  symbol
+) {
   try {
     const [
       tickerData,
@@ -1844,134 +1440,187 @@ async function oiFunding(symbol) {
           symbol
         }
       ),
-
       bybit(
         "/v5/market/open-interest",
         {
           category: "linear",
           symbol,
           intervalTime: "5min",
-          limit: 50
+          limit: 1
         }
       ),
-
       bybit(
         "/v5/market/funding/history",
         {
           category: "linear",
           symbol,
-          limit: 10
+          limit: 1
         }
       )
     ]);
 
     const tickerItem =
-      tickerData?.result
-        ?.list?.[0] || {};
+      tickerData?.result?.list?.[0] ||
+      {};
 
-    const oiHistory =
-      (
-        oiData?.result?.list ||
-        []
-      )
-        .map(x => ({
-          time:
-            n(x.timestamp),
+    const oiItem =
+      oiData?.result?.list?.[0] ||
+      {};
 
-          oi:
-            n(x.openInterest)
-        }))
-        .sort(
-          (a, b) =>
-            a.time - b.time
-        );
-
-    const fundingHistory =
-      (
-        fundingData?.result
-          ?.list || []
-      )
-        .map(x => ({
-          time:
-            n(
-              x.fundingRateTimestamp
-            ),
-
-          fundingRate:
-            n(
-              x.fundingRate
-            )
-        }))
-        .sort(
-          (a, b) =>
-            a.time - b.time
-        );
-
-    const currentOI =
-      n(
-        tickerItem.openInterest
-      ) ||
-      oiHistory.at(-1)?.oi ||
-      0;
-
-    const previousOI =
-      oiHistory.at(-2)?.oi ||
-      currentOI;
+    const fundingItem =
+      fundingData?.result?.list?.[0] ||
+      {};
 
     return {
-      currentOI,
-
-      previousOI,
-
-      changePercent:
-        pct(
-          currentOI -
-            previousOI,
-          previousOI
-        ),
-
+      openInterest:
+        n(oiItem.openInterest),
+      openInterestTime:
+        n(oiItem.timestamp),
       fundingRate:
         n(
-          tickerItem.fundingRate
-        ) ||
-        fundingHistory.at(-1)
-          ?.fundingRate ||
-        0,
-
-      oiHistory,
-      fundingHistory
+          fundingItem.fundingRate
+        ),
+      fundingTime:
+        n(
+          fundingItem.fundingRateTimestamp
+        ),
+      markPrice:
+        n(tickerItem.markPrice),
+      indexPrice:
+        n(tickerItem.indexPrice)
     };
   } catch {
     return {
-      currentOI: 0,
-      previousOI: 0,
-      changePercent: 0,
+      openInterest: 0,
+      openInterestTime: 0,
       fundingRate: 0,
-      oiHistory: [],
-      fundingHistory: []
+      fundingTime: 0,
+      markPrice: 0,
+      indexPrice: 0
     };
   }
 }
 
-/* =========================================================
-   CHART DATA
-========================================================= */
+function aggregateCandles(
+  rows,
+  interval
+) {
+  const ms =
+    intervalMs(interval);
+
+  const map =
+    new Map();
+
+  for (const row of rows || []) {
+    const time =
+      Math.floor(
+        n(row.time) / ms
+      ) * ms;
+
+    if (!map.has(time)) {
+      map.set(time, {
+        time,
+        open: n(row.open),
+        high: n(row.high),
+        low: n(row.low),
+        close: n(row.close),
+        volume: 0,
+        turnover: 0,
+        buyVolume: 0,
+        sellVolume: 0,
+        delta: 0,
+        buyNotional: 0,
+        sellNotional: 0,
+        bidVolume: 0,
+        askVolume: 0
+      });
+    }
+
+    const c =
+      map.get(time);
+
+    c.high =
+      Math.max(
+        c.high,
+        n(row.high)
+      );
+
+    c.low =
+      Math.min(
+        c.low,
+        n(row.low)
+      );
+
+    c.close =
+      n(row.close);
+
+    c.volume +=
+      n(
+        row.volume ??
+        row.flowVolume
+      );
+
+    c.turnover +=
+      n(row.turnover);
+
+    c.buyVolume +=
+      n(row.buyVolume);
+
+    c.sellVolume +=
+      n(row.sellVolume);
+
+    c.delta +=
+      n(row.delta);
+
+    c.buyNotional +=
+      n(row.buyNotional);
+
+    c.sellNotional +=
+      n(row.sellNotional);
+
+    c.bidVolume +=
+      n(row.bidVolume);
+
+    c.askVolume +=
+      n(row.askVolume);
+  }
+
+  return [...map.values()]
+    .sort(
+      (a, b) =>
+        a.time - b.time
+    )
+    .map(c => ({
+      ...c,
+      flowVolume:
+        c.buyVolume +
+        c.sellVolume,
+      deltaPercent:
+        pct(
+          c.delta,
+          c.buyVolume +
+            c.sellVolume
+        )
+    }));
+}
 
 async function buildChartData(
   symbol,
-  interval = TF
+  interval = "1"
 ) {
   symbol =
     normalizeSymbol(symbol);
 
   interval =
-    normalizeInterval(
-      interval
-    );
+    normalizeInterval(interval);
 
   const [
-    candles,
-    tick,
+    candles1m,
+    candles3m,
+    candles5m,
+    candles15m,
+    selectedCandles,
+    currentTicker,
     book,
     tradeList,
     instrument
@@ -1979,358 +1628,84 @@ async function buildChartData(
     kline(
       "linear",
       symbol,
+      TF,
+      KLINE_LIMIT
+    ),
+    kline(
+      "linear",
+      symbol,
+      TF3,
+      KLINE_LIMIT
+    ),
+    kline(
+      "linear",
+      symbol,
+      TF5,
+      KLINE_LIMIT
+    ),
+    kline(
+      "linear",
+      symbol,
+      TF15,
+      KLINE_LIMIT
+    ),
+    kline(
+      "linear",
+      symbol,
       interval,
       CHART_LIMIT
     ),
-
     ticker(
       "linear",
       symbol
     ),
-
     orderbook(
       "linear",
       symbol,
       ORDERBOOK_LIMIT
     ),
-
     trades(
       "linear",
       symbol,
       TRADE_LIMIT
     ),
-
     instrumentInfo(
       "linear",
       symbol
     )
   ]);
 
-  const footprints =
-    buildFootprints(
-      candles,
-      tradeList,
-      interval,
-      instrument.tickSize || 0
+  const tickSize =
+    n(
+      instrument
+        ?.priceFilter
+        ?.tickSize
     );
 
-  const chartCandles =
+  const selectedWithFlow =
     candleSeries(
-      candles,
-      footprints
-    );
-
-  const currentFlow =
-    flowFromTrades(
+      selectedCandles,
       tradeList
     );
 
-  const wall =
-    wallAnalysis(book);
+  for (const c of selectedWithFlow) {
+    c.interval = interval;
+  }
 
-  return {
-    ok: true,
-
-    version: VERSION,
-
-    category: "linear",
-
-    symbol,
-
-    interval,
-
-    intervalMs:
-      intervalMs(interval),
-
-    tickSize:
-      instrument.tickSize || 0,
-
-    priceStep:
-      instrument.tickSize || 0,
-
-    levelMode: "TICK",
-
-    source: "BYBIT_REST",
-
-    serverTime:
-      Date.now(),
-
-    price:
-      tick.lastPrice,
-
-    ticker: tick,
-
-    candles:
-      chartCandles,
-
-    selectedCandles:
-      chartCandles,
-
-    footprints,
-
-    footprint: {
-      interval,
-
-      intervalMs:
-        intervalMs(interval),
-
-      tickSize:
-        instrument.tickSize || 0,
-
-      levelMode: "TICK",
-
-      candles: footprints,
-
-      cumulativeDeltaValue:
-        footprints.reduce(
-          (s, x) =>
-            s +
-            (x.deltaValue || 0),
-          0
-        )
-    },
-
-    candleDelta:
-      chartCandles.map(
-        x => ({
-          time: x.time,
-          buy: x.buyVolume,
-          sell: x.sellVolume,
-          delta: x.delta,
-          deltaValue:
-            x.deltaValue,
-          deltaPercent:
-            x.deltaPercent,
-          trades:
-            x.tradeCount,
-          cumulativeDeltaValue:
-            x.cumulativeDeltaValue
-        })
-      ),
-
-    currentFlow,
-
-    historicalFlow:
-      currentFlow,
-
-    flow:
-      currentFlow,
-
-    orderbook: book,
-
-    wall,
-
-    heatmap:
-      liquidityHeatmap(book),
-
-    liquidityZones:
-      liquidityZones(
-        book,
-        tick.lastPrice
-      ),
-
-    sweep:
-      detectSweep(candles),
-
-    tradeSweep:
-      detectTradeSweep(
-        tradeList
-      ),
-
-    absorption:
-      detectAbsorption(
-        candles,
-        currentFlow,
-        wall
-      ),
-
-    blocks:
-      blockTrades(
-        tradeList
-      ),
-
-    imbalances:
-      footprints
-        .flatMap(
-          footprint =>
-            (
-              footprint.imbalances ||
-              []
-            ).map(
-              level => ({
-                time:
-                  footprint.time,
-
-                price:
-                  level.price,
-
-                imbalance:
-                  level.imbalance,
-
-                side:
-                  level.side,
-
-                bidVolume:
-                  level.bidVolume,
-
-                askVolume:
-                  level.askVolume,
-
-                delta:
-                  level.delta,
-
-                deltaValue:
-                  level.deltaValue
-              })
-            )
-        )
-        .slice(-500),
-
-    trades:
-      tradeList.slice(-250)
-  };
-}
-
-/* =========================================================
-   ANALYZE
-========================================================= */
-
-async function analyze(
-  symbol,
-  selectedInterval = TF
-) {
-  symbol =
-    normalizeSymbol(symbol);
-
-  selectedInterval =
-    normalizeInterval(
-      selectedInterval
-    );
-
-  const intervalSet =
-    new Set([
-      TF1,
-      TF3,
-      TF,
-      TF15,
-      selectedInterval
-    ]);
-
-  const requests =
-    [...intervalSet].map(
-      interval =>
-        kline(
-          "linear",
-          symbol,
-          interval,
-          KLINE_LIMIT
-        ).then(
-          candles => [
-            interval,
-            candles
-          ]
-        )
-    );
-
-  const [
-    candlePairs,
-    tick,
-    book,
-    tradeList,
-    instrument
-  ] = await Promise.all([
-    Promise.all(requests),
-
-    ticker(
-      "linear",
-      symbol
-    ),
-
-    orderbook(
-      "linear",
-      symbol,
-      ORDERBOOK_LIMIT
-    ),
-
-    trades(
-      "linear",
-      symbol,
-      TRADE_LIMIT
-    ),
-
-    instrumentInfo(
-      "linear",
-      symbol
-    )
-  ]);
-
-  const candleMap =
-    new Map(candlePairs);
-
-  const candles1 =
-    candleMap.get("1") ||
-    [];
-
-  const candles3 =
-    candleMap.get("3") ||
-    [];
-
-  const candles5 =
-    candleMap.get("5") ||
-    [];
-
-  const candles15 =
-    candleMap.get("15") ||
-    [];
-
-  const selected =
-    candleMap.get(
-      selectedInterval
-    ) || [];
-
-  const tickSize =
-    instrument.tickSize || 0;
-
-  const selectedFootprints =
+  const footprints =
     buildFootprints(
-      selected,
+      selectedCandles.map(c => ({
+        ...c,
+        interval
+      })),
       tradeList,
-      selectedInterval,
       tickSize
     );
 
-  const selectedCandles =
-    candleSeries(
-      selected,
-      selectedFootprints
-    );
-
-  const currentSelected =
-    selected.at(-1);
-
-  const currentStart =
-    currentSelected?.time || 0;
-
-  const currentEnd =
-    currentStart +
-    intervalMs(
-      selectedInterval
-    ) -
-    1;
-
-  const historicalFlow =
-    flowFromTrades(
-      tradeList,
-      currentStart,
-      currentEnd
-    );
-
   const currentFlow =
-    historicalFlow.tradeCount >= 8
-      ? historicalFlow
-      : flowFromTrades(
-          tradeList
-        );
+    flowFromTrades(
+      tradeList.slice(-500)
+    );
 
   const wall =
     wallAnalysis(book);
@@ -2339,165 +1714,286 @@ async function analyze(
     liquidityHeatmap(book);
 
   const zones =
-    liquidityZones(
-      book,
-      tick.lastPrice
-    );
-
-  const absorption =
-    detectAbsorption(
-      selected,
-      currentFlow,
-      wall
-    );
+    liquidityZones(book);
 
   const sweep =
     detectSweep(
-      selected
+      selectedWithFlow
     );
 
   const tradeSweep =
     detectTradeSweep(
+      tradeList,
+      book
+    );
+
+  const absorption =
+    detectAbsorption(
+      selectedWithFlow,
+      currentFlow
+    );
+
+  const blocks =
+    blockTrades(
       tradeList
     );
 
-  const structure1 =
-    structure(
-      candles1
+  return {
+    ok: true,
+    version: VERSION,
+    source: "BYBIT_REST",
+
+    symbol,
+    interval,
+
+    ticker: {
+      lastPrice:
+        n(
+          currentTicker.lastPrice
+        ),
+      markPrice:
+        n(
+          currentTicker.markPrice
+        ),
+      indexPrice:
+        n(
+          currentTicker.indexPrice
+        ),
+      volume24h:
+        n(
+          currentTicker.volume24h
+        ),
+      turnover24h:
+        n(
+          currentTicker.turnover24h
+        ),
+      price24hPcnt:
+        n(
+          currentTicker.price24hPcnt
+        )
+    },
+
+    candles: {
+      tf1:
+        candleSeries(
+          candles1m,
+          tradeList
+        ),
+      tf3:
+        candleSeries(
+          candles3m,
+          tradeList
+        ),
+      tf5:
+        candleSeries(
+          candles5m,
+          tradeList
+        ),
+      tf15:
+        candleSeries(
+          candles15m,
+          tradeList
+        )
+    },
+
+    selectedCandles:
+      selectedWithFlow,
+
+    footprints,
+
+    footprint: footprints,
+
+    currentFlow,
+
+    flow:
+      currentFlow,
+
+    cumulativeDelta:
+      sum(
+        selectedWithFlow,
+        x => x.delta
+      ),
+
+    orderbook: {
+      bids:
+        book.bids.map(x => ({
+          ...x,
+          value:
+            n(x.value)
+        })),
+      asks:
+        book.asks.map(x => ({
+          ...x,
+          value:
+            n(x.value)
+        })),
+      bestBid:
+        book.bestBid,
+      bestAsk:
+        book.bestAsk
+    },
+
+    wall,
+
+    heatmap,
+
+    liquidityZones:
+      zones,
+
+    absorption,
+
+    sweep,
+
+    tradeSweep,
+
+    blocks,
+
+    trades:
+      tradeList.slice(-200),
+
+    structure: {
+      tf1:
+        structure(candles1m),
+      tf3:
+        structure(candles3m),
+      tf5:
+        structure(candles5m),
+      tf15:
+        structure(candles15m)
+    },
+
+    supportResistance:
+      supportResistance(
+        selectedWithFlow
+      ),
+
+    movement:
+      movement(
+        selectedWithFlow
+      ),
+
+    entry1m:
+      entry1m(candles1m),
+
+    zone:
+      structuralZone(
+        selectedWithFlow,
+        n(
+          currentTicker.lastPrice
+        )
+      ),
+
+    instrument: {
+      tickSize,
+      qtyStep:
+        n(
+          instrument
+            ?.lotSizeFilter
+            ?.qtyStep
+        ),
+      minOrderQty:
+        n(
+          instrument
+            ?.lotSizeFilter
+            ?.minOrderQty
+        )
+    }
+  };
+}
+
+async function analyze(
+  symbol,
+  selectedInterval = "1"
+) {
+  const chart =
+    await buildChartData(
+      symbol,
+      selectedInterval
     );
 
-  const structure3 =
-    structure(
-      candles3
-    );
+  const s1 =
+    chart.structure.tf1;
 
-  const structure5 =
-    structure(
-      candles5
-    );
+  const s5 =
+    chart.structure.tf5;
 
-  const structure15 =
-    structure(
-      candles15
-    );
+  const s15 =
+    chart.structure.tf15;
+
+  const flow =
+    chart.currentFlow;
+
+  const wall =
+    chart.wall;
+
+  const absorption =
+    chart.absorption;
+
+  const sweep =
+    chart.sweep;
+
+  const tradeSweep =
+    chart.tradeSweep;
 
   let score = 50;
-
-  if (
-    structure15.direction ===
-    "BUY"
-  ) {
-    score += 10;
-  }
-
-  if (
-    structure15.direction ===
-    "SELL"
-  ) {
-    score -= 10;
-  }
-
-  if (
-    structure5.direction ===
-    "BUY"
-  ) {
-    score += 8;
-  }
-
-  if (
-    structure5.direction ===
-    "SELL"
-  ) {
-    score -= 8;
-  }
-
-  if (
-    currentFlow.deltaPercent >
-    10
-  ) {
-    score += 10;
-  }
-
-  if (
-    currentFlow.deltaPercent <
-    -10
-  ) {
-    score -= 10;
-  }
-
-  if (
-    wall.pressure ===
-    "BUY_PRESSURE"
-  ) {
-    score += 7;
-  }
-
-  if (
-    wall.pressure ===
-    "SELL_PRESSURE"
-  ) {
-    score -= 7;
-  }
-
-  if (
-    absorption.detected &&
-    absorption.side === "BUY"
-  ) {
-    score += 8;
-  }
-
-  if (
-    absorption.detected &&
-    absorption.side === "SELL"
-  ) {
-    score -= 8;
-  }
-
-  if (
-    sweep.detected &&
-    sweep.side === "BUY"
-  ) {
-    score += 5;
-  }
-
-  if (
-    sweep.detected &&
-    sweep.side === "SELL"
-  ) {
-    score -= 5;
-  }
-
-  score =
-    Math.round(
-      clamp(
-        score,
-        0,
-        100
-      )
-    );
-
-  const signal =
-    score >= 70
-      ? "BUY"
-      : score <= 30
-        ? "SELL"
-        : "WAIT";
 
   const reasons = [];
 
   if (
-    currentFlow.deltaPercent >
-    10
+    s15.direction ===
+    "BULLISH"
   ) {
+    score += 10;
+    reasons.push(
+      "روند 15 دقیقه‌ای صعودی است"
+    );
+  }
+
+  if (
+    s15.direction ===
+    "BEARISH"
+  ) {
+    score -= 10;
+    reasons.push(
+      "روند 15 دقیقه‌ای نزولی است"
+    );
+  }
+
+  if (
+    s5.direction ===
+    "BULLISH"
+  ) {
+    score += 7;
+    reasons.push(
+      "ساختار 5 دقیقه‌ای صعودی است"
+    );
+  }
+
+  if (
+    s5.direction ===
+    "BEARISH"
+  ) {
+    score -= 7;
+    reasons.push(
+      "ساختار 5 دقیقه‌ای نزولی است"
+    );
+  }
+
+  if (
+    flow.pressure ===
+    "BUY_PRESSURE"
+  ) {
+    score += 10;
     reasons.push(
       "فشار خرید در معاملات واقعی"
     );
   }
 
   if (
-    currentFlow.deltaPercent <
-    -10
+    flow.pressure ===
+    "SELL_PRESSURE"
   ) {
+    score -= 10;
     reasons.push(
       "فشار فروش در معاملات واقعی"
     );
@@ -2507,8 +2003,9 @@ async function analyze(
     wall.pressure ===
     "BUY_PRESSURE"
   ) {
+    score += 7;
     reasons.push(
-      "برتری نقدینگی سمت Bid"
+      "نقدینگی سمت Bid قوی‌تر است"
     );
   }
 
@@ -2516,424 +2013,116 @@ async function analyze(
     wall.pressure ===
     "SELL_PRESSURE"
   ) {
+    score -= 7;
     reasons.push(
-      "برتری نقدینگی سمت Ask"
+      "نقدینگی سمت Ask قوی‌تر است"
     );
   }
 
   if (
     absorption.detected
   ) {
-    reasons.push(
-      `Absorption ${absorption.side}`
-    );
+    if (
+      absorption.side ===
+      "BUY"
+    ) {
+      score += 8;
+      reasons.push(
+        "نشانه جذب فروشندگان"
+      );
+    } else {
+      score -= 8;
+      reasons.push(
+        "نشانه جذب خریداران"
+      );
+    }
   }
 
   if (
     sweep.detected
   ) {
-    reasons.push(
-      `Sweep ${sweep.side}`
-    );
+    if (
+      sweep.side ===
+      "BUY"
+    ) {
+      score += 6;
+      reasons.push(
+        "Sweep نقدینگی پایین"
+      );
+    } else {
+      score -= 6;
+      reasons.push(
+        "Sweep نقدینگی بالا"
+      );
+    }
   }
 
+  if (
+    tradeSweep.detected
+  ) {
+    if (
+      tradeSweep.side ===
+      "BUY"
+    ) {
+      score += 4;
+    } else {
+      score -= 4;
+    }
+  }
+
+  score =
+    Math.round(
+      clamp(score, 0, 100)
+    );
+
+  let signal = "WAIT";
+
+  if (score >= 70) {
+    signal = "BUY";
+  } else if (score <= 30) {
+    signal = "SELL";
+  }
+
+  const oi =
+    await oiFunding(
+      normalizeSymbol(symbol)
+    );
+
   return {
-    ok: true,
+    ...chart,
 
-    version: VERSION,
-
-    category: "linear",
-
-    symbol,
-
-    interval:
-      selectedInterval,
-
-    intervalMs:
-      intervalMs(
-        selectedInterval
-      ),
-
-    tickSize,
-
-    priceStep: tickSize,
-
-    levelMode: "TICK",
-
-    serverTime:
-      Date.now(),
-
-    price:
-      tick.lastPrice,
-
-    ticker: tick,
-
-    candles: {
-      tf1: candles1,
-      tf3: candles3,
-      tf5: candles5,
-      tf15: candles15
-    },
-
-    selectedCandles,
-
-    footprint: {
-      interval:
-        selectedInterval,
-
-      intervalMs:
-        intervalMs(
-          selectedInterval
-        ),
-
-      tickSize,
-
-      levelMode: "TICK",
-
-      candles:
-        selectedFootprints,
-
-      cumulativeDeltaValue:
-        selectedFootprints.reduce(
-          (s, x) =>
-            s +
-            (x.deltaValue || 0),
-          0
-        )
-    },
-
-    footprints:
-      selectedFootprints,
-
-    candleDelta:
-      selectedCandles.map(
-        x => ({
-          time: x.time,
-
-          buy:
-            x.buyVolume,
-
-          sell:
-            x.sellVolume,
-
-          delta:
-            x.delta,
-
-          deltaValue:
-            x.deltaValue,
-
-          deltaPercent:
-            x.deltaPercent,
-
-          trades:
-            x.tradeCount,
-
-          cumulativeDeltaValue:
-            x.cumulativeDeltaValue
-        })
-      ),
-
-    cumulativeDelta:
-      selectedFootprints.reduce(
-        (s, x) =>
-          s +
-          (x.deltaValue || 0),
-        0
-      ),
-
-    orderbook: book,
-
-    wall,
-
-    heatmap,
-
-    liquidityZones:
-      zones,
-
-    trades:
-      tradeList.slice(-250),
-
-    currentFlow,
-
-    historicalFlow,
-
-    flow:
-      currentFlow,
-
-    absorption,
-
-    blocks:
-      blockTrades(
-        tradeList
-      ),
-
-    sweep,
-
-    tradeSweep,
-
-    structure: {
-      tf1: structure1,
-      tf3: structure3,
-      tf5: structure5,
-      tf15: structure15
-    },
-
-    timeframes: {
-      tf1: structure1,
-      tf3: structure3,
-      tf5: structure5,
-      tf15: structure15
-    },
-
-    supportResistance:
-      supportResistance(
-        selected
-      ),
-
-    movement:
-      movement(
-        selected
-      ),
+    score,
+    signal,
+    reasons,
 
     pressure:
       pressureFromFlow(
-        currentFlow
-      ),
-
-    oiFunding:
-      await oiFunding(
-        symbol
-      ),
-
-    entry1m:
-      entry1m(
-        candles1
-      ),
-
-    zone:
-      structuralZone(
-        selected,
-        tick.lastPrice
-      ),
-
-    score,
-
-    signal,
-
-    reasons
-  };
-}
-
-/* =========================================================
-   LIVE
-========================================================= */
-
-async function live(
-  symbol,
-  interval = TF
-) {
-  symbol =
-    normalizeSymbol(symbol);
-
-  interval =
-    normalizeInterval(
-      interval
-    );
-
-  const [
-    candles,
-    tick,
-    book,
-    tradeList,
-    instrument
-  ] = await Promise.all([
-    kline(
-      "linear",
-      symbol,
-      interval,
-      CHART_LIMIT
-    ),
-
-    ticker(
-      "linear",
-      symbol
-    ),
-
-    orderbook(
-      "linear",
-      symbol,
-      ORDERBOOK_LIMIT
-    ),
-
-    trades(
-      "linear",
-      symbol,
-      TRADE_LIMIT
-    ),
-
-    instrumentInfo(
-      "linear",
-      symbol
-    )
-  ]);
-
-  const footprints =
-    buildFootprints(
-      candles,
-      tradeList,
-      interval,
-      instrument.tickSize || 0
-    );
-
-  const chartCandles =
-    candleSeries(
-      candles,
-      footprints
-    );
-
-  const currentFlow =
-    flowFromTrades(
-      tradeList
-    );
-
-  const wall =
-    wallAnalysis(book);
-
-  return {
-    ok: true,
-
-    version: VERSION,
-
-    category: "linear",
-
-    symbol,
-
-    interval,
-
-    intervalMs:
-      intervalMs(interval),
-
-    tickSize:
-      instrument.tickSize || 0,
-
-    priceStep:
-      instrument.tickSize || 0,
-
-    levelMode: "TICK",
-
-    serverTime:
-      Date.now(),
-
-    price:
-      tick.lastPrice,
-
-    ticker: tick,
-
-    candles:
-      chartCandles,
-
-    selectedCandles:
-      chartCandles,
-
-    candleFlow:
-      chartCandles,
-
-    footprints,
-
-    footprint: {
-      interval,
-
-      intervalMs:
-        intervalMs(interval),
-
-      tickSize:
-        instrument.tickSize || 0,
-
-      levelMode: "TICK",
-
-      candles: footprints,
-
-      cumulativeDeltaValue:
-        footprints.reduce(
-          (s, x) =>
-            s +
-            (x.deltaValue || 0),
-          0
-        )
-    },
-
-    candleDelta:
-      chartCandles.map(
-        x => ({
-          time: x.time,
-          buy: x.buyVolume,
-          sell: x.sellVolume,
-          delta: x.delta,
-          deltaValue:
-            x.deltaValue,
-          deltaPercent:
-            x.deltaPercent,
-          trades:
-            x.tradeCount,
-          cumulativeDeltaValue:
-            x.cumulativeDeltaValue
-        })
-      ),
-
-    cumulativeDelta:
-      footprints.reduce(
-        (s, x) =>
-          s +
-          (x.deltaValue || 0),
-        0
-      ),
-
-    orderbook: book,
-
-    wall,
-
-    heatmap:
-      liquidityHeatmap(book),
-
-    liquidityZones:
-      liquidityZones(
-        book,
-        tick.lastPrice
-      ),
-
-    sweep:
-      detectSweep(candles),
-
-    tradeSweep:
-      detectTradeSweep(
-        tradeList
-      ),
-
-    absorption:
-      detectAbsorption(
-        candles,
-        currentFlow,
+        flow,
         wall
       ),
 
-    blocks:
-      blockTrades(
-        tradeList
-      ),
+    oiFunding: oi,
 
-    trades:
-      tradeList.slice(-250),
+    timeframeConfirmation: {
+      "1m": s1,
+      "5m": s5,
+      "15m": s15
+    },
 
-    flow:
-      currentFlow,
-
-    currentFlow
+    analyzedAt:
+      Date.now()
   };
 }
 
-/* =========================================================
-   SYMBOL SCAN
-========================================================= */
+async function live(
+  symbol,
+  interval = "1"
+) {
+  return buildChartData(
+    symbol,
+    interval
+  );
+}
 
 async function getSymbols() {
   const data =
@@ -2941,158 +2130,191 @@ async function getSymbols() {
       "/v5/market/instruments-info",
       {
         category: "linear",
+        status: "Trading",
         limit: 1000
       }
     );
 
-  return (
-    data?.result?.list ||
-    []
-  )
-    .filter(x =>
-      x.status === "Trading" &&
-      x.quoteCoin === "USDT" &&
-      x.contractType ===
-        "LinearPerpetual"
+  return (data?.result?.list || [])
+    .filter(
+      x =>
+        x.status === "Trading" &&
+        x.quoteCoin === "USDT" &&
+        x.contractType ===
+          "LinearPerpetual"
     )
-    .map(x => ({
-      symbol: x.symbol,
-      baseCoin: x.baseCoin,
-      quoteCoin: x.quoteCoin,
-      tickSize:
-        n(
-          x.priceFilter?.tickSize
-        ),
-      qtyStep:
-        n(
-          x.lotSizeFilter?.qtyStep
-        )
-    }))
-    .slice(
-      0,
-      MAX_SYMBOLS
-    );
+    .map(
+      x => x.symbol
+    )
+    .slice(0, MAX_SYMBOLS);
 }
 
-async function scan(
-  offset = 0
-) {
+async function scan(offset = 0) {
   const symbols =
     await getSymbols();
 
   const start =
-    Number(offset) || 0;
+    clamp(
+      Number(offset) || 0,
+      0,
+      Math.max(
+        0,
+        symbols.length - 1
+      )
+    );
 
   const batch =
     symbols.slice(
       start,
-      start +
-        SCAN_BATCH
+      start + SCAN_BATCH
     );
 
   const results = [];
 
-  for (const item of batch) {
+  for (const symbol of batch) {
     try {
-      const analysis =
-        await analyze(
-          item.symbol,
-          TF
+      const chart =
+        await buildChartData(
+          symbol,
+          "1"
         );
 
+      const s15 =
+        chart.structure.tf15;
+
+      const flow =
+        chart.currentFlow;
+
+      const wall =
+        chart.wall;
+
+      const absorption =
+        chart.absorption;
+
+      let score = 50;
+
       if (
-        Number(
-          analysis.score
-        ) >= 55
+        s15.direction ===
+        "BULLISH"
       ) {
+        score += 12;
+      }
+
+      if (
+        s15.direction ===
+        "BEARISH"
+      ) {
+        score -= 12;
+      }
+
+      if (
+        flow.pressure ===
+        "BUY_PRESSURE"
+      ) {
+        score += 10;
+      }
+
+      if (
+        flow.pressure ===
+        "SELL_PRESSURE"
+      ) {
+        score -= 10;
+      }
+
+      if (
+        wall.pressure ===
+        "BUY_PRESSURE"
+      ) {
+        score += 8;
+      }
+
+      if (
+        wall.pressure ===
+        "SELL_PRESSURE"
+      ) {
+        score -= 8;
+      }
+
+      if (
+        absorption.detected
+      ) {
+        score +=
+          absorption.side ===
+          "BUY"
+            ? 8
+            : -8;
+      }
+
+      score =
+        Math.round(
+          clamp(
+            score,
+            0,
+            100
+          )
+        );
+
+      let signal = "WAIT";
+
+      if (score >= 70) {
+        signal = "BUY";
+      } else if (
+        score <= 30
+      ) {
+        signal = "SELL";
+      }
+
+      if (score >= 55) {
         results.push({
-          symbol:
-            item.symbol,
-
-          score:
-            analysis.score,
-
-          signal:
-            analysis.signal,
-
-          price:
-            analysis.price,
-
-          pressure:
-            analysis.pressure,
-
-          movement:
-            analysis.movement,
-
-          structure:
-            analysis.structure,
-
+          symbol,
+          score,
+          signal,
           delta:
-            analysis.currentFlow
-              ?.delta || 0,
-
+            flow.delta,
           deltaPercent:
-            analysis.currentFlow
-              ?.deltaPercent || 0,
-
+            flow.deltaPercent,
+          pressure:
+            flow.pressure,
+          bookPressure:
+            wall.pressure,
           absorption:
-            analysis.absorption,
-
-          sweep:
-            analysis.sweep
+            absorption.detected
         });
       }
-    } catch {}
-
-    await sleep(20);
+    } catch {
+      // skip failed symbol
+    }
   }
+
+  results.sort(
+    (a, b) =>
+      b.score - a.score
+  );
+
+  const nextOffset =
+    start + batch.length >=
+    symbols.length
+      ? 0
+      : start + batch.length;
 
   return {
     ok: true,
-
     version: VERSION,
-
     offset: start,
-
-    nextOffset:
-      start +
-        SCAN_BATCH >=
-      symbols.length
-        ? 0
-        : start +
-          SCAN_BATCH,
-
+    nextOffset,
     totalSymbols:
       symbols.length,
-
-    results:
-      results.sort(
-        (a, b) =>
-          b.score -
-          a.score
-      )
+    results
   };
 }
 
 /* =========================================================
-   COLLECTOR
-========================================================= */
+   DURABLE OBJECT COLLECTOR
+   ========================================================= */
 
-function minuteStart(ts) {
-  return (
-    Math.floor(
-      n(ts) / 60000
-    ) * 60000
-  );
-}
-
-function newMinute(
-  symbol,
-  ts
-) {
+function newMinute(symbol, ts) {
   return {
     symbol,
-
     time:
       minuteStart(ts),
 
@@ -3107,43 +2329,27 @@ function newMinute(
     buyVolume: 0,
     sellVolume: 0,
 
-    buyValue: 0,
-    sellValue: 0,
+    buyNotional: 0,
+    sellNotional: 0,
+
+    delta: 0,
 
     buyTrades: 0,
     sellTrades: 0,
 
-    delta: 0,
-    deltaValue: 0,
+    largeBuyVolume: 0,
+    largeSellVolume: 0,
 
-    cumulativeDelta: 0,
+    blockBuyVolume: 0,
+    blockSellVolume: 0,
 
     levels: {},
 
-    blocks: [],
+    bookSnapshots: [],
 
-    liquidations: {
-      buy: 0,
-      sell: 0,
-      buyValue: 0,
-      sellValue: 0,
-      count: 0
-    },
+    liquidations: [],
 
-    bestBid: 0,
-    bestAsk: 0,
-
-    bidLiquidity: 0,
-    askLiquidity: 0,
-
-    maxBidLiquidity: 0,
-    maxAskLiquidity: 0,
-
-    snapshotCount: 0,
-
-    lastTradeTime: 0,
-
-    book: null
+    tradesCount: 0
   };
 }
 
@@ -3153,30 +2359,21 @@ function ensureMinuteLevel(
 ) {
   const key =
     String(
-      Number(price)
+      roundToStep(
+        n(price),
+        0.00000001
+      )
     );
 
   if (
     !minute.levels[key]
   ) {
     minute.levels[key] = {
-      price:
-        Number(price),
-
+      price: n(price),
       bidVolume: 0,
       askVolume: 0,
-
-      bidValue: 0,
-      askValue: 0,
-
-      bidTrades: 0,
-      askTrades: 0,
-
-      totalVolume: 0,
-      totalValue: 0,
-
       delta: 0,
-      deltaValue: 0
+      volume: 0
     };
   }
 
@@ -3195,23 +2392,15 @@ function addTradeToMinute(
 
   if (
     price <= 0 ||
-    size <= 0
+    size < 0
   ) {
     return;
   }
 
-  const value =
-    price * size;
-
   if (!minute.open) {
-    minute.open =
-      price;
-
-    minute.high =
-      price;
-
-    minute.low =
-      price;
+    minute.open = price;
+    minute.high = price;
+    minute.low = price;
   }
 
   minute.high =
@@ -3226,17 +2415,17 @@ function addTradeToMinute(
       price
     );
 
-  minute.close =
-    price;
+  minute.close = price;
 
-  minute.volume +=
-    size;
+  minute.volume += size;
+
+  const notional =
+    price * size;
 
   minute.turnover +=
-    value;
+    notional;
 
-  minute.lastTradeTime =
-    n(trade.time);
+  minute.tradesCount++;
 
   const level =
     ensureMinuteLevel(
@@ -3244,217 +2433,128 @@ function addTradeToMinute(
       price
     );
 
-  level.totalVolume +=
-    size;
-
-  level.totalValue +=
-    value;
+  level.volume += size;
 
   if (
     aggressorSide(trade) ===
     "BUY"
   ) {
-    minute.buyVolume +=
-      size;
-
-    minute.buyValue +=
-      value;
-
+    minute.buyVolume += size;
+    minute.buyNotional +=
+      notional;
     minute.buyTrades++;
 
     level.askVolume +=
       size;
-
-    level.askValue +=
-      value;
-
-    level.askTrades++;
-  }
-
-  if (
-    aggressorSide(trade) ===
-    "SELL"
-  ) {
+  } else {
     minute.sellVolume +=
       size;
-
-    minute.sellValue +=
-      value;
-
+    minute.sellNotional +=
+      notional;
     minute.sellTrades++;
 
     level.bidVolume +=
       size;
-
-    level.bidValue +=
-      value;
-
-    level.bidTrades++;
   }
 
   level.delta =
     level.askVolume -
     level.bidVolume;
 
-  level.deltaValue =
-    level.askValue -
-    level.bidValue;
-
   minute.delta =
     minute.buyVolume -
     minute.sellVolume;
 
-  minute.deltaValue =
-    minute.buyValue -
-    minute.sellValue;
+  const average =
+    minute.tradesCount
+      ? minute.turnover /
+        minute.tradesCount
+      : 0;
+
+  if (
+    notional >
+    average * 5
+  ) {
+    if (
+      aggressorSide(trade) ===
+      "BUY"
+    ) {
+      minute.largeBuyVolume +=
+        size;
+    } else {
+      minute.largeSellVolume +=
+        size;
+    }
+  }
+
+  if (trade.isBlockTrade) {
+    if (
+      aggressorSide(trade) ===
+      "BUY"
+    ) {
+      minute.blockBuyVolume +=
+        size;
+    } else {
+      minute.blockSellVolume +=
+        size;
+    }
+  }
 }
 
-function finalizeMinute(
-  minute
-) {
-  if (!minute) return null;
-
+function finalizeMinute(minute) {
   const levels =
     Object.values(
       minute.levels || {}
     )
-      .map(level => ({
-        ...level,
-
-        imbalance:
-          level.bidVolume > 0
-            ? level.askVolume /
-              level.bidVolume
-            : level.askVolume > 0
-              ? Infinity
-              : 0,
-
-        side:
-          level.askVolume >
-          level.bidVolume
-            ? "BUY"
-            : level.bidVolume >
-              level.askVolume
-              ? "SELL"
-              : "NEUTRAL"
-      }))
       .sort(
         (a, b) =>
-          b.price -
-          a.price
+          b.price - a.price
       )
       .slice(
         0,
         FOOTPRINT_MAX_LEVELS
       );
 
-  const total =
-    minute.buyVolume +
-    minute.sellVolume;
-
   return {
     ...minute,
 
-    delta:
-      minute.buyVolume -
-      minute.sellVolume,
+    levels,
 
-    deltaValue:
-      minute.buyValue -
-      minute.sellValue,
+    footprint: levels,
+
+    flowVolume:
+      minute.buyVolume +
+      minute.sellVolume,
 
     deltaPercent:
       pct(
-        minute.buyVolume -
-          minute.sellVolume,
-        total
-      ),
-
-    buyShare:
-      pct(
-        minute.buyVolume,
-        total
-      ),
-
-    sellShare:
-      pct(
-        minute.sellVolume,
-        total
-      ),
-
-    tradeCount:
-      minute.buyTrades +
-      minute.sellTrades,
-
-    flowVolume: total,
-
-    totalValue:
-      minute.buyValue +
-      minute.sellValue,
-
-    levels,
-
-    footprints:
-      levels,
-
-    footprint:
-      levels,
-
-    imbalances:
-      levels.filter(level =>
-        level.imbalance >= 3 ||
-        (
-          level.bidVolume > 0 &&
-          level.askVolume /
-            level.bidVolume <=
-            1 / 3
-        )
+        minute.delta,
+        minute.buyVolume +
+          minute.sellVolume
       )
   };
 }
 
-/* =========================================================
-   COLLECTOR DO
-========================================================= */
-
 export class CollectorDO extends DurableObject {
-  constructor(
-    ctx,
-    env
-  ) {
-    super(
-      ctx,
-      env
-    );
+  constructor(ctx, env) {
+    super(ctx, env);
 
     this.ctx = ctx;
     this.env = env;
 
-    this.sockets =
-      new Map();
+    this.sockets = new Map();
+    this.books = new Map();
+    this.minutes = new Map();
 
-    this.books =
-      new Map();
+    this.started = false;
+    this.symbols = [];
 
-    this.minutes =
-      new Map();
+    this.reconnectTimers = new Map();
+    this.snapshotTimers = new Map();
 
-    this.reconnectTimers =
-      new Map();
+    this.wsState = new Map();
 
-    this.wsState =
-      new Map();
-
-    this.initialized =
-      false;
-
-    this.symbols =
-      [];
-
-    this.initializing =
-      null;
-
-    this.ready =
+    this.initPromise =
       this.initDatabase();
   }
 
@@ -3465,567 +2565,486 @@ export class CollectorDO extends DurableObject {
         ts INTEGER NOT NULL,
         data TEXT NOT NULL,
         PRIMARY KEY(symbol, ts)
-      );
+      )
+    `);
 
-      CREATE INDEX IF NOT EXISTS idx_minutes_symbol_ts
-      ON minutes(symbol, ts);
+    this.ctx.storage.sql.exec(`
+      CREATE INDEX IF NOT EXISTS
+      idx_minutes_symbol_ts
+      ON minutes(symbol, ts)
+    `);
 
+    this.ctx.storage.sql.exec(`
       CREATE TABLE IF NOT EXISTS meta (
         key TEXT PRIMARY KEY,
         value TEXT
-      );
+      )
     `);
   }
 
   async fetch(request) {
-    await this.ready;
+    await this.initPromise;
 
     const url =
-      new URL(
-        request.url
-      );
+      new URL(request.url);
 
     const path =
       url.pathname;
 
-    try {
-      if (
-        request.method ===
-        "OPTIONS"
-      ) {
-        return new Response(
-          null,
-          {
-            status: 204,
-            headers: {
-              "access-control-allow-origin":
-                "*",
-
-              "access-control-allow-methods":
-                "GET,POST,OPTIONS",
-
-              "access-control-allow-headers":
-                "*"
-            }
-          }
-        );
-      }
-
-      if (
-        path === "/init"
-      ) {
-        return json(
-          await this.initCollector()
-        );
-      }
-
-      if (
-        path === "/status"
-      ) {
-        return json(
-          this.status()
-        );
-      }
-
-      if (
-        path === "/symbols"
-      ) {
-        if (
-          !this.symbols.length
-        ) {
-          await this.loadSymbols();
-        }
-
-        return json({
-          ok: true,
-          version: VERSION,
-          symbols:
-            this.symbols
-        });
-      }
-
-      if (
-        path === "/history"
-      ) {
-        const symbol =
-          normalizeSymbol(
-            url.searchParams.get(
-              "symbol"
-            )
-          );
-
-        const minutes =
-          clamp(
-            Number(
-              url.searchParams.get(
-                "minutes"
-              ) || 300
-            ),
-            1,
-            RETENTION_MINUTES
-          );
-
-        return json({
-          ok: true,
-          version: VERSION,
-          symbol,
-          minutes,
-
-          data:
-            this.readHistory(
-              symbol,
-              minutes
-            )
-        });
-      }
-
-      if (
-        path === "/latest"
-      ) {
-        const symbol =
-          normalizeSymbol(
-            url.searchParams.get(
-              "symbol"
-            )
-          );
-
-        return json({
-          ok: true,
-          version: VERSION,
-          symbol,
-
-          data:
-            this.getLatestMemory(
-              symbol
-            )
-        });
-      }
-
-      if (
-        path === "/chart"
-      ) {
-        const symbol =
-          normalizeSymbol(
-            url.searchParams.get(
-              "symbol"
-            )
-          );
-
-        const interval =
-          normalizeInterval(
-            url.searchParams.get(
-              "interval"
-            ) || TF
-          );
-
-        return json(
-          this.collectorChart(
-            symbol,
-            interval
-          )
-        );
-      }
-
-      if (
-        path === "/cleanup"
-      ) {
-        return json({
-          ok: true,
-          version: VERSION,
-          removed:
-            this.cleanup()
-        });
-      }
-
-      return json(
-        {
-          ok: false,
-          error:
-            "Collector route not found"
-        },
-        404
-      );
-    } catch (error) {
-      return json(
-        {
-          ok: false,
-          version: VERSION,
-          error:
-            error?.message ||
-            String(error)
-        },
-        500
-      );
-    }
-  }
-
-  async initCollector() {
     if (
-      this.initializing
+      path === "/init"
     ) {
-      return this.initializing;
+      await this.startSockets();
+
+      return json({
+        ok: true,
+        started: true,
+        version: VERSION
+      });
     }
 
-    this.initializing =
-      (async () => {
+    if (
+      path === "/status"
+    ) {
+      return json(
+        await this.status()
+      );
+    }
+
+    if (
+      path === "/symbols"
+    ) {
+      const symbols =
         await this.loadSymbols();
 
-        if (
-          !this.initialized
-        ) {
-          await this.startSockets();
-
-          this.initialized =
-            true;
-        }
-
-        return {
-          ok: true,
-          version: VERSION,
-          initialized: true,
-          symbolCount:
-            this.symbols.length,
-          sockets:
-            this.sockets.size
-        };
-      })();
-
-    try {
-      return await this.initializing;
-    } finally {
-      this.initializing =
-        null;
+      return json({
+        ok: true,
+        symbols
+      });
     }
+
+    if (
+      path === "/history"
+    ) {
+      const symbol =
+        normalizeSymbol(
+          url.searchParams.get(
+            "symbol"
+          )
+        );
+
+      const minutes =
+        clamp(
+          Number(
+            url.searchParams.get(
+              "minutes"
+            ) || 180
+          ),
+          1,
+          RETENTION_MINUTES
+        );
+
+      return json({
+        ok: true,
+        symbol,
+        minutes,
+        rows:
+          await this.readHistory(
+            symbol,
+            minutes
+          )
+      });
+    }
+
+    if (
+      path === "/latest"
+    ) {
+      const symbol =
+        normalizeSymbol(
+          url.searchParams.get(
+            "symbol"
+          )
+        );
+
+      return json({
+        ok: true,
+        symbol,
+        row:
+          this.getLatestMemory(
+            symbol
+          )
+      });
+    }
+
+    if (
+      path === "/chart"
+    ) {
+      const symbol =
+        normalizeSymbol(
+          url.searchParams.get(
+            "symbol"
+          )
+        );
+
+      const interval =
+        normalizeInterval(
+          url.searchParams.get(
+            "interval"
+          )
+        );
+
+      return json(
+        await this.collectorChart(
+          symbol,
+          interval
+        )
+      );
+    }
+
+    if (
+      path === "/cleanup"
+    ) {
+      const result =
+        await this.cleanup();
+
+      return json({
+        ok: true,
+        ...result
+      });
+    }
+
+    return json(
+      {
+        ok: false,
+        error:
+          "Collector route not found"
+      },
+      404
+    );
   }
 
   async loadSymbols() {
-    const data =
-      await bybit(
-        "/v5/market/instruments-info",
-        {
-          category: "linear",
-          limit: 1000
-        }
-      );
-
-    this.symbols =
-      (
-        data?.result?.list ||
-        []
-      )
-        .filter(x =>
-          x.status ===
-            "Trading" &&
-          x.quoteCoin ===
-            "USDT" &&
-          x.contractType ===
-            "LinearPerpetual"
-        )
-        .map(
-          x => x.symbol
-        )
-        .slice(
-          0,
-          MAX_SYMBOLS
-        );
+    if (
+      this.symbols.length
+    ) {
+      return this.symbols;
+    }
 
     try {
-      this.ctx.storage.sql.exec(
-        `
-        INSERT OR REPLACE INTO meta(key,value)
-        VALUES('symbols',?)
-        `,
-        JSON.stringify(
-          this.symbols
-        )
-      );
-    } catch {}
+      this.symbols =
+        await getSymbols();
+    } catch {
+      this.symbols = [];
+    }
 
     return this.symbols;
   }
 
   async startSockets() {
-    if (
-      !this.symbols.length
-    ) {
+    if (this.started) {
       return;
     }
 
-    const shardCount =
-      Math.min(
-        6,
-        Math.max(
-          1,
-          Math.ceil(
-            this.symbols.length /
-              40
-          )
-        )
-      );
+    this.started = true;
 
-    const shardSize =
-      Math.ceil(
-        this.symbols.length /
-          shardCount
-      );
+    const symbols =
+      await this.loadSymbols();
+
+    if (!symbols.length) {
+      this.started = false;
+      return;
+    }
+
+    const chunks = [];
 
     for (
       let i = 0;
-      i <
-        this.symbols.length;
-      i += shardSize
+      i < symbols.length;
+      i += WS_SUB_CHUNK
+    ) {
+      chunks.push(
+        symbols.slice(
+          i,
+          i + WS_SUB_CHUNK
+        )
+      );
+    }
+
+    for (
+      let i = 0;
+      i < chunks.length;
+      i++
     ) {
       this.connectShard(
-        Math.floor(
-          i / shardSize
-        ),
-        this.symbols.slice(
-          i,
-          i + shardSize
-        ),
-        0
+        i,
+        chunks[i]
       );
     }
   }
 
   connectShard(
     shardId,
-    symbols,
-    attempt = 0
+    symbols
   ) {
-    try {
-      this.sockets
-        .get(shardId)
-        ?.close();
-    } catch {}
+    const topics = [];
 
-    let socket;
+    for (const symbol of symbols) {
+      topics.push(
+        `publicTrade.${symbol}`
+      );
+
+      topics.push(
+        `orderbook.50.${symbol}`
+      );
+    }
+
+    topics.push(
+      "allLiquidation"
+    );
+
+    let ws;
 
     try {
-      socket =
+      ws =
         new WebSocket(
           BYBIT_WS
         );
     } catch {
       this.scheduleReconnect(
         shardId,
-        symbols,
-        attempt
+        symbols
       );
 
       return;
     }
 
+    const key =
+      `shard-${shardId}`;
+
     this.sockets.set(
-      shardId,
-      socket
+      key,
+      ws
     );
 
     this.wsState.set(
-      shardId,
+      key,
       {
-        connected: false,
-        attempt,
-        openedAt: 0,
+        shardId,
+        symbols,
+        connectedAt: 0,
         messages: 0,
-        errors: 0
+        status:
+          "CONNECTING"
       }
     );
 
-    socket.addEventListener(
+    ws.addEventListener(
       "open",
       () => {
         const state =
           this.wsState.get(
-            shardId
+            key
           );
 
         if (state) {
-          state.connected =
-            true;
+          state.status =
+            "OPEN";
 
-          state.attempt =
-            0;
-
-          state.openedAt =
+          state.connectedAt =
             Date.now();
-        }
-
-        const topics = [];
-
-        for (
-          const symbol of symbols
-        ) {
-          topics.push(
-            `publicTrade.${symbol}`
-          );
-
-          topics.push(
-            `orderbook.50.${symbol}`
-          );
-
-          topics.push(
-            `allLiquidation.${symbol}`
-          );
         }
 
         for (
           let i = 0;
           i < topics.length;
-          i += WS_SUB_CHUNK
+          i += 100
         ) {
-          try {
-            socket.send(
-              JSON.stringify({
-                op:
-                  "subscribe",
+          const batch =
+            topics.slice(
+              i,
+              i + 100
+            );
 
-                args:
-                  topics.slice(
-                    i,
-                    i +
-                      WS_SUB_CHUNK
-                  )
+          try {
+            ws.send(
+              JSON.stringify({
+                op: "subscribe",
+                args: batch
               })
             );
           } catch {}
         }
+
+        for (const symbol of symbols) {
+          this.startSnapshotTimer(
+            symbol
+          );
+        }
       }
     );
 
-    socket.addEventListener(
+    ws.addEventListener(
       "message",
       event => {
         const state =
           this.wsState.get(
-            shardId
+            key
           );
 
         if (state) {
           state.messages++;
         }
 
-        this.handleWSMessage(
+        this.handleWsMessage(
           event.data
         );
       }
     );
 
-    socket.addEventListener(
-      "error",
-      () => {
-        const state =
-          this.wsState.get(
-            shardId
-          );
-
-        if (state) {
-          state.errors++;
-        }
-      }
-    );
-
-    socket.addEventListener(
+    ws.addEventListener(
       "close",
       () => {
+        this.sockets.delete(
+          key
+        );
+
         const state =
           this.wsState.get(
-            shardId
+            key
           );
 
         if (state) {
-          state.connected =
-            false;
+          state.status =
+            "CLOSED";
         }
-
-        this.sockets.delete(
-          shardId
-        );
 
         this.scheduleReconnect(
           shardId,
-          symbols,
-          state?.attempt ??
-            attempt
+          symbols
         );
+      }
+    );
+
+    ws.addEventListener(
+      "error",
+      () => {
+        try {
+          ws.close();
+        } catch {}
       }
     );
   }
 
   scheduleReconnect(
     shardId,
-    symbols,
-    attempt
+    symbols
   ) {
+    const key =
+      `shard-${shardId}`;
+
     if (
       this.reconnectTimers.has(
-        shardId
+        key
       )
     ) {
       return;
     }
 
+    const current =
+      this.wsState.get(
+        key
+      );
+
+    const retry =
+      n(
+        current?.retry || 0
+      );
+
     const delay =
       Math.min(
         WS_RECONNECT_MAX,
-        WS_RECONNECT_MIN *
+        WS_RECONNECT_BASE *
           Math.pow(
             2,
             Math.min(
-              attempt,
-              6
+              retry,
+              5
             )
           )
       );
+
+    if (current) {
+      current.retry =
+        retry + 1;
+      current.status =
+        "RECONNECTING";
+    }
 
     const timer =
       setTimeout(
         () => {
           this.reconnectTimers.delete(
-            shardId
+            key
           );
 
           this.connectShard(
             shardId,
-            symbols,
-            attempt + 1
+            symbols
           );
         },
         delay
       );
 
     this.reconnectTimers.set(
-      shardId,
+      key,
       timer
     );
   }
 
-  handleWSMessage(raw) {
-    let message;
+  startSnapshotTimer(symbol) {
+    if (
+      this.snapshotTimers.has(
+        symbol
+      )
+    ) {
+      return;
+    }
+
+    const timer =
+      setInterval(
+        () => {
+          this.captureBook(
+            symbol
+          );
+        },
+        ORDERBOOK_SNAPSHOT_MS
+      );
+
+    this.snapshotTimers.set(
+      symbol,
+      timer
+    );
+  }
+
+  handleWsMessage(raw) {
+    let msg;
 
     try {
-      message =
+      msg =
         typeof raw ===
         "string"
           ? JSON.parse(raw)
-          : JSON.parse(
-              new TextDecoder().decode(
-                raw
-              )
-            );
+          : raw;
     } catch {
       return;
     }
 
+    if (!msg) return;
+
     const topic =
       String(
-        message?.topic ||
-          ""
+        msg.topic || ""
       );
-
-    if (!topic) {
-      return;
-    }
 
     if (
       topic.startsWith(
@@ -4033,71 +3052,14 @@ export class CollectorDO extends DurableObject {
       )
     ) {
       const symbol =
-        topic.replace(
-          "publicTrade.",
-          ""
+        normalizeSymbol(
+          topic.split(".")[1]
         );
 
-      const rows =
-        Array.isArray(
-          message.data
-        )
-          ? message.data
-          : [];
-
-      for (
-        const x of rows
-      ) {
-        const trade = {
-          id:
-            x.i ||
-            x.execId ||
-            `${x.T}-${x.p}-${x.v}`,
-
-          time:
-            n(x.T),
-
-          price:
-            n(x.p),
-
-          size:
-            n(x.v),
-
-          side:
-            String(
-              x.S || ""
-            ).toUpperCase(),
-
-          isBlockTrade:
-            x.isBlockTrade ===
-              true ||
-            x.isBlockTrade ===
-              "true",
-
-          isRPITrade:
-            x.isRPITrade ===
-              true ||
-            x.isRPITrade ===
-              "true"
-        };
-
-        if (
-          trade.time > 0 &&
-          trade.price > 0 &&
-          trade.size > 0 &&
-          (
-            trade.side ===
-              "BUY" ||
-            trade.side ===
-              "SELL"
-          )
-        ) {
-          this.addTrade(
-            symbol,
-            trade
-          );
-        }
-      }
+      this.handlePublicTrade(
+        symbol,
+        msg.data
+      );
 
       return;
     }
@@ -4111,44 +3073,70 @@ export class CollectorDO extends DurableObject {
         topic.split(".");
 
       const symbol =
-        parts.at(-1);
+        normalizeSymbol(
+          parts[2]
+        );
 
       this.updateBook(
         symbol,
-        message
+        msg
       );
 
       return;
     }
 
     if (
-      topic.startsWith(
-        "allLiquidation."
-      )
+      topic ===
+      "allLiquidation"
     ) {
-      const symbol =
-        topic.replace(
-          "allLiquidation.",
-          ""
-        );
+      this.handleLiquidation(
+        msg.data
+      );
+    }
+  }
 
-      const rows =
-        Array.isArray(
-          message.data
-        )
-          ? message.data
-          : message.data
-            ? [message.data]
-            : [];
+  handlePublicTrade(
+    symbol,
+    rows
+  ) {
+    if (!symbol) return;
 
-      for (
-        const row of rows
+    const arr =
+      Array.isArray(rows)
+        ? rows
+        : [];
+
+    for (const row of arr) {
+      const trade = {
+        id:
+          row.i || "",
+        time:
+          n(row.T, Date.now()),
+        price:
+          n(row.p),
+        size:
+          n(row.v),
+        side:
+          String(
+            row.S || ""
+          ).toUpperCase(),
+        isBlockTrade:
+          Boolean(
+            row.isBlockTrade
+          )
+      };
+
+      if (
+        trade.price <= 0 ||
+        trade.size < 0
       ) {
-        this.addLiquidation(
-          symbol,
-          row
-        );
+        continue;
       }
+
+      this.addTrade(
+        symbol,
+        trade
+      );
     }
   }
 
@@ -4156,175 +3144,59 @@ export class CollectorDO extends DurableObject {
     symbol,
     trade
   ) {
-    const minute =
+    const ts =
       minuteStart(
         trade.time
       );
 
-    let current =
+    let minute =
       this.minutes.get(
         symbol
       );
 
-    if (
-      current &&
-      current.time !==
-        minute
-    ) {
-      this.flushMinute(
-        symbol
-      );
-
-      current =
-        null;
-    }
-
-    if (!current) {
-      current =
+    if (!minute) {
+      minute =
         newMinute(
           symbol,
-          minute
+          ts
         );
 
       this.minutes.set(
         symbol,
-        current
+        minute
       );
+    }
+
+    if (
+      minute.time !== ts
+    ) {
+      const old =
+        minute;
+
+      this.minutes.set(
+        symbol,
+        newMinute(
+          symbol,
+          ts
+        )
+      );
+
+      this.ctx.waitUntil(
+        this.flushMinute(
+          old
+        )
+      );
+
+      minute =
+        this.minutes.get(
+          symbol
+        );
     }
 
     addTradeToMinute(
-      current,
+      minute,
       trade
     );
-
-    if (
-      trade.isBlockTrade ||
-      trade.price *
-        trade.size >
-        100000
-    ) {
-      current.blocks.push({
-        id: trade.id,
-        time: trade.time,
-        price: trade.price,
-        size: trade.size,
-
-        value:
-          trade.price *
-          trade.size,
-
-        side:
-          trade.side
-      });
-
-      if (
-        current.blocks.length >
-        100
-      ) {
-        current.blocks =
-          current.blocks.slice(
-            -100
-          );
-      }
-    }
-
-    this.maybeFlush(
-      symbol
-    );
-  }
-
-  addLiquidation(
-    symbol,
-    item
-  ) {
-    const time =
-      n(
-        item.T ||
-        item.time ||
-        Date.now()
-      );
-
-    const minute =
-      minuteStart(
-        time
-      );
-
-    let current =
-      this.minutes.get(
-        symbol
-      );
-
-    if (
-      current &&
-      current.time !==
-        minute
-    ) {
-      this.flushMinute(
-        symbol
-      );
-
-      current =
-        null;
-    }
-
-    if (!current) {
-      current =
-        newMinute(
-          symbol,
-          minute
-        );
-
-      this.minutes.set(
-        symbol,
-        current
-      );
-    }
-
-    const side =
-      String(
-        item.S ||
-        item.side ||
-        item.sideType ||
-        ""
-      ).toUpperCase();
-
-    const price =
-      n(
-        item.p ||
-        item.price
-      );
-
-    const size =
-      n(
-        item.v ||
-        item.size
-      );
-
-    const value =
-      price *
-      size;
-
-    if (
-      side === "BUY"
-    ) {
-      current.liquidations.buy +=
-        size;
-
-      current.liquidations.buyValue +=
-        value;
-    }
-
-    if (
-      side === "SELL"
-    ) {
-      current.liquidations.sell +=
-        size;
-
-      current.liquidations.sellValue +=
-        value;
-    }
-
-    current.liquidations.count++;
 
     this.maybeFlush(
       symbol
@@ -4333,264 +3205,413 @@ export class CollectorDO extends DurableObject {
 
   updateBook(
     symbol,
-    message
+    msg
   ) {
+    if (!symbol) return;
+
+    const data =
+      msg?.data || {};
+
+    const type =
+      msg?.type || "";
+
+    if (
+      type === "snapshot"
+    ) {
+      this.books.set(
+        symbol,
+        {
+          ts:
+            n(
+              data.ts,
+              Date.now()
+            ),
+          u:
+            n(data.u),
+          seq:
+            n(data.seq),
+          bids:
+            (data.b || [])
+              .map(x => ({
+                price:
+                  n(x[0]),
+                size:
+                  n(x[1])
+              }))
+              .filter(
+                x =>
+                  x.price > 0
+              ),
+          asks:
+            (data.a || [])
+              .map(x => ({
+                price:
+                  n(x[0]),
+                size:
+                  n(x[1])
+              }))
+              .filter(
+                x =>
+                  x.price > 0
+              )
+        }
+      );
+
+      return;
+    }
+
     let book =
       this.books.get(
         symbol
       );
 
     if (!book) {
-      book = {
-        bids: new Map(),
-        asks: new Map(),
+      return;
+    }
 
-        bestBid: 0,
-        bestAsk: 0,
+    this.applyBookSide(
+      book.bids,
+      data.b
+    );
 
-        sequence: 0,
-        updateId: 0,
+    this.applyBookSide(
+      book.asks,
+      data.a
+    );
 
-        lastSnapshot: 0,
-        lastUpdate: 0
-      };
-
-      this.books.set(
-        symbol,
-        book
+    book.ts =
+      n(
+        data.ts,
+        Date.now()
       );
-    }
 
-    const data =
-      message?.data ||
-      {};
+    book.u =
+      n(data.u, book.u);
 
+    book.seq =
+      n(data.seq, book.seq);
+  }
+
+  applyBookSide(
+    levels,
+    changes
+  ) {
     if (
-      message?.type ===
-      "snapshot"
+      !Array.isArray(changes)
     ) {
-      book.bids.clear();
-      book.asks.clear();
+      return;
     }
 
-    for (
-      const row of
-        data.b || []
-    ) {
+    const map =
+      new Map(
+        levels.map(
+          x => [
+            String(x.price),
+            x
+          ]
+        )
+      );
+
+    for (const row of changes) {
       const price =
         n(row[0]);
 
       const size =
         n(row[1]);
 
-      if (
-        price <= 0
-      ) {
-        continue;
-      }
+      if (!price) continue;
 
-      if (
-        size <= 0
-      ) {
-        book.bids.delete(
-          price
-        );
+      const key =
+        String(price);
+
+      if (size <= 0) {
+        map.delete(key);
       } else {
-        book.bids.set(
-          price,
-          size
+        map.set(
+          key,
+          {
+            price,
+            size
+          }
         );
       }
     }
 
-    for (
-      const row of
-        data.a || []
-    ) {
-      const price =
-        n(row[0]);
+    levels.length = 0;
 
-      const size =
-        n(row[1]);
-
-      if (
-        price <= 0
-      ) {
-        continue;
-      }
-
-      if (
-        size <= 0
-      ) {
-        book.asks.delete(
-          price
-        );
-      } else {
-        book.asks.set(
-          price,
-          size
-        );
-      }
-    }
-
-    book.sequence =
-      n(
-        data.u ||
-        data.seq ||
-        data.updateId ||
-        message?.cs
-      );
-
-    book.updateId =
-      n(
-        data.u ||
-        data.updateId
-      );
-
-    book.lastUpdate =
-      Date.now();
-
-    const bids =
-      [...book.bids.entries()]
+    levels.push(
+      ...[...map.values()]
         .sort(
           (a, b) =>
-            b[0] -
-            a[0]
+            a.price - b.price
         )
         .slice(
           0,
           ORDERBOOK_LIMIT
-        );
-
-    const asks =
-      [...book.asks.entries()]
-        .sort(
-          (a, b) =>
-            a[0] -
-            b[0]
         )
-        .slice(
-          0,
-          ORDERBOOK_LIMIT
+    );
+  }
+
+  handleLiquidation(
+    rows
+  ) {
+    const arr =
+      Array.isArray(rows)
+        ? rows
+        : [];
+
+    for (const row of arr) {
+      const symbol =
+        normalizeSymbol(
+          row.symbol ||
+          row.s
         );
 
-    book.bestBid =
-      bids[0]?.[0] || 0;
+      if (!symbol) continue;
 
-    book.bestAsk =
-      asks[0]?.[0] || 0;
+      const ts =
+        n(
+          row.T ||
+          row.time,
+          Date.now()
+        );
 
-    if (
-      Date.now() -
-        book.lastSnapshot >=
-      ORDERBOOK_SNAPSHOT_MS
-    ) {
-      book.lastSnapshot =
-        Date.now();
+      let minute =
+        this.minutes.get(
+          symbol
+        );
 
-      this.captureBook(
-        symbol,
-        bids,
-        asks
-      );
+      if (!minute) {
+        minute =
+          newMinute(
+            symbol,
+            ts
+          );
+
+        this.minutes.set(
+          symbol,
+          minute
+        );
+      }
+
+      if (
+        minute.time !==
+        minuteStart(ts)
+      ) {
+        const old =
+          minute;
+
+        this.minutes.set(
+          symbol,
+          newMinute(
+            symbol,
+            ts
+          )
+        );
+
+        this.ctx.waitUntil(
+          this.flushMinute(
+            old
+          )
+        );
+
+        minute =
+          this.minutes.get(
+            symbol
+          );
+      }
+
+      minute.liquidations.push({
+        time: ts,
+        side:
+          String(
+            row.side || ""
+          ).toUpperCase(),
+        price:
+          n(row.price || row.p),
+        size:
+          n(row.qty || row.v)
+      });
+
+      if (
+        minute.liquidations.length >
+        100
+      ) {
+        minute.liquidations =
+          minute.liquidations.slice(
+            -100
+          );
+      }
     }
   }
 
-  captureBook(
-    symbol,
-    bids,
-    asks
-  ) {
-    const current =
+  captureBook(symbol) {
+    const book =
+      this.books.get(
+        symbol
+      );
+
+    if (!book) return;
+
+    let minute =
       this.minutes.get(
         symbol
       );
 
-    if (!current) {
-      return;
+    if (!minute) {
+      minute =
+        newMinute(
+          symbol,
+          Date.now()
+        );
+
+      this.minutes.set(
+        symbol,
+        minute
+      );
     }
 
-    const bidLiquidity =
-      bids.reduce(
-        (total, row) =>
-          total +
-          row[0] *
-            row[1],
-        0
-      );
-
-    const askLiquidity =
-      asks.reduce(
-        (total, row) =>
-          total +
-          row[0] *
-            row[1],
-        0
-      );
-
-    current.bestBid =
-      bids[0]?.[0] ||
-      current.bestBid;
-
-    current.bestAsk =
-      asks[0]?.[0] ||
-      current.bestAsk;
-
-    current.bidLiquidity =
-      bidLiquidity;
-
-    current.askLiquidity =
-      askLiquidity;
-
-    current.maxBidLiquidity =
-      Math.max(
-        current.maxBidLiquidity,
-        bidLiquidity
-      );
-
-    current.maxAskLiquidity =
-      Math.max(
-        current.maxAskLiquidity,
-        askLiquidity
-      );
-
-    current.snapshotCount++;
-
-    current.book = {
-      bids:
-        bids.map(
-          row => ({
-            price: row[0],
-            size: row[1],
-            value:
-              row[0] *
-              row[1]
-          })
-        ),
-
-      asks:
-        asks.map(
-          row => ({
-            price: row[0],
-            size: row[1],
-            value:
-              row[0] *
-              row[1]
-          })
-        ),
-
+    const snapshot = {
+      time:
+        Date.now(),
       bestBid:
-        current.bestBid,
-
+        book.bids.length
+          ? Math.max(
+              ...book.bids.map(
+                x => x.price
+              )
+            )
+          : 0,
       bestAsk:
-        current.bestAsk,
-
-      timestamp:
-        Date.now()
+        book.asks.length
+          ? Math.min(
+              ...book.asks.map(
+                x => x.price
+              )
+            )
+          : 0,
+      bids:
+        book.bids
+          .slice(0, 20),
+      asks:
+        book.asks
+          .slice(0, 20)
     };
+
+    minute.bookSnapshots.push(
+      snapshot
+    );
+
+    if (
+      minute.bookSnapshots.length >
+      20
+    ) {
+      minute.bookSnapshots =
+        minute.bookSnapshots.slice(
+          -20
+        );
+    }
   }
 
   maybeFlush(symbol) {
+    const minute =
+      this.minutes.get(
+        symbol
+      );
+
+    if (!minute) return;
+
+    if (
+      Date.now() -
+        minute.time >
+      120000
+    ) {
+      this.minutes.delete(
+        symbol
+      );
+
+      this.ctx.waitUntil(
+        this.flushMinute(
+          minute
+        )
+      );
+    }
+  }
+
+  async flushMinute(minute) {
+    if (!minute?.symbol) {
+      return;
+    }
+
+    const final =
+      finalizeMinute(
+        minute
+      );
+
+    this.ctx.storage.sql.exec(
+      `
+      INSERT OR REPLACE INTO minutes
+      (symbol, ts, data)
+      VALUES (?, ?, ?)
+      `,
+      final.symbol,
+      final.time,
+      JSON.stringify(final)
+    );
+
+    const cutoff =
+      Date.now() -
+      RETENTION_MINUTES *
+        60000;
+
+    this.ctx.storage.sql.exec(
+      `
+      DELETE FROM minutes
+      WHERE ts < ?
+      `,
+      cutoff
+    );
+  }
+
+  async readHistory(
+    symbol,
+    minutes = 180
+  ) {
+    if (!symbol) return [];
+
+    const from =
+      Date.now() -
+      minutes * 60000;
+
+    const cursor =
+      this.ctx.storage.sql.exec(
+        `
+        SELECT symbol, ts, data
+        FROM minutes
+        WHERE symbol = ?
+          AND ts >= ?
+        ORDER BY ts ASC
+        `,
+        symbol,
+        from
+      );
+
+    const rows =
+      cursor.toArray();
+
+    const result =
+      rows.map(
+        row => {
+          try {
+            return JSON.parse(
+              row.data
+            );
+          } catch {
+            return null;
+          }
+        }
+      ).filter(Boolean);
+
     const current =
       this.minutes.get(
         symbol
@@ -4598,587 +3619,56 @@ export class CollectorDO extends DurableObject {
 
     if (
       current &&
-      Date.now() -
-        current.time >=
-        120000
+      current.time >= from
     ) {
-      this.flushMinute(
-        symbol
-      );
-    }
-  }
-
-  flushMinute(symbol) {
-    const minute =
-      this.minutes.get(
-        symbol
-      );
-
-    if (!minute) {
-      return;
-    }
-
-    const finalized =
-      finalizeMinute(
-        minute
-      );
-
-    if (!finalized) {
-      return;
-    }
-
-    try {
-      this.ctx.storage.sql.exec(
-        `
-        INSERT OR REPLACE INTO minutes(symbol,ts,data)
-        VALUES(?,?,?)
-        `,
-        symbol,
-        finalized.time,
-        JSON.stringify(
-          finalized
-        )
-      );
-    } catch {}
-
-    this.minutes.delete(
-      symbol
-    );
-
-    this.cleanupSymbol(
-      symbol
-    );
-  }
-
-  readHistory(
-    symbol,
-    minutes = 300
-  ) {
-    const limit =
-      clamp(
-        Number(minutes),
-        1,
-        RETENTION_MINUTES
-      );
-
-    const cutoff =
-      Date.now() -
-      limit *
-        60000;
-
-    const rows = [];
-
-    try {
-      const result =
-        this.ctx.storage.sql.exec(
-          `
-          SELECT data
-          FROM minutes
-          WHERE symbol=?
-          AND ts>=?
-          ORDER BY ts ASC
-          LIMIT ?
-          `,
-          symbol,
-          cutoff,
-          limit
-        );
-
-      for (
-        const row of result
-      ) {
-        try {
-          rows.push(
-            JSON.parse(
-              row.data
-            )
-          );
-        } catch {}
-      }
-    } catch {}
-
-    const current =
-      this.minutes.get(
-        symbol
-      );
-
-    if (current) {
-      const finalized =
+      result.push(
         finalizeMinute(
           current
-        );
-
-      if (
-        finalized &&
-        finalized.time >=
-          cutoff
-      ) {
-        rows.push(
-          finalized
-        );
-      }
+        )
+      );
     }
 
     const unique =
       new Map();
 
-    for (
-      const row of rows
-    ) {
+    for (const row of result) {
       unique.set(
-        row.time,
+        Number(row.time),
         row
       );
     }
 
-    return [
-      ...unique.values()
-    ].sort(
-      (a, b) =>
-        a.time -
-        b.time
-    );
+    return [...unique.values()]
+      .sort(
+        (a, b) =>
+          a.time - b.time
+      );
   }
 
-  getLatestMemory(
-    symbol
-  ) {
-    return {
-      current:
-        this.minutes.get(
-          symbol
-        )
-          ? finalizeMinute(
-              this.minutes.get(
-                symbol
-              )
-            )
-          : null,
-
-      stored:
-        this.readHistory(
-          symbol,
-          1
-        ).at(-1) ||
-        null,
-
-      book:
-        this.bookJSON(
-          symbol
-        )
-    };
-  }
-
-  bookJSON(symbol) {
-    const book =
-      this.books.get(
+  getLatestMemory(symbol) {
+    const minute =
+      this.minutes.get(
         symbol
       );
 
-    if (!book) {
-      return {
-        bids: [],
-        asks: [],
-        bestBid: 0,
-        bestAsk: 0,
-        timestamp: 0
-      };
-    }
-
-    return {
-      bids:
-        [...book.bids.entries()]
-          .sort(
-            (a, b) =>
-              b[0] -
-              a[0]
-          )
-          .slice(
-            0,
-            ORDERBOOK_LIMIT
-          )
-          .map(
-            row => ({
-              price: row[0],
-              size: row[1],
-              value:
-                row[0] *
-                row[1]
-            })
-          ),
-
-      asks:
-        [...book.asks.entries()]
-          .sort(
-            (a, b) =>
-              a[0] -
-              b[0]
-          )
-          .slice(
-            0,
-            ORDERBOOK_LIMIT
-          )
-          .map(
-            row => ({
-              price: row[0],
-              size: row[1],
-              value:
-                row[0] *
-                row[1]
-            })
-          ),
-
-      bestBid:
-        book.bestBid,
-
-      bestAsk:
-        book.bestAsk,
-
-      timestamp:
-        book.lastUpdate
-    };
+    return minute
+      ? finalizeMinute(
+          minute
+        )
+      : null;
   }
 
-  aggregateRows(
+  async aggregateRows(
     rows,
     interval
   ) {
-    const milliseconds =
-      intervalMs(
-        interval
-      );
-
-    const groups =
-      new Map();
-
-    for (
-      const row of rows
-    ) {
-      const time =
-        Math.floor(
-          row.time /
-            milliseconds
-        ) *
-        milliseconds;
-
-      let group =
-        groups.get(
-          time
-        );
-
-      if (!group) {
-        group = {
-          time,
-
-          open:
-            row.open,
-
-          high:
-            row.high,
-
-          low:
-            row.low,
-
-          close:
-            row.close,
-
-          volume: 0,
-          turnover: 0,
-
-          buyVolume: 0,
-          sellVolume: 0,
-
-          buyValue: 0,
-          sellValue: 0,
-
-          buyTrades: 0,
-          sellTrades: 0,
-
-          levels: {},
-
-          blocks: [],
-
-          liquidations: {
-            buy: 0,
-            sell: 0,
-            buyValue: 0,
-            sellValue: 0,
-            count: 0
-          }
-        };
-
-        groups.set(
-          time,
-          group
-        );
-      }
-
-      if (
-        row.time <
-        (
-          group.firstTime ||
-          Infinity
-        )
-      ) {
-        group.firstTime =
-          row.time;
-
-        group.open =
-          row.open;
-      }
-
-      group.high =
-        Math.max(
-          group.high,
-          row.high ||
-            group.high
-        );
-
-      group.low =
-        Math.min(
-          group.low,
-          row.low ||
-            group.low
-        );
-
-      group.close =
-        row.close ||
-        group.close;
-
-      group.volume +=
-        row.volume || 0;
-
-      group.turnover +=
-        row.turnover || 0;
-
-      group.buyVolume +=
-        row.buyVolume || 0;
-
-      group.sellVolume +=
-        row.sellVolume || 0;
-
-      group.buyValue +=
-        row.buyValue || 0;
-
-      group.sellValue +=
-        row.sellValue || 0;
-
-      group.buyTrades +=
-        row.buyTrades || 0;
-
-      group.sellTrades +=
-        row.sellTrades || 0;
-
-      for (
-        const level of
-          row.levels || []
-      ) {
-        const key =
-          String(
-            level.price
-          );
-
-        if (
-          !group.levels[key]
-        ) {
-          group.levels[key] = {
-            price:
-              level.price,
-
-            bidVolume: 0,
-            askVolume: 0,
-
-            bidValue: 0,
-            askValue: 0,
-
-            bidTrades: 0,
-            askTrades: 0,
-
-            totalVolume: 0,
-            totalValue: 0
-          };
-        }
-
-        const target =
-          group.levels[key];
-
-        target.bidVolume +=
-          level.bidVolume || 0;
-
-        target.askVolume +=
-          level.askVolume || 0;
-
-        target.bidValue +=
-          level.bidValue || 0;
-
-        target.askValue +=
-          level.askValue || 0;
-
-        target.bidTrades +=
-          level.bidTrades || 0;
-
-        target.askTrades +=
-          level.askTrades || 0;
-
-        target.totalVolume +=
-          level.totalVolume || 0;
-
-        target.totalValue +=
-          level.totalValue || 0;
-      }
-
-      group.blocks.push(
-        ...(row.blocks || [])
-      );
-
-      group.liquidations.buy +=
-        row.liquidations
-          ?.buy || 0;
-
-      group.liquidations.sell +=
-        row.liquidations
-          ?.sell || 0;
-
-      group.liquidations.buyValue +=
-        row.liquidations
-          ?.buyValue || 0;
-
-      group.liquidations.sellValue +=
-        row.liquidations
-          ?.sellValue || 0;
-
-      group.liquidations.count +=
-        row.liquidations
-          ?.count || 0;
-    }
-
-    return [
-      ...groups.values()
-    ]
-      .sort(
-        (a, b) =>
-          a.time -
-          b.time
-      )
-      .map(group => {
-        const levels =
-          Object.values(
-            group.levels
-          )
-            .map(level => ({
-              ...level,
-
-              delta:
-                level.askVolume -
-                level.bidVolume,
-
-              deltaValue:
-                level.askValue -
-                level.bidValue,
-
-              imbalance:
-                level.bidVolume >
-                0
-                  ? level.askVolume /
-                    level.bidVolume
-                  : level.askVolume >
-                    0
-                    ? Infinity
-                    : 0,
-
-              side:
-                level.askVolume >
-                level.bidVolume
-                  ? "BUY"
-                  : level.bidVolume >
-                    level.askVolume
-                    ? "SELL"
-                    : "NEUTRAL"
-            }))
-            .sort(
-              (a, b) =>
-                b.price -
-                a.price
-            )
-            .slice(
-              0,
-              FOOTPRINT_MAX_LEVELS
-            );
-
-        const total =
-          group.buyVolume +
-          group.sellVolume;
-
-        const delta =
-          group.buyVolume -
-          group.sellVolume;
-
-        const deltaValue =
-          group.buyValue -
-          group.sellValue;
-
-        return {
-          ...group,
-
-          delta,
-
-          deltaValue,
-
-          deltaPercent:
-            pct(
-              delta,
-              total
-            ),
-
-          buyShare:
-            pct(
-              group.buyVolume,
-              total
-            ),
-
-          sellShare:
-            pct(
-              group.sellVolume,
-              total
-            ),
-
-          tradeCount:
-            group.buyTrades +
-            group.sellTrades,
-
-          flowVolume:
-            total,
-
-          totalValue:
-            group.buyValue +
-            group.sellValue,
-
-          levels,
-
-          footprints:
-            levels,
-
-          footprint:
-            levels,
-
-          imbalances:
-            levels.filter(
-              level =>
-                level.imbalance >=
-                  3 ||
-                (
-                  level.bidVolume >
-                    0 &&
-                  level.askVolume /
-                    level.bidVolume <=
-                    1 / 3
-                )
-            )
-        };
-      });
+    return aggregateCandles(
+      rows,
+      interval
+    );
   }
 
-  collectorChart(
+  async collectorChart(
     symbol,
     interval
   ) {
@@ -5186,370 +3676,266 @@ export class CollectorDO extends DurableObject {
       Math.min(
         RETENTION_MINUTES,
         Math.max(
+          300,
           180 *
-            Number(
-              interval
-            ),
-          300
+            Number(interval)
         )
       );
 
     const rows =
-      this.readHistory(
+      await this.readHistory(
         symbol,
         sourceMinutes
       );
 
-    const grouped =
-      this.aggregateRows(
+    const candles =
+      await this.aggregateRows(
         rows,
         interval
       );
 
-    const candles =
-      grouped.slice(
-        -CHART_LIMIT
-      );
+    let cumulativeDelta = 0;
 
-    let cumulative =
-      0;
+    for (const c of candles) {
+      cumulativeDelta +=
+        n(c.delta);
 
-    const chartCandles =
-      candles.map(
-        candle => {
-          cumulative +=
-            candle.deltaValue ||
-            0;
+      c.cumulativeDelta =
+        cumulativeDelta;
+    }
 
-          return {
-            time:
-              candle.time,
-
-            open:
-              candle.open,
-
-            high:
-              candle.high,
-
-            low:
-              candle.low,
-
-            close:
-              candle.close,
-
-            volume:
-              candle.volume,
-
-            flowVolume:
-              candle.flowVolume,
-
-            buyVolume:
-              candle.buyVolume,
-
-            sellVolume:
-              candle.sellVolume,
-
-            buyValue:
-              candle.buyValue,
-
-            sellValue:
-              candle.sellValue,
-
-            delta:
-              candle.delta,
-
-            deltaValue:
-              candle.deltaValue,
-
-            deltaPercent:
-              candle.deltaPercent,
-
-            tradeCount:
-              candle.tradeCount,
-
-            cumulativeDeltaValue:
-              cumulative,
-
-            footprint:
-              candle.levels ||
-              [],
-
-            imbalances:
-              candle.imbalances ||
-              []
-          };
-        }
-      );
-
-    const book =
-      this.bookJSON(
-        symbol
-      );
+    const latest =
+      candles[
+        candles.length - 1
+      ] || null;
 
     return {
       ok: true,
-
       version: VERSION,
-
-      category: "linear",
-
-      symbol,
-
-      interval,
-
-      intervalMs:
-        intervalMs(
-          interval
-        ),
-
       source:
         "COLLECTOR_AGGREGATED_1M",
 
-      serverTime:
-        Date.now(),
+      symbol,
+      interval,
 
-      candles:
-        chartCandles,
+      candles,
 
       selectedCandles:
-        chartCandles,
+        candles,
 
       footprints:
         candles.map(
-          candle => ({
-            ...candle,
-
+          c => ({
+            ...c,
             levels:
-              candle.levels ||
-              []
+              c.levels || []
           })
         ),
 
-      footprint: {
-        interval,
+      footprint:
+        candles.map(
+          c => ({
+            ...c,
+            levels:
+              c.levels || []
+          })
+        ),
 
-        intervalMs:
-          intervalMs(
-            interval
-          ),
+      currentFlow: latest
+        ? {
+            buyVolume:
+              latest.buyVolume,
+            sellVolume:
+              latest.sellVolume,
+            volume:
+              latest.flowVolume,
+            delta:
+              latest.delta,
+            deltaPercent:
+              latest.deltaPercent
+          }
+        : {
+            buyVolume: 0,
+            sellVolume: 0,
+            volume: 0,
+            delta: 0,
+            deltaPercent: 0
+          },
 
-        candles:
-          candles.map(
-            candle => ({
-              ...candle,
-              levels:
-                candle.levels ||
-                []
-            })
-          )
+      cumulativeDelta,
+
+      ticker: {
+        lastPrice:
+          latest?.close || 0
       },
 
-      candleDelta:
-        chartCandles.map(
-          candle => ({
-            time:
-              candle.time,
+      orderbook: {
+        bids: [],
+        asks: [],
+        bestBid: 0,
+        bestAsk: 0
+      },
 
-            buy:
-              candle.buyVolume,
+      wall: {
+        buyLiquidity: 0,
+        sellLiquidity: 0,
+        totalLiquidity: 0,
+        buyShare: 0,
+        sellShare: 0,
+        pressure: "NEUTRAL",
+        buyWalls: [],
+        sellWalls: [],
+        nearBuyWall: null,
+        nearSellWall: null
+      },
 
-            sell:
-              candle.sellVolume,
+      liquidityZones: [],
 
-            delta:
-              candle.delta,
+      heatmap: [],
 
-            deltaValue:
-              candle.deltaValue,
+      absorption: {
+        detected: false,
+        side: null
+      },
 
-            deltaPercent:
-              candle.deltaPercent,
+      sweep: {
+        detected: false
+      },
 
-            trades:
-              candle.tradeCount,
+      blocks: [],
 
-            cumulativeDeltaValue:
-              candle.cumulativeDeltaValue
-          })
-        ),
+      trades: [],
 
-      cumulativeDelta:
-        chartCandles.reduce(
-          (total, candle) =>
-            total +
-            (candle.deltaValue ||
-              0),
-          0
-        ),
+      score: 50,
+      signal: "WAIT",
 
-      orderbook: book,
-
-      heatmap:
-        liquidityHeatmap(
-          book
-        ),
-
-      wall:
-        wallAnalysis(
-          book
-        ),
-
-      liquidityZones:
-        liquidityZones(
-          book,
-          book.bestBid
-        ),
-
-      current:
-        chartCandles.at(-1) ||
-        null
+      analyzedAt:
+        Date.now()
     };
   }
 
-  cleanupSymbol(
-    symbol
-  ) {
-    const cutoff =
-      Date.now() -
-      RETENTION_MINUTES *
-        60000;
+  async status() {
+    const sockets = [];
 
-    try {
-      this.ctx.storage.sql.exec(
-        `
-        DELETE FROM minutes
-        WHERE symbol=?
-        AND ts<?
-        `,
-        symbol,
-        cutoff
-      );
-    } catch {}
-  }
-
-  cleanup() {
-    const cutoff =
-      Date.now() -
-      RETENTION_MINUTES *
-        60000;
-
-    try {
-      const result =
-        this.ctx.storage.sql.exec(
-          `
-          SELECT COUNT(*) AS c
-          FROM minutes
-          WHERE ts<?
-          `,
-          cutoff
-        );
-
-      const count =
-        n(
-          result
-            ?.one?.()
-            ?.c || 0
-        );
-
-      this.ctx.storage.sql.exec(
-        `
-        DELETE FROM minutes
-        WHERE ts<?
-        `,
-        cutoff
-      );
-
-      return count;
-    } catch {
-      return 0;
+    for (
+      const [
+        key,
+        state
+      ] of this.wsState
+    ) {
+      sockets.push({
+        key,
+        ...state
+      });
     }
-  }
 
-  status() {
-    let storedMinutes = 0;
+    const cursor =
+      this.ctx.storage.sql.exec(
+        `
+        SELECT COUNT(*) AS count
+        FROM minutes
+        `
+      );
 
-    try {
-      storedMinutes =
-        n(
-          this.ctx.storage.sql
-            .exec(
-              `
-              SELECT COUNT(*) AS c
-              FROM minutes
-              `
-            )
-            ?.one?.()
-            ?.c || 0
-        );
-    } catch {}
+    const count =
+      cursor.toArray()[0]?.count ||
+      0;
 
     return {
       ok: true,
-
       version: VERSION,
-
-      initialized:
-        this.initialized,
-
+      started:
+        this.started,
       symbols:
         this.symbols.length,
-
-      activeBooks:
-        this.books.size,
-
-      activeMinutes:
+      memoryMinutes:
         this.minutes.size,
+      storedMinutes:
+        n(count),
+      sockets,
+      books:
+        this.books.size
+    };
+  }
 
-      storedMinutes,
+  async cleanup() {
+    const cutoff =
+      Date.now() -
+      RETENTION_MINUTES *
+        60000;
 
-      sockets:
-        [
-          ...this.wsState.entries()
-        ].map(
-          ([shard, state]) => ({
-            shard,
-            ...state
-          })
-        ),
+    const cursor =
+      this.ctx.storage.sql.exec(
+        `
+        SELECT COUNT(*) AS count
+        FROM minutes
+        WHERE ts < ?
+        `,
+        cutoff
+      );
 
-      time:
-        Date.now()
+    const before =
+      n(
+        cursor.toArray()[0]?.count
+      );
+
+    this.ctx.storage.sql.exec(
+      `
+      DELETE FROM minutes
+      WHERE ts < ?
+      `,
+      cutoff
+    );
+
+    return {
+      deleted:
+        before
     };
   }
 }
 
 /* =========================================================
-   COLLECTOR ACCESS
-========================================================= */
+   MAIN WORKER
+   ========================================================= */
 
-function collectorId(env) {
-  return env.COLLECTOR.idFromName(
-    "MAIN"
-  );
+function corsHeaders() {
+  return {
+    "access-control-allow-origin": "*",
+    "access-control-allow-methods":
+      "GET,POST,OPTIONS",
+    "access-control-allow-headers":
+      "Content-Type"
+  };
 }
 
-function collectorStub(env) {
-  return env.COLLECTOR.get(
-    collectorId(env)
-  );
-}
-
-async function collectorFetch(
+async function collectorRequest(
   env,
   path,
   params = {}
 ) {
+  if (!env.COLLECTOR) {
+    throw new Error(
+      "COLLECTOR binding is missing"
+    );
+  }
+
+  const id =
+    env.COLLECTOR.idFromName(
+      "MAIN"
+    );
+
+  const stub =
+    env.COLLECTOR.get(id);
+
   const url =
     new URL(
-      "https://collector.internal" +
-        path
+      "https://collector.local" +
+      path
     );
 
   for (
-    const [
-      key,
-      value
-    ] of Object.entries(params)
+    const [key, value] of
+    Object.entries(params)
   ) {
     if (
       value !== undefined &&
@@ -5563,18 +3949,15 @@ async function collectorFetch(
     }
   }
 
-  return collectorStub(
-    env
-  ).fetch(
-    new Request(
-      url.toString()
-    )
-  );
-}
+  const response =
+    await stub.fetch(
+      new Request(
+        url.toString()
+      )
+    );
 
-/* =========================================================
-   MAIN WORKER
-========================================================= */
+  return response.json();
+}
 
 export default {
   async fetch(
@@ -5582,6 +3965,9 @@ export default {
     env,
     ctx
   ) {
+    const cors =
+      corsHeaders();
+
     if (
       request.method ===
       "OPTIONS"
@@ -5590,17 +3976,7 @@ export default {
         null,
         {
           status: 204,
-
-          headers: {
-            "access-control-allow-origin":
-              "*",
-
-            "access-control-allow-methods":
-              "GET,POST,OPTIONS",
-
-            "access-control-allow-headers":
-              "*"
-          }
+          headers: cors
         }
       );
     }
@@ -5610,271 +3986,210 @@ export default {
         request.url
       );
 
-    const path =
-      url.pathname;
-
     try {
       if (
-        path ===
+        url.pathname ===
         "/api/health"
       ) {
-        let collector = null;
-
-        try {
-          const response =
-            await collectorFetch(
-              env,
-              "/status"
-            );
-
-          collector =
-            await response.json();
-        } catch (error) {
-          collector = {
-            ok: false,
-            error:
-              error?.message ||
-              String(error)
-          };
-        }
-
-        return json({
-          ok: true,
-
-          version:
-            VERSION,
-
-          service:
-            "Bybit Smart Money Order Flow",
-
-          collector,
-
-          time:
-            Date.now()
-        });
+        return json(
+          {
+            ok: true,
+            version: VERSION,
+            worker:
+              "absorption-zone-scanner",
+            time:
+              Date.now()
+          },
+          200,
+          cors
+        );
       }
 
       if (
-        path ===
+        url.pathname ===
         "/api/test-bybit"
       ) {
-        return json({
-          ok: true,
+        const data =
+          await bybit(
+            "/v5/market/time"
+          );
 
-          version:
-            VERSION,
-
-          bybit:
-            await bybit(
-              "/v5/market/time"
-            ),
-
-          time:
-            Date.now()
-        });
+        return json(
+          {
+            ok: true,
+            bybit: data,
+            version: VERSION
+          },
+          200,
+          cors
+        );
       }
 
       if (
-        path ===
+        url.pathname ===
           "/api/collector/init" ||
-        path ===
+        url.pathname ===
           "/api/init"
       ) {
-        const response =
-          await collectorFetch(
+        const result =
+          await collectorRequest(
             env,
             "/init"
           );
 
-        return new Response(
-          await response.text(),
-          {
-            status:
-              response.status,
-
-            headers:
-              response.headers
-          }
+        return json(
+          result,
+          200,
+          cors
         );
       }
 
       if (
-        path ===
+        url.pathname ===
           "/api/collector/status" ||
-        path ===
+        url.pathname ===
           "/api/status"
       ) {
-        const response =
-          await collectorFetch(
+        const result =
+          await collectorRequest(
             env,
             "/status"
           );
 
-        return new Response(
-          await response.text(),
-          {
-            status:
-              response.status,
-
-            headers:
-              response.headers
-          }
+        return json(
+          result,
+          200,
+          cors
         );
       }
 
       if (
-        path ===
-        "/api/history"
-      ) {
-        const response =
-          await collectorFetch(
-            env,
-            "/history",
-            {
-              symbol:
-                normalizeSymbol(
-                  url.searchParams.get(
-                    "symbol"
-                  )
-                ),
-
-              minutes:
-                url.searchParams.get(
-                  "minutes"
-                ) || "300"
-            }
-          );
-
-        return new Response(
-          await response.text(),
-          {
-            status:
-              response.status,
-
-            headers:
-              response.headers
-          }
-        );
-      }
-
-      if (
-        path ===
-        "/api/latest"
-      ) {
-        const response =
-          await collectorFetch(
-            env,
-            "/latest",
-            {
-              symbol:
-                normalizeSymbol(
-                  url.searchParams.get(
-                    "symbol"
-                  )
-                )
-            }
-          );
-
-        return new Response(
-          await response.text(),
-          {
-            status:
-              response.status,
-
-            headers:
-              response.headers
-          }
-        );
-      }
-
-      if (
-        path ===
-        "/api/collector/chart"
-      ) {
-        const response =
-          await collectorFetch(
-            env,
-            "/chart",
-            {
-              symbol:
-                normalizeSymbol(
-                  url.searchParams.get(
-                    "symbol"
-                  )
-                ),
-
-              interval:
-                normalizeInterval(
-                  url.searchParams.get(
-                    "interval"
-                  ) || TF
-                )
-            }
-          );
-
-        return new Response(
-          await response.text(),
-          {
-            status:
-              response.status,
-
-            headers:
-              response.headers
-          }
-        );
-      }
-
-      if (
-        path ===
+        url.pathname ===
         "/api/collector/symbols"
       ) {
-        const response =
-          await collectorFetch(
+        const result =
+          await collectorRequest(
             env,
             "/symbols"
           );
 
-        return new Response(
-          await response.text(),
-          {
-            status:
-              response.status,
-
-            headers:
-              response.headers
-          }
+        return json(
+          result,
+          200,
+          cors
         );
       }
 
       if (
-        path ===
+        url.pathname ===
+        "/api/history"
+      ) {
+        const result =
+          await collectorRequest(
+            env,
+            "/history",
+            {
+              symbol:
+                url.searchParams.get(
+                  "symbol"
+                ),
+              minutes:
+                url.searchParams.get(
+                  "minutes"
+                ) || 180
+            }
+          );
+
+        return json(
+          result,
+          200,
+          cors
+        );
+      }
+
+      if (
+        url.pathname ===
+        "/api/latest"
+      ) {
+        const result =
+          await collectorRequest(
+            env,
+            "/latest",
+            {
+              symbol:
+                url.searchParams.get(
+                  "symbol"
+                )
+            }
+          );
+
+        return json(
+          result,
+          200,
+          cors
+        );
+      }
+
+      if (
+        url.pathname ===
+        "/api/collector/chart"
+      ) {
+        const result =
+          await collectorRequest(
+            env,
+            "/chart",
+            {
+              symbol:
+                url.searchParams.get(
+                  "symbol"
+                ),
+              interval:
+                url.searchParams.get(
+                  "interval"
+                ) || "1"
+            }
+          );
+
+        return json(
+          result,
+          200,
+          cors
+        );
+      }
+
+      if (
+        url.pathname ===
         "/api/collector/cleanup"
       ) {
-        const response =
-          await collectorFetch(
+        const result =
+          await collectorRequest(
             env,
             "/cleanup"
           );
 
-        return new Response(
-          await response.text(),
-          {
-            status:
-              response.status,
-
-            headers:
-              response.headers
-          }
+        return json(
+          result,
+          200,
+          cors
         );
       }
 
       if (
-        path ===
+        url.pathname ===
         "/api/analyze"
       ) {
         const symbol =
-          url.searchParams.get(
-            "symbol"
+          normalizeSymbol(
+            url.searchParams.get(
+              "symbol"
+            )
+          );
+
+        const interval =
+          normalizeInterval(
+            url.searchParams.get(
+              "interval"
+            )
           );
 
         if (!symbol) {
@@ -5882,34 +4197,42 @@ export default {
             {
               ok: false,
               error:
-                "symbol required"
+                "Symbol is required"
             },
-            400
+            400,
+            cors
           );
         }
 
-        const interval =
-          normalizeInterval(
-            url.searchParams.get(
-              "interval"
-            ) || TF
-          );
-
-        return json(
+        const result =
           await analyze(
             symbol,
             interval
-          )
+          );
+
+        return json(
+          result,
+          200,
+          cors
         );
       }
 
       if (
-        path ===
-        "/api/chart"
+        url.pathname ===
+        "/api/live"
       ) {
         const symbol =
-          url.searchParams.get(
-            "symbol"
+          normalizeSymbol(
+            url.searchParams.get(
+              "symbol"
+            )
+          );
+
+        const interval =
+          normalizeInterval(
+            url.searchParams.get(
+              "interval"
+            )
           );
 
         if (!symbol) {
@@ -5917,18 +4240,55 @@ export default {
             {
               ok: false,
               error:
-                "symbol required"
+                "Symbol is required"
             },
-            400
+            400,
+            cors
           );
         }
+
+        const result =
+          await live(
+            symbol,
+            interval
+          );
+
+        return json(
+          result,
+          200,
+          cors
+        );
+      }
+
+      if (
+        url.pathname ===
+        "/api/chart"
+      ) {
+        const symbol =
+          normalizeSymbol(
+            url.searchParams.get(
+              "symbol"
+            )
+          );
 
         const interval =
           normalizeInterval(
             url.searchParams.get(
               "interval"
-            ) || TF
+            )
           );
+
+        if (!symbol) {
+          return json(
+            {
+              ok: false,
+              error:
+                "Symbol is required"
+            },
+            400,
+            cors
+          );
+        }
 
         try {
           const result =
@@ -5937,110 +4297,72 @@ export default {
               interval
             );
 
-          if (
-            result &&
-            result.candles &&
-            result.candles.length
-          ) {
-            return json(
-              result
-            );
-          }
-        } catch {}
-
-        const response =
-          await collectorFetch(
-            env,
-            "/chart",
-            {
-              symbol:
-                normalizeSymbol(
-                  symbol
-                ),
-
-              interval
-            }
-          );
-
-        return new Response(
-          await response.text(),
-          {
-            status:
-              response.status,
-
-            headers:
-              response.headers
-          }
-        );
-      }
-
-      if (
-        path ===
-        "/api/live"
-      ) {
-        const symbol =
-          url.searchParams.get(
-            "symbol"
-          );
-
-        if (!symbol) {
           return json(
-            {
-              ok: false,
-              error:
-                "symbol required"
-            },
-            400
+            result,
+            200,
+            cors
+          );
+        } catch {
+          const result =
+            await collectorRequest(
+              env,
+              "/chart",
+              {
+                symbol,
+                interval
+              }
+            );
+
+          return json(
+            result,
+            200,
+            cors
           );
         }
-
-        return json(
-          await live(
-            symbol,
-            normalizeInterval(
-              url.searchParams.get(
-                "interval"
-              ) || TF
-            )
-          )
-        );
       }
 
       if (
-        path ===
+        url.pathname ===
         "/api/scan"
       ) {
-        return json(
+        const offset =
+          Number(
+            url.searchParams.get(
+              "offset"
+            ) || 0
+          );
+
+        const result =
           await scan(
-            Number(
-              url.searchParams.get(
-                "offset"
-              ) || 0
-            )
-          )
+            offset
+          );
+
+        return json(
+          result,
+          200,
+          cors
         );
       }
 
       if (
-        path ===
+        url.pathname ===
         "/api/symbols"
       ) {
-        return json({
-          ok: true,
+        const symbols =
+          await getSymbols();
 
-          version:
-            VERSION,
-
-          symbols:
-            await getSymbols()
-        });
+        return json(
+          {
+            ok: true,
+            symbols
+          },
+          200,
+          cors
+        );
       }
 
       if (
-        env &&
-        env.ASSETS &&
-        typeof env.ASSETS.fetch ===
-          "function"
+        env.ASSETS
       ) {
         return env.ASSETS.fetch(
           request
@@ -6050,22 +4372,21 @@ export default {
       return new Response(
         "Not Found",
         {
-          status: 404
+          status: 404,
+          headers: cors
         }
       );
     } catch (error) {
       return json(
         {
           ok: false,
-
-          version:
-            VERSION,
-
+          version: VERSION,
           error:
             error?.message ||
             String(error)
         },
-        500
+        500,
+        cors
       );
     }
   }
