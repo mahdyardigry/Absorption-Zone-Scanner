@@ -20,6 +20,7 @@ html,body{
 
 body{
   min-height:100vh;
+  overflow-x:hidden;
 }
 
 button,input,select{
@@ -28,6 +29,7 @@ button,input,select{
 
 button{
   cursor:pointer;
+  -webkit-tap-highlight-color:transparent;
 }
 
 .app{
@@ -58,7 +60,7 @@ button{
 
 .controls{
   display:grid;
-  grid-template-columns:1.2fr 1fr 1fr .8fr auto;
+  grid-template-columns:1.4fr .8fr auto;
   gap:8px;
   margin-top:12px;
 }
@@ -68,6 +70,7 @@ button{
   border:1px solid #263b4b;
   border-radius:10px;
   padding:8px;
+  min-width:0;
 }
 
 .control label{
@@ -88,6 +91,24 @@ button{
   outline:none;
 }
 
+.control input:focus,
+.control select:focus{
+  border-color:#3f7b9a;
+}
+
+.symbol-wrap{
+  position:relative;
+}
+
+.symbol-live{
+  position:absolute;
+  left:9px;
+  top:31px;
+  font-size:9px;
+  color:#35e39a;
+  pointer-events:none;
+}
+
 .btn{
   border:0;
   border-radius:10px;
@@ -97,6 +118,10 @@ button{
   font-weight:800;
   align-self:end;
   min-height:44px;
+}
+
+.btn:active{
+  transform:scale(.98);
 }
 
 .status{
@@ -162,6 +187,7 @@ button{
   display:flex;
   justify-content:space-between;
   align-items:center;
+  gap:8px;
   padding:11px 13px;
   border-bottom:1px solid #203340;
   background:#0c1822;
@@ -175,6 +201,28 @@ button{
 .panel-hint{
   color:#718899;
   font-size:10px;
+  text-align:left;
+}
+
+.chart-tools{
+  display:flex;
+  align-items:center;
+  gap:5px;
+  direction:ltr;
+}
+
+.chart-tool{
+  border:1px solid #2a4657;
+  background:#0e1d28;
+  color:#bdd0dd;
+  border-radius:7px;
+  padding:5px 8px;
+  font-size:10px;
+  min-width:32px;
+}
+
+.chart-tool:hover{
+  background:#142a38;
 }
 
 .chart-wrap{
@@ -183,6 +231,8 @@ button{
   height:460px;
   background:#071018;
   overflow:hidden;
+  touch-action:none;
+  overscroll-behavior:none;
 }
 
 #chartCanvas{
@@ -190,6 +240,27 @@ button{
   height:100%;
   display:block;
   touch-action:none;
+  user-select:none;
+  -webkit-user-select:none;
+}
+
+.chart-overlay{
+  position:absolute;
+  top:8px;
+  right:8px;
+  display:flex;
+  gap:5px;
+  pointer-events:none;
+}
+
+.chart-badge{
+  background:rgba(7,16,24,.86);
+  border:1px solid #263e4d;
+  color:#7891a2;
+  border-radius:7px;
+  padding:4px 7px;
+  font-size:9px;
+  direction:rtl;
 }
 
 .tabs{
@@ -275,6 +346,7 @@ button{
     #071018;
   background-size:100% 30px;
   touch-action:none;
+  overscroll-behavior:none;
 }
 
 #footprintCanvas{
@@ -282,6 +354,8 @@ button{
   height:100%;
   display:block;
   touch-action:none;
+  user-select:none;
+  -webkit-user-select:none;
 }
 
 .fp-message{
@@ -296,6 +370,7 @@ button{
   font-size:12px;
   padding:25px;
   pointer-events:none;
+  line-height:1.9;
 }
 
 .legend{
@@ -322,14 +397,24 @@ button{
   display:inline-block;
 }
 
+.connection-dot{
+  width:7px;
+  height:7px;
+  border-radius:50%;
+  display:inline-block;
+  background:#35e39a;
+  margin-left:4px;
+}
+
 @media(max-width:900px){
 
   .controls{
     grid-template-columns:1fr 1fr;
   }
 
-  .btn{
+  .controls .btn{
     width:100%;
+    grid-column:1 / -1;
   }
 
   .stats{
@@ -360,11 +445,23 @@ button{
   }
 
   .controls{
-    grid-template-columns:1fr 1fr;
+    grid-template-columns:1fr;
+  }
+
+  .controls .btn{
+    grid-column:auto;
   }
 
   .stats{
     grid-template-columns:repeat(2,1fr);
+  }
+
+  .panel-head{
+    padding:9px;
+  }
+
+  .panel-hint{
+    display:none;
   }
 
   .chart-wrap{
@@ -373,6 +470,57 @@ button{
 
   .fp-wrap{
     height:510px;
+  }
+}
+
+/*
+  حالت Landscape واقعی:
+  ابتدا Screen Orientation API استفاده می‌شود.
+  این CSS برای زمانی است که مرورگر اجازه Lock ندهد.
+*/
+
+body.landscape-chart-mode{
+  background:#071019;
+}
+
+body.landscape-chart-mode .app{
+  max-width:none;
+}
+
+body.landscape-chart-mode .chart-panel{
+  position:fixed;
+  inset:0;
+  z-index:9999;
+  margin:0;
+  border-radius:0;
+  background:#071018;
+}
+
+body.landscape-chart-mode .chart-panel .chart-wrap{
+  height:calc(100vh - 92px);
+}
+
+body.landscape-chart-mode .chart-panel .panel-head{
+  height:46px;
+}
+
+body.landscape-chart-mode .chart-panel .tabs{
+  height:46px;
+}
+
+@media(max-width:900px) and (orientation:landscape){
+
+  .chart-wrap{
+    height:calc(100vh - 95px);
+    min-height:260px;
+  }
+
+  .fp-wrap{
+    height:430px;
+  }
+
+  .chart-panel{
+    min-height:0;
   }
 }
 </style>
@@ -389,47 +537,54 @@ button{
     </div>
 
     <div class="subtitle">
-      تحلیل Order Flow واقعی بازار Bybit
+      تحلیل Order Flow واقعی بازار Bybit Futures
     </div>
 
     <div class="controls">
 
-      <div class="control">
-        <label>نماد</label>
-        <input id="symbol" value="HUSDT" autocomplete="off">
+      <div class="control symbol-wrap">
+
+        <label>
+          نماد Futures
+        </label>
+
+        <input
+          id="symbol"
+          list="futuresSymbols"
+          value="BTCUSDT"
+          autocomplete="off"
+          spellcheck="false"
+          placeholder="مثلاً BTCUSDT"
+        >
+
+        <datalist id="futuresSymbols"></datalist>
+
+        <span class="symbol-live">
+          <span class="connection-dot"></span>
+          Futures
+        </span>
+
       </div>
 
       <div class="control">
-        <label>بازار</label>
-        <select id="category">
-          <option value="linear">Futures</option>
-          <option value="spot">Spot</option>
-          <option value="inverse">Inverse</option>
-        </select>
-      </div>
 
-      <div class="control">
-        <label>تایم‌فریم</label>
+        <label>
+          تایم‌فریم
+        </label>
+
         <select id="interval">
+
           <option value="1">1m</option>
           <option value="3">3m</option>
           <option value="5">5m</option>
           <option value="15">15m</option>
           <option value="30">30m</option>
           <option value="60">1h</option>
+          <option value="120">2h</option>
           <option value="240">4h</option>
-        </select>
-      </div>
 
-      <div class="control">
-        <label>تعداد کندل</label>
-        <select id="candleCount">
-          <option value="60">60</option>
-          <option value="90" selected>90</option>
-          <option value="120">120</option>
-          <option value="180">180</option>
-          <option value="200">200</option>
         </select>
+
       </div>
 
       <button class="btn" id="analyze">
@@ -439,7 +594,7 @@ button{
     </div>
 
     <div class="status" id="status">
-      ⏳ در حال اتصال به Bybit...
+      ⏳ در حال اتصال به Bybit Futures...
     </div>
 
   </div>
@@ -478,7 +633,7 @@ button{
 
   </div>
 
-  <div class="panel">
+  <div class="panel chart-panel" id="chartPanel">
 
     <div class="panel-head">
 
@@ -486,24 +641,96 @@ button{
         📈 Price / Order Flow
       </div>
 
+      <div class="chart-tools">
+
+        <button
+          class="chart-tool"
+          id="chartZoomOut"
+          title="کوچک کردن"
+        >
+          −
+        </button>
+
+        <button
+          class="chart-tool"
+          id="chartZoomReset"
+          title="بازنشانی زوم"
+        >
+          1×
+        </button>
+
+        <button
+          class="chart-tool"
+          id="chartZoomIn"
+          title="بزرگ کردن"
+        >
+          +
+        </button>
+
+        <button
+          class="chart-tool"
+          id="landscapeBtn"
+          title="چرخش نمودار"
+        >
+          ⛶
+        </button>
+
+      </div>
+
       <div class="panel-hint">
-        یک انگشت: حرکت · دو انگشت: زوم · لمس کندل: انتخاب
+        یک انگشت: حرکت · دو انگشت: زوم · لمس: انتخاب
       </div>
 
     </div>
 
-    <div class="chart-wrap">
+    <div class="chart-wrap" id="chartWrap">
+
       <canvas id="chartCanvas"></canvas>
+
+      <div class="chart-overlay">
+
+        <div class="chart-badge" id="chartZoomBadge">
+          Zoom 1.00×
+        </div>
+
+        <div class="chart-badge" id="wsBadge">
+          REST
+        </div>
+
+      </div>
+
     </div>
 
     <div class="tabs">
-      <button class="tab active">Footprint</button>
-      <button class="tab">Heatmap</button>
-      <button class="tab">Liquidity</button>
-      <button class="tab">Absorption</button>
-      <button class="tab">Order Book</button>
-      <button class="tab">Delta / CVD</button>
-      <button class="tab">Large Trades</button>
+
+      <button class="tab active">
+        Footprint
+      </button>
+
+      <button class="tab">
+        Heatmap
+      </button>
+
+      <button class="tab">
+        Liquidity
+      </button>
+
+      <button class="tab">
+        Absorption
+      </button>
+
+      <button class="tab">
+        Order Book
+      </button>
+
+      <button class="tab">
+        Delta / CVD
+      </button>
+
+      <button class="tab">
+        Large Trades
+      </button>
+
     </div>
 
   </div>
@@ -541,7 +768,7 @@ button{
     <div class="fp-tools">
 
       <span>
-        لمس و کشیدن = حرکت · دو انگشت = بزرگ/کوچک کردن کل Footprint
+        لمس و کشیدن = حرکت · دو انگشت = زوم آزاد Footprint
       </span>
 
       <button class="fp-reset" id="fpReset">
@@ -561,27 +788,42 @@ button{
     <div class="legend">
 
       <span>
-        <i class="dot" style="background:#ef6875"></i>
+        <i
+          class="dot"
+          style="background:#ef6875"
+        ></i>
         Bid
       </span>
 
       <span>
-        <i class="dot" style="background:#39db92"></i>
+        <i
+          class="dot"
+          style="background:#39db92"
+        ></i>
         Ask
       </span>
 
       <span>
-        <i class="dot" style="background:#53a9ff"></i>
+        <i
+          class="dot"
+          style="background:#53a9ff"
+        ></i>
         Volume Fixed Range
       </span>
 
       <span>
-        <i class="dot" style="background:#39db92"></i>
+        <i
+          class="dot"
+          style="background:#39db92"
+        ></i>
         Delta +
       </span>
 
       <span>
-        <i class="dot" style="background:#ef6875"></i>
+        <i
+          class="dot"
+          style="background:#ef6875"
+        ></i>
         Delta -
       </span>
 
@@ -594,17 +836,32 @@ button{
 <script>
 "use strict";
 
-const API_BASE = location.origin;
+/* =========================================================
+   CONFIG
+========================================================= */
+
+const API_BASE =
+  location.origin;
+
+const BYBIT_WS =
+  "wss://stream.bybit.com/v5/public/linear";
+
+const FUTURES_CATEGORY =
+  "linear";
+
+const MAX_STORED_TRADE_AGE =
+  24 * 60 * 60 * 1000;
+
+const MAX_MEMORY_TRADES =
+  30000;
 
 const state = {
 
-  symbol:"HUSDT",
+  symbol:"BTCUSDT",
 
   category:"linear",
 
   interval:"1",
-
-  candleCount:90,
 
   candles:[],
 
@@ -626,6 +883,10 @@ const state = {
 
   mainGesture:null,
 
+  chartAnimation:null,
+
+  chartNeedsDraw:false,
+
   fpScale:1,
 
   fpOffsetX:0,
@@ -638,14 +899,39 @@ const state = {
 
   loading:false,
 
-  userSelectedHistorical:false
+  userSelectedHistorical:false,
+
+  ws:null,
+
+  wsConnected:false,
+
+  wsReconnectTimer:null,
+
+  wsPingTimer:null,
+
+  wsReconnectAttempt:0,
+
+  symbolList:[],
+
+  indexedDb:null,
+
+  dbReady:false
+
 };
 
+/* =========================================================
+   DOM
+========================================================= */
+
 const chartCanvas =
-  document.getElementById("chartCanvas");
+  document.getElementById(
+    "chartCanvas"
+  );
 
 const fpCanvas =
-  document.getElementById("footprintCanvas");
+  document.getElementById(
+    "footprintCanvas"
+  );
 
 const chartCtx =
   chartCanvas.getContext("2d");
@@ -654,29 +940,54 @@ const fpCtx =
   fpCanvas.getContext("2d");
 
 const statusEl =
-  document.getElementById("status");
+  document.getElementById(
+    "status"
+  );
 
 const fpMessage =
-  document.getElementById("fpMessage");
+  document.getElementById(
+    "fpMessage"
+  );
+
+const chartZoomBadge =
+  document.getElementById(
+    "chartZoomBadge"
+  );
+
+const wsBadge =
+  document.getElementById(
+    "wsBadge"
+  );
 
 function $(id){
+
   return document.getElementById(id);
+
 }
+
+/* =========================================================
+   BASIC HELPERS
+========================================================= */
 
 function num(v){
 
-  const n = Number(v);
+  const n =
+    Number(v);
 
   return Number.isFinite(n)
     ? n
     : 0;
+
 }
 
 function fmt(v){
 
-  const n = num(v);
+  const n =
+    num(v);
 
-  if(Math.abs(n) >= 1000){
+  if(
+    Math.abs(n) >= 1000
+  ){
 
     return n.toLocaleString(
       "en-US",
@@ -684,9 +995,12 @@ function fmt(v){
         maximumFractionDigits:2
       }
     );
+
   }
 
-  if(Math.abs(n) >= 1){
+  if(
+    Math.abs(n) >= 1
+  ){
 
     return n.toLocaleString(
       "en-US",
@@ -694,6 +1008,7 @@ function fmt(v){
         maximumFractionDigits:6
       }
     );
+
   }
 
   return n.toLocaleString(
@@ -702,48 +1017,77 @@ function fmt(v){
       maximumFractionDigits:10
     }
   );
+
 }
 
 function formatPrice(v){
 
-  v = num(v);
+  v =
+    num(v);
 
-  if(v >= 1000) return v.toFixed(2);
+  if(v >= 1000)
+    return v.toFixed(2);
 
-  if(v >= 100) return v.toFixed(3);
+  if(v >= 100)
+    return v.toFixed(3);
 
-  if(v >= 1) return v.toFixed(4);
+  if(v >= 1)
+    return v.toFixed(4);
 
-  if(v >= .01) return v.toFixed(6);
+  if(v >= .01)
+    return v.toFixed(6);
 
   return v.toFixed(8);
+
 }
 
 function formatTime(ts){
 
-  if(!ts) return "—";
+  if(!ts)
+    return "—";
 
-  return new Date(ts).toLocaleString(
-    "fa-IR",
-    {
-      year:"numeric",
-      month:"2-digit",
-      day:"2-digit",
-      hour:"2-digit",
-      minute:"2-digit"
-    }
-  );
+  return new Date(ts)
+    .toLocaleString(
+      "fa-IR",
+      {
+        year:"numeric",
+        month:"2-digit",
+        day:"2-digit",
+        hour:"2-digit",
+        minute:"2-digit"
+      }
+    );
+
 }
 
-function setStatus(text,type){
+function clamp(v,min,max){
 
-  statusEl.textContent = text;
+  return Math.max(
+    min,
+    Math.min(max,v)
+  );
 
-  statusEl.className = "status";
+}
+
+function setStatus(
+  text,
+  type
+){
+
+  statusEl.textContent =
+    text;
+
+  statusEl.className =
+    "status";
 
   if(type){
-    statusEl.classList.add(type);
+
+    statusEl.classList.add(
+      type
+    );
+
   }
+
 }
 
 function intervalMs(){
@@ -751,17 +1095,28 @@ function intervalMs(){
   const map = {
 
     "1":60000,
+
     "3":180000,
+
     "5":300000,
+
     "15":900000,
+
     "30":1800000,
+
     "60":3600000,
+
     "120":7200000,
+
     "240":14400000
 
   };
 
-  return map[state.interval] || 60000;
+  return (
+    map[state.interval] ||
+    60000
+  );
+
 }
 
 function normalizeCandle(c){
@@ -769,42 +1124,71 @@ function normalizeCandle(c){
   return {
 
     time:num(c.time),
+
     open:num(c.open),
+
     high:num(c.high),
+
     low:num(c.low),
+
     close:num(c.close),
+
     volume:num(c.volume),
+
     turnover:num(c.turnover)
 
   };
+
 }
 
 function normalizeTrade(t){
 
   return {
 
-    id:String(t.id || ""),
+    id:String(
+      t.id ||
+      ""
+    ),
 
-    time:num(t.time),
+    time:num(
+      t.time
+    ),
 
-    price:num(t.price),
+    price:num(
+      t.price
+    ),
 
-    size:num(t.size),
+    size:num(
+      t.size
+    ),
 
     value:num(
       t.value ||
-      num(t.price) * num(t.size)
+      num(t.price) *
+      num(t.size)
     ),
 
     side:
-      String(t.side || "").toLowerCase() === "buy"
+      String(
+        t.side ||
+        ""
+      ).toLowerCase() ===
+      "buy"
         ? "buy"
         : "sell"
 
   };
+
 }
 
-function resizeCanvas(canvas,ctx){
+/* =========================================================
+   CANVAS
+========================================================= */
+
+function resizeCanvas(
+  canvas,
+  ctx
+){
 
   const rect =
     canvas.getBoundingClientRect();
@@ -821,22 +1205,32 @@ function resizeCanvas(canvas,ctx){
   const w =
     Math.max(
       1,
-      Math.floor(rect.width)
+      Math.floor(
+        rect.width
+      )
     );
 
   const h =
     Math.max(
       1,
-      Math.floor(rect.height)
+      Math.floor(
+        rect.height
+      )
     );
 
   if(
-    canvas.width !== w*dpr ||
-    canvas.height !== h*dpr
+    canvas.width !==
+      w*dpr ||
+    canvas.height !==
+      h*dpr
   ){
 
-    canvas.width = w*dpr;
-    canvas.height = h*dpr;
+    canvas.width =
+      w*dpr;
+
+    canvas.height =
+      h*dpr;
+
   }
 
   ctx.setTransform(
@@ -848,18 +1242,20 @@ function resizeCanvas(canvas,ctx){
     0
   );
 
-  return {w,h};
+  return {
+    w,
+    h
+  };
+
 }
 
-function clamp(v,min,max){
+/* =========================================================
+   FETCH
+========================================================= */
 
-  return Math.max(
-    min,
-    Math.min(max,v)
-  );
-}
-
-async function fetchJson(url){
+async function fetchJson(
+  url
+){
 
   const response =
     await fetch(
@@ -868,7 +1264,8 @@ async function fetchJson(url){
         method:"GET",
         cache:"no-store",
         headers:{
-          "Accept":"application/json"
+          "Accept":
+            "application/json"
         }
       }
     );
@@ -880,51 +1277,279 @@ async function fetchJson(url){
 
   try{
 
-    data = JSON.parse(text);
+    data =
+      JSON.parse(text);
 
   }catch(e){
 
     throw new Error(
       "پاسخ Worker JSON نیست: " +
-      text.slice(0,250)
+      text.slice(
+        0,
+        250
+      )
     );
+
   }
 
-  if(!response.ok){
+  if(
+    !response.ok
+  ){
 
     throw new Error(
       data.error ||
       data.message ||
       `HTTP ${response.status}`
     );
+
   }
 
-  if(data.ok === false){
+  if(
+    data.ok === false
+  ){
 
     throw new Error(
       data.error ||
       data.message ||
       "Worker خطا برگرداند"
     );
+
   }
 
   return data;
+
 }
 
-/* =========================
-   EXACT SELECTED CANDLE TRADES
-   ========================= */
+/* =========================================================
+   FUTURES SYMBOLS
+========================================================= */
 
-function getCandleTrades(candle){
+async function loadFuturesSymbols(){
+
+  const list =
+    $("futuresSymbols");
+
+  list.innerHTML =
+    "";
+
+  try{
+
+    /*
+      اول Worker.
+      اگر /api/symbols هنوز روی Worker نباشد،
+      مستقیماً از Bybit instruments-info استفاده می‌شود.
+    */
+
+    let symbols = [];
+
+    try{
+
+      const workerData =
+        await fetchJson(
+          API_BASE +
+          "/api/symbols?category=linear"
+        );
+
+      if(
+        Array.isArray(
+          workerData.symbols
+        )
+      ){
+
+        symbols =
+          workerData.symbols;
+
+      }
+
+    }catch(e){
+
+      console.warn(
+        "Worker symbols unavailable",
+        e
+      );
+
+    }
+
+    /*
+      Fallback مستقیم Bybit
+    */
+
+    if(
+      !symbols.length
+    ){
+
+      let cursor = "";
+
+      for(
+        let page=0;
+        page<10;
+        page++
+      ){
+
+        const url =
+          "https://api.bybit.com/v5/market/instruments-info" +
+          "?category=linear" +
+          "&status=Trading" +
+          "&limit=1000" +
+          (
+            cursor
+              ? "&cursor=" +
+                encodeURIComponent(
+                  cursor
+                )
+              : ""
+          );
+
+        const response =
+          await fetch(
+            url,
+            {
+              cache:"no-store"
+            }
+          );
+
+        const data =
+          await response.json();
+
+        if(
+          data.retCode !== 0
+        ){
+
+          break;
+
+        }
+
+        const result =
+          data.result ||
+          {};
+
+        const rows =
+          Array.isArray(
+            result.list
+          )
+            ? result.list
+            : [];
+
+        for(
+          const x of rows
+        ){
+
+          /*
+            Futures کریپتو با Settlement USDT
+          */
+
+          if(
+            x.status ===
+              "Trading" &&
+            (
+              x.settleCoin ===
+              "USDT" ||
+              x.quoteCoin ===
+              "USDT"
+            )
+          ){
+
+            symbols.push(
+              x.symbol
+            );
+
+          }
+
+        }
+
+        cursor =
+          result.nextPageCursor ||
+          "";
+
+        if(!cursor)
+          break;
+
+      }
+
+    }
+
+    symbols =
+      [
+        ...new Set(
+          symbols
+            .map(
+              x =>
+                typeof x ===
+                "string"
+                  ? x
+                  : x.symbol
+            )
+            .filter(Boolean)
+            .map(
+              x =>
+                String(x)
+                  .toUpperCase()
+            )
+        )
+      ]
+      .sort();
+
+    state.symbolList =
+      symbols;
+
+    for(
+      const symbol of symbols
+    ){
+
+      const option =
+        document.createElement(
+          "option"
+        );
+
+      option.value =
+        symbol;
+
+      list.appendChild(
+        option
+      );
+
+    }
+
+    setStatus(
+      `🟢 Bybit Futures · ${symbols.length} نماد قابل انتخاب`,
+      "green"
+    );
+
+  }catch(err){
+
+    console.warn(
+      "Symbol list error:",
+      err
+    );
+
+    setStatus(
+      "🟡 لیست ارزها بارگذاری نشد؛ نماد را دستی وارد کنید",
+      "yellow"
+    );
+
+  }
+
+}
+
+/* =========================================================
+   EXACT CANDLE TRADES
+========================================================= */
+
+function getCandleTrades(
+  candle
+){
 
   if(
     !candle ||
     !state.trades.length
   ){
+
     return [];
+
   }
 
-  const start = candle.time;
+  const start =
+    candle.time;
 
   const end =
     start +
@@ -937,28 +1562,45 @@ function getCandleTrades(candle){
       t.price > 0 &&
       t.size >= 0
   );
+
 }
 
-/* =========================
-   REAL TRADE PRICE TICK
-   ========================= */
+/* =========================================================
+   TICK
+========================================================= */
 
-function detectTick(trades){
+function detectTick(
+  trades
+){
 
-  const prices = [
-    ...new Set(
-      trades
-        .map(t => num(t.price))
-        .filter(v => v > 0)
-        .sort((a,b) => a-b)
-    )
-  ];
+  const prices =
+    [
+      ...new Set(
+        trades
+          .map(
+            t =>
+              num(t.price)
+          )
+          .filter(
+            v => v > 0
+          )
+          .sort(
+            (a,b) =>
+              a-b
+          )
+      )
+    ];
 
-  if(prices.length < 2){
+  if(
+    prices.length < 2
+  ){
+
     return 0;
+
   }
 
-  let tick = Infinity;
+  let tick =
+    Infinity;
 
   for(
     let i=1;
@@ -974,45 +1616,68 @@ function detectTick(trades){
       d > 0 &&
       d < tick
     ){
-      tick = d;
+
+      tick =
+        d;
+
     }
+
   }
 
-  return Number.isFinite(tick)
+  return Number.isFinite(
+    tick
+  )
     ? tick
     : 0;
+
 }
 
-function roundToTick(price,tick){
+function roundToTick(
+  price,
+  tick
+){
 
   if(!tick){
+
     return price;
+
   }
 
   return Number(
     (
-      Math.round(price/tick) *
+      Math.round(
+        price / tick
+      ) *
       tick
     ).toFixed(12)
   );
+
 }
 
-/* =========================
-   BUILD EXACT FOOTPRINT
-   ========================= */
+/* =========================================================
+   EXACT FOOTPRINT
+========================================================= */
 
-function buildFootprint(candle){
+function buildFootprint(
+  candle
+){
 
   const trades =
-    getCandleTrades(candle);
+    getCandleTrades(
+      candle
+    );
 
   const tick =
-    detectTick(trades);
+    detectTick(
+      trades
+    );
 
   const map =
     new Map();
 
-  for(const t of trades){
+  for(
+    const t of trades
+  ){
 
     const price =
       tick > 0
@@ -1022,7 +1687,9 @@ function buildFootprint(candle){
           )
         : t.price;
 
-    if(!map.has(price)){
+    if(
+      !map.has(price)
+    ){
 
       map.set(
         price,
@@ -1036,6 +1703,7 @@ function buildFootprint(candle){
           delta:0
         }
       );
+
     }
 
     const row =
@@ -1043,19 +1711,27 @@ function buildFootprint(candle){
 
     /*
       Bybit:
-      Buy  = aggressive buy = Ask executed
-      Sell = aggressive sell = Bid executed
+      Buy = aggressive buyer = ASK
+      Sell = aggressive seller = BID
     */
 
-    if(t.side === "buy"){
+    if(
+      t.side ===
+      "buy"
+    ){
 
-      row.ask += t.size;
+      row.ask +=
+        t.size;
+
       row.askTrades++;
 
     }else{
 
-      row.bid += t.size;
+      row.bid +=
+        t.size;
+
       row.bidTrades++;
+
     }
 
     row.volume =
@@ -1065,27 +1741,42 @@ function buildFootprint(candle){
     row.delta =
       row.ask -
       row.bid;
+
   }
 
   const levels =
-    [...map.values()]
-      .sort(
-        (a,b) =>
-          b.price -
-          a.price
-      );
+    [
+      ...map.values()
+    ].sort(
+      (a,b) =>
+        b.price -
+        a.price
+    );
 
   let totalBid = 0;
+
   let totalAsk = 0;
+
   let totalVolume = 0;
+
   let totalDelta = 0;
 
-  for(const row of levels){
+  for(
+    const row of levels
+  ){
 
-    totalBid += row.bid;
-    totalAsk += row.ask;
-    totalVolume += row.volume;
-    totalDelta += row.delta;
+    totalBid +=
+      row.bid;
+
+    totalAsk +=
+      row.ask;
+
+    totalVolume +=
+      row.volume;
+
+    totalDelta +=
+      row.delta;
+
   }
 
   return {
@@ -1107,11 +1798,443 @@ function buildFootprint(candle){
     totalDelta
 
   };
+
 }
 
-/* =========================
-   MAIN STATS
-   ========================= */
+/* =========================================================
+   INDEXED DB
+   نگهداری معاملات واقعی دریافتی
+========================================================= */
+
+function openTradeDB(){
+
+  return new Promise(
+    resolve => {
+
+      if(
+        !("indexedDB" in window)
+      ){
+
+        resolve(null);
+
+        return;
+
+      }
+
+      const request =
+        indexedDB.open(
+          "AbsorptionZoneTrades",
+          1
+        );
+
+      request.onupgradeneeded =
+        () => {
+
+          const db =
+            request.result;
+
+          if(
+            !db.objectStoreNames.contains(
+              "trades"
+            )
+          ){
+
+            const store =
+              db.createObjectStore(
+                "trades",
+                {
+                  keyPath:"key"
+                }
+              );
+
+            store.createIndex(
+              "symbolTime",
+              [
+                "symbol",
+                "time"
+              ],
+              {
+                unique:false
+              }
+            );
+
+          }
+
+        };
+
+      request.onsuccess =
+        () => {
+
+          state.indexedDb =
+            request.result;
+
+          state.dbReady =
+            true;
+
+          resolve(
+            request.result
+          );
+
+        };
+
+      request.onerror =
+        () => {
+
+          resolve(null);
+
+        };
+
+    }
+  );
+
+}
+
+function tradeKey(
+  symbol,
+  t
+){
+
+  return (
+    symbol +
+    "_" +
+    String(t.id || "") +
+    "_" +
+    String(t.time) +
+    "_" +
+    String(t.price) +
+    "_" +
+    String(t.size) +
+    "_" +
+    String(t.side)
+  );
+
+}
+
+async function saveTrade(
+  symbol,
+  trade
+){
+
+  if(
+    !state.dbReady ||
+    !state.indexedDb
+  ){
+
+    return;
+
+  }
+
+  try{
+
+    const tx =
+      state.indexedDb.transaction(
+        "trades",
+        "readwrite"
+      );
+
+    const store =
+      tx.objectStore(
+        "trades"
+      );
+
+    store.put({
+      key:tradeKey(
+        symbol,
+        trade
+      ),
+      symbol,
+      time:trade.time,
+      price:trade.price,
+      size:trade.size,
+      value:trade.value,
+      side:trade.side,
+      id:trade.id
+    });
+
+  }catch(e){
+
+    console.warn(
+      "DB save error",
+      e
+    );
+
+  }
+
+}
+
+async function loadStoredTrades(
+  symbol
+){
+
+  if(
+    !state.dbReady ||
+    !state.indexedDb
+  ){
+
+    return [];
+
+  }
+
+  return new Promise(
+    resolve => {
+
+      try{
+
+        const tx =
+          state.indexedDb.transaction(
+            "trades",
+            "readonly"
+          );
+
+        const store =
+          tx.objectStore(
+            "trades"
+          );
+
+        const index =
+          store.index(
+            "symbolTime"
+          );
+
+        const lower =
+          [
+            symbol,
+            Date.now() -
+              MAX_STORED_TRADE_AGE
+          ];
+
+        const upper =
+          [
+            symbol,
+            Date.now()
+          ];
+
+        const range =
+          IDBKeyRange.bound(
+            lower,
+            upper
+          );
+
+        const request =
+          index.getAll(
+            range
+          );
+
+        request.onsuccess =
+          () => {
+
+            const rows =
+              Array.isArray(
+                request.result
+              )
+                ? request.result
+                : [];
+
+            resolve(
+              rows.map(
+                normalizeTrade
+              )
+            );
+
+          };
+
+        request.onerror =
+          () =>
+            resolve([]);
+
+      }catch(e){
+
+        resolve([]);
+
+      }
+
+    }
+  );
+
+}
+
+async function cleanupStoredTrades(){
+
+  if(
+    !state.dbReady ||
+    !state.indexedDb
+  ){
+
+    return;
+
+  }
+
+  try{
+
+    const cutoff =
+      Date.now() -
+      MAX_STORED_TRADE_AGE;
+
+    const tx =
+      state.indexedDb.transaction(
+        "trades",
+        "readwrite"
+      );
+
+    const store =
+      tx.objectStore(
+        "trades"
+      );
+
+    const request =
+      store.openCursor();
+
+    request.onsuccess =
+      e => {
+
+        const cursor =
+          e.target.result;
+
+        if(!cursor)
+          return;
+
+        const row =
+          cursor.value;
+
+        if(
+          num(row.time) <
+          cutoff
+        ){
+
+          cursor.delete();
+
+        }
+
+        cursor.continue();
+
+      };
+
+  }catch(e){
+
+    console.warn(
+      "DB cleanup",
+      e
+    );
+
+  }
+
+}
+
+/* =========================================================
+   MERGE TRADES
+========================================================= */
+
+function mergeTrades(
+  base,
+  incoming
+){
+
+  const map =
+    new Map();
+
+  for(
+    const t of [
+      ...(base || []),
+      ...(incoming || [])
+    ]
+  ){
+
+    if(
+      !t ||
+      !t.time ||
+      !t.price ||
+      !t.size
+    ){
+
+      continue;
+
+    }
+
+    const key =
+      tradeKey(
+        state.symbol,
+        t
+      );
+
+    map.set(
+      key,
+      normalizeTrade(t)
+    );
+
+  }
+
+  const cutoff =
+    Date.now() -
+    MAX_STORED_TRADE_AGE;
+
+  const arr =
+    [
+      ...map.values()
+    ]
+    .filter(
+      t =>
+        t.time >= cutoff
+    )
+    .sort(
+      (a,b) =>
+        a.time-b.time
+    );
+
+  /*
+    حافظه را بیش از حد بزرگ نمی‌کنیم.
+    داده‌ای حذف‌شده از حافظه ساختگی نیست؛
+    فقط برای کارایی UI قدیمی‌ترین معاملات کنار گذاشته می‌شوند.
+  */
+
+  if(
+    arr.length >
+    MAX_MEMORY_TRADES
+  ){
+
+    return arr.slice(
+      -MAX_MEMORY_TRADES
+    );
+
+  }
+
+  return arr;
+
+}
+
+async function persistTrades(
+  trades
+){
+
+  if(
+    !Array.isArray(trades) ||
+    !trades.length
+  ){
+
+    return;
+
+  }
+
+  const recent =
+    trades.slice(
+      -3000
+    );
+
+  for(
+    const t of recent
+  ){
+
+    await saveTrade(
+      state.symbol,
+      t
+    );
+
+  }
+
+}
+
+/* =========================================================
+   UPDATE STATS
+========================================================= */
 
 function updateStats(){
 
@@ -1120,9 +2243,8 @@ function updateStats(){
       state.candles.length - 1
     ];
 
-  if(!last){
+  if(!last)
     return;
-  }
 
   const price =
     state.lastPrice ||
@@ -1133,26 +2255,46 @@ function updateStats(){
 
   $("change").textContent =
     (
-      state.price24hPcnt * 100
-    ).toFixed(2) + "%";
+      state.price24hPcnt *
+      100
+    ).toFixed(2) +
+    "%";
 
-  const trades =
-    state.trades || [];
+  $("change").className =
+    state.price24hPcnt > 0
+      ? "green"
+      : state.price24hPcnt < 0
+        ? "red"
+        : "";
 
   let buy = 0;
+
   let sell = 0;
 
-  for(const t of trades){
+  for(
+    const t of state.trades
+  ){
 
-    if(t.side === "buy"){
-      buy += t.size;
+    if(
+      t.side ===
+      "buy"
+    ){
+
+      buy +=
+        t.size;
+
     }else{
-      sell += t.size;
+
+      sell +=
+        t.size;
+
     }
+
   }
 
   const delta =
-    buy - sell;
+    buy -
+    sell;
 
   $("buy").textContent =
     fmt(buy);
@@ -1161,7 +2303,11 @@ function updateStats(){
     fmt(sell);
 
   $("delta").textContent =
-    (delta >= 0 ? "+" : "") +
+    (
+      delta >= 0
+        ? "+"
+        : ""
+    ) +
     fmt(delta);
 
   $("delta").className =
@@ -1171,9 +2317,12 @@ function updateStats(){
         ? "red"
         : "";
 
-  let abs = "—";
+  let abs =
+    "—";
 
-  if(state.absorption){
+  if(
+    state.absorption
+  ){
 
     if(
       typeof state.absorption ===
@@ -1190,16 +2339,19 @@ function updateStats(){
         state.absorption.type ||
         state.absorption.status ||
         "—";
+
     }
+
   }
 
   $("absorption").textContent =
     abs;
+
 }
 
-/* =========================
-   SELECTED CANDLE
-   ========================= */
+/* =========================================================
+   SELECTED INFO
+========================================================= */
 
 function updateSelectedInfo(){
 
@@ -1225,33 +2377,54 @@ function updateSelectedInfo(){
     drawFootprint();
 
     return;
+
   }
 
   const fp =
-    buildFootprint(candle);
+    buildFootprint(
+      candle
+    );
 
   $("selectedTime").textContent =
     "زمان: " +
-    formatTime(candle.time);
+    formatTime(
+      candle.time
+    );
 
   $("selectedOHLC").textContent =
     "O/H/L/C: " +
-    formatPrice(candle.open) +
+    formatPrice(
+      candle.open
+    ) +
     " / " +
-    formatPrice(candle.high) +
+    formatPrice(
+      candle.high
+    ) +
     " / " +
-    formatPrice(candle.low) +
+    formatPrice(
+      candle.low
+    ) +
     " / " +
-    formatPrice(candle.close);
+    formatPrice(
+      candle.close
+    );
 
   $("selectedDelta").textContent =
     "Delta: " +
-    (fp.totalDelta >= 0 ? "+" : "") +
-    fmt(fp.totalDelta);
+    (
+      fp.totalDelta >= 0
+        ? "+"
+        : ""
+    ) +
+    fmt(
+      fp.totalDelta
+    );
 
   $("selectedVolume").textContent =
     "Volume: " +
-    fmt(fp.totalVolume);
+    fmt(
+      fp.totalVolume
+    );
 
   $("selectedDelta").className =
     fp.totalDelta > 0
@@ -1261,20 +2434,20 @@ function updateSelectedInfo(){
         : "";
 
   drawFootprint();
+
 }
 
-/* =========================
-   MAIN CHART RANGE
-   ========================= */
+/* =========================================================
+   MAIN CHART VIEWPORT
+========================================================= */
 
 function visibleChartInfo(){
 
   const n =
     state.candles.length;
 
-  if(!n){
+  if(!n)
     return null;
-  }
 
   const rect =
     chartCanvas.getBoundingClientRect();
@@ -1282,7 +2455,8 @@ function visibleChartInfo(){
   const width =
     rect.width;
 
-  const left = 55;
+  const left =
+    55;
 
   const right =
     width - 15;
@@ -1290,16 +2464,31 @@ function visibleChartInfo(){
   const plotWidth =
     Math.max(
       100,
-      right - left
+      right-left
+    );
+
+  /*
+    بدون candleCount.
+    تعداد نمایش داده‌شده مستقیماً
+    از Zoom محاسبه می‌شود.
+  */
+
+  const baseCount =
+    Math.min(
+      90,
+      Math.max(
+        12,
+        n
+      )
     );
 
   const count =
     Math.min(
       n,
       Math.max(
-        8,
+        3,
         Math.round(
-          state.candleCount /
+          baseCount /
           state.chartZoom
         )
       )
@@ -1315,7 +2504,7 @@ function visibleChartInfo(){
   const maxStart =
     Math.max(
       0,
-      n - count
+      n-count
     );
 
   const panUnits =
@@ -1327,7 +2516,8 @@ function visibleChartInfo(){
 
   const startFloat =
     clamp(
-      maxStart - panUnits,
+      maxStart -
+      panUnits,
       0,
       maxStart
     );
@@ -1343,15 +2533,28 @@ function visibleChartInfo(){
     startFloat
 
   };
+
 }
 
-/* =========================
-   DRAW MAIN CHART
-   ========================= */
+function updateChartZoomBadge(){
+
+  chartZoomBadge.textContent =
+    "Zoom " +
+    state.chartZoom.toFixed(2) +
+    "×";
+
+}
+
+/* =========================================================
+   MAIN CHART DRAW
+========================================================= */
 
 function drawChart(){
 
-  const {w,h} =
+  const {
+    w,
+    h
+  } =
     resizeCanvas(
       chartCanvas,
       chartCtx
@@ -1374,7 +2577,11 @@ function drawChart(){
     h
   );
 
-  if(!state.candles.length){
+  updateChartZoomBadge();
+
+  if(
+    !state.candles.length
+  ){
 
     chartCtx.fillStyle =
       "#718899";
@@ -1392,31 +2599,33 @@ function drawChart(){
     );
 
     return;
+
   }
 
   const info =
     visibleChartInfo();
 
-  const top = 20;
+  const top =
+    20;
 
   const bottom =
-    h - 40;
+    h-40;
 
   const first =
     Math.max(
       0,
       Math.floor(
         info.startFloat
-      ) - 1
+      )-1
     );
 
   const last =
     Math.min(
-      state.candles.length - 1,
+      state.candles.length-1,
       Math.ceil(
         info.startFloat +
         info.count
-      ) + 1
+      )+1
     );
 
   let minPrice =
@@ -1445,29 +2654,39 @@ function drawChart(){
         maxPrice,
         c.high
       );
+
   }
 
   const range =
     Math.max(
-      maxPrice - minPrice,
-      Math.abs(maxPrice) * .0001,
+      maxPrice-minPrice,
+      Math.abs(
+        maxPrice
+      )*.0001,
       .00000001
     );
 
   minPrice -=
-    range * .08;
+    range*.08;
 
   maxPrice +=
-    range * .08;
+    range*.08;
 
   function py(price){
 
     return bottom -
       (
-        (price - minPrice) /
-        (maxPrice - minPrice)
+        (
+          price-minPrice
+        ) /
+        (
+          maxPrice-minPrice
+        )
       ) *
-      (bottom - top);
+      (
+        bottom-top
+      );
+
   }
 
   function px(index){
@@ -1478,8 +2697,13 @@ function drawChart(){
         info.startFloat
       ) *
       info.step +
-      info.step / 2;
+      info.step/2;
+
   }
+
+  /*
+    GRID
+  */
 
   chartCtx.font =
     "9px Tahoma";
@@ -1487,25 +2711,31 @@ function drawChart(){
   chartCtx.textAlign =
     "left";
 
-  for(let i=0;i<=5;i++){
+  for(
+    let i=0;
+    i<=5;
+    i++
+  ){
 
     const y =
       top +
-      (bottom-top) *
+      (
+        bottom-top
+      ) *
       i/5;
 
     const price =
       maxPrice -
       (
-        maxPrice -
-        minPrice
+        maxPrice-minPrice
       ) *
       i/5;
 
     chartCtx.strokeStyle =
       "#142632";
 
-    chartCtx.lineWidth = 1;
+    chartCtx.lineWidth =
+      1;
 
     chartCtx.beginPath();
 
@@ -1529,7 +2759,12 @@ function drawChart(){
       4,
       y+3
     );
+
   }
+
+  /*
+    CANDLES
+  */
 
   for(
     let i=first;
@@ -1545,13 +2780,13 @@ function drawChart(){
 
     if(
       x <
-        info.left -
-        info.step ||
+        info.left-info.step ||
       x >
-        info.right +
-        info.step
+        info.right+info.step
     ){
+
       continue;
+
     }
 
     const highY =
@@ -1567,7 +2802,8 @@ function drawChart(){
       py(c.close);
 
     const bullish =
-      c.close >= c.open;
+      c.close >=
+      c.open;
 
     const candleColor =
       bullish
@@ -1577,7 +2813,8 @@ function drawChart(){
     chartCtx.strokeStyle =
       candleColor;
 
-    chartCtx.lineWidth = 1;
+    chartCtx.lineWidth =
+      1;
 
     chartCtx.beginPath();
 
@@ -1598,7 +2835,7 @@ function drawChart(){
         2,
         Math.min(
           18,
-          info.step * .62
+          info.step*.62
         )
       );
 
@@ -1612,8 +2849,7 @@ function drawChart(){
       Math.max(
         1,
         Math.abs(
-          closeY -
-          openY
+          closeY-openY
         )
       );
 
@@ -1621,7 +2857,7 @@ function drawChart(){
       candleColor;
 
     chartCtx.fillRect(
-      x - bodyW/2,
+      x-bodyW/2,
       bodyTop,
       bodyW,
       bodyH
@@ -1635,13 +2871,14 @@ function drawChart(){
       chartCtx.strokeStyle =
         "#ffffff";
 
-      chartCtx.lineWidth = 2;
+      chartCtx.lineWidth =
+        2;
 
       chartCtx.strokeRect(
-        x - bodyW/2 - 4,
-        bodyTop - 4,
-        bodyW + 8,
-        bodyH + 8
+        x-bodyW/2-4,
+        bodyTop-4,
+        bodyW+8,
+        bodyH+8
       );
 
       chartCtx.fillStyle =
@@ -1653,17 +2890,20 @@ function drawChart(){
         x,
         Math.max(
           7,
-          highY - 7
+          highY-7
         ),
         3,
         0,
-        Math.PI * 2
+        Math.PI*2
       );
 
       chartCtx.fill();
+
     }
 
-    if(info.step > 45){
+    if(
+      info.step > 45
+    ){
 
       chartCtx.fillStyle =
         "#647c8c";
@@ -1675,18 +2915,21 @@ function drawChart(){
         "center";
 
       chartCtx.fillText(
-        new Date(c.time)
-          .toLocaleTimeString(
-            "fa-IR",
-            {
-              hour:"2-digit",
-              minute:"2-digit"
-            }
-          ),
+        new Date(
+          c.time
+        ).toLocaleTimeString(
+          "fa-IR",
+          {
+            hour:"2-digit",
+            minute:"2-digit"
+          }
+        ),
         x,
-        h - 18
+        h-18
       );
+
     }
+
   }
 
   chartCtx.textAlign =
@@ -1699,24 +2942,76 @@ function drawChart(){
     "#6d8596";
 
   chartCtx.fillText(
-    `${state.symbol} · ${state.interval==="60" ? "1h" : state.interval+"m"}`,
+    `${state.symbol} · Futures · ${
+      state.interval==="60"
+        ? "1h"
+        : state.interval==="120"
+          ? "2h"
+          : state.interval==="240"
+            ? "4h"
+            : state.interval+"m"
+    }`,
     info.left,
     11
   );
+
 }
 
-/* =========================
-   SELECT MAIN CANDLE
-   ========================= */
+/* =========================================================
+   SMOOTH CHART DRAW
+========================================================= */
 
-function selectCandleAt(x){
+function requestChartDraw(){
+
+  if(
+    state.chartAnimation
+  ){
+
+    state.chartNeedsDraw =
+      true;
+
+    return;
+
+  }
+
+  state.chartAnimation =
+    requestAnimationFrame(
+      () => {
+
+        state.chartAnimation =
+          null;
+
+        drawChart();
+
+        if(
+          state.chartNeedsDraw
+        ){
+
+          state.chartNeedsDraw =
+            false;
+
+          requestChartDraw();
+
+        }
+
+      }
+    );
+
+}
+
+/* =========================================================
+   SELECT CANDLE
+========================================================= */
+
+function selectCandleAt(
+  x
+){
 
   const info =
     visibleChartInfo();
 
-  if(!info){
+  if(!info)
     return;
-  }
 
   const raw =
     info.startFloat +
@@ -1734,7 +3029,9 @@ function selectCandleAt(x){
     idx < 0 ||
     idx >= state.candles.length
   ){
+
     return;
+
   }
 
   const candleX =
@@ -1748,14 +3045,16 @@ function selectCandleAt(x){
 
   if(
     Math.abs(
-      x - candleX
+      x-candleX
     ) >
     Math.max(
       20,
-      info.step * .8
+      info.step*.85
     )
   ){
+
     return;
+
   }
 
   state.selectedIndex =
@@ -1763,13 +3062,16 @@ function selectCandleAt(x){
 
   state.userSelectedHistorical =
     idx !==
-    state.candles.length - 1;
+    state.candles.length-1;
 
-  state.fpScale = 1;
+  state.fpScale =
+    1;
 
-  state.fpOffsetX = 0;
+  state.fpOffsetX =
+    0;
 
-  state.fpOffsetY = 0;
+  state.fpOffsetY =
+    0;
 
   updateSelectedInfo();
 
@@ -1790,11 +3092,12 @@ function selectCandleAt(x){
     },
     50
   );
+
 }
 
-/* =========================
-   MAIN CHART TOUCH
-   ========================= */
+/* =========================================================
+   MAIN CHART POINTER
+========================================================= */
 
 function chartPoint(e){
 
@@ -1803,30 +3106,35 @@ function chartPoint(e){
 
   return {
 
-    x:e.clientX-r.left,
+    x:
+      e.clientX-r.left,
 
-    y:e.clientY-r.top
+    y:
+      e.clientY-r.top
 
   };
+
 }
 
 function mainPointerDown(e){
+
+  e.preventDefault();
 
   chartCanvas.setPointerCapture?.(
     e.pointerId
   );
 
+  const p =
+    chartPoint(e);
+
   state.mainPointers.set(
     e.pointerId,
-    chartPoint(e)
+    p
   );
 
   if(
     state.mainPointers.size === 1
   ){
-
-    const p =
-      chartPoint(e);
 
     state.mainGesture = {
 
@@ -1857,18 +3165,30 @@ function mainPointerDown(e){
       type:"pinch",
 
       startDistance:
-        Math.hypot(
-          ps[0].x -
-          ps[1].x,
-          ps[0].y -
-          ps[1].y
+        Math.max(
+          10,
+          Math.hypot(
+            ps[0].x-ps[1].x,
+            ps[0].y-ps[1].y
+          )
         ),
 
       startZoom:
-        state.chartZoom
+        state.chartZoom,
+
+      startPan:
+        state.chartPan,
+
+      centerX:
+        (
+          ps[0].x+
+          ps[1].x
+        )/2
 
     };
+
   }
+
 }
 
 function mainPointerMove(e){
@@ -1878,30 +3198,43 @@ function mainPointerMove(e){
       e.pointerId
     )
   ){
+
     return;
+
   }
+
+  e.preventDefault();
+
+  const p =
+    chartPoint(e);
 
   state.mainPointers.set(
     e.pointerId,
-    chartPoint(e)
+    p
   );
 
   if(
     state.mainPointers.size === 1 &&
-    state.mainGesture?.type === "drag"
+    state.mainGesture?.type ===
+      "drag"
   ){
-
-    const p =
-      chartPoint(e);
 
     const dx =
       p.x -
       state.mainGesture.startX;
 
-    if(Math.abs(dx) > 5){
+    const dy =
+      p.y -
+      state.mainGesture.startY;
+
+    if(
+      Math.abs(dx) > 5 ||
+      Math.abs(dy) > 5
+    ){
 
       state.mainGesture.moved =
         true;
+
     }
 
     state.chartPan =
@@ -1924,11 +3257,12 @@ function mainPointerMove(e){
         maxPan
       );
 
-    drawChart();
+    requestChartDraw();
 
   }else if(
     state.mainPointers.size === 2 &&
-    state.mainGesture?.type === "pinch"
+    state.mainGesture?.type ===
+      "pinch"
   ){
 
     const ps =
@@ -1940,14 +3274,15 @@ function mainPointerMove(e){
       Math.max(
         10,
         Math.hypot(
-          ps[0].x -
-          ps[1].x,
-          ps[0].y -
-          ps[1].y
+          ps[0].x-ps[1].x,
+          ps[0].y-ps[1].y
         )
       );
 
-    state.chartZoom =
+    const oldZoom =
+      state.chartZoom;
+
+    const newZoom =
       clamp(
         state.mainGesture.startZoom *
         dist /
@@ -1955,25 +3290,98 @@ function mainPointerMove(e){
           10,
           state.mainGesture.startDistance
         ),
-        .5,
-        6
+        .35,
+        20
       );
 
-    drawChart();
+    const cx =
+      (
+        ps[0].x+
+        ps[1].x
+      )/2;
+
+    /*
+      Zoom حول محل دو انگشت.
+    */
+
+    const oldInfo =
+      visibleChartInfo();
+
+    const oldStep =
+      oldInfo
+        ? oldInfo.step
+        : 1;
+
+    const oldStart =
+      oldInfo
+        ? oldInfo.startFloat
+        : 0;
+
+    const worldIndex =
+      oldStart +
+      (
+        cx -
+        oldInfo.left -
+        oldStep/2
+      ) /
+      oldStep;
+
+    state.chartZoom =
+      newZoom;
+
+    const newInfo =
+      visibleChartInfo();
+
+    if(
+      newInfo
+    ){
+
+      const newStep =
+        newInfo.step;
+
+      const targetStart =
+        worldIndex -
+        (
+          cx -
+          newInfo.left -
+          newStep/2
+        ) /
+        newStep;
+
+      const targetStartClamped =
+        clamp(
+          targetStart,
+          0,
+          newInfo.maxStart
+        );
+
+      state.chartPan =
+        (
+          newInfo.maxStart -
+          targetStartClamped
+        ) *
+        newStep;
+
+    }
+
+    requestChartDraw();
+
   }
+
 }
 
 function mainPointerUp(e){
 
-  const one =
-    state.mainPointers.size === 1;
-
   const gesture =
     state.mainGesture;
 
+  const wasOne =
+    state.mainPointers.size === 1;
+
   if(
-    one &&
-    gesture?.type === "drag" &&
+    wasOne &&
+    gesture?.type ===
+      "drag" &&
     !gesture.moved
   ){
 
@@ -1983,6 +3391,7 @@ function mainPointerUp(e){
     selectCandleAt(
       p.x
     );
+
   }
 
   state.mainPointers.delete(
@@ -1993,7 +3402,8 @@ function mainPointerUp(e){
     state.mainPointers.size === 0
   ){
 
-    state.mainGesture = null;
+    state.mainGesture =
+      null;
 
   }else if(
     state.mainPointers.size === 1
@@ -2018,17 +3428,25 @@ function mainPointerUp(e){
         state.chartPan
 
     };
+
   }
+
 }
 
 chartCanvas.addEventListener(
   "pointerdown",
-  mainPointerDown
+  mainPointerDown,
+  {
+    passive:false
+  }
 );
 
 chartCanvas.addEventListener(
   "pointermove",
-  mainPointerMove
+  mainPointerMove,
+  {
+    passive:false
+  }
 );
 
 chartCanvas.addEventListener(
@@ -2041,25 +3459,92 @@ chartCanvas.addEventListener(
   mainPointerUp
 );
 
+/* =========================================================
+   MAIN CHART WHEEL ZOOM
+========================================================= */
+
 chartCanvas.addEventListener(
   "wheel",
   e => {
 
     e.preventDefault();
 
+    const r =
+      chartCanvas.getBoundingClientRect();
+
+    const mx =
+      e.clientX-r.left;
+
+    const oldInfo =
+      visibleChartInfo();
+
+    if(!oldInfo)
+      return;
+
+    const oldStep =
+      oldInfo.step;
+
+    const oldStart =
+      oldInfo.startFloat;
+
+    const worldIndex =
+      oldStart +
+      (
+        mx -
+        oldInfo.left -
+        oldStep/2
+      ) /
+      oldStep;
+
+    const factor =
+      e.deltaY < 0
+        ? 1.14
+        : .877;
+
     state.chartZoom =
       clamp(
         state.chartZoom *
-        (
-          e.deltaY < 0
-            ? 1.12
-            : .89
-        ),
-        .5,
-        6
+        factor,
+        .35,
+        20
       );
 
-    drawChart();
+    const newInfo =
+      visibleChartInfo();
+
+    if(
+      newInfo
+    ){
+
+      const newStep =
+        newInfo.step;
+
+      const targetStart =
+        worldIndex -
+        (
+          mx -
+          newInfo.left -
+          newStep/2
+        ) /
+        newStep;
+
+      const target =
+        clamp(
+          targetStart,
+          0,
+          newInfo.maxStart
+        );
+
+      state.chartPan =
+        (
+          newInfo.maxStart-
+          target
+        ) *
+        newStep;
+
+    }
+
+    requestChartDraw();
 
   },
   {
@@ -2067,9 +3552,155 @@ chartCanvas.addEventListener(
   }
 );
 
-/* =========================
+/* =========================================================
+   CHART ZOOM BUTTONS
+========================================================= */
+
+$("chartZoomIn")
+  .addEventListener(
+    "click",
+    () => {
+
+      state.chartZoom =
+        clamp(
+          state.chartZoom*1.35,
+          .35,
+          20
+        );
+
+      requestChartDraw();
+
+    }
+  );
+
+$("chartZoomOut")
+  .addEventListener(
+    "click",
+    () => {
+
+      state.chartZoom =
+        clamp(
+          state.chartZoom/1.35,
+          .35,
+          20
+        );
+
+      requestChartDraw();
+
+    }
+  );
+
+$("chartZoomReset")
+  .addEventListener(
+    "click",
+    () => {
+
+      state.chartZoom =
+        1;
+
+      state.chartPan =
+        0;
+
+      requestChartDraw();
+
+    }
+  );
+
+/* =========================================================
+   DOUBLE TAP CHART
+========================================================= */
+
+let lastChartTap =
+  0;
+
+chartCanvas.addEventListener(
+  "pointerup",
+  e => {
+
+    if(
+      state.mainGesture?.moved
+    ){
+
+      return;
+
+    }
+
+    const now =
+      Date.now();
+
+    if(
+      now-lastChartTap <
+      320
+    ){
+
+      const p =
+        chartPoint(e);
+
+      const info =
+        visibleChartInfo();
+
+      if(info){
+
+        const oldStep =
+          info.step;
+
+        const world =
+          info.startFloat +
+          (
+            p.x -
+            info.left -
+            oldStep/2
+          ) /
+          oldStep;
+
+        state.chartZoom =
+          clamp(
+            state.chartZoom*1.6,
+            .35,
+            20
+          );
+
+        const ni =
+          visibleChartInfo();
+
+        if(ni){
+
+          const target =
+            clamp(
+              world -
+              (
+                p.x -
+                ni.left -
+                ni.step/2
+              ) /
+              ni.step,
+              0,
+              ni.maxStart
+            );
+
+          state.chartPan =
+            (
+              ni.maxStart-target
+            ) *
+            ni.step;
+
+        }
+
+        requestChartDraw();
+
+      }
+
+    }
+
+    lastChartTap =
+      now;
+
+  }
+);
+
+/* =========================================================
    FOOTPRINT ROUNDED RECT
-   ========================= */
+========================================================= */
 
 function roundedRect(
   ctx,
@@ -2143,15 +3774,19 @@ function roundedRect(
   );
 
   ctx.closePath();
+
 }
 
-/* =========================
-   FOOTPRINT DRAW
-   ========================= */
+/* =========================================================
+   FOOTPRINT
+========================================================= */
 
 function drawFootprint(){
 
-  const {w,h} =
+  const {
+    w,
+    h
+  } =
     resizeCanvas(
       fpCanvas,
       fpCtx
@@ -2178,12 +3813,17 @@ function drawFootprint(){
       "یک کندل از نمودار بالا انتخاب کنید";
 
     return;
+
   }
 
   const fp =
-    buildFootprint(candle);
+    buildFootprint(
+      candle
+    );
 
-  if(!fp.levels.length){
+  if(
+    !fp.levels.length
+  ){
 
     fpMessage.style.display =
       "flex";
@@ -2197,19 +3837,15 @@ function drawFootprint(){
 
     fpMessage.style.display =
       "none";
+
   }
 
   fpCtx.save();
 
-  /*
-    کل Footprint با یک Transform واحد
-    زوم و حرکت داده می‌شود.
-  */
-
   fpCtx.translate(
-    w/2 +
+    w/2+
     state.fpOffsetX,
-    h/2 +
+    h/2+
     state.fpOffsetY
   );
 
@@ -2232,11 +3868,13 @@ function drawFootprint(){
   );
 
   fpCtx.restore();
+
 }
 
-/* =========================
+/* =========================================================
    FOOTPRINT WORLD
-   ========================= */
+   ساختار اصلی عمداً حفظ شده است
+========================================================= */
 
 function drawFootprintWorld(
   ctx,
@@ -2247,111 +3885,57 @@ function drawFootprintWorld(
 ){
 
   const center =
-    w / 2;
+    w/2;
 
   /*
-    =========================================
-    FINAL FOOTPRINT ORDER
-    =========================================
-
-    LEFT ------------------------------ RIGHT
-
     Δ HISTOGRAM | ASK | PRICE | BID | DELTA
-
-    ASK و BID کاملاً داخل خود کندل هستند.
-    PRICE دقیقاً بین ASK و BID است.
-    Delta Number بیرون سمت راست است.
-    Delta Histogram بیرون سمت چپ است.
   */
 
   const top =
     58;
 
   const bottom =
-    h - 42;
-
-  /*
-    =========================
-    CENTRAL CANDLE WIDTH
-    =========================
-  */
+    h-42;
 
   const candleWidth =
     Math.min(
       210,
       Math.max(
         145,
-        w * .30
+        w*.30
       )
     );
 
   const candleLeft =
-    center -
-    candleWidth / 2;
+    center-
+    candleWidth/2;
 
   const candleRight =
-    center +
-    candleWidth / 2;
-
-  /*
-    =========================
-    COLUMNS
-    =========================
-  */
-
-  /*
-    Delta Histogram:
-    سمت چپ کندل
-  */
+    center+
+    candleWidth/2;
 
   const deltaHistStart =
     15;
 
   const deltaHistEnd =
-    candleLeft - 28;
-
-  /*
-    Ask:
-    داخل کندل - سمت چپ Price
-  */
+    candleLeft-28;
 
   const askX =
-    center -
-    candleWidth * .27;
-
-  /*
-    Price:
-    دقیقاً مرکز کندل
-  */
+    center-
+    candleWidth*.27;
 
   const priceX =
     center;
 
-  /*
-    Bid:
-    داخل کندل - سمت راست Price
-  */
-
   const bidX =
-    center +
-    candleWidth * .27;
-
-  /*
-    Delta:
-    بیرون کندل - سمت راست
-  */
+    center+
+    candleWidth*.27;
 
   const deltaX =
-    candleRight + 42;
+    candleRight+42;
 
   const deltaEnd =
-    w - 15;
-
-  /*
-    =========================
-    PRICE RANGE
-    =========================
-  */
+    w-15;
 
   let rangeHigh =
     candle.high;
@@ -2359,7 +3943,9 @@ function drawFootprintWorld(
   let rangeLow =
     candle.low;
 
-  for(const row of fp.levels){
+  for(
+    const row of fp.levels
+  ){
 
     rangeHigh =
       Math.max(
@@ -2372,42 +3958,51 @@ function drawFootprintWorld(
         rangeLow,
         row.price
       );
+
   }
 
   let range =
-    rangeHigh -
-    rangeLow;
+    rangeHigh-rangeLow;
 
-  if(range <= 0){
+  if(
+    range<=0
+  ){
 
     range =
       Math.max(
-        Math.abs(rangeHigh) *
-        .0001,
+        Math.abs(
+          rangeHigh
+        )*.0001,
         .00000001
       );
+
   }
 
   rangeHigh +=
-    range * .08;
+    range*.08;
 
   rangeLow -=
-    range * .08;
+    range*.08;
 
   function y(price){
 
     return bottom -
       (
-        (price - rangeLow) /
-        (rangeHigh - rangeLow)
+        (
+          price-rangeLow
+        ) /
+        (
+          rangeHigh-rangeLow
+        )
       ) *
-      (bottom - top);
+      (
+        bottom-top
+      );
+
   }
 
   /*
-    =========================
     HEADERS
-    =========================
   */
 
   ctx.textAlign =
@@ -2422,9 +4017,9 @@ function drawFootprintWorld(
   ctx.fillText(
     "Δ HIST",
     (
-      deltaHistStart +
+      deltaHistStart+
       deltaHistEnd
-    ) / 2,
+    )/2,
     22
   );
 
@@ -2453,19 +4048,18 @@ function drawFootprintWorld(
   );
 
   /*
-    =========================
-    COLUMN SEPARATORS
-    =========================
+    SEPARATORS
   */
 
   ctx.strokeStyle =
     "rgba(75,104,120,.25)";
 
-  ctx.lineWidth = 1;
+  ctx.lineWidth =
+    1;
 
   const separators = [
 
-    deltaHistEnd + 10,
+    deltaHistEnd+10,
 
     candleLeft,
 
@@ -2473,7 +4067,7 @@ function drawFootprintWorld(
 
     candleRight,
 
-    deltaX - 25
+    deltaX-25
 
   ];
 
@@ -2490,16 +4084,15 @@ function drawFootprintWorld(
 
     ctx.lineTo(
       x,
-      h - 22
+      h-22
     );
 
     ctx.stroke();
+
   }
 
   /*
-    =========================
     CANDLE
-    =========================
   */
 
   const candleX =
@@ -2526,14 +4119,11 @@ function drawFootprintWorld(
       ? "#35d98e"
       : "#ef6875";
 
-  /*
-    Wick
-  */
-
   ctx.strokeStyle =
     candleColor;
 
-  ctx.lineWidth = 3;
+  ctx.lineWidth =
+    3;
 
   ctx.beginPath();
 
@@ -2549,10 +4139,6 @@ function drawFootprintWorld(
 
   ctx.stroke();
 
-  /*
-    Body
-  */
-
   const bodyTop =
     Math.min(
       openY,
@@ -2563,14 +4149,9 @@ function drawFootprintWorld(
     Math.max(
       14,
       Math.abs(
-        closeY -
-        openY
+        closeY-openY
       )
     );
-
-  /*
-    بدنه نیمه شفاف
-  */
 
   ctx.fillStyle =
     bullish
@@ -2582,7 +4163,8 @@ function drawFootprintWorld(
       ? "rgba(53,217,142,.78)"
       : "rgba(239,104,117,.78)";
 
-  ctx.lineWidth = 2;
+  ctx.lineWidth =
+    2;
 
   roundedRect(
     ctx,
@@ -2597,9 +4179,7 @@ function drawFootprintWorld(
   ctx.stroke();
 
   /*
-    =========================
     CENTER PRICE LINE
-    =========================
   */
 
   ctx.strokeStyle =
@@ -2607,7 +4187,8 @@ function drawFootprintWorld(
       ? "rgba(53,217,142,.32)"
       : "rgba(239,104,117,.32)";
 
-  ctx.lineWidth = 1;
+  ctx.lineWidth =
+    1;
 
   ctx.beginPath();
 
@@ -2624,12 +4205,11 @@ function drawFootprintWorld(
   ctx.stroke();
 
   /*
-    =========================
     MAX DELTA
-    =========================
   */
 
-  let maxAbsDelta = 0;
+  let maxAbsDelta =
+    0;
 
   for(
     const row of fp.levels
@@ -2638,14 +4218,15 @@ function drawFootprintWorld(
     maxAbsDelta =
       Math.max(
         maxAbsDelta,
-        Math.abs(row.delta)
+        Math.abs(
+          row.delta
+        )
       );
+
   }
 
   /*
-    =========================
     LEVELS
-    =========================
   */
 
   for(
@@ -2665,15 +4246,14 @@ function drawFootprintWorld(
       );
 
     /*
-      =========================
-      LEVEL HORIZONTAL LINE
-      =========================
+      LEVEL LINE
     */
 
     ctx.strokeStyle =
       "rgba(96,120,135,.14)";
 
-    ctx.lineWidth = 1;
+    ctx.lineWidth =
+      1;
 
     ctx.beginPath();
 
@@ -2690,44 +4270,45 @@ function drawFootprintWorld(
     ctx.stroke();
 
     /*
-      =========================
       DELTA HISTOGRAM
-      LEFT OF CANDLE
-      =========================
     */
 
     const deltaRatio =
-      maxAbsDelta > 0
-        ? Math.abs(row.delta) /
+      maxAbsDelta>0
+        ? Math.abs(
+            row.delta
+          )/
           maxAbsDelta
         : 0;
 
     const histAvailable =
       Math.max(
         10,
-        deltaHistEnd -
+        deltaHistEnd-
         deltaHistStart
       );
 
     const histWidth =
       Math.max(
-        row.delta !== 0
+        row.delta!==0
           ? 2
           : 0,
-        histAvailable *
+        histAvailable*
         deltaRatio
       );
 
-    if(row.delta > 0){
+    if(
+      row.delta>0
+    ){
 
       ctx.fillStyle =
         "rgba(57,219,146,.68)";
 
       roundedRect(
         ctx,
-        deltaHistEnd -
+        deltaHistEnd-
         histWidth,
-        yy - 7,
+        yy-7,
         histWidth,
         14,
         3
@@ -2735,16 +4316,18 @@ function drawFootprintWorld(
 
       ctx.fill();
 
-    }else if(row.delta < 0){
+    }else if(
+      row.delta<0
+    ){
 
       ctx.fillStyle =
         "rgba(239,104,117,.68)";
 
       roundedRect(
         ctx,
-        deltaHistEnd -
+        deltaHistEnd-
         histWidth,
-        yy - 7,
+        yy-7,
         histWidth,
         14,
         3
@@ -2758,18 +4341,13 @@ function drawFootprintWorld(
         "rgba(100,120,132,.25)";
 
       ctx.fillRect(
-        deltaHistEnd - 2,
-        yy - 1,
+        deltaHistEnd-2,
+        yy-1,
         2,
         2
       );
-    }
 
-    /*
-      =========================
-      DELTA HISTOGRAM BASE LINE
-      =========================
-    */
+    }
 
     ctx.strokeStyle =
       "rgba(90,110,125,.22)";
@@ -2789,11 +4367,7 @@ function drawFootprintWorld(
     ctx.stroke();
 
     /*
-      =========================
       ASK
-      داخل کندل
-      سمت چپ PRICE
-      =========================
     */
 
     ctx.textAlign =
@@ -2803,27 +4377,26 @@ function drawFootprintWorld(
       "bold 10px Tahoma";
 
     ctx.fillStyle =
-      row.ask > 0
+      row.ask>0
         ? "#39db92"
         : "#526875";
 
     ctx.fillText(
-      row.ask > 0
+      row.ask>0
         ? fmt(row.ask)
         : "0",
       askX,
-      yy + 3
+      yy+3
     );
 
     /*
-      =========================
       PRICE
-      دقیقاً وسط کندل
-      =========================
     */
 
     const priceText =
-      formatPrice(row.price);
+      formatPrice(
+        row.price
+      );
 
     ctx.font =
       "bold 9px Tahoma";
@@ -2833,21 +4406,17 @@ function drawFootprintWorld(
         58,
         ctx.measureText(
           priceText
-        ).width + 12
+        ).width+12
       );
-
-    /*
-      نوار بسیار ظریف پشت Price
-    */
 
     ctx.fillStyle =
       "rgba(7,16,24,.90)";
 
     roundedRect(
       ctx,
-      priceX -
-      priceWidth / 2,
-      yy - 9,
+      priceX-
+      priceWidth/2,
+      yy-9,
       priceWidth,
       18,
       4
@@ -2858,7 +4427,8 @@ function drawFootprintWorld(
     ctx.strokeStyle =
       "rgba(120,145,158,.32)";
 
-    ctx.lineWidth = 1;
+    ctx.lineWidth =
+      1;
 
     ctx.stroke();
 
@@ -2871,15 +4441,11 @@ function drawFootprintWorld(
     ctx.fillText(
       priceText,
       priceX,
-      yy + 3
+      yy+3
     );
 
     /*
-      =========================
       BID
-      داخل کندل
-      سمت راست PRICE
-      =========================
     */
 
     ctx.textAlign =
@@ -2889,23 +4455,20 @@ function drawFootprintWorld(
       "bold 10px Tahoma";
 
     ctx.fillStyle =
-      row.bid > 0
+      row.bid>0
         ? "#ef6875"
         : "#526875";
 
     ctx.fillText(
-      row.bid > 0
+      row.bid>0
         ? fmt(row.bid)
         : "0",
       bidX,
-      yy + 3
+      yy+3
     );
 
     /*
-      =========================
-      DELTA NUMBER
-      بیرون کندل سمت راست
-      =========================
+      DELTA
     */
 
     ctx.textAlign =
@@ -2914,12 +4477,16 @@ function drawFootprintWorld(
     ctx.font =
       "bold 10px Tahoma";
 
-    if(row.delta > 0){
+    if(
+      row.delta>0
+    ){
 
       ctx.fillStyle =
         "#39db92";
 
-    }else if(row.delta < 0){
+    }else if(
+      row.delta<0
+    ){
 
       ctx.fillStyle =
         "#ef6875";
@@ -2928,49 +4495,51 @@ function drawFootprintWorld(
 
       ctx.fillStyle =
         "#718895";
+
     }
 
     ctx.fillText(
-      (row.delta > 0 ? "+" : "") +
+      (
+        row.delta>0
+          ? "+"
+          : ""
+      )+
       fmt(row.delta),
       deltaX,
-      yy + 3
+      yy+3
     );
 
     /*
-      =========================
-      DELTA INTENSITY INSIDE CANDLE
-      =========================
+      DELTA INTENSITY
     */
 
-    if(row.delta !== 0){
+    if(
+      row.delta!==0
+    ){
 
       const intensity =
-        maxAbsDelta > 0
+        maxAbsDelta>0
           ? Math.min(
               .14,
-              Math.abs(row.delta) /
-              maxAbsDelta *
+              Math.abs(
+                row.delta
+              )/
+              maxAbsDelta*
               .14
             )
           : 0;
 
       ctx.fillStyle =
-        row.delta > 0
+        row.delta>0
           ? `rgba(57,219,146,${intensity})`
           : `rgba(239,104,117,${intensity})`;
 
       ctx.fillRect(
-        candleLeft + 2,
-        yy - 7,
-        candleWidth - 4,
+        candleLeft+2,
+        yy-7,
+        candleWidth-4,
         14
       );
-
-      /*
-        دوباره ASK / PRICE / BID
-        روی لایه Highlight
-      */
 
       /*
         ASK
@@ -2983,16 +4552,16 @@ function drawFootprintWorld(
         "bold 10px Tahoma";
 
       ctx.fillStyle =
-        row.ask > 0
+        row.ask>0
           ? "#39db92"
           : "#526875";
 
       ctx.fillText(
-        row.ask > 0
+        row.ask>0
           ? fmt(row.ask)
           : "0",
         askX,
-        yy + 3
+        yy+3
       );
 
       /*
@@ -3011,7 +4580,7 @@ function drawFootprintWorld(
       ctx.fillText(
         priceText,
         priceX,
-        yy + 3
+        yy+3
       );
 
       /*
@@ -3025,24 +4594,24 @@ function drawFootprintWorld(
         "bold 10px Tahoma";
 
       ctx.fillStyle =
-        row.bid > 0
+        row.bid>0
           ? "#ef6875"
           : "#526875";
 
       ctx.fillText(
-        row.bid > 0
+        row.bid>0
           ? fmt(row.bid)
           : "0",
         bidX,
-        yy + 3
+        yy+3
       );
+
     }
+
   }
 
   /*
-    =========================
-    OHLC REFERENCE LINES
-    =========================
+    OHLC
   */
 
   const markers = [
@@ -3109,36 +4678,37 @@ function drawFootprintWorld(
     ctx.fillText(
       label,
       center,
-      yy - 4
+      yy-4
     );
+
   }
 
   /*
-    =========================
-    TOTAL DELTA BADGE
-    =========================
+    TOTAL DELTA
   */
 
   const totalColor =
-    fp.totalDelta >= 0
+    fp.totalDelta>=0
       ? "#39db92"
       : "#ef6875";
 
   const totalText =
     "TOTAL Δ " +
     (
-      fp.totalDelta >= 0
+      fp.totalDelta>=0
         ? "+"
         : ""
-    ) +
-    fmt(fp.totalDelta);
+    )+
+    fmt(
+      fp.totalDelta
+    );
 
   const badgeW =
     155;
 
   const badgeX =
-    center -
-    badgeW / 2;
+    center-
+    badgeW/2;
 
   const badgeY =
     33;
@@ -3149,7 +4719,8 @@ function drawFootprintWorld(
   ctx.strokeStyle =
     totalColor;
 
-  ctx.lineWidth = 1;
+  ctx.lineWidth =
+    1;
 
   roundedRect(
     ctx,
@@ -3175,13 +4746,11 @@ function drawFootprintWorld(
   ctx.fillText(
     totalText,
     center,
-    badgeY + 13
+    badgeY+13
   );
 
   /*
-    =========================
     BOTTOM INFO
-    =========================
   */
 
   ctx.textAlign =
@@ -3194,15 +4763,20 @@ function drawFootprintWorld(
     "#718899";
 
   ctx.fillText(
-    `Trades: ${fp.trades.length} · Levels: ${fp.levels.length} · Tick: ${fp.tick ? formatPrice(fp.tick) : "—"}`,
+    `Trades: ${fp.trades.length} · Levels: ${fp.levels.length} · Tick: ${
+      fp.tick
+        ? formatPrice(fp.tick)
+        : "—"
+    }`,
     center,
-    h - 10
+    h-10
   );
+
 }
 
-/* =========================
+/* =========================================================
    FOOTPRINT TOUCH
-   ========================= */
+   ========================================================= */
 
 function fpPoint(e){
 
@@ -3212,25 +4786,30 @@ function fpPoint(e){
   return {
 
     x:
-      e.clientX -
-      r.left,
+      e.clientX-r.left,
 
     y:
-      e.clientY -
-      r.top
+      e.clientY-r.top
 
   };
+
 }
 
-function pointerDistance(a,b){
+function pointerDistance(
+  a,
+  b
+){
 
   return Math.hypot(
     a.x-b.x,
     a.y-b.y
   );
+
 }
 
 function fpPointerDown(e){
+
+  e.preventDefault();
 
   fpCanvas.setPointerCapture?.(
     e.pointerId
@@ -3290,22 +4869,12 @@ function fpPointerDown(e){
         state.fpOffsetX,
 
       startOffsetY:
-        state.fpOffsetY,
-
-      centerX:
-        (
-          ps[0].x +
-          ps[1].x
-        ) / 2,
-
-      centerY:
-        (
-          ps[0].y +
-          ps[1].y
-        ) / 2
+        state.fpOffsetY
 
     };
+
   }
+
 }
 
 function fpPointerMove(e){
@@ -3315,8 +4884,12 @@ function fpPointerMove(e){
       e.pointerId
     )
   ){
+
     return;
+
   }
+
+  e.preventDefault();
 
   state.fpPointers.set(
     e.pointerId,
@@ -3324,45 +4897,47 @@ function fpPointerMove(e){
   );
 
   /*
-    ONE FINGER:
-    کل Footprint حرکت می‌کند
+    ONE FINGER MOVE
   */
 
   if(
-    state.fpPointers.size === 1 &&
-    state.fpGesture?.type === "drag"
+    state.fpPointers.size===1 &&
+    state.fpGesture?.type===
+      "drag"
   ){
 
     const p =
       fpPoint(e);
 
     state.fpOffsetX =
-      state.fpGesture.startOffsetX +
+      state.fpGesture.startOffsetX+
       (
-        p.x -
+        p.x-
         state.fpGesture.startX
       );
 
     state.fpOffsetY =
-      state.fpGesture.startOffsetY +
+      state.fpGesture.startOffsetY+
       (
-        p.y -
+        p.y-
         state.fpGesture.startY
       );
 
     drawFootprint();
 
     return;
+
   }
 
   /*
-    TWO FINGERS:
-    کل Footprint زوم می‌شود
+    TWO FINGER PINCH
+    MAX = 40x
   */
 
   if(
-    state.fpPointers.size === 2 &&
-    state.fpGesture?.type === "pinch"
+    state.fpPointers.size===2 &&
+    state.fpGesture?.type===
+      "pinch"
   ){
 
     const ps =
@@ -3381,27 +4956,27 @@ function fpPointerMove(e){
 
     const newScale =
       clamp(
-        state.fpGesture.startScale *
-        dist /
+        state.fpGesture.startScale*
+        dist/
         Math.max(
           5,
           state.fpGesture.startDistance
         ),
-        .45,
-        4
+        .35,
+        40
       );
 
     const cx =
       (
-        ps[0].x +
+        ps[0].x+
         ps[1].x
-      ) / 2;
+      )/2;
 
     const cy =
       (
-        ps[0].y +
+        ps[0].y+
         ps[1].y
-      ) / 2;
+      )/2;
 
     const oldScale =
       state.fpScale;
@@ -3413,48 +4988,50 @@ function fpPointerMove(e){
       fpCanvas.clientHeight;
 
     const baseX =
-      canvasW / 2 +
+      canvasW/2+
       state.fpOffsetX;
 
     const baseY =
-      canvasH / 2 +
+      canvasH/2+
       state.fpOffsetY;
 
     const worldX =
       (
-        cx - baseX
-      ) /
+        cx-baseX
+      )/
       oldScale;
 
     const worldY =
       (
-        cy - baseY
-      ) /
+        cy-baseY
+      )/
       oldScale;
 
     const newBaseX =
-      cx -
-      worldX *
+      cx-
+      worldX*
       newScale;
 
     const newBaseY =
-      cy -
-      worldY *
+      cy-
+      worldY*
       newScale;
 
     state.fpScale =
       newScale;
 
     state.fpOffsetX =
-      newBaseX -
-      canvasW / 2;
+      newBaseX-
+      canvasW/2;
 
     state.fpOffsetY =
-      newBaseY -
-      canvasH / 2;
+      newBaseY-
+      canvasH/2;
 
     drawFootprint();
+
   }
+
 }
 
 function fpPointerUp(e){
@@ -3464,14 +5041,14 @@ function fpPointerUp(e){
   );
 
   if(
-    state.fpPointers.size === 0
+    state.fpPointers.size===0
   ){
 
     state.fpGesture =
       null;
 
   }else if(
-    state.fpPointers.size === 1
+    state.fpPointers.size===1
   ){
 
     const p =
@@ -3494,17 +5071,25 @@ function fpPointerUp(e){
         state.fpOffsetY
 
     };
+
   }
+
 }
 
 fpCanvas.addEventListener(
   "pointerdown",
-  fpPointerDown
+  fpPointerDown,
+  {
+    passive:false
+  }
 );
 
 fpCanvas.addEventListener(
   "pointermove",
-  fpPointerMove
+  fpPointerMove,
+  {
+    passive:false
+  }
 );
 
 fpCanvas.addEventListener(
@@ -3517,9 +5102,9 @@ fpCanvas.addEventListener(
   fpPointerUp
 );
 
-/*
-  Mouse / Trackpad Zoom
-*/
+/* =========================================================
+   FOOTPRINT WHEEL
+========================================================= */
 
 fpCanvas.addEventListener(
   "wheel",
@@ -3531,65 +5116,60 @@ fpCanvas.addEventListener(
       fpCanvas.getBoundingClientRect();
 
     const mx =
-      e.clientX -
-      r.left;
+      e.clientX-r.left;
 
     const my =
-      e.clientY -
-      r.top;
+      e.clientY-r.top;
 
     const oldScale =
       state.fpScale;
 
     const factor =
-      e.deltaY < 0
-        ? 1.12
-        : .89;
+      e.deltaY<0
+        ? 1.15
+        : .87;
 
     const newScale =
       clamp(
-        oldScale *
-        factor,
-        .45,
-        4
+        oldScale*factor,
+        .35,
+        40
       );
 
     const cx =
-      r.width / 2 +
+      r.width/2+
       state.fpOffsetX;
 
     const cy =
-      r.height / 2 +
+      r.height/2+
       state.fpOffsetY;
 
     const worldX =
-      (mx-cx) /
+      (mx-cx)/
       oldScale;
 
     const worldY =
-      (my-cy) /
+      (my-cy)/
       oldScale;
 
     const newCx =
-      mx -
-      worldX *
+      mx-
+      worldX*
       newScale;
 
     const newCy =
-      my -
-      worldY *
+      my-
+      worldY*
       newScale;
 
     state.fpScale =
       newScale;
 
     state.fpOffsetX =
-      newCx -
-      r.width / 2;
+      newCx-r.width/2;
 
     state.fpOffsetY =
-      newCy -
-      r.height / 2;
+      newCy-r.height/2;
 
     drawFootprint();
 
@@ -3599,60 +5179,430 @@ fpCanvas.addEventListener(
   }
 );
 
-/*
-  Reset Footprint
-*/
+/* =========================================================
+   FOOTPRINT RESET
+========================================================= */
 
-$("fpReset").addEventListener(
-  "click",
-  () => {
+$("fpReset")
+  .addEventListener(
+    "click",
+    () => {
 
-    state.fpScale = 1;
+      state.fpScale =
+        1;
 
-    state.fpOffsetX = 0;
+      state.fpOffsetX =
+        0;
 
-    state.fpOffsetY = 0;
+      state.fpOffsetY =
+        0;
 
-    drawFootprint();
+      drawFootprint();
+
+    }
+  );
+
+/* =========================================================
+   WEBSOCKET
+   معاملات واقعی لحظه‌ای Bybit Futures
+========================================================= */
+
+function setWsBadge(
+  connected
+){
+
+  state.wsConnected =
+    connected;
+
+  if(connected){
+
+    wsBadge.textContent =
+      "LIVE";
+
+    wsBadge.style.color =
+      "#35e39a";
+
+  }else{
+
+    wsBadge.textContent =
+      "REST";
+
+    wsBadge.style.color =
+      "#7891a2";
+
   }
-);
 
-/* =========================
-   LOAD MARKET
-   ========================= */
+}
 
-async function loadMarket(options={}){
+function closeWebSocket(){
 
-  if(state.loading){
+  if(
+    state.wsReconnectTimer
+  ){
+
+    clearTimeout(
+      state.wsReconnectTimer
+    );
+
+    state.wsReconnectTimer =
+      null;
+
+  }
+
+  if(
+    state.wsPingTimer
+  ){
+
+    clearInterval(
+      state.wsPingTimer
+    );
+
+    state.wsPingTimer =
+      null;
+
+  }
+
+  if(
+    state.ws
+  ){
+
+    try{
+
+      state.ws.close();
+
+    }catch(e){}
+
+    state.ws =
+      null;
+
+  }
+
+  setWsBadge(
+    false
+  );
+
+}
+
+function connectWebSocket(){
+
+  closeWebSocket();
+
+  const symbol =
+    state.symbol
+      .trim()
+      .toUpperCase();
+
+  if(!symbol)
     return;
+
+  try{
+
+    const ws =
+      new WebSocket(
+        BYBIT_WS
+      );
+
+    state.ws =
+      ws;
+
+    ws.onopen =
+      () => {
+
+        state.wsReconnectAttempt =
+          0;
+
+        setWsBadge(
+          true
+        );
+
+        ws.send(
+          JSON.stringify({
+            op:"subscribe",
+            args:[
+              "publicTrade."+
+              symbol
+            ]
+          })
+        );
+
+        state.wsPingTimer =
+          setInterval(
+            () => {
+
+              if(
+                ws.readyState ===
+                WebSocket.OPEN
+              ){
+
+                ws.send(
+                  JSON.stringify({
+                    op:"ping"
+                  })
+                );
+
+              }
+
+            },
+            20000
+          );
+
+        setStatus(
+          `🟢 Bybit Futures LIVE · ${symbol}`,
+          "green"
+        );
+
+      };
+
+    ws.onmessage =
+      async event => {
+
+        let message;
+
+        try{
+
+          message =
+            JSON.parse(
+              event.data
+            );
+
+        }catch(e){
+
+          return;
+
+        }
+
+        if(
+          !message.topic ||
+          !message.topic.startsWith(
+            "publicTrade."
+          )
+        ){
+
+          return;
+
+        }
+
+        if(
+          !Array.isArray(
+            message.data
+          )
+        ){
+
+          return;
+
+        }
+
+        const incoming = [];
+
+        for(
+          const row of message.data
+        ){
+
+          const side =
+            String(
+              row.S ||
+              ""
+            ).toLowerCase();
+
+          const trade =
+            normalizeTrade({
+
+              id:
+                row.i ||
+                "",
+
+              time:
+                num(row.T),
+
+              price:
+                num(row.p),
+
+              size:
+                num(row.v),
+
+              value:
+                num(row.p)*
+                num(row.v),
+
+              side:
+                side ===
+                "buy"
+                  ? "buy"
+                  : "sell"
+
+            });
+
+          if(
+            trade.time &&
+            trade.price &&
+            trade.size
+          ){
+
+            incoming.push(
+              trade
+            );
+
+          }
+
+        }
+
+        if(
+          incoming.length
+        ){
+
+          state.trades =
+            mergeTrades(
+              state.trades,
+              incoming
+            );
+
+          /*
+            ذخیره exact trade
+          */
+
+          for(
+            const t of incoming
+          ){
+
+            saveTrade(
+              state.symbol,
+              t
+            );
+
+          }
+
+          /*
+            اگر کندل انتخابی همان کندل جاری باشد،
+            Footprint فوراً آپدیت می‌شود.
+          */
+
+          if(
+            state.selectedIndex ===
+            state.candles.length-1
+          ){
+
+            updateSelectedInfo();
+
+          }
+
+          updateStats();
+
+        }
+
+      };
+
+    ws.onerror =
+      () => {
+
+        setWsBadge(
+          false
+        );
+
+      };
+
+    ws.onclose =
+      () => {
+
+        setWsBadge(
+          false
+        );
+
+        if(
+          state.wsPingTimer
+        ){
+
+          clearInterval(
+            state.wsPingTimer
+          );
+
+          state.wsPingTimer =
+            null;
+
+        }
+
+        /*
+          Reconnect
+        */
+
+        state.wsReconnectAttempt =
+          Math.min(
+            state.wsReconnectAttempt+1,
+            8
+          );
+
+        const delay =
+          Math.min(
+            30000,
+            1000 *
+            Math.pow(
+              1.6,
+              state.wsReconnectAttempt
+            )
+          );
+
+        state.wsReconnectTimer =
+          setTimeout(
+            () => {
+
+              connectWebSocket();
+
+            },
+            delay
+          );
+
+      };
+
+  }catch(e){
+
+    setWsBadge(
+      false
+    );
+
+  }
+
+}
+
+/* =========================================================
+   LOAD MARKET
+========================================================= */
+
+async function loadMarket(
+  options={}
+){
+
+  if(
+    state.loading
+  ){
+
+    return;
+
   }
 
   const previousSelectedTime =
     state.candles[
       state.selectedIndex
-    ]?.time || 0;
+    ]?.time ||
+    0;
 
   const previousWasLast =
     state.selectedIndex ===
-    state.candles.length - 1;
+    state.candles.length-1;
 
-  state.loading = true;
+  state.loading =
+    true;
 
   state.symbol =
-    $("symbol").value
+    $("symbol")
+      .value
       .trim()
       .toUpperCase();
 
   state.category =
-    $("category").value;
+    FUTURES_CATEGORY;
 
   state.interval =
-    $("interval").value;
-
-  state.candleCount =
-    Number(
-      $("candleCount").value
-    );
+    $("interval")
+      .value;
 
   if(!state.symbol){
 
@@ -3661,14 +5611,24 @@ async function loadMarket(options={}){
 
     $("symbol").value =
       state.symbol;
+
   }
 
   setStatus(
-    `⏳ دریافت داده واقعی Bybit · ${state.symbol}`,
+    `⏳ دریافت داده واقعی Bybit Futures · ${state.symbol}`,
     "yellow"
   );
 
   try{
+
+    /*
+      داده‌های ذخیره‌شده واقعی
+    */
+
+    const storedTrades =
+      await loadStoredTrades(
+        state.symbol
+      );
 
     const url =
       API_BASE +
@@ -3677,17 +5637,16 @@ async function loadMarket(options={}){
       encodeURIComponent(
         state.symbol
       ) +
-      "&category=" +
-      encodeURIComponent(
-        state.category
-      ) +
+      "&category=linear" +
       "&interval=" +
       encodeURIComponent(
         state.interval
       );
 
     const data =
-      await fetchJson(url);
+      await fetchJson(
+        url
+      );
 
     if(
       !Array.isArray(
@@ -3698,33 +5657,37 @@ async function loadMarket(options={}){
       throw new Error(
         "Worker داده کندل برنگرداند"
       );
+
     }
 
     const newCandles =
       data.candles
-        .map(normalizeCandle)
+        .map(
+          normalizeCandle
+        )
         .filter(
-          c => c.time > 0
+          c =>
+            c.time>0
         )
         .sort(
           (a,b) =>
             a.time-b.time
-        )
-        .slice(
-          -state.candleCount
         );
 
-    if(!newCandles.length){
+    if(
+      !newCandles.length
+    ){
 
       throw new Error(
         "هیچ کندلی از Bybit دریافت نشد"
       );
+
     }
 
     state.candles =
       newCandles;
 
-    state.trades =
+    const restTrades =
       Array.isArray(
         data.trades
       )
@@ -3732,6 +5695,23 @@ async function loadMarket(options={}){
             normalizeTrade
           )
         : [];
+
+    state.trades =
+      mergeTrades(
+        [
+          ...storedTrades,
+          ...restTrades
+        ],
+        []
+      );
+
+    /*
+      ذخیره REST tradeهای واقعی
+    */
+
+    persistTrades(
+      restTrades
+    );
 
     state.lastPrice =
       num(
@@ -3747,15 +5727,15 @@ async function loadMarket(options={}){
       data.absorption;
 
     /*
-      =========================
-      RESTORE SELECTED CANDLE
-      =========================
+      Restore selected candle
     */
 
     let restoredIndex =
       -1;
 
-    if(previousSelectedTime){
+    if(
+      previousSelectedTime
+    ){
 
       restoredIndex =
         state.candles.findIndex(
@@ -3763,6 +5743,7 @@ async function loadMarket(options={}){
             c.time ===
             previousSelectedTime
         );
+
     }
 
     if(
@@ -3775,17 +5756,17 @@ async function loadMarket(options={}){
 
     }else if(
       previousWasLast ||
-      state.selectedIndex < 0
+      state.selectedIndex<0
     ){
 
       state.selectedIndex =
-        state.candles.length - 1;
+        state.candles.length-1;
 
       state.userSelectedHistorical =
         false;
 
     }else if(
-      restoredIndex >= 0
+      restoredIndex>=0
     ){
 
       state.selectedIndex =
@@ -3796,8 +5777,9 @@ async function loadMarket(options={}){
       state.selectedIndex =
         Math.min(
           state.selectedIndex,
-          state.candles.length - 1
+          state.candles.length-1
         );
+
     }
 
     updateStats();
@@ -3806,17 +5788,24 @@ async function loadMarket(options={}){
 
     drawChart();
 
+    connectWebSocket();
+
     setStatus(
-      `🟢 اتصال برقرار است — Bybit · ${state.symbol} · ${state.category}`,
+      `🟢 اتصال برقرار است — Bybit Futures · ${state.symbol}`,
       "green"
     );
 
   }catch(err){
 
-    console.error(err);
+    console.error(
+      err
+    );
 
     setStatus(
-      `🔴 خطا: ${err.message || "خطای نامشخص"}`,
+      `🔴 خطا: ${
+        err.message ||
+        "خطای نامشخص"
+      }`,
       "red"
     );
 
@@ -3824,47 +5813,19 @@ async function loadMarket(options={}){
 
     state.loading =
       false;
+
   }
+
 }
 
-/* =========================
-   CONTROLS
-   ========================= */
+/* =========================================================
+   ANALYZE
+========================================================= */
 
-$("analyze").addEventListener(
-  "click",
-  () => {
-
-    state.userSelectedHistorical =
-      false;
-
-    state.selectedIndex =
-      -1;
-
-    state.chartZoom =
-      1;
-
-    state.chartPan =
-      0;
-
-    state.fpScale =
-      1;
-
-    state.fpOffsetX =
-      0;
-
-    state.fpOffsetY =
-      0;
-
-    loadMarket();
-  }
-);
-
-$("symbol").addEventListener(
-  "keydown",
-  e => {
-
-    if(e.key === "Enter"){
+$("analyze")
+  .addEventListener(
+    "click",
+    () => {
 
       state.userSelectedHistorical =
         false;
@@ -3872,65 +5833,93 @@ $("symbol").addEventListener(
       state.selectedIndex =
         -1;
 
+      state.chartZoom =
+        1;
+
+      state.chartPan =
+        0;
+
+      state.fpScale =
+        1;
+
+      state.fpOffsetX =
+        0;
+
+      state.fpOffsetY =
+        0;
+
       loadMarket();
+
     }
-  }
-);
+  );
 
-$("interval").addEventListener(
-  "change",
-  () => {
+/* =========================================================
+   SYMBOL ENTER
+========================================================= */
 
-    state.userSelectedHistorical =
-      false;
+$("symbol")
+  .addEventListener(
+    "keydown",
+    e => {
 
-    state.selectedIndex =
-      -1;
+      if(
+        e.key ===
+        "Enter"
+      ){
 
-    state.chartZoom =
-      1;
+        state.userSelectedHistorical =
+          false;
 
-    state.chartPan =
-      0;
+        state.selectedIndex =
+          -1;
 
-    loadMarket();
-  }
-);
+        state.chartZoom =
+          1;
 
-$("category").addEventListener(
-  "change",
-  () => {
+        state.chartPan =
+          0;
 
-    state.userSelectedHistorical =
-      false;
+        loadMarket();
 
-    state.selectedIndex =
-      -1;
+      }
 
-    state.chartZoom =
-      1;
+    }
+  );
 
-    state.chartPan =
-      0;
+/* =========================================================
+   INTERVAL
+========================================================= */
 
-    loadMarket();
-  }
-);
+$("interval")
+  .addEventListener(
+    "change",
+    () => {
 
-$("candleCount").addEventListener(
-  "change",
-  () => {
+      state.userSelectedHistorical =
+        false;
 
-    loadMarket();
-  }
-);
+      state.selectedIndex =
+        -1;
 
-/* =========================
+      state.chartZoom =
+        1;
+
+      state.chartPan =
+        0;
+
+      loadMarket();
+
+    }
+  );
+
+/* =========================================================
    TABS
-   ========================= */
+========================================================= */
 
 document
-  .querySelectorAll(".tab")
+  .querySelectorAll(
+    ".tab"
+  )
   .forEach(
     tab => {
 
@@ -3939,7 +5928,9 @@ document
         () => {
 
           document
-            .querySelectorAll(".tab")
+            .querySelectorAll(
+              ".tab"
+            )
             .forEach(
               x =>
                 x.classList.remove(
@@ -3950,30 +5941,287 @@ document
           tab.classList.add(
             "active"
           );
+
         }
       );
+
     }
   );
 
-/* =========================
+/* =========================================================
+   LANDSCAPE
+========================================================= */
+
+async function enterLandscape(){
+
+  const panel =
+    $("chartPanel");
+
+  try{
+
+    /*
+      اول Fullscreen
+      سپس Screen Orientation Lock
+    */
+
+    if(
+      !document.fullscreenElement &&
+      panel.requestFullscreen
+    ){
+
+      await panel.requestFullscreen();
+
+    }
+
+    if(
+      screen.orientation &&
+      screen.orientation.lock
+    ){
+
+      try{
+
+        await screen.orientation.lock(
+          "landscape"
+        );
+
+        document.body.classList.add(
+          "landscape-chart-mode"
+        );
+
+        return;
+
+      }catch(e){
+
+        console.warn(
+          "Orientation lock denied",
+          e
+        );
+
+      }
+
+    }
+
+  }catch(e){
+
+    console.warn(
+      "Fullscreen/orientation",
+      e
+    );
+
+  }
+
+  /*
+    CSS fallback
+  */
+
+  document.body.classList.add(
+    "landscape-chart-mode"
+  );
+
+  setTimeout(
+    () => {
+
+      drawChart();
+
+    },
+    100
+  );
+
+}
+
+async function exitLandscape(){
+
+  try{
+
+    if(
+      screen.orientation &&
+      screen.orientation.unlock
+    ){
+
+      screen.orientation.unlock();
+
+    }
+
+  }catch(e){}
+
+  document.body.classList.remove(
+    "landscape-chart-mode"
+  );
+
+  try{
+
+    if(
+      document.fullscreenElement &&
+      document.exitFullscreen
+    ){
+
+      await document.exitFullscreen();
+
+    }
+
+  }catch(e){}
+
+  setTimeout(
+    () => {
+
+      drawChart();
+
+      drawFootprint();
+
+    },
+    100
+  );
+
+}
+
+let landscapeActive =
+  false;
+
+$("landscapeBtn")
+  .addEventListener(
+    "click",
+    async () => {
+
+      landscapeActive =
+        !landscapeActive;
+
+      if(
+        landscapeActive
+      ){
+
+        $("landscapeBtn")
+          .textContent =
+          "↙";
+
+        await enterLandscape();
+
+      }else{
+
+        $("landscapeBtn")
+          .textContent =
+          "⛶";
+
+        await exitLandscape();
+
+      }
+
+    }
+  );
+
+document.addEventListener(
+  "fullscreenchange",
+  () => {
+
+    if(
+      !document.fullscreenElement &&
+      landscapeActive
+    ){
+
+      document.body.classList.remove(
+        "landscape-chart-mode"
+      );
+
+      landscapeActive =
+        false;
+
+      $("landscapeBtn")
+        .textContent =
+        "⛶";
+
+    }
+
+    drawChart();
+
+  }
+);
+
+/* =========================================================
    RESIZE
-   ========================= */
+========================================================= */
 
 window.addEventListener(
   "resize",
   () => {
 
-    drawChart();
+    requestChartDraw();
 
     drawFootprint();
+
   }
 );
 
-/* =========================
-   BOOT
-   ========================= */
+window.addEventListener(
+  "orientationchange",
+  () => {
 
-function boot(){
+    setTimeout(
+      () => {
+
+        drawChart();
+
+        drawFootprint();
+
+      },
+      250
+    );
+
+  }
+);
+
+/* =========================================================
+   VISIBILITY
+========================================================= */
+
+document.addEventListener(
+  "visibilitychange",
+  () => {
+
+    if(
+      !document.hidden &&
+      state.symbol
+    ){
+
+      if(
+        !state.ws ||
+        state.ws.readyState !==
+        WebSocket.OPEN
+      ){
+
+        connectWebSocket();
+
+      }
+
+    }
+
+  }
+);
+
+/* =========================================================
+   PERIODIC REST REFRESH
+========================================================= */
+
+setInterval(
+  () => {
+
+    if(
+      !state.loading
+    ){
+
+      loadMarket({
+        silent:true
+      });
+
+    }
+
+  },
+  15000
+);
+
+/* =========================================================
+   BOOT
+========================================================= */
+
+async function boot(){
 
   requestAnimationFrame(
     () => {
@@ -3985,26 +6233,22 @@ function boot(){
     }
   );
 
-  loadMarket();
+  await openTradeDB();
+
+  cleanupStoredTrades();
 
   /*
-    Refresh واقعی هر 15 ثانیه
+    لیست Futures
   */
 
-  setInterval(
-    () => {
+  loadFuturesSymbols();
 
-      if(!state.loading){
+  /*
+    بازار پیش‌فرض
+  */
 
-        loadMarket({
-          silent:true
-        });
+  loadMarket();
 
-      }
-
-    },
-    15000
-  );
 }
 
 boot();
