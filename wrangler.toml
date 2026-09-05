@@ -12,9 +12,9 @@ binding = "ASSETS"
 name = "TRADE_COLLECTOR"
 class_name = "TradeCollector"
 
-[[migrations]]
-tag = "v1"
-new_sqlite_classes = ["TradeCollector"]
+[exports.TradeCollector]
+type = "durable-object"
+storage = "sqlite"
 
 [triggers]
 crons = ["*/5 * * * *"]
