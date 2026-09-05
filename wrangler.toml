@@ -7,3 +7,11 @@ workers_dev = true
 [assets]
 directory = "./public"
 binding = "ASSETS"
+
+[[durable_objects.bindings]]
+name = "TRADE_COLLECTOR"
+class_name = "TradeCollector"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["TradeCollector"]
