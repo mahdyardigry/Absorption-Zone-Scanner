@@ -6,17 +6,35 @@
 <title>Absorption Zone Scanner</title>
 
 <style>
-*{box-sizing:border-box}
-html,body{margin:0;padding:0;background:#071019;color:#e8f0f7;font-family:Tahoma,Arial,sans-serif}
-body{min-height:100vh}
-button,input,select{font:inherit}
-button{cursor:pointer}
+*{
+  box-sizing:border-box;
+}
+
+html,body{
+  margin:0;
+  padding:0;
+  background:#071019;
+  color:#e8f0f7;
+  font-family:Tahoma,Arial,sans-serif;
+}
+
+body{
+  min-height:100vh;
+}
+
+button,input,select{
+  font:inherit;
+}
+
+button{
+  cursor:pointer;
+}
 
 .app{
   width:100%;
   max-width:1500px;
   margin:auto;
-  padding:12px;
+  padding:10px;
 }
 
 .header{
@@ -81,8 +99,6 @@ button{cursor:pointer}
   min-height:44px;
 }
 
-.btn:active{transform:scale(.98)}
-
 .status{
   margin-top:10px;
   padding:9px 11px;
@@ -91,6 +107,18 @@ button{cursor:pointer}
   border:1px solid #233947;
   color:#8ea6b8;
   font-size:12px;
+}
+
+.green{
+  color:#35e39a!important;
+}
+
+.red{
+  color:#ff6474!important;
+}
+
+.yellow{
+  color:#f5c95b!important;
 }
 
 .stats{
@@ -122,11 +150,6 @@ button{cursor:pointer}
   white-space:nowrap;
 }
 
-.green{color:#35e39a!important}
-.red{color:#ff6474!important}
-.yellow{color:#f5c95b!important}
-.blue{color:#55b8ff!important}
-
 .panel{
   background:#09131c;
   border:1px solid #223746;
@@ -157,7 +180,7 @@ button{cursor:pointer}
 .chart-wrap{
   position:relative;
   width:100%;
-  height:470px;
+  height:460px;
   background:#071018;
   overflow:hidden;
   touch-action:none;
@@ -179,7 +202,9 @@ button{cursor:pointer}
   scrollbar-width:none;
 }
 
-.tabs::-webkit-scrollbar{display:none}
+.tabs::-webkit-scrollbar{
+  display:none;
+}
 
 .tab{
   white-space:nowrap;
@@ -244,12 +269,12 @@ button{cursor:pointer}
 .fp-wrap{
   position:relative;
   width:100%;
-  height:520px;
+  height:530px;
   overflow:hidden;
   background:
     linear-gradient(rgba(255,255,255,.018) 1px,transparent 1px),
     #071018;
-  background-size:100% 32px;
+  background-size:100% 30px;
   touch-action:none;
 }
 
@@ -267,9 +292,10 @@ button{cursor:pointer}
   align-items:center;
   justify-content:center;
   text-align:center;
+  white-space:pre-line;
   color:#7f95a5;
   font-size:12px;
-  padding:20px;
+  padding:25px;
   pointer-events:none;
 }
 
@@ -298,21 +324,57 @@ button{cursor:pointer}
 }
 
 @media(max-width:900px){
-  .controls{grid-template-columns:1fr 1fr}
-  .btn{width:100%}
-  .stats{grid-template-columns:repeat(3,1fr)}
-  .chart-wrap{height:390px}
-  .fp-wrap{height:500px}
+
+  .controls{
+    grid-template-columns:1fr 1fr;
+  }
+
+  .btn{
+    width:100%;
+  }
+
+  .stats{
+    grid-template-columns:repeat(3,1fr);
+  }
+
+  .chart-wrap{
+    height:390px;
+  }
+
+  .fp-wrap{
+    height:510px;
+  }
 }
 
 @media(max-width:520px){
-  .app{padding:7px}
-  .title{font-size:18px}
-  .subtitle{font-size:11px}
-  .controls{grid-template-columns:1fr 1fr}
-  .stats{grid-template-columns:repeat(2,1fr)}
-  .chart-wrap{height:350px}
-  .fp-wrap{height:500px}
+
+  .app{
+    padding:7px;
+  }
+
+  .title{
+    font-size:18px;
+  }
+
+  .subtitle{
+    font-size:11px;
+  }
+
+  .controls{
+    grid-template-columns:1fr 1fr;
+  }
+
+  .stats{
+    grid-template-columns:repeat(2,1fr);
+  }
+
+  .chart-wrap{
+    height:350px;
+  }
+
+  .fp-wrap{
+    height:510px;
+  }
 }
 </style>
 </head>
@@ -322,8 +384,14 @@ button{cursor:pointer}
 <div class="app">
 
   <div class="header">
-    <div class="title">📊 Absorption Zone Scanner</div>
-    <div class="subtitle">تحلیل Order Flow واقعی بازار Bybit</div>
+
+    <div class="title">
+      📊 Absorption Zone Scanner
+    </div>
+
+    <div class="subtitle">
+      تحلیل Order Flow واقعی بازار Bybit
+    </div>
 
     <div class="controls">
 
@@ -365,45 +433,64 @@ button{cursor:pointer}
         </select>
       </div>
 
-      <button class="btn" id="analyze">🔎 تحلیل</button>
+      <button class="btn" id="analyze">
+        🔎 تحلیل
+      </button>
 
     </div>
 
-    <div class="status" id="status">⏳ در حال اتصال به Bybit...</div>
+    <div class="status" id="status">
+      ⏳ در حال اتصال به Bybit...
+    </div>
+
   </div>
 
   <div class="stats">
+
     <div class="stat">
       <small>قیمت</small>
       <b id="price">—</b>
     </div>
+
     <div class="stat">
       <small>تغییر 24h</small>
       <b id="change">—</b>
     </div>
+
     <div class="stat">
       <small>Delta</small>
       <b id="delta">—</b>
     </div>
+
     <div class="stat">
       <small>Buy</small>
       <b id="buy">—</b>
     </div>
+
     <div class="stat">
       <small>Sell</small>
       <b id="sell">—</b>
     </div>
+
     <div class="stat">
       <small>Absorption</small>
       <b id="absorption">—</b>
     </div>
+
   </div>
 
   <div class="panel">
 
     <div class="panel-head">
-      <div class="panel-title">📈 Price / Order Flow</div>
-      <div class="panel-hint">یک انگشت: حرکت · دو انگشت: زوم · لمس کندل: انتخاب</div>
+
+      <div class="panel-title">
+        📈 Price / Order Flow
+      </div>
+
+      <div class="panel-hint">
+        یک انگشت: حرکت · دو انگشت: زوم · لمس کندل: انتخاب
+      </div>
+
     </div>
 
     <div class="chart-wrap">
@@ -425,31 +512,80 @@ button{cursor:pointer}
   <div class="panel">
 
     <div class="selected-head">
-      <div class="selected-title">🕯️ کندل انتخابی</div>
-      <div class="selected-info">
-        <span id="selectedTime">زمان: —</span>
-        <span id="selectedOHLC">O/H/L/C: —</span>
-        <span id="selectedDelta">Delta: —</span>
-        <span id="selectedVolume">Volume: —</span>
+
+      <div class="selected-title">
+        🕯️ کندل انتخابی
       </div>
+
+      <div class="selected-info">
+
+        <span id="selectedTime">
+          زمان: —
+        </span>
+
+        <span id="selectedOHLC">
+          O/H/L/C: —
+        </span>
+
+        <span id="selectedDelta">
+          Delta: —
+        </span>
+
+        <span id="selectedVolume">
+          Volume: —
+        </span>
+
+      </div>
+
     </div>
 
     <div class="fp-tools">
-      <span>لمس و کشیدن = حرکت · دو انگشت = کوچک/بزرگ کردن کل کندل و اطلاعات</span>
-      <button class="fp-reset" id="fpReset">↺ بازنشانی</button>
+
+      <span>
+        لمس و کشیدن = حرکت · دو انگشت = بزرگ/کوچک کردن کل Footprint
+      </span>
+
+      <button class="fp-reset" id="fpReset">
+        ↺ بازنشانی
+      </button>
+
     </div>
 
     <div class="fp-wrap">
+
       <canvas id="footprintCanvas"></canvas>
+
       <div class="fp-message" id="fpMessage"></div>
+
     </div>
 
     <div class="legend">
-      <span><i class="dot" style="background:#e85b67"></i>Bid / فروش تهاجمی</span>
-      <span><i class="dot" style="background:#35d98e"></i>Ask / خرید تهاجمی</span>
-      <span><i class="dot" style="background:#53a9ff"></i>Volume Fixed Range</span>
-      <span><i class="dot" style="background:#35d98e"></i>Delta مثبت</span>
-      <span><i class="dot" style="background:#e85b67"></i>Delta منفی</span>
+
+      <span>
+        <i class="dot" style="background:#ef6875"></i>
+        Bid
+      </span>
+
+      <span>
+        <i class="dot" style="background:#39db92"></i>
+        Ask
+      </span>
+
+      <span>
+        <i class="dot" style="background:#53a9ff"></i>
+        Volume Fixed Range
+      </span>
+
+      <span>
+        <i class="dot" style="background:#39db92"></i>
+        Delta +
+      </span>
+
+      <span>
+        <i class="dot" style="background:#ef6875"></i>
+        Delta -
+      </span>
+
     </div>
 
   </div>
@@ -462,93 +598,158 @@ button{cursor:pointer}
 const API_BASE = location.origin;
 
 const state = {
-  symbol: "HUSDT",
-  category: "linear",
-  interval: "1",
-  candleCount: 90,
 
-  candles: [],
-  trades: [],
-  selectedIndex: -1,
+  symbol:"HUSDT",
 
-  chartZoom: 1,
-  chartPan: 0,
+  category:"linear",
 
-  mainPointers: new Map(),
-  mainGesture: null,
+  interval:"1",
 
-  fpScale: 1,
-  fpOffsetX: 0,
-  fpOffsetY: 0,
-  fpPointers: new Map(),
-  fpGesture: null,
+  candleCount:90,
 
-  loading: false
+  candles:[],
+
+  trades:[],
+
+  selectedIndex:-1,
+
+  lastPrice:0,
+
+  price24hPcnt:0,
+
+  absorption:null,
+
+  chartZoom:1,
+
+  chartPan:0,
+
+  mainPointers:new Map(),
+
+  mainGesture:null,
+
+  fpScale:1,
+
+  fpOffsetX:0,
+
+  fpOffsetY:0,
+
+  fpPointers:new Map(),
+
+  fpGesture:null,
+
+  loading:false,
+
+  /*
+    این متغیر مهم است:
+    مشخص می‌کند کاربر خودش یک کندل تاریخی را انتخاب کرده
+    یا روی آخرین کندل قرار دارد.
+  */
+
+  userSelectedHistorical:false
 };
 
-const chartCanvas = document.getElementById("chartCanvas");
-const fpCanvas = document.getElementById("footprintCanvas");
-const chartCtx = chartCanvas.getContext("2d");
-const fpCtx = fpCanvas.getContext("2d");
+const chartCanvas=
+  document.getElementById("chartCanvas");
 
-const statusEl = document.getElementById("status");
-const fpMessage = document.getElementById("fpMessage");
+const fpCanvas=
+  document.getElementById("footprintCanvas");
+
+const chartCtx=
+  chartCanvas.getContext("2d");
+
+const fpCtx=
+  fpCanvas.getContext("2d");
+
+const statusEl=
+  document.getElementById("status");
+
+const fpMessage=
+  document.getElementById("fpMessage");
 
 function $(id){
   return document.getElementById(id);
 }
 
-function setStatus(text, cls){
-  statusEl.textContent = text;
-  statusEl.className = "status";
-  if(cls) statusEl.classList.add(cls);
-}
-
 function num(v){
-  const n = Number(v);
-  return Number.isFinite(n) ? n : 0;
+
+  const n=Number(v);
+
+  return Number.isFinite(n)?n:0;
 }
 
-function fmt(v, digits){
-  const n = num(v);
-  if(!Number.isFinite(n)) return "—";
-  if(digits !== undefined){
-    return n.toLocaleString("en-US", {
-      maximumFractionDigits: digits,
-      minimumFractionDigits: digits
-    });
+function fmt(v){
+
+  const n=num(v);
+
+  if(Math.abs(n)>=1000){
+
+    return n.toLocaleString(
+      "en-US",
+      {maximumFractionDigits:2}
+    );
+
   }
-  if(Math.abs(n) >= 1000) return n.toLocaleString("en-US",{maximumFractionDigits:2});
-  if(Math.abs(n) >= 1) return n.toLocaleString("en-US",{maximumFractionDigits:6});
-  return n.toLocaleString("en-US",{maximumFractionDigits:10});
+
+  if(Math.abs(n)>=1){
+
+    return n.toLocaleString(
+      "en-US",
+      {maximumFractionDigits:6}
+    );
+  }
+
+  return n.toLocaleString(
+    "en-US",
+    {maximumFractionDigits:10}
+  );
 }
 
-function normalizeCandle(c){
-  return {
-    time:num(c.time),
-    open:num(c.open),
-    high:num(c.high),
-    low:num(c.low),
-    close:num(c.close),
-    volume:num(c.volume),
-    turnover:num(c.turnover)
-  };
+function formatPrice(v){
+
+  v=num(v);
+
+  if(v>=1000) return v.toFixed(2);
+
+  if(v>=100) return v.toFixed(3);
+
+  if(v>=1) return v.toFixed(4);
+
+  if(v>=.01) return v.toFixed(6);
+
+  return v.toFixed(8);
 }
 
-function normalizeTrade(t){
-  const side = String(t.side || "").toLowerCase();
-  return {
-    id:String(t.id || ""),
-    time:num(t.time),
-    price:num(t.price),
-    size:num(t.size),
-    value:num(t.value || (num(t.price) * num(t.size))),
-    side:side === "buy" ? "buy" : "sell"
-  };
+function formatTime(ts){
+
+  if(!ts) return "—";
+
+  return new Date(ts).toLocaleString(
+    "fa-IR",
+    {
+      year:"numeric",
+      month:"2-digit",
+      day:"2-digit",
+      hour:"2-digit",
+      minute:"2-digit"
+    }
+  );
+}
+
+function setStatus(text,type){
+
+  statusEl.textContent=text;
+
+  statusEl.className="status";
+
+  if(type){
+    statusEl.classList.add(type);
+  }
 }
 
 function intervalMs(){
-  const map = {
+
+  const map={
+
     "1":60000,
     "3":180000,
     "5":300000,
@@ -557,414 +758,821 @@ function intervalMs(){
     "60":3600000,
     "120":7200000,
     "240":14400000
+
   };
-  return map[state.interval] || 60000;
+
+  return map[state.interval]||60000;
+}
+
+function normalizeCandle(c){
+
+  return {
+
+    time:num(c.time),
+    open:num(c.open),
+    high:num(c.high),
+    low:num(c.low),
+    close:num(c.close),
+    volume:num(c.volume),
+    turnover:num(c.turnover)
+
+  };
+}
+
+function normalizeTrade(t){
+
+  return {
+
+    id:String(t.id||""),
+
+    time:num(t.time),
+
+    price:num(t.price),
+
+    size:num(t.size),
+
+    value:num(
+      t.value ||
+      num(t.price)*num(t.size)
+    ),
+
+    side:
+      String(t.side||"").toLowerCase()==="buy"
+        ? "buy"
+        : "sell"
+
+  };
 }
 
 function resizeCanvas(canvas,ctx){
-  const rect = canvas.getBoundingClientRect();
-  const dpr = Math.max(1,Math.min(window.devicePixelRatio || 1,3));
 
-  const w = Math.max(1,Math.floor(rect.width));
-  const h = Math.max(1,Math.floor(rect.height));
+  const rect=
+    canvas.getBoundingClientRect();
 
-  if(canvas.width !== w*dpr || canvas.height !== h*dpr){
-    canvas.width = w*dpr;
-    canvas.height = h*dpr;
+  const dpr=
+    Math.max(
+      1,
+      Math.min(
+        window.devicePixelRatio||1,
+        3
+      )
+    );
+
+  const w=
+    Math.max(
+      1,
+      Math.floor(rect.width)
+    );
+
+  const h=
+    Math.max(
+      1,
+      Math.floor(rect.height)
+    );
+
+  if(
+    canvas.width!==w*dpr ||
+    canvas.height!==h*dpr
+  ){
+
+    canvas.width=w*dpr;
+    canvas.height=h*dpr;
   }
 
-  ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.setTransform(
+    dpr,
+    0,
+    0,
+    dpr,
+    0,
+    0
+  );
 
   return {w,h};
 }
 
-function clearCanvas(ctx,w,h){
-  ctx.clearRect(0,0,w,h);
-}
-
 function clamp(v,min,max){
-  return Math.max(min,Math.min(max,v));
-}
 
-function formatTime(ts){
-  if(!ts) return "—";
-  const d = new Date(ts);
-  return d.toLocaleString("fa-IR",{
-    year:"numeric",
-    month:"2-digit",
-    day:"2-digit",
-    hour:"2-digit",
-    minute:"2-digit"
-  });
-}
-
-function formatPrice(v){
-  if(v >= 1000) return v.toFixed(2);
-  if(v >= 100) return v.toFixed(3);
-  if(v >= 1) return v.toFixed(4);
-  if(v >= .01) return v.toFixed(6);
-  return v.toFixed(8);
-}
-
-function getCandleTrades(candle){
-  if(!candle || !state.trades.length) return [];
-
-  const start = candle.time;
-  const end = start + intervalMs();
-
-  return state.trades.filter(t =>
-    t.time >= start &&
-    t.time < end &&
-    t.price > 0 &&
-    t.size >= 0
+  return Math.max(
+    min,
+    Math.min(max,v)
   );
 }
 
-function detectTick(trades,candle){
-  const prices = [...new Set(
-    trades
-      .map(t => num(t.price))
-      .filter(v => v > 0)
-      .sort((a,b)=>a-b)
-  )];
+async function fetchJson(url){
 
-  if(prices.length < 2) return 0;
+  const response=
+    await fetch(
+      url,
+      {
+        method:"GET",
+        cache:"no-store",
+        headers:{
+          "Accept":"application/json"
+        }
+      }
+    );
 
-  let minDiff = Infinity;
+  const text=
+    await response.text();
 
-  for(let i=1;i<prices.length;i++){
-    const d = prices[i] - prices[i-1];
-    if(d > 0 && d < minDiff) minDiff = d;
+  let data;
+
+  try{
+
+    data=JSON.parse(text);
+
+  }catch(e){
+
+    throw new Error(
+      "پاسخ Worker JSON نیست: "+
+      text.slice(0,250)
+    );
   }
 
-  if(!Number.isFinite(minDiff) || minDiff <= 0) return 0;
+  if(!response.ok){
 
-  return minDiff;
+    throw new Error(
+      data.error||
+      data.message||
+      `HTTP ${response.status}`
+    );
+  }
+
+  if(data.ok===false){
+
+    throw new Error(
+      data.error||
+      data.message||
+      "Worker خطا برگرداند"
+    );
+  }
+
+  return data;
+}
+
+/* =========================
+   EXACT SELECTED CANDLE TRADES
+   ========================= */
+
+function getCandleTrades(candle){
+
+  if(
+    !candle ||
+    !state.trades.length
+  ){
+    return [];
+  }
+
+  const start=candle.time;
+
+  const end=
+    start+
+    intervalMs();
+
+  return state.trades.filter(
+    t=>
+      t.time>=start &&
+      t.time<end &&
+      t.price>0 &&
+      t.size>=0
+  );
+}
+
+/* =========================
+   REAL TRADE PRICE TICK
+   ========================= */
+
+function detectTick(trades){
+
+  const prices=[
+    ...new Set(
+      trades
+        .map(t=>num(t.price))
+        .filter(v=>v>0)
+        .sort((a,b)=>a-b)
+    )
+  ];
+
+  if(prices.length<2){
+    return 0;
+  }
+
+  let tick=Infinity;
+
+  for(
+    let i=1;
+    i<prices.length;
+    i++
+  ){
+
+    const d=
+      prices[i]-prices[i-1];
+
+    if(
+      d>0 &&
+      d<tick
+    ){
+      tick=d;
+    }
+  }
+
+  return Number.isFinite(tick)
+    ? tick
+    : 0;
 }
 
 function roundToTick(price,tick){
-  if(!tick || tick <= 0) return price;
 
-  const v = Math.round(price/tick)*tick;
+  if(!tick){
+    return price;
+  }
 
-  const decimals = Math.max(
-    0,
-    Math.min(12,
-      (String(tick).split(".")[1] || "").length + 2
-    )
+  return Number(
+    (
+      Math.round(price/tick)*tick
+    ).toFixed(12)
   );
-
-  return Number(v.toFixed(decimals));
 }
 
+/* =========================
+   BUILD EXACT FOOTPRINT
+   ========================= */
+
 function buildFootprint(candle){
-  const trades = getCandleTrades(candle);
 
-  const levelsMap = new Map();
+  const trades=
+    getCandleTrades(candle);
 
-  const tick = detectTick(trades,candle);
+  const tick=
+    detectTick(trades);
+
+  const map=new Map();
 
   for(const t of trades){
 
-    const p = tick > 0
-      ? roundToTick(t.price,tick)
-      : t.price;
+    const price=
+      tick>0
+        ? roundToTick(t.price,tick)
+        : t.price;
 
-    if(!levelsMap.has(p)){
-      levelsMap.set(p,{
-        price:p,
-        bid:0,
-        ask:0,
-        bidTrades:0,
-        askTrades:0,
-        delta:0,
-        volume:0
-      });
+    if(!map.has(price)){
+
+      map.set(
+        price,
+        {
+          price,
+          bid:0,
+          ask:0,
+          bidTrades:0,
+          askTrades:0,
+          volume:0,
+          delta:0
+        }
+      );
     }
 
-    const row = levelsMap.get(p);
+    const row=
+      map.get(price);
 
-    if(t.side === "buy"){
-      row.ask += t.size;
+    /*
+      Bybit Buy = aggressive buy = Ask executed volume
+      Bybit Sell = aggressive sell = Bid executed volume
+    */
+
+    if(t.side==="buy"){
+
+      row.ask+=t.size;
       row.askTrades++;
+
     }else{
-      row.bid += t.size;
+
+      row.bid+=t.size;
       row.bidTrades++;
     }
 
-    row.volume = row.bid + row.ask;
-    row.delta = row.ask - row.bid;
+    row.volume=
+      row.bid+
+      row.ask;
+
+    row.delta=
+      row.ask-
+      row.bid;
   }
 
-  const levels = [...levelsMap.values()]
-    .sort((a,b)=>b.price-a.price);
+  const levels=
+    [...map.values()]
+      .sort(
+        (a,b)=>b.price-a.price
+      );
 
-  let totalBid = 0;
-  let totalAsk = 0;
-  let totalVolume = 0;
-  let totalDelta = 0;
+  let totalBid=0;
+  let totalAsk=0;
+  let totalVolume=0;
+  let totalDelta=0;
 
-  for(const r of levels){
-    totalBid += r.bid;
-    totalAsk += r.ask;
-    totalVolume += r.volume;
-    totalDelta += r.delta;
+  for(const row of levels){
+
+    totalBid+=row.bid;
+    totalAsk+=row.ask;
+    totalVolume+=row.volume;
+    totalDelta+=row.delta;
   }
 
   return {
+
     candle,
+
     trades,
+
     levels,
+
     tick,
+
     totalBid,
+
     totalAsk,
+
     totalVolume,
+
     totalDelta
+
   };
 }
 
+/* =========================
+   MAIN STATS
+   ========================= */
+
 function updateStats(){
-  const last = state.candles[state.candles.length-1];
+
+  const last=
+    state.candles[
+      state.candles.length-1
+    ];
 
   if(!last){
-    $("price").textContent = "—";
     return;
   }
 
-  const tickerPrice =
-    state.lastPrice > 0
-      ? state.lastPrice
-      : last.close;
+  const price=
+    state.lastPrice||
+    last.close;
 
-  $("price").textContent = fmt(tickerPrice);
+  $("price").textContent=
+    fmt(price);
 
-  $("change").textContent =
-    state.price24hPcnt !== undefined
-      ? (num(state.price24hPcnt)*100).toFixed(2)+"%"
-      : "—";
+  $("change").textContent=
+    (
+      state.price24hPcnt*100
+    ).toFixed(2)+"%";
 
-  const all = state.trades || [];
+  const trades=
+    state.trades||[];
 
-  let buy = 0;
-  let sell = 0;
+  let buy=0;
+  let sell=0;
 
-  for(const t of all){
-    if(t.side === "buy") buy += t.size;
-    else sell += t.size;
+  for(const t of trades){
+
+    if(t.side==="buy"){
+      buy+=t.size;
+    }else{
+      sell+=t.size;
+    }
   }
 
-  const d = buy-sell;
+  const delta=buy-sell;
 
-  $("buy").textContent = fmt(buy);
-  $("sell").textContent = fmt(sell);
-  $("delta").textContent = fmt(d);
+  $("buy").textContent=
+    fmt(buy);
 
-  $("delta").className =
-    d > 0 ? "green" :
-    d < 0 ? "red" : "";
+  $("sell").textContent=
+    fmt(sell);
 
-  let absorption = "—";
+  $("delta").textContent=
+    (delta>=0?"+":"")+
+    fmt(delta);
+
+  $("delta").className=
+    delta>0
+      ? "green"
+      : delta<0
+        ? "red"
+        : "";
+
+  let abs="—";
 
   if(state.absorption){
-    if(typeof state.absorption === "string"){
-      absorption = state.absorption;
+
+    if(typeof state.absorption==="string"){
+
+      abs=state.absorption;
+
     }else{
-      absorption =
-        state.absorption.signal ||
-        state.absorption.type ||
-        state.absorption.status ||
+
+      abs=
+        state.absorption.signal||
+        state.absorption.type||
+        state.absorption.status||
         "—";
     }
   }
 
-  $("absorption").textContent = absorption;
+  $("absorption").textContent=abs;
 }
 
-function updateSelectedInfo(){
-  const c = state.candles[state.selectedIndex];
+/* =========================
+   SELECTED CANDLE
+   ========================= */
 
-  if(!c){
-    $("selectedTime").textContent = "زمان: —";
-    $("selectedOHLC").textContent = "O/H/L/C: —";
-    $("selectedDelta").textContent = "Delta: —";
-    $("selectedVolume").textContent = "Volume: —";
+function updateSelectedInfo(){
+
+  const candle=
+    state.candles[
+      state.selectedIndex
+    ];
+
+  if(!candle){
+
+    $("selectedTime").textContent=
+      "زمان: —";
+
+    $("selectedOHLC").textContent=
+      "O/H/L/C: —";
+
+    $("selectedDelta").textContent=
+      "Delta: —";
+
+    $("selectedVolume").textContent=
+      "Volume: —";
+
+    drawFootprint();
+
     return;
   }
 
-  const fp = buildFootprint(c);
+  const fp=
+    buildFootprint(candle);
 
-  $("selectedTime").textContent =
-    "زمان: " + formatTime(c.time);
+  $("selectedTime").textContent=
+    "زمان: "+
+    formatTime(candle.time);
 
-  $("selectedOHLC").textContent =
-    "O/H/L/C: " +
-    formatPrice(c.open)+" / "+
-    formatPrice(c.high)+" / "+
-    formatPrice(c.low)+" / "+
-    formatPrice(c.close);
+  $("selectedOHLC").textContent=
+    "O/H/L/C: "+
+    formatPrice(candle.open)+
+    " / "+
+    formatPrice(candle.high)+
+    " / "+
+    formatPrice(candle.low)+
+    " / "+
+    formatPrice(candle.close);
 
-  $("selectedDelta").textContent =
-    "Delta: " + fmt(fp.totalDelta);
+  $("selectedDelta").textContent=
+    "Delta: "+
+    (fp.totalDelta>=0?"+":"")+
+    fmt(fp.totalDelta);
 
-  $("selectedVolume").textContent =
-    "Volume: " + fmt(fp.totalVolume);
+  $("selectedVolume").textContent=
+    "Volume: "+
+    fmt(fp.totalVolume);
 
-  $("selectedDelta").className =
-    fp.totalDelta > 0 ? "green" :
-    fp.totalDelta < 0 ? "red" : "";
+  $("selectedDelta").className=
+    fp.totalDelta>0
+      ? "green"
+      : fp.totalDelta<0
+        ? "red"
+        : "";
 
   drawFootprint();
 }
 
+/* =========================
+   MAIN CHART RANGE
+   ========================= */
+
 function visibleChartInfo(){
-  const n = state.candles.length;
 
-  if(!n) return null;
+  const n=
+    state.candles.length;
 
-  const rect = chartCanvas.getBoundingClientRect();
-  const width = rect.width;
+  if(!n){
+    return null;
+  }
 
-  const plotLeft = 55;
-  const plotRight = width - 15;
-  const plotWidth = Math.max(100,plotRight-plotLeft);
+  const rect=
+    chartCanvas.getBoundingClientRect();
 
-  const baseCount = Math.min(
-    n,
-    Math.max(10,Math.round(state.candleCount / state.chartZoom))
-  );
+  const width=rect.width;
 
-  const step = plotWidth / Math.max(1,baseCount);
+  const left=55;
+  const right=width-15;
 
-  const maxStart = Math.max(0,n-baseCount);
+  const plotWidth=
+    Math.max(
+      100,
+      right-left
+    );
 
-  const panUnits = state.chartPan / Math.max(1,step);
+  const count=
+    Math.min(
+      n,
+      Math.max(
+        8,
+        Math.round(
+          state.candleCount/
+          state.chartZoom
+        )
+      )
+    );
 
-  const startFloat =
+  const step=
+    plotWidth/
+    Math.max(1,count);
+
+  const maxStart=
+    Math.max(
+      0,
+      n-count
+    );
+
+  const panUnits=
+    state.chartPan/
+    Math.max(1,step);
+
+  const startFloat=
     clamp(
-      maxStart - panUnits,
+      maxStart-panUnits,
       0,
       maxStart
     );
 
   return {
-    plotLeft,
-    plotRight,
+    left,
+    right,
     plotWidth,
-    baseCount,
+    count,
     step,
     maxStart,
     startFloat
   };
 }
 
+/* =========================
+   DRAW MAIN CHART
+   ========================= */
+
 function drawChart(){
-  const {w,h} = resizeCanvas(chartCanvas,chartCtx);
 
-  clearCanvas(chartCtx,w,h);
+  const {w,h}=
+    resizeCanvas(
+      chartCanvas,
+      chartCtx
+    );
 
-  chartCtx.fillStyle = "#071018";
-  chartCtx.fillRect(0,0,w,h);
+  chartCtx.clearRect(
+    0,
+    0,
+    w,
+    h
+  );
+
+  chartCtx.fillStyle="#071018";
+
+  chartCtx.fillRect(
+    0,
+    0,
+    w,
+    h
+  );
 
   if(!state.candles.length){
+
     chartCtx.fillStyle="#718899";
     chartCtx.font="12px Tahoma";
     chartCtx.textAlign="center";
-    chartCtx.fillText("داده‌ای برای نمایش وجود ندارد",w/2,h/2);
+
+    chartCtx.fillText(
+      "داده‌ای برای نمایش وجود ندارد",
+      w/2,
+      h/2
+    );
+
     return;
   }
 
-  const info = visibleChartInfo();
+  const info=
+    visibleChartInfo();
 
-  const left = info.plotLeft;
-  const right = info.plotRight;
-  const top = 20;
-  const bottom = h-38;
+  const top=20;
+  const bottom=h-40;
 
-  const visibleCount = info.baseCount + 2;
+  const first=
+    Math.max(
+      0,
+      Math.floor(info.startFloat)-1
+    );
 
-  const first = Math.floor(info.startFloat);
-  const last = Math.min(
-    state.candles.length-1,
-    first + visibleCount + 2
-  );
+  const last=
+    Math.min(
+      state.candles.length-1,
+      Math.ceil(
+        info.startFloat+
+        info.count
+      )+1
+    );
 
-  let minPrice = Infinity;
-  let maxPrice = -Infinity;
+  let minPrice=Infinity;
+  let maxPrice=-Infinity;
 
-  for(let i=first;i<=last;i++){
+  for(
+    let i=first;
+    i<=last;
+    i++
+  ){
+
     const c=state.candles[i];
-    minPrice=Math.min(minPrice,c.low);
-    maxPrice=Math.max(maxPrice,c.high);
+
+    minPrice=
+      Math.min(
+        minPrice,
+        c.low
+      );
+
+    maxPrice=
+      Math.max(
+        maxPrice,
+        c.high
+      );
   }
 
-  if(!Number.isFinite(minPrice)){
-    minPrice=0;
-    maxPrice=1;
-  }
+  const range=
+    Math.max(
+      maxPrice-minPrice,
+      Math.abs(maxPrice)*.0001,
+      .00000001
+    );
 
-  const range = Math.max(maxPrice-minPrice,Math.abs(maxPrice)*0.0001 || 1);
-  minPrice -= range*.08;
-  maxPrice += range*.08;
+  minPrice-=range*.08;
+  maxPrice+=range*.08;
 
   function py(price){
-    return bottom -
-      ((price-minPrice)/(maxPrice-minPrice)) *
+
+    return bottom-
+      (
+        (price-minPrice)/
+        (maxPrice-minPrice)
+      )*
       (bottom-top);
   }
 
   function px(index){
-    return left +
-      (index-info.startFloat) *
-      info.step +
+
+    return info.left+
+      (
+        index-info.startFloat
+      )*
+      info.step+
       info.step/2;
   }
 
-  chartCtx.font="10px Tahoma";
+  /*
+    horizontal grid
+  */
+
+  chartCtx.font="9px Tahoma";
   chartCtx.textAlign="left";
 
   for(let i=0;i<=5;i++){
-    const y=top+(bottom-top)*i/5;
-    const p=maxPrice-(maxPrice-minPrice)*i/5;
 
-    chartCtx.strokeStyle="#142632";
+    const y=
+      top+
+      (bottom-top)*
+      i/5;
+
+    const price=
+      maxPrice-
+      (maxPrice-minPrice)*
+      i/5;
+
+    chartCtx.strokeStyle=
+      "#142632";
+
     chartCtx.lineWidth=1;
+
     chartCtx.beginPath();
-    chartCtx.moveTo(left,y);
-    chartCtx.lineTo(right,y);
+
+    chartCtx.moveTo(
+      info.left,
+      y
+    );
+
+    chartCtx.lineTo(
+      info.right,
+      y
+    );
+
     chartCtx.stroke();
 
-    chartCtx.fillStyle="#647b8b";
-    chartCtx.fillText(formatPrice(p),5,y+3);
+    chartCtx.fillStyle=
+      "#607888";
+
+    chartCtx.fillText(
+      formatPrice(price),
+      4,
+      y+3
+    );
   }
 
-  for(let i=first;i<=last;i++){
-    const c=state.candles[i];
-    if(!c) continue;
+  /*
+    candles
+  */
+
+  for(
+    let i=first;
+    i<=last;
+    i++
+  ){
+
+    const c=
+      state.candles[i];
 
     const x=px(i);
 
-    if(x < left-info.step || x > right+info.step) continue;
+    if(
+      x<info.left-info.step ||
+      x>info.right+info.step
+    ){
+      continue;
+    }
 
-    const yOpen=py(c.open);
-    const yClose=py(c.close);
-    const yHigh=py(c.high);
-    const yLow=py(c.low);
+    const highY=py(c.high);
+    const lowY=py(c.low);
+    const openY=py(c.open);
+    const closeY=py(c.close);
 
-    const bullish=c.close>=c.open;
+    const bullish=
+      c.close>=c.open;
 
-    chartCtx.strokeStyle=bullish ? "#2fd78c" : "#ef5e6d";
+    const candleColor=
+      bullish
+        ? "#35d98e"
+        : "#ef6875";
+
+    /*
+      wick
+    */
+
+    chartCtx.strokeStyle=
+      candleColor;
+
     chartCtx.lineWidth=1;
 
     chartCtx.beginPath();
-    chartCtx.moveTo(x,yHigh);
-    chartCtx.lineTo(x,yLow);
+
+    chartCtx.moveTo(
+      x,
+      highY
+    );
+
+    chartCtx.lineTo(
+      x,
+      lowY
+    );
+
     chartCtx.stroke();
 
-    const bodyW=Math.max(2,Math.min(18,info.step*.62));
-    const bodyTop=Math.min(yOpen,yClose);
-    const bodyH=Math.max(1,Math.abs(yClose-yOpen));
+    /*
+      body
+    */
 
-    chartCtx.fillStyle=bullish ? "#2fd78c" : "#ef5e6d";
+    const bodyW=
+      Math.max(
+        2,
+        Math.min(
+          18,
+          info.step*.62
+        )
+      );
+
+    const bodyTop=
+      Math.min(
+        openY,
+        closeY
+      );
+
+    const bodyH=
+      Math.max(
+        1,
+        Math.abs(
+          closeY-openY
+        )
+      );
+
+    chartCtx.fillStyle=
+      candleColor;
+
     chartCtx.fillRect(
       x-bodyW/2,
       bodyTop,
@@ -972,293 +1580,566 @@ function drawChart(){
       bodyH
     );
 
+    /*
+      selected
+    */
+
     if(i===state.selectedIndex){
-      chartCtx.strokeStyle="#fff";
+
+      chartCtx.strokeStyle="#ffffff";
+
       chartCtx.lineWidth=2;
+
       chartCtx.strokeRect(
-        x-bodyW/2-3,
-        bodyTop-3,
-        bodyW+6,
-        bodyH+6
+        x-bodyW/2-4,
+        bodyTop-4,
+        bodyW+8,
+        bodyH+8
       );
 
-      chartCtx.fillStyle="#fff";
+      chartCtx.fillStyle="#ffffff";
+
       chartCtx.beginPath();
-      chartCtx.arc(x,Math.max(7,yHigh-7),3,0,Math.PI*2);
+
+      chartCtx.arc(
+        x,
+        Math.max(
+          7,
+          highY-7
+        ),
+        3,
+        0,
+        Math.PI*2
+      );
+
       chartCtx.fill();
     }
 
-    if(info.step > 48){
-      chartCtx.save();
-      chartCtx.fillStyle="#6e8494";
-      chartCtx.font="9px Tahoma";
+    if(info.step>45){
+
+      chartCtx.fillStyle="#647c8c";
+      chartCtx.font="8px Tahoma";
       chartCtx.textAlign="center";
+
       chartCtx.fillText(
-        new Date(c.time).toLocaleTimeString("fa-IR",{hour:"2-digit",minute:"2-digit"}),
+        new Date(c.time)
+          .toLocaleTimeString(
+            "fa-IR",
+            {
+              hour:"2-digit",
+              minute:"2-digit"
+            }
+          ),
         x,
-        h-17
+        h-18
       );
-      chartCtx.restore();
     }
   }
 
-  chartCtx.strokeStyle="#294150";
-  chartCtx.lineWidth=1;
-  chartCtx.beginPath();
-  chartCtx.moveTo(left,bottom);
-  chartCtx.lineTo(right,bottom);
-  chartCtx.stroke();
-
-  chartCtx.fillStyle="#668092";
-  chartCtx.font="9px Tahoma";
   chartCtx.textAlign="left";
+  chartCtx.font="9px Tahoma";
+  chartCtx.fillStyle="#6d8596";
+
   chartCtx.fillText(
     `${state.symbol} · ${state.interval==="60"?"1h":state.interval+"m"}`,
-    left,
+    info.left,
     11
   );
 }
 
-function chartPoint(ev){
-  const r=chartCanvas.getBoundingClientRect();
-
-  return {
-    x:ev.clientX-r.left,
-    y:ev.clientY-r.top
-  };
-}
+/* =========================
+   SELECT MAIN CANDLE
+   ========================= */
 
 function selectCandleAt(x){
-  const info=visibleChartInfo();
-  if(!info) return;
 
-  const raw =
-    info.startFloat +
-    (x-info.plotLeft-info.step/2)/info.step;
+  const info=
+    visibleChartInfo();
 
-  const idx=Math.round(raw);
+  if(!info){
+    return;
+  }
 
-  if(idx<0 || idx>=state.candles.length) return;
+  const raw=
+    info.startFloat+
+    (
+      x-
+      info.left-
+      info.step/2
+    )/
+    info.step;
 
-  const cx=
-    info.plotLeft +
-    (idx-info.startFloat)*info.step +
+  const idx=
+    Math.round(raw);
+
+  if(
+    idx<0 ||
+    idx>=state.candles.length
+  ){
+    return;
+  }
+
+  const candleX=
+    info.left+
+    (
+      idx-info.startFloat
+    )*
+    info.step+
     info.step/2;
 
-  if(Math.abs(x-cx)>Math.max(18,info.step*.8)) return;
+  if(
+    Math.abs(x-candleX)>
+    Math.max(
+      20,
+      info.step*.8
+    )
+  ){
+    return;
+  }
 
   state.selectedIndex=idx;
 
+  /*
+    اگر آخرین کندل انتخاب نشده:
+    رفرش‌های بعدی نباید انتخاب را عوض کنند.
+  */
+
+  state.userSelectedHistorical=
+    idx!==
+    state.candles.length-1;
+
+  /*
+    Reset only footprint transform
+    when selecting a different candle.
+  */
+
+  state.fpScale=1;
+  state.fpOffsetX=0;
+  state.fpOffsetY=0;
+
   updateSelectedInfo();
+
   drawChart();
+
+  /*
+    روی موبایل بعد از انتخاب، کادر پایین
+    داخل دید قرار بگیرد.
+  */
+
+  setTimeout(()=>{
+
+    document
+      .querySelector(".selected-head")
+      ?.scrollIntoView({
+        behavior:"smooth",
+        block:"nearest"
+      });
+
+  },50);
+}
+
+/* =========================
+   MAIN CHART TOUCH
+   ========================= */
+
+function chartPoint(e){
+
+  const r=
+    chartCanvas.getBoundingClientRect();
+
+  return {
+    x:e.clientX-r.left,
+    y:e.clientY-r.top
+  };
 }
 
 function mainPointerDown(e){
-  chartCanvas.setPointerCapture?.(e.pointerId);
 
-  state.mainPointers.set(e.pointerId,chartPoint(e));
+  chartCanvas.setPointerCapture?.(
+    e.pointerId
+  );
 
-  if(state.mainPointers.size===1){
-    const p=chartPoint(e);
+  state.mainPointers.set(
+    e.pointerId,
+    chartPoint(e)
+  );
+
+  if(
+    state.mainPointers.size===1
+  ){
+
+    const p=
+      chartPoint(e);
 
     state.mainGesture={
+
       type:"drag",
+
       startX:p.x,
+
       startY:p.y,
-      lastX:p.x,
-      lastY:p.y,
+
       moved:false,
-      startPan:state.chartPan,
-      startZoom:state.chartZoom
+
+      startPan:state.chartPan
     };
-  }else if(state.mainPointers.size===2){
 
-    const ps=[...state.mainPointers.values()];
+  }else if(
+    state.mainPointers.size===2
+  ){
 
-    const dx=ps[0].x-ps[1].x;
-    const dy=ps[0].y-ps[1].y;
+    const ps=[
+      ...state.mainPointers.values()
+    ];
 
     state.mainGesture={
+
       type:"pinch",
-      startDistance:Math.hypot(dx,dy),
-      startZoom:state.chartZoom,
-      centerX:(ps[0].x+ps[1].x)/2,
-      centerY:(ps[0].y+ps[1].y)/2,
-      startPan:state.chartPan
+
+      startDistance:
+        Math.hypot(
+          ps[0].x-ps[1].x,
+          ps[0].y-ps[1].y
+        ),
+
+      startZoom:
+        state.chartZoom
     };
   }
 }
 
 function mainPointerMove(e){
-  if(!state.mainPointers.has(e.pointerId)) return;
 
-  state.mainPointers.set(e.pointerId,chartPoint(e));
+  if(
+    !state.mainPointers.has(
+      e.pointerId
+    )
+  ){
+    return;
+  }
 
-  if(state.mainPointers.size===1 &&
-     state.mainGesture &&
-     state.mainGesture.type==="drag"){
+  state.mainPointers.set(
+    e.pointerId,
+    chartPoint(e)
+  );
 
-    const p=chartPoint(e);
+  if(
+    state.mainPointers.size===1 &&
+    state.mainGesture?.type==="drag"
+  ){
 
-    const dx=p.x-state.mainGesture.startX;
-    const dy=p.y-state.mainGesture.startY;
+    const p=
+      chartPoint(e);
 
-    if(Math.abs(dx)+Math.abs(dy)>5){
+    const dx=
+      p.x-
+      state.mainGesture.startX;
+
+    if(Math.abs(dx)>5){
+
       state.mainGesture.moved=true;
     }
 
-    state.chartPan =
-      state.mainGesture.startPan + dx;
+    /*
+      Finger right => candles move right.
+    */
 
-    const info=visibleChartInfo();
+    state.chartPan=
+      state.mainGesture.startPan+
+      dx;
 
-    const maxPan=info ? info.maxStart*info.step : 0;
+    const info=
+      visibleChartInfo();
 
-    state.chartPan=clamp(
-      state.chartPan,
-      -maxPan,
-      maxPan
-    );
+    const maxPan=
+      info
+        ? info.maxStart*info.step
+        : 0;
+
+    state.chartPan=
+      clamp(
+        state.chartPan,
+        -maxPan,
+        maxPan
+      );
 
     drawChart();
 
-  }else if(state.mainPointers.size===2 &&
-           state.mainGesture &&
-           state.mainGesture.type==="pinch"){
+  }else if(
+    state.mainPointers.size===2 &&
+    state.mainGesture?.type==="pinch"
+  ){
 
-    const ps=[...state.mainPointers.values()];
+    const ps=[
+      ...state.mainPointers.values()
+    ];
 
-    const dx=ps[0].x-ps[1].x;
-    const dy=ps[0].y-ps[1].y;
+    const dist=
+      Math.max(
+        10,
+        Math.hypot(
+          ps[0].x-ps[1].x,
+          ps[0].y-ps[1].y
+        )
+      );
 
-    const dist=Math.max(10,Math.hypot(dx,dy));
-
-    const newZoom=clamp(
-      state.mainGesture.startZoom *
-      dist/state.mainGesture.startDistance,
-      .5,
-      6
-    );
-
-    state.chartZoom=newZoom;
-
-    const info=visibleChartInfo();
-
-    const maxPan=info ? info.maxStart*info.step : 0;
-
-    state.chartPan=clamp(
-      state.chartPan,
-      -maxPan,
-      maxPan
-    );
+    state.chartZoom=
+      clamp(
+        state.mainGesture.startZoom*
+        dist/
+        Math.max(
+          10,
+          state.mainGesture.startDistance
+        ),
+        .5,
+        6
+      );
 
     drawChart();
   }
 }
 
 function mainPointerUp(e){
-  const wasOne=state.mainPointers.size===1;
 
-  const gesture=state.mainGesture;
+  const one=
+    state.mainPointers.size===1;
 
-  if(wasOne &&
-     gesture &&
-     gesture.type==="drag" &&
-     !gesture.moved){
+  const gesture=
+    state.mainGesture;
 
-    const p=chartPoint(e);
+  if(
+    one &&
+    gesture?.type==="drag" &&
+    !gesture.moved
+  ){
+
+    const p=
+      chartPoint(e);
+
     selectCandleAt(p.x);
   }
 
-  state.mainPointers.delete(e.pointerId);
+  state.mainPointers.delete(
+    e.pointerId
+  );
 
-  if(state.mainPointers.size===0){
+  if(
+    state.mainPointers.size===0
+  ){
+
     state.mainGesture=null;
-  }else if(state.mainPointers.size===1){
-    const p=[...state.mainPointers.values()][0];
+
+  }else if(
+    state.mainPointers.size===1
+  ){
+
+    const p=
+      [...state.mainPointers.values()][0];
 
     state.mainGesture={
+
       type:"drag",
+
       startX:p.x,
+
       startY:p.y,
-      lastX:p.x,
-      lastY:p.y,
+
       moved:true,
-      startPan:state.chartPan,
-      startZoom:state.chartZoom
+
+      startPan:state.chartPan
     };
   }
 }
 
-chartCanvas.addEventListener("pointerdown",mainPointerDown);
-chartCanvas.addEventListener("pointermove",mainPointerMove);
-chartCanvas.addEventListener("pointerup",mainPointerUp);
-chartCanvas.addEventListener("pointercancel",mainPointerUp);
-chartCanvas.addEventListener("pointerleave",e=>{
-  if(e.buttons===0) mainPointerUp(e);
-});
+chartCanvas.addEventListener(
+  "pointerdown",
+  mainPointerDown
+);
 
-chartCanvas.addEventListener("wheel",e=>{
-  e.preventDefault();
+chartCanvas.addEventListener(
+  "pointermove",
+  mainPointerMove
+);
 
-  const old=state.chartZoom;
+chartCanvas.addEventListener(
+  "pointerup",
+  mainPointerUp
+);
 
-  state.chartZoom=clamp(
-    old*(e.deltaY<0?1.12:.89),
-    .5,
-    6
-  );
+chartCanvas.addEventListener(
+  "pointercancel",
+  mainPointerUp
+);
 
-  drawChart();
-},{passive:false});
+chartCanvas.addEventListener(
+  "wheel",
+  e=>{
 
-function drawRoundedRect(ctx,x,y,w,h,r){
-  r=Math.min(r,Math.abs(w)/2,Math.abs(h)/2);
+    e.preventDefault();
+
+    state.chartZoom=
+      clamp(
+        state.chartZoom*
+        (
+          e.deltaY<0
+            ?1.12
+            :.89
+        ),
+        .5,
+        6
+      );
+
+    drawChart();
+
+  },
+  {passive:false}
+);
+
+/* =========================
+   FOOTPRINT ROUNDED RECT
+   ========================= */
+
+function roundedRect(
+  ctx,
+  x,
+  y,
+  w,
+  h,
+  r
+){
+
+  r=
+    Math.min(
+      r,
+      Math.abs(w)/2,
+      Math.abs(h)/2
+    );
 
   ctx.beginPath();
-  ctx.moveTo(x+r,y);
-  ctx.lineTo(x+w-r,y);
-  ctx.quadraticCurveTo(x+w,y,x+w,y+r);
-  ctx.lineTo(x+w,y+h-r);
-  ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
-  ctx.lineTo(x+r,y+h);
-  ctx.quadraticCurveTo(x,y+h,x,y+h-r);
-  ctx.lineTo(x,y+r);
-  ctx.quadraticCurveTo(x,y,x+r,y);
+
+  ctx.moveTo(
+    x+r,
+    y
+  );
+
+  ctx.lineTo(
+    x+w-r,
+    y
+  );
+
+  ctx.quadraticCurveTo(
+    x+w,
+    y,
+    x+w,
+    y+r
+  );
+
+  ctx.lineTo(
+    x+w,
+    y+h-r
+  );
+
+  ctx.quadraticCurveTo(
+    x+w,
+    y+h,
+    x+w-r,
+    y+h
+  );
+
+  ctx.lineTo(
+    x+r,
+    y+h
+  );
+
+  ctx.quadraticCurveTo(
+    x,
+    y+h,
+    x,
+    y+h-r
+  );
+
+  ctx.lineTo(
+    x,
+    y+r
+  );
+
+  ctx.quadraticCurveTo(
+    x,
+    y,
+    x+r,
+    y
+  );
+
   ctx.closePath();
 }
 
+/* =========================
+   FOOTPRINT DRAW
+   ========================= */
+
 function drawFootprint(){
-  const {w,h}=resizeCanvas(fpCanvas,fpCtx);
 
-  clearCanvas(fpCtx,w,h);
+  const {w,h}=
+    resizeCanvas(
+      fpCanvas,
+      fpCtx
+    );
 
-  const candle=state.candles[state.selectedIndex];
+  fpCtx.clearRect(
+    0,
+    0,
+    w,
+    h
+  );
+
+  const candle=
+    state.candles[
+      state.selectedIndex
+    ];
 
   if(!candle){
+
     fpMessage.style.display="flex";
-    fpMessage.textContent="یک کندل از نمودار بالا انتخاب کنید";
+
+    fpMessage.textContent=
+      "یک کندل از نمودار بالا انتخاب کنید";
+
     return;
   }
 
-  const fp=buildFootprint(candle);
+  const fp=
+    buildFootprint(candle);
+
+  /*
+    اگر داده Trade برای این کندل وجود ندارد،
+    هیچ داده ساختگی ساخته نمی‌شود.
+  */
 
   if(!fp.levels.length){
+
     fpMessage.style.display="flex";
+
     fpMessage.textContent=
-      "برای این کندل در معاملات اخیر Bybit دادهٔ Trade کافی دریافت نشده است.\n"+
-      "برای جلوگیری از نمایش دادهٔ ساختگی، Footprint خالی نمایش داده می‌شود.";
+      "برای این کندل در معاملات دریافت‌شده از Bybit\n"+
+      "Trade کافی وجود ندارد.\n\n"+
+      "برای جلوگیری از نمایش داده ساختگی، سطح‌ها نمایش داده نمی‌شوند.";
+
   }else{
+
     fpMessage.style.display="none";
   }
 
-  const dpr=Math.max(1,Math.min(3,window.devicePixelRatio||1));
-
   fpCtx.save();
 
+  /*
+    کل Footprint با همین transform زوم می‌شود:
+    Candle + Price + Bid + Ask + Delta +
+    Volume Histogram + Delta Histogram
+  */
+
   fpCtx.translate(
-    w/2 + state.fpOffsetX,
-    h/2 + state.fpOffsetY
+    w/2+state.fpOffsetX,
+    h/2+state.fpOffsetY
   );
 
   fpCtx.scale(
@@ -1271,364 +2152,567 @@ function drawFootprint(){
     -h/2
   );
 
-  drawFootprintWorld(fpCtx,w,h,candle,fp);
+  drawFootprintWorld(
+    fpCtx,
+    w,
+    h,
+    candle,
+    fp
+  );
 
   fpCtx.restore();
 }
 
-function drawFootprintWorld(ctx,w,h,candle,fp){
+/* =========================
+   FOOTPRINT WORLD
+   ========================= */
 
-  const center=w/2;
+function drawFootprintWorld(
+  ctx,
+  w,
+  h,
+  candle,
+  fp
+){
+
+  const center=
+    w/2;
 
   /*
-    Layout:
-    left side:
-      Volume Fixed Range histogram
-      Bid
+    سمت چپ:
+    Volume Fixed Range
+    Bid
 
-    center:
-      price
-      selected candle
+    وسط:
+    Candle + Price
 
-    right side:
-      Ask
-      Delta
-      Delta histogram
+    سمت راست:
+    Ask
+    Delta
+    Delta Histogram
   */
 
-  const volumeStart=25;
-  const volumeEnd=center-205;
+  const volumeStart=20;
+  const volumeEnd=
+    center-230;
 
-  const bidX=center-150;
-  const priceX=center;
-  const askX=center+150;
-  const deltaX=center+245;
-  const deltaBarStart=center+300;
-  const deltaBarEnd=w-20;
+  const bidX=
+    center-165;
 
-  const top=55;
-  const bottom=h-35;
+  const priceX=
+    center;
 
-  const rangeHigh=Math.max(
-    candle.high,
-    ...fp.levels.map(x=>x.price)
-  );
+  const askX=
+    center+165;
 
-  const rangeLow=Math.min(
-    candle.low,
-    ...fp.levels.map(x=>x.price)
-  );
+  const deltaX=
+    center+255;
 
-  let priceRange=rangeHigh-rangeLow;
+  const deltaBarStart=
+    center+310;
 
-  if(priceRange<=0){
-    priceRange=Math.max(
-      Math.abs(rangeHigh)*.0001,
-      .00000001
-    );
+  const deltaBarEnd=
+    w-20;
+
+  const top=58;
+  const bottom=h-42;
+
+  let rangeHigh=
+    candle.high;
+
+  let rangeLow=
+    candle.low;
+
+  for(const row of fp.levels){
+
+    rangeHigh=
+      Math.max(
+        rangeHigh,
+        row.price
+      );
+
+    rangeLow=
+      Math.min(
+        rangeLow,
+        row.price
+      );
   }
 
-  const pad=priceRange*.08;
+  let range=
+    rangeHigh-rangeLow;
 
-  const high=rangeHigh+pad;
-  const low=rangeLow-pad;
+  if(range<=0){
+
+    range=
+      Math.max(
+        Math.abs(rangeHigh)*.0001,
+        .00000001
+      );
+  }
+
+  rangeHigh+=range*.08;
+  rangeLow-=range*.08;
 
   function y(price){
-    return bottom -
-      ((price-low)/(high-low)) *
+
+    return bottom-
+      (
+        (price-rangeLow)/
+        (rangeHigh-rangeLow)
+      )*
       (bottom-top);
   }
 
   /*
-    title
+    Header
   */
 
   ctx.textAlign="center";
-  ctx.font="bold 11px Tahoma";
-  ctx.fillStyle="#b6c8d4";
+  ctx.font="bold 10px Tahoma";
+  ctx.fillStyle="#8ea4b4";
+
   ctx.fillText(
-    "VFR",
+    "VOLUME",
     (volumeStart+volumeEnd)/2,
-    21
+    22
   );
 
   ctx.fillText(
     "BID",
     bidX,
-    21
+    22
   );
 
   ctx.fillText(
     "PRICE",
     priceX,
-    21
+    22
   );
 
   ctx.fillText(
     "ASK",
     askX,
-    21
+    22
   );
 
   ctx.fillText(
     "DELTA",
     deltaX,
-    21
+    22
   );
 
   ctx.fillText(
     "Δ HIST",
     (deltaBarStart+deltaBarEnd)/2,
-    21
+    22
   );
 
   /*
-    vertical sections
+    column separators
   */
 
-  ctx.strokeStyle="#1c303d";
+  ctx.strokeStyle=
+    "rgba(75,104,120,.25)";
+
   ctx.lineWidth=1;
 
   for(const x of [
+
     volumeEnd+8,
-    bidX+55,
-    priceX-55,
-    priceX+55,
-    askX+55,
-    deltaX+55,
+
+    bidX+58,
+
+    priceX-58,
+
+    priceX+58,
+
+    askX+58,
+
+    deltaX+60,
+
     deltaBarStart-8
+
   ]){
+
     ctx.beginPath();
-    ctx.moveTo(x,35);
-    ctx.lineTo(x,h-15);
+
+    ctx.moveTo(
+      x,
+      35
+    );
+
+    ctx.lineTo(
+      x,
+      h-22
+    );
+
     ctx.stroke();
   }
 
   /*
-    selected candle wick
+    candle
   */
 
-  const candleX=priceX;
+  const candleX=
+    priceX;
 
-  const candleHighY=y(candle.high);
-  const candleLowY=y(candle.low);
-  const candleOpenY=y(candle.open);
-  const candleCloseY=y(candle.close);
+  const highY=
+    y(candle.high);
 
-  const bullish=candle.close>=candle.open;
+  const lowY=
+    y(candle.low);
 
-  ctx.strokeStyle=bullish
-    ? "rgba(53,227,154,.85)"
-    : "rgba(255,92,110,.85)";
+  const openY=
+    y(candle.open);
 
-  ctx.lineWidth=2;
+  const closeY=
+    y(candle.close);
+
+  const bullish=
+    candle.close>=candle.open;
+
+  const candleColor=
+    bullish
+      ? "#35d98e"
+      : "#ef6875";
+
+  /*
+    Wick
+  */
+
+  ctx.strokeStyle=
+    candleColor;
+
+  ctx.lineWidth=3;
 
   ctx.beginPath();
-  ctx.moveTo(candleX,candleHighY);
-  ctx.lineTo(candleX,candleLowY);
+
+  ctx.moveTo(
+    candleX,
+    highY
+  );
+
+  ctx.lineTo(
+    candleX,
+    lowY
+  );
+
   ctx.stroke();
 
   /*
-    faint candle body
+    کمی پررنگ‌تر از نسخه قبل
   */
 
-  const bodyTop=Math.min(candleOpenY,candleCloseY);
-  const bodyBottom=Math.max(candleOpenY,candleCloseY);
-  const bodyHeight=Math.max(8,bodyBottom-bodyTop);
+  const bodyTop=
+    Math.min(
+      openY,
+      closeY
+    );
 
-  ctx.fillStyle=bullish
-    ? "rgba(53,227,154,.13)"
-    : "rgba(255,92,110,.13)";
+  const bodyHeight=
+    Math.max(
+      10,
+      Math.abs(
+        closeY-openY
+      )
+    );
 
-  ctx.strokeStyle=bullish
-    ? "rgba(53,227,154,.55)"
-    : "rgba(255,92,110,.55)";
+  /*
+    outer body
+  */
 
-  ctx.lineWidth=1;
+  ctx.fillStyle=
+    bullish
+      ? "rgba(53,217,142,.24)"
+      : "rgba(239,104,117,.24)";
+
+  ctx.strokeStyle=
+    bullish
+      ? "rgba(53,217,142,.80)"
+      : "rgba(239,104,117,.80)";
+
+  ctx.lineWidth=2;
 
   ctx.fillRect(
-    candleX-30,
+    candleX-32,
     bodyTop,
-    60,
+    64,
     bodyHeight
   );
 
   ctx.strokeRect(
-    candleX-30,
+    candleX-32,
     bodyTop,
-    60,
+    64,
     bodyHeight
   );
 
   /*
-    price axis background
+    center candle line
   */
 
-  ctx.fillStyle="rgba(9,19,28,.94)";
+  ctx.strokeStyle=
+    bullish
+      ? "rgba(53,217,142,.42)"
+      : "rgba(239,104,117,.42)";
+
+  ctx.lineWidth=1;
+
+  ctx.beginPath();
+
+  ctx.moveTo(
+    candleX,
+    top
+  );
+
+  ctx.lineTo(
+    candleX,
+    bottom
+  );
+
+  ctx.stroke();
+
+  /*
+    Price axis background
+  */
+
+  ctx.fillStyle=
+    "rgba(7,16,24,.84)";
+
   ctx.fillRect(
-    priceX-47,
+    priceX-52,
     top,
-    94,
+    104,
     bottom-top
   );
 
   /*
-    candle body again faintly behind price labels
+    restore candle slightly visible
   */
 
-  ctx.fillStyle=bullish
-    ? "rgba(53,227,154,.08)"
-    : "rgba(255,92,110,.08)";
+  ctx.fillStyle=
+    bullish
+      ? "rgba(53,217,142,.16)"
+      : "rgba(239,104,117,.16)";
 
   ctx.fillRect(
-    candleX-30,
+    candleX-32,
     bodyTop,
-    60,
+    64,
     bodyHeight
   );
 
   /*
-    max values
+    Maximum values
   */
 
   let maxVolume=0;
   let maxAbsDelta=0;
 
   for(const row of fp.levels){
-    maxVolume=Math.max(maxVolume,row.volume);
-    maxAbsDelta=Math.max(maxAbsDelta,Math.abs(row.delta));
-  }
 
-  /*
-    level spacing
-  */
-
-  let rowGap=24;
-
-  if(fp.levels.length>1){
-    const available=bottom-top;
-
-    rowGap=Math.min(
-      28,
+    maxVolume=
       Math.max(
-        15,
-        available/Math.max(1,fp.levels.length-1)
-      )
-    );
+        maxVolume,
+        row.volume
+      );
+
+    maxAbsDelta=
+      Math.max(
+        maxAbsDelta,
+        Math.abs(row.delta)
+      );
   }
 
   /*
-    level lines and data
+    Level spacing
   */
 
-  for(let i=0;i<fp.levels.length;i++){
+  const levelCount=
+    fp.levels.length;
 
-    const row=fp.levels[i];
+  let minGap=18;
 
-    let yy=y(row.price);
+  if(levelCount>0){
+
+    minGap=
+      Math.max(
+        16,
+        Math.min(
+          28,
+          (bottom-top)/
+          Math.max(
+            1,
+            levelCount
+          )
+        )
+      );
+  }
+
+  /*
+    levels
+  */
+
+  for(
+    let i=0;
+    i<fp.levels.length;
+    i++
+  ){
+
+    const row=
+      fp.levels[i];
+
+    const yy=
+      clamp(
+        y(row.price),
+        top,
+        bottom
+      );
 
     /*
-      If many levels become too close,
-      use actual price position but guarantee visibility.
+      level separator
     */
 
-    yy=Math.max(top,Math.min(bottom,yy));
+    ctx.strokeStyle=
+      "rgba(96,120,135,.18)";
 
-    /*
-      horizontal level line
-    */
-
-    ctx.strokeStyle="rgba(93,117,132,.17)";
     ctx.lineWidth=1;
 
     ctx.beginPath();
-    ctx.moveTo(volumeStart,yy);
-    ctx.lineTo(deltaBarEnd,yy);
+
+    ctx.moveTo(
+      volumeStart,
+      yy
+    );
+
+    ctx.lineTo(
+      deltaBarEnd,
+      yy
+    );
+
     ctx.stroke();
 
     /*
-      VOLUME FIXED RANGE histogram
+      =========================
+      LEFT:
+      VOLUME FIXED RANGE
+      =========================
     */
 
-    const volumeRatio=maxVolume>0
-      ? row.volume/maxVolume
-      : 0;
+    const volumeRatio=
+      maxVolume>0
+        ? row.volume/maxVolume
+        : 0;
 
     const volumeWidth=
-      Math.max(2,(volumeEnd-volumeStart)*volumeRatio);
-
-    ctx.fillStyle="rgba(83,169,255,.22)";
-
-    drawRoundedRect(
-      ctx,
-      volumeEnd-volumeWidth,
-      yy-7,
-      volumeWidth,
-      14,
-      3
-    );
-
-    ctx.fill();
+      Math.max(
+        row.volume>0?2:0,
+        (
+          volumeEnd-volumeStart
+        )*
+        volumeRatio
+      );
 
     /*
-      Bid
+      Volume bar is always anchored
+      to the candle side and grows outward.
     */
 
-    ctx.textAlign="right";
-    ctx.font="10px Tahoma";
     ctx.fillStyle=
-      row.bid>0
-        ? "#ef6875"
-        : "#465b68";
+      "rgba(83,169,255,.50)";
 
-    ctx.fillText(
-      fmt(row.bid),
-      bidX+40,
-      yy+3
-    );
+    if(volumeWidth>0){
+
+      roundedRect(
+        ctx,
+        volumeEnd-volumeWidth,
+        yy-7,
+        volumeWidth,
+        14,
+        3
+      );
+
+      ctx.fill();
+    }
 
     /*
-      Ask
+      Volume value
     */
 
     ctx.textAlign="left";
+    ctx.font="8px Tahoma";
+    ctx.fillStyle="#6f91aa";
+
+    if(row.volume>0){
+
+      ctx.fillText(
+        fmt(row.volume),
+        volumeStart,
+        yy+3
+      );
+    }
+
+    /*
+      =========================
+      BID
+      =========================
+    */
+
+    ctx.textAlign="right";
+    ctx.font="bold 10px Tahoma";
+
     ctx.fillStyle=
-      row.ask>0
-        ? "#39db92"
-        : "#465b68";
+      row.bid>0
+        ? "#ef6875"
+        : "#4c616e";
 
     ctx.fillText(
-      fmt(row.ask),
-      askX-40,
+      row.bid>0
+        ? fmt(row.bid)
+        : "0",
+      bidX+42,
       yy+3
     );
 
     /*
+      =========================
       PRICE
+      =========================
     */
+
+    const priceText=
+      formatPrice(row.price);
+
+    ctx.font="10px Tahoma";
+
+    const priceWidth=
+      Math.max(
+        62,
+        ctx.measureText(priceText).width+16
+      );
+
+    ctx.fillStyle=
+      "rgba(7,16,24,.96)";
+
+    roundedRect(
+      ctx,
+      priceX-priceWidth/2,
+      yy-9,
+      priceWidth,
+      18,
+      4
+    );
+
+    ctx.fill();
+
+    ctx.strokeStyle=
+      "rgba(95,124,140,.32)";
+
+    ctx.stroke();
 
     ctx.textAlign="center";
 
-    const priceText=formatPrice(row.price);
-
-    const pw=Math.max(
-      58,
-      ctx.measureText(priceText).width+14
-    );
-
-    ctx.fillStyle="rgba(7,16,24,.90)";
-    drawRoundedRect(
-      ctx,
-      priceX-pw/2,
-      yy-8,
-      pw,
-      16,
-      4
-    );
-    ctx.fill();
-
-    ctx.fillStyle="#dce7ee";
-    ctx.font="10px Tahoma";
+    ctx.fillStyle="#e3edf3";
 
     ctx.fillText(
       priceText,
@@ -1637,201 +2721,290 @@ function drawFootprintWorld(ctx,w,h,candle,fp){
     );
 
     /*
-      Delta number
+      =========================
+      ASK
+      =========================
     */
 
-    ctx.textAlign="right";
-
-    if(row.delta>0){
-      ctx.fillStyle="#39db92";
-    }else if(row.delta<0){
-      ctx.fillStyle="#ef6875";
-    }else{
-      ctx.fillStyle="#728896";
-    }
+    ctx.textAlign="left";
 
     ctx.font="bold 10px Tahoma";
 
-    const deltaText =
-      (row.delta>0?"+":"") +
-      fmt(row.delta);
+    ctx.fillStyle=
+      row.ask>0
+        ? "#39db92"
+        : "#4c616e";
 
     ctx.fillText(
-      deltaText,
-      deltaX+32,
+      row.ask>0
+        ? fmt(row.ask)
+        : "0",
+      askX-42,
       yy+3
     );
 
     /*
-      DELTA HISTOGRAM
+      =========================
+      DELTA NUMBER
+      =========================
     */
 
-    const deltaRatio=maxAbsDelta>0
-      ? Math.abs(row.delta)/maxAbsDelta
-      : 0;
+    ctx.textAlign="right";
 
-    const maxDeltaWidth=
-      Math.max(2,deltaBarEnd-deltaBarStart);
+    ctx.font="bold 10px Tahoma";
 
-    const dw=
-      Math.max(
-        row.delta===0 ? 0 : 2,
-        maxDeltaWidth*deltaRatio
-      );
+    if(row.delta>0){
 
-    ctx.fillStyle=
-      row.delta>=0
-        ? "rgba(53,219,146,.48)"
-        : "rgba(239,104,117,.48)";
+      ctx.fillStyle="#39db92";
 
-    if(row.delta>=0){
-      drawRoundedRect(
-        ctx,
-        deltaBarStart,
-        yy-6,
-        dw,
-        12,
-        3
-      );
+    }else if(row.delta<0){
+
+      ctx.fillStyle="#ef6875";
+
     }else{
-      drawRoundedRect(
-        ctx,
-        deltaBarEnd-dw,
-        yy-6,
-        dw,
-        12,
-        3
-      );
+
+      ctx.fillStyle="#718895";
     }
 
-    ctx.fill();
+    ctx.fillText(
+      (row.delta>0?"+":"")+
+      fmt(row.delta),
+      deltaX+42,
+      yy+3
+    );
 
     /*
-      small volume number near VFR end
+      =========================
+      DELTA HISTOGRAM
+      =========================
+
+      مثبت:
+      از سمت چپ Delta Histogram به راست
+
+      منفی:
+      از سمت راست به چپ
+
+      اندازه = abs(delta) / maxAbsDelta
     */
 
-    ctx.textAlign="left";
-    ctx.font="8px Tahoma";
-    ctx.fillStyle="#55788f";
+    const deltaRatio=
+      maxAbsDelta>0
+        ? Math.abs(row.delta)/
+          maxAbsDelta
+        : 0;
 
-    if(row.volume>0){
-      ctx.fillText(
-        fmt(row.volume),
-        volumeStart,
-        yy+3
+    const maxDeltaWidth=
+      Math.max(
+        2,
+        deltaBarEnd-deltaBarStart
+      );
+
+    const deltaWidth=
+      maxDeltaWidth*
+      deltaRatio;
+
+    if(row.delta>0){
+
+      ctx.fillStyle=
+        "rgba(53,217,142,.62)";
+
+      roundedRect(
+        ctx,
+        deltaBarStart,
+        yy-7,
+        Math.max(
+          2,
+          deltaWidth
+        ),
+        14,
+        3
+      );
+
+      ctx.fill();
+
+    }else if(row.delta<0){
+
+      ctx.fillStyle=
+        "rgba(239,104,117,.62)";
+
+      roundedRect(
+        ctx,
+        deltaBarEnd-
+        Math.max(
+          2,
+          deltaWidth
+        ),
+        yy-7,
+        Math.max(
+          2,
+          deltaWidth
+        ),
+        14,
+        3
+      );
+
+      ctx.fill();
+
+    }else{
+
+      ctx.fillStyle=
+        "rgba(100,120,132,.18)";
+
+      ctx.fillRect(
+        deltaBarStart,
+        yy-1,
+        2,
+        2
       );
     }
   }
 
   /*
-    candle high / low / open / close markers
+    Candle OHLC reference lines
   */
 
   const markers=[
+
     ["H",candle.high],
+
     ["O",candle.open],
+
     ["C",candle.close],
+
     ["L",candle.low]
+
   ];
 
-  for(const [label,p] of markers){
+  for(const marker of markers){
 
-    const yy=y(p);
+    const label=marker[0];
+    const price=marker[1];
+
+    const yy=
+      clamp(
+        y(price),
+        top,
+        bottom
+      );
 
     ctx.strokeStyle=
-      label==="H" || label==="L"
-        ? "rgba(120,145,160,.35)"
-        : "rgba(180,200,215,.20)";
+      "rgba(150,175,188,.20)";
 
-    ctx.setLineDash([3,3]);
+    ctx.setLineDash(
+      [3,3]
+    );
 
     ctx.beginPath();
-    ctx.moveTo(priceX-32,yy);
-    ctx.lineTo(priceX+32,yy);
+
+    ctx.moveTo(
+      priceX-35,
+      yy
+    );
+
+    ctx.lineTo(
+      priceX+35,
+      yy
+    );
+
     ctx.stroke();
 
     ctx.setLineDash([]);
 
-    ctx.font="8px Tahoma";
     ctx.textAlign="right";
-    ctx.fillStyle="#718899";
+    ctx.font="8px Tahoma";
+    ctx.fillStyle="#6f8491";
 
     ctx.fillText(
       label,
-      priceX-40,
+      priceX-42,
       yy+3
     );
   }
 
   /*
-    candle summary at bottom
+    TOTAL BOX
   */
-
-  ctx.textAlign="center";
-  ctx.font="10px Tahoma";
-  ctx.fillStyle="#8198a8";
-
-  ctx.fillText(
-    `Trades: ${fp.trades.length} · Levels: ${fp.levels.length} · Tick: ${fp.tick ? formatPrice(fp.tick) : "—"}`,
-    w/2,
-    h-8
-  );
-
-  /*
-    total delta badge
-  */
-
-  const totalText =
-    "TOTAL Δ " +
-    (fp.totalDelta>=0?"+":"") +
-    fmt(fp.totalDelta);
 
   const totalColor=
     fp.totalDelta>=0
       ? "#39db92"
       : "#ef6875";
 
-  ctx.fillStyle="rgba(8,18,26,.95)";
-  ctx.strokeStyle=totalColor;
+  const totalText=
+    "TOTAL Δ "+
+    (fp.totalDelta>=0?"+":"")+
+    fmt(fp.totalDelta);
+
+  const badgeW=155;
+  const badgeX=
+    center-badgeW/2;
+  const badgeY=33;
+
+  ctx.fillStyle=
+    "rgba(7,16,24,.97)";
+
+  ctx.strokeStyle=
+    totalColor;
+
   ctx.lineWidth=1;
 
-  const badgeW=145;
-  const badgeX=w/2-badgeW/2;
-  const badgeY=31;
-
-  drawRoundedRect(
+  roundedRect(
     ctx,
     badgeX,
     badgeY,
     badgeW,
-    18,
+    19,
     5
   );
 
   ctx.fill();
   ctx.stroke();
 
-  ctx.fillStyle=totalColor;
-  ctx.font="bold 9px Tahoma";
   ctx.textAlign="center";
+  ctx.font="bold 9px Tahoma";
+  ctx.fillStyle=totalColor;
 
   ctx.fillText(
     totalText,
-    w/2,
-    badgeY+12
+    center,
+    badgeY+13
+  );
+
+  /*
+    Bottom information
+  */
+
+  ctx.textAlign="center";
+  ctx.font="9px Tahoma";
+  ctx.fillStyle="#718899";
+
+  ctx.fillText(
+    `Trades: ${fp.trades.length} · Levels: ${fp.levels.length} · Tick: ${fp.tick ? formatPrice(fp.tick) : "—"}`,
+    center,
+    h-10
   );
 }
 
+/* =========================
+   FOOTPRINT TOUCH
+   ========================= */
+
 function fpPoint(e){
-  const r=fpCanvas.getBoundingClientRect();
+
+  const r=
+    fpCanvas.getBoundingClientRect();
 
   return {
+
     x:e.clientX-r.left,
+
     y:e.clientY-r.top
+
   };
 }
 
-function distance(a,b){
+function pointerDistance(a,b){
+
   return Math.hypot(
     a.x-b.x,
     a.y-b.y
@@ -1840,54 +3013,9 @@ function distance(a,b){
 
 function fpPointerDown(e){
 
-  fpCanvas.setPointerCapture?.(e.pointerId);
-
-  fpCanvas.style.cursor="grabbing";
-
-  fpPointersSet(e.pointerId,fpPoint(e));
-
-  if(state.fpPointers.size===1){
-
-    const p=fpPoint(e);
-
-    state.fpGesture={
-      type:"drag",
-      startX:p.x,
-      startY:p.y,
-      lastX:p.x,
-      lastY:p.y,
-      startOffsetX:state.fpOffsetX,
-      startOffsetY:state.fpOffsetY
-    };
-
-  }else if(state.fpPointers.size===2){
-
-    const ps=[...state.fpPointers.values()];
-
-    const center={
-      x:(ps[0].x+ps[1].x)/2,
-      y:(ps[0].y+ps[1].y)/2
-    };
-
-    state.fpGesture={
-      type:"pinch",
-      startDistance:distance(ps[0],ps[1]),
-      startScale:state.fpScale,
-      startOffsetX:state.fpOffsetX,
-      startOffsetY:state.fpOffsetY,
-      centerX:center.x,
-      centerY:center.y
-    };
-  }
-}
-
-function fpPointersSet(id,p){
-  state.fpPointers.set(id,p);
-}
-
-function fpPointerMove(e){
-
-  if(!state.fpPointers.has(e.pointerId)) return;
+  fpCanvas.setPointerCapture?.(
+    e.pointerId
+  );
 
   state.fpPointers.set(
     e.pointerId,
@@ -1895,71 +3023,216 @@ function fpPointerMove(e){
   );
 
   if(
-    state.fpPointers.size===1 &&
-    state.fpGesture &&
-    state.fpGesture.type==="drag"
+    state.fpPointers.size===1
   ){
 
-    const p=fpPoint(e);
+    const p=
+      fpPoint(e);
 
-    const dx=p.x-state.fpGesture.startX;
-    const dy=p.y-state.fpGesture.startY;
+    state.fpGesture={
+
+      type:"drag",
+
+      startX:p.x,
+
+      startY:p.y,
+
+      startOffsetX:
+        state.fpOffsetX,
+
+      startOffsetY:
+        state.fpOffsetY
+
+    };
+
+  }else if(
+    state.fpPointers.size===2
+  ){
+
+    const ps=[
+      ...state.fpPointers.values()
+    ];
+
+    state.fpGesture={
+
+      type:"pinch",
+
+      startDistance:
+        pointerDistance(
+          ps[0],
+          ps[1]
+        ),
+
+      startScale:
+        state.fpScale,
+
+      startOffsetX:
+        state.fpOffsetX,
+
+      startOffsetY:
+        state.fpOffsetY,
+
+      centerX:
+        (ps[0].x+ps[1].x)/2,
+
+      centerY:
+        (ps[0].y+ps[1].y)/2
+
+    };
+  }
+}
+
+function fpPointerMove(e){
+
+  if(
+    !state.fpPointers.has(
+      e.pointerId
+    )
+  ){
+    return;
+  }
+
+  state.fpPointers.set(
+    e.pointerId,
+    fpPoint(e)
+  );
+
+  /*
+    ONE FINGER:
+    move entire footprint
+  */
+
+  if(
+    state.fpPointers.size===1 &&
+    state.fpGesture?.type==="drag"
+  ){
+
+    const p=
+      fpPoint(e);
 
     state.fpOffsetX=
-      state.fpGesture.startOffsetX+dx;
+      state.fpGesture.startOffsetX+
+      (
+        p.x-
+        state.fpGesture.startX
+      );
 
     state.fpOffsetY=
-      state.fpGesture.startOffsetY+dy;
+      state.fpGesture.startOffsetY+
+      (
+        p.y-
+        state.fpGesture.startY
+      );
 
     drawFootprint();
 
-  }else if(
+    return;
+  }
+
+  /*
+    TWO FINGERS:
+    scale entire footprint
+  */
+
+  if(
     state.fpPointers.size===2 &&
-    state.fpGesture &&
-    state.fpGesture.type==="pinch"
+    state.fpGesture?.type==="pinch"
   ){
 
-    const ps=[...state.fpPointers.values()];
+    const ps=[
+      ...state.fpPointers.values()
+    ];
 
-    const currentDistance=
-      Math.max(5,distance(ps[0],ps[1]));
+    const dist=
+      Math.max(
+        5,
+        pointerDistance(
+          ps[0],
+          ps[1]
+        )
+      );
 
-    const oldScale=state.fpScale;
-
-    const newScale=clamp(
-      state.fpGesture.startScale *
-      currentDistance/
-      Math.max(5,state.fpGesture.startDistance),
-      .45,
-      4
-    );
-
-    const centerX=
-      (ps[0].x+ps[1].x)/2;
-
-    const centerY=
-      (ps[0].y+ps[1].y)/2;
+    const newScale=
+      clamp(
+        state.fpGesture.startScale*
+        dist/
+        Math.max(
+          5,
+          state.fpGesture.startDistance
+        ),
+        .45,
+        4
+      );
 
     /*
-      Keep the content below the pinch center
-      so the whole footprint zooms naturally.
+      Pinch center
     */
 
-    const factor=newScale/oldScale;
+    const cx=
+      (ps[0].x+ps[1].x)/2;
 
-    state.fpOffsetX =
-      centerX -
-      (centerX-state.fpGesture.startOffsetX) *
-      factor -
-      (fpCanvas.clientWidth/2)*(1-factor);
+    const cy=
+      (ps[0].y+ps[1].y)/2;
 
-    state.fpOffsetY =
-      centerY -
-      (centerY-state.fpGesture.startOffsetY) *
-      factor -
-      (fpCanvas.clientHeight/2)*(1-factor);
+    const oldScale=
+      state.fpScale;
 
-    state.fpScale=newScale;
+    const factor=
+      newScale/
+      oldScale;
+
+    const canvasW=
+      fpCanvas.clientWidth;
+
+    const canvasH=
+      fpCanvas.clientHeight;
+
+    /*
+      مرکز محتوا
+    */
+
+    const baseX=
+      canvasW/2+
+      state.fpOffsetX;
+
+    const baseY=
+      canvasH/2+
+      state.fpOffsetY;
+
+    /*
+      نقطه زیر انگشت‌ها ثابت می‌ماند
+    */
+
+    const worldX=
+      (
+        cx-baseX
+      )/
+      oldScale;
+
+    const worldY=
+      (
+        cy-baseY
+      )/
+      oldScale;
+
+    const newBaseX=
+      cx-
+      worldX*newScale;
+
+    const newBaseY=
+      cy-
+      worldY*newScale;
+
+    state.fpScale=
+      newScale;
+
+    state.fpOffsetX=
+      newBaseX-
+      canvasW/2;
+
+    state.fpOffsetY=
+      newBaseY-
+      canvasH/2;
 
     drawFootprint();
   }
@@ -1967,123 +3240,172 @@ function fpPointerMove(e){
 
 function fpPointerUp(e){
 
-  state.fpPointers.delete(e.pointerId);
+  state.fpPointers.delete(
+    e.pointerId
+  );
 
-  if(state.fpPointers.size===0){
+  if(
+    state.fpPointers.size===0
+  ){
 
     state.fpGesture=null;
-    fpCanvas.style.cursor="default";
 
-  }else if(state.fpPointers.size===1){
+  }else if(
+    state.fpPointers.size===1
+  ){
 
-    const p=[...state.fpPointers.values()][0];
+    const p=
+      [...state.fpPointers.values()][0];
 
     state.fpGesture={
+
       type:"drag",
+
       startX:p.x,
+
       startY:p.y,
-      lastX:p.x,
-      lastY:p.y,
-      startOffsetX:state.fpOffsetX,
-      startOffsetY:state.fpOffsetY
+
+      startOffsetX:
+        state.fpOffsetX,
+
+      startOffsetY:
+        state.fpOffsetY
+
     };
   }
 }
 
-fpCanvas.addEventListener("pointerdown",fpPointerDown);
-fpCanvas.addEventListener("pointermove",fpPointerMove);
-fpCanvas.addEventListener("pointerup",fpPointerUp);
-fpCanvas.addEventListener("pointercancel",fpPointerUp);
+fpCanvas.addEventListener(
+  "pointerdown",
+  fpPointerDown
+);
 
-fpCanvas.addEventListener("wheel",e=>{
-  e.preventDefault();
+fpCanvas.addEventListener(
+  "pointermove",
+  fpPointerMove
+);
 
-  const oldScale=state.fpScale;
+fpCanvas.addEventListener(
+  "pointerup",
+  fpPointerUp
+);
 
-  const factor=e.deltaY<0?1.12:.89;
+fpCanvas.addEventListener(
+  "pointercancel",
+  fpPointerUp
+);
 
-  state.fpScale=clamp(
-    oldScale*factor,
-    .45,
-    4
-  );
+/*
+  Mouse wheel / trackpad zoom
+*/
 
-  const r=fpCanvas.getBoundingClientRect();
+fpCanvas.addEventListener(
+  "wheel",
+  e=>{
 
-  const mx=e.clientX-r.left;
-  const my=e.clientY-r.top;
+    e.preventDefault();
 
-  const cx=r.width/2;
-  const cy=r.height/2;
+    const r=
+      fpCanvas.getBoundingClientRect();
 
-  const ratio=state.fpScale/oldScale;
+    const mx=
+      e.clientX-r.left;
 
-  state.fpOffsetX =
-    mx -
-    (mx-cx-state.fpOffsetX)*ratio;
+    const my=
+      e.clientY-r.top;
 
-  state.fpOffsetY =
-    my -
-    (my-cy-state.fpOffsetY)*ratio;
+    const oldScale=
+      state.fpScale;
 
-  drawFootprint();
+    const factor=
+      e.deltaY<0
+        ? 1.12
+        : .89;
 
-},{passive:false});
+    const newScale=
+      clamp(
+        oldScale*factor,
+        .45,
+        4
+      );
 
-$("fpReset").addEventListener("click",()=>{
-  state.fpScale=1;
-  state.fpOffsetX=0;
-  state.fpOffsetY=0;
-  drawFootprint();
-});
+    const cx=
+      r.width/2+
+      state.fpOffsetX;
 
-async function fetchJson(url){
+    const cy=
+      r.height/2+
+      state.fpOffsetY;
 
-  const response=await fetch(
-    url,
-    {
-      method:"GET",
-      cache:"no-store",
-      headers:{
-        "Accept":"application/json"
-      }
-    }
-  );
+    const worldX=
+      (mx-cx)/oldScale;
 
-  const text=await response.text();
+    const worldY=
+      (my-cy)/oldScale;
 
-  let data;
+    const newCx=
+      mx-worldX*newScale;
 
-  try{
-    data=JSON.parse(text);
-  }catch(err){
-    throw new Error(
-      `پاسخ Worker JSON نیست: ${text.slice(0,300)}`
-    );
+    const newCy=
+      my-worldY*newScale;
+
+    state.fpScale=
+      newScale;
+
+    state.fpOffsetX=
+      newCx-r.width/2;
+
+    state.fpOffsetY=
+      newCy-r.height/2;
+
+    drawFootprint();
+
+  },
+  {passive:false}
+);
+
+/*
+  Reset footprint
+*/
+
+$("fpReset").addEventListener(
+  "click",
+  ()=>{
+
+    state.fpScale=1;
+
+    state.fpOffsetX=0;
+
+    state.fpOffsetY=0;
+
+    drawFootprint();
+  }
+);
+
+/* =========================
+   LOAD MARKET
+   ========================= */
+
+async function loadMarket(options={}){
+
+  if(state.loading){
+    return;
   }
 
-  if(!response.ok){
-    throw new Error(
-      data.error ||
-      data.message ||
-      `HTTP ${response.status}`
-    );
-  }
+  /*
+    selectedBeforeRefresh:
+    مهم‌ترین قسمت برای جلوگیری از
+    پریدن کندل انتخاب‌شده
+  */
 
-  if(data.ok===false){
-    throw new Error(
-      data.error ||
-      data.message ||
-      "Worker خطا برگرداند"
-    );
-  }
+  const previousSelectedTime=
+    state.candles[
+      state.selectedIndex
+    ]?.time || 0;
 
-  return data;
-}
-
-async function loadMarket(){
-
-  if(state.loading) return;
+  const previousWasLast=
+    state.selectedIndex===
+    state.candles.length-1;
 
   state.loading=true;
 
@@ -2092,72 +3414,179 @@ async function loadMarket(){
       .trim()
       .toUpperCase();
 
-  state.category=$("category").value;
-  state.interval=$("interval").value;
+  state.category=
+    $("category").value;
+
+  state.interval=
+    $("interval").value;
+
   state.candleCount=
-    Number($("candleCount").value);
+    Number(
+      $("candleCount").value
+    );
 
   if(!state.symbol){
+
     state.symbol="BTCUSDT";
-    $("symbol").value=state.symbol;
+
+    $("symbol").value=
+      state.symbol;
   }
 
   setStatus(
-    `⏳ در حال دریافت داده واقعی Bybit · ${state.symbol}`,
+    `⏳ دریافت داده واقعی Bybit · ${state.symbol}`,
     "yellow"
   );
 
   try{
 
     const url=
-      `${API_BASE}/api/market`+
-      `?symbol=${encodeURIComponent(state.symbol)}`+
-      `&category=${encodeURIComponent(state.category)}`+
-      `&interval=${encodeURIComponent(state.interval)}`;
+      API_BASE+
+      "/api/market"+
+      "?symbol="+
+      encodeURIComponent(
+        state.symbol
+      )+
+      "&category="+
+      encodeURIComponent(
+        state.category
+      )+
+      "&interval="+
+      encodeURIComponent(
+        state.interval
+      );
 
-    const data=await fetchJson(url);
+    const data=
+      await fetchJson(url);
 
-    if(!data.candles || !Array.isArray(data.candles)){
-      throw new Error("Worker داده کندل برنگرداند");
+    if(
+      !Array.isArray(
+        data.candles
+      )
+    ){
+
+      throw new Error(
+        "Worker داده کندل برنگرداند"
+      );
+    }
+
+    const newCandles=
+      data.candles
+        .map(normalizeCandle)
+        .filter(
+          c=>c.time>0
+        )
+        .sort(
+          (a,b)=>a.time-b.time
+        )
+        .slice(
+          -state.candleCount
+        );
+
+    if(!newCandles.length){
+
+      throw new Error(
+        "هیچ کندلی از Bybit دریافت نشد"
+      );
     }
 
     state.candles=
-      data.candles
-        .map(normalizeCandle)
-        .filter(c=>c.time>0)
-        .sort((a,b)=>a.time-b.time)
-        .slice(-state.candleCount);
+      newCandles;
 
     state.trades=
       Array.isArray(data.trades)
-        ? data.trades.map(normalizeTrade)
+        ? data.trades.map(
+            normalizeTrade
+          )
         : [];
 
     state.lastPrice=
       num(
-        data.ticker &&
-        data.ticker.lastPrice
+        data.ticker?.lastPrice
       );
 
     state.price24hPcnt=
-      data.ticker
-        ? num(data.ticker.price24hPcnt)
-        : undefined;
+      num(
+        data.ticker?.price24hPcnt
+      );
 
-    state.absorption=data.absorption;
+    state.absorption=
+      data.absorption;
 
-    if(!state.candles.length){
-      throw new Error("هیچ کندلی از Bybit دریافت نشد");
+    /*
+      =========================
+      حفظ کندل انتخابی
+      =========================
+    */
+
+    let restoredIndex=-1;
+
+    if(previousSelectedTime){
+
+      restoredIndex=
+        state.candles.findIndex(
+          c=>
+            c.time===
+            previousSelectedTime
+        );
     }
 
-    state.chartZoom=1;
-    state.chartPan=0;
+    if(
+      restoredIndex>=0 &&
+      state.userSelectedHistorical
+    ){
 
-    state.selectedIndex=
-      state.candles.length-1;
+      /*
+        کاربر قبلاً کندل تاریخی انتخاب کرده.
+        همان کندل را نگه دار.
+      */
+
+      state.selectedIndex=
+        restoredIndex;
+
+    }else if(
+      previousWasLast ||
+      state.selectedIndex<0
+    ){
+
+      /*
+        اگر قبلاً آخرین کندل انتخاب شده بود،
+        آخرین کندل جدید را نشان بده.
+      */
+
+      state.selectedIndex=
+        state.candles.length-1;
+
+      state.userSelectedHistorical=
+        false;
+
+    }else if(restoredIndex>=0){
+
+      state.selectedIndex=
+        restoredIndex;
+
+    }else{
+
+      /*
+        اگر به هر دلیل زمان قبلی پیدا نشد
+      */
+
+      state.selectedIndex=
+        Math.min(
+          state.selectedIndex,
+          state.candles.length-1
+        );
+    }
+
+    /*
+      در Refresh عادی زوم چارت اصلی
+      دست‌نخورده می‌ماند.
+    */
 
     updateStats();
+
     updateSelectedInfo();
+
     drawChart();
 
     setStatus(
@@ -2170,88 +3599,183 @@ async function loadMarket(){
     console.error(err);
 
     setStatus(
-      `🔴 خطا: ${err.message || "خطای نامشخص"}`,
+      `🔴 خطا: ${err.message||"خطای نامشخص"}`,
       "red"
     );
 
-    state.candles=[];
-    state.trades=[];
-    state.selectedIndex=-1;
-
-    updateStats();
-    updateSelectedInfo();
-    drawChart();
-    drawFootprint();
-
   }finally{
+
     state.loading=false;
   }
 }
 
+/* =========================
+   CONTROLS
+   ========================= */
+
 $("analyze").addEventListener(
   "click",
-  loadMarket
-);
+  ()=>{
 
-$("symbol").addEventListener("keydown",e=>{
-  if(e.key==="Enter"){
+    /*
+      تحلیل دستی یعنی انتخاب از نو
+    */
+
+    state.userSelectedHistorical=false;
+
+    state.selectedIndex=-1;
+
+    state.chartZoom=1;
+
+    state.chartPan=0;
+
+    state.fpScale=1;
+
+    state.fpOffsetX=0;
+
+    state.fpOffsetY=0;
+
     loadMarket();
   }
-});
+);
+
+$("symbol").addEventListener(
+  "keydown",
+  e=>{
+
+    if(e.key==="Enter"){
+
+      state.userSelectedHistorical=false;
+
+      state.selectedIndex=-1;
+
+      loadMarket();
+    }
+  }
+);
 
 $("interval").addEventListener(
   "change",
-  loadMarket
+  ()=>{
+
+    state.userSelectedHistorical=false;
+
+    state.selectedIndex=-1;
+
+    state.chartZoom=1;
+
+    state.chartPan=0;
+
+    loadMarket();
+  }
 );
 
 $("category").addEventListener(
   "change",
-  loadMarket
+  ()=>{
+
+    state.userSelectedHistorical=false;
+
+    state.selectedIndex=-1;
+
+    state.chartZoom=1;
+
+    state.chartPan=0;
+
+    loadMarket();
+  }
 );
 
 $("candleCount").addEventListener(
   "change",
-  loadMarket
+  ()=>{
+
+    /*
+      با تغییر تعداد کندل، انتخاب قبلی
+      اگر موجود باشد توسط زمان بازیابی می‌شود.
+    */
+
+    loadMarket();
+  }
 );
 
-window.addEventListener("resize",()=>{
-  drawChart();
-  drawFootprint();
-});
+/* =========================
+   TABS
+   ========================= */
 
-document.querySelectorAll(".tab").forEach(tab=>{
-  tab.addEventListener("click",()=>{
-    document.querySelectorAll(".tab")
-      .forEach(x=>x.classList.remove("active"));
+document
+  .querySelectorAll(".tab")
+  .forEach(tab=>{
 
-    tab.classList.add("active");
+    tab.addEventListener(
+      "click",
+      ()=>{
+
+        document
+          .querySelectorAll(".tab")
+          .forEach(
+            x=>
+              x.classList.remove(
+                "active"
+              )
+          );
+
+        tab.classList.add(
+          "active"
+        );
+      }
+    );
   });
-});
+
+/* =========================
+   RESIZE
+   ========================= */
+
+window.addEventListener(
+  "resize",
+  ()=>{
+
+    drawChart();
+
+    drawFootprint();
+  }
+);
+
+/* =========================
+   BOOT
+   ========================= */
 
 function boot(){
 
-  requestAnimationFrame(()=>{
-    drawChart();
-    drawFootprint();
-  });
+  requestAnimationFrame(
+    ()=>{
+      drawChart();
+      drawFootprint();
+    }
+  );
 
   loadMarket();
 
   /*
-    Refresh actual Bybit data periodically.
-    Selection is kept on the newest candle when
-    the previous selection was the last candle.
+    Refresh واقعی هر 15 ثانیه.
+    انتخاب تاریخی دست‌نخورده می‌ماند.
   */
 
-  setInterval(()=>{
-    if(!state.loading){
-      loadMarket();
-    }
-  },15000);
+  setInterval(
+    ()=>{
+      if(!state.loading){
+        loadMarket({
+          silent:true
+        });
+      }
+    },
+    15000
+  );
 }
 
 boot();
 
 </script>
+
 </body>
 </html>
