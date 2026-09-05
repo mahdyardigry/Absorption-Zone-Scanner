@@ -1,0 +1,4019 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta
+  name="viewport"
+  content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"
+>
+<title>Absorption Zone Scanner</title>
+
+<style>
+*{
+  box-sizing:border-box;
+  -webkit-tap-highlight-color:transparent;
+}
+
+html,
+body{
+  margin:0;
+  padding:0;
+  width:100%;
+  min-height:100%;
+  background:#050b11;
+  color:#e7edf4;
+  font-family:
+    Arial,
+    Tahoma,
+    sans-serif;
+}
+
+body{
+  overflow-x:hidden;
+}
+
+button,
+select,
+input{
+  font:inherit;
+}
+
+button{
+  cursor:pointer;
+}
+
+.app{
+  width:100%;
+  max-width:1500px;
+  margin:auto;
+  padding:10px;
+}
+
+.header{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  margin-bottom:10px;
+}
+
+.brand{
+  min-width:0;
+}
+
+.brand h1{
+  margin:0;
+  font-size:20px;
+  font-weight:800;
+}
+
+.brand p{
+  margin:4px 0 0;
+  color:#8fa2b5;
+  font-size:12px;
+}
+
+.status{
+  white-space:nowrap;
+  padding:8px 11px;
+  border-radius:10px;
+  background:#0d1822;
+  border:1px solid #1d303f;
+  font-size:12px;
+}
+
+.status.online{
+  color:#5ee58b;
+}
+
+.status.error{
+  color:#ff6978;
+}
+
+.controls{
+  display:grid;
+  grid-template-columns:
+    minmax(120px,1fr)
+    minmax(120px,1fr)
+    minmax(110px,1fr)
+    auto;
+  gap:8px;
+  margin-bottom:8px;
+}
+
+.control{
+  min-width:0;
+}
+
+.control label{
+  display:block;
+  color:#8295a8;
+  font-size:11px;
+  margin-bottom:4px;
+}
+
+.control select,
+.control input{
+  width:100%;
+  min-height:42px;
+  color:#e7edf4;
+  background:#0b151e;
+  border:1px solid #203341;
+  border-radius:10px;
+  outline:none;
+  padding:0 10px;
+}
+
+.control select:focus,
+.control input:focus{
+  border-color:#39799e;
+}
+
+.reload{
+  align-self:end;
+  min-height:42px;
+  padding:0 14px;
+  border:1px solid #244153;
+  border-radius:10px;
+  background:#10222f;
+  color:#dbeaf4;
+}
+
+.reload:active{
+  transform:scale(.98);
+}
+
+.chart-box{
+  position:relative;
+  width:100%;
+  height:430px;
+  background:#071019;
+  border:1px solid #1b2c39;
+  border-radius:14px;
+  overflow:hidden;
+  touch-action:none;
+}
+
+#chart{
+  display:block;
+  width:100%;
+  height:100%;
+}
+
+.chart-info{
+  position:absolute;
+  top:8px;
+  right:8px;
+  z-index:5;
+  pointer-events:none;
+  padding:6px 9px;
+  border-radius:8px;
+  background:rgba(4,10,15,.82);
+  border:1px solid #1e313e;
+  font-size:11px;
+  color:#aebdca;
+}
+
+.navigation{
+  display:flex;
+  gap:7px;
+  overflow-x:auto;
+  padding:8px 1px;
+  scrollbar-width:none;
+}
+
+.navigation::-webkit-scrollbar{
+  display:none;
+}
+
+.nav-btn{
+  flex:0 0 auto;
+  min-width:74px;
+  min-height:54px;
+  border:1px solid #1c303e;
+  border-radius:11px;
+  background:#0a141d;
+  color:#93a6b8;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:2px;
+}
+
+.nav-btn .icon{
+  font-size:18px;
+}
+
+.nav-btn .text{
+  font-size:10px;
+}
+
+.nav-btn.active{
+  background:#102532;
+  border-color:#34708e;
+  color:#e7f4fb;
+}
+
+.panel{
+  background:#09131c;
+  border:1px solid #1b2c39;
+  border-radius:14px;
+  padding:10px;
+  min-height:220px;
+}
+
+.panel-title{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+  margin-bottom:9px;
+}
+
+.panel-title strong{
+  font-size:15px;
+}
+
+.panel-title span{
+  color:#71879a;
+  font-size:11px;
+}
+
+.stats{
+  display:grid;
+  grid-template-columns:
+    repeat(4,minmax(0,1fr));
+  gap:7px;
+  margin-bottom:10px;
+}
+
+.stat{
+  background:#0c1923;
+  border:1px solid #1b303e;
+  border-radius:9px;
+  padding:8px;
+  min-width:0;
+}
+
+.stat small{
+  display:block;
+  color:#71879a;
+  font-size:10px;
+  margin-bottom:5px;
+}
+
+.stat b{
+  display:block;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  font-size:13px;
+}
+
+.green{
+  color:#49e587 !important;
+}
+
+.red{
+  color:#ff6675 !important;
+}
+
+.blue{
+  color:#62b7ff !important;
+}
+
+.yellow{
+  color:#e9c86a !important;
+}
+
+.neutral{
+  color:#aeb9c2 !important;
+}
+
+.footprint-wrap{
+  width:100%;
+  overflow-x:auto;
+  border:1px solid #182b38;
+  border-radius:10px;
+}
+
+.footprint{
+  min-width:620px;
+  border-collapse:collapse;
+  width:100%;
+  direction:ltr;
+}
+
+.footprint th{
+  background:#0d1b25;
+  color:#8297a9;
+  font-size:10px;
+  padding:8px 5px;
+  border-bottom:1px solid #1d303d;
+}
+
+.footprint td{
+  padding:6px 5px;
+  border-bottom:1px solid #12222d;
+  text-align:center;
+  font-size:11px;
+  white-space:nowrap;
+}
+
+.footprint tr:last-child td{
+  border-bottom:0;
+}
+
+.bid{
+  color:#ff6675;
+}
+
+.ask{
+  color:#4ce58a;
+}
+
+.delta-positive{
+  color:#4ce58a;
+  font-weight:700;
+}
+
+.delta-negative{
+  color:#ff6675;
+  font-weight:700;
+}
+
+.price-cell{
+  color:#e6edf3;
+  font-weight:700;
+}
+
+.level-bar{
+  position:relative;
+  height:6px;
+  min-width:70px;
+  border-radius:4px;
+  overflow:hidden;
+  background:#14232e;
+}
+
+.level-bar span{
+  display:block;
+  height:100%;
+}
+
+.level-bar.buy span{
+  background:#3ed67e;
+}
+
+.level-bar.sell span{
+  background:#ff5f70;
+}
+
+.empty{
+  padding:35px 15px;
+  text-align:center;
+  color:#667c8f;
+  font-size:13px;
+}
+
+.orderbook{
+  display:grid;
+  grid-template-columns:
+    1fr 1fr;
+  gap:8px;
+}
+
+.book-side{
+  border:1px solid #192d3a;
+  border-radius:10px;
+  overflow:hidden;
+}
+
+.book-title{
+  padding:8px;
+  background:#0d1a24;
+  color:#8298aa;
+  font-size:11px;
+}
+
+.book-row{
+  display:grid;
+  grid-template-columns:
+    1fr 1fr;
+  gap:6px;
+  padding:6px 8px;
+  border-top:1px solid #11212b;
+  font-size:11px;
+}
+
+.ask-side .book-row:first-of-type{
+  color:#ff6b79;
+}
+
+.bid-side .book-row:first-of-type{
+  color:#4ce58a;
+}
+
+.message{
+  margin-top:9px;
+  padding:10px;
+  border-radius:9px;
+  background:#0b1821;
+  border:1px solid #172a37;
+  color:#7890a2;
+  font-size:11px;
+  line-height:1.8;
+}
+
+.loading{
+  opacity:.65;
+  pointer-events:none;
+}
+
+@media(
+  max-width:700px
+){
+  .app{
+    padding:7px;
+  }
+
+  .header{
+    align-items:flex-start;
+  }
+
+  .brand h1{
+    font-size:17px;
+  }
+
+  .status{
+    font-size:10px;
+    padding:7px 8px;
+  }
+
+  .controls{
+    grid-template-columns:
+      1fr 1fr;
+  }
+
+  .reload{
+    width:100%;
+  }
+
+  .chart-box{
+    height:390px;
+  }
+
+  .stats{
+    grid-template-columns:
+      repeat(2,minmax(0,1fr));
+  }
+
+  .orderbook{
+    grid-template-columns:1fr;
+  }
+}
+
+@media(
+  orientation:landscape
+) and (
+  max-height:600px
+){
+  .app{
+    max-width:none;
+  }
+
+  .chart-box{
+    height:
+      calc(100vh - 170px);
+    min-height:330px;
+  }
+}
+</style>
+</head>
+
+<body>
+
+<div class="app">
+
+  <header class="header">
+    <div class="brand">
+      <h1>📊 Absorption Zone Scanner</h1>
+      <p>
+        تحلیل Order Flow واقعی Bybit
+      </p>
+    </div>
+
+    <div
+      id="status"
+      class="status"
+    >
+      🔄 در حال اتصال...
+    </div>
+  </header>
+
+  <section class="controls">
+
+    <div class="control">
+      <label>بازار</label>
+      <select id="category">
+        <option value="linear">
+          Futures
+        </option>
+        <option value="spot">
+          Spot
+        </option>
+      </select>
+    </div>
+
+    <div class="control">
+      <label>ارز</label>
+      <input
+        id="symbol"
+        list="symbols"
+        value="BTCUSDT"
+        autocomplete="off"
+      >
+      <datalist id="symbols"></datalist>
+    </div>
+
+    <div class="control">
+      <label>تایم‌فریم</label>
+      <select id="interval">
+        <option value="1">1m</option>
+        <option value="3">3m</option>
+        <option value="5">5m</option>
+        <option value="15">15m</option>
+        <option value="30">30m</option>
+        <option value="60">1H</option>
+      </select>
+    </div>
+
+    <button
+      id="reload"
+      class="reload"
+    >
+      ↻ بروزرسانی
+    </button>
+
+  </section>
+
+  <section class="chart-box">
+
+    <canvas id="chart"></canvas>
+
+    <div
+      id="chartInfo"
+      class="chart-info"
+    >
+      کندل را لمس کنید
+    </div>
+
+  </section>
+
+  <nav
+    id="navigation"
+    class="navigation"
+  >
+
+    <button
+      class="nav-btn active"
+      data-panel="footprint"
+    >
+      <span class="icon">🧱</span>
+      <span class="text">
+        Footprint
+      </span>
+    </button>
+
+    <button
+      class="nav-btn"
+      data-panel="heatmap"
+    >
+      <span class="icon">🔥</span>
+      <span class="text">
+        Heatmap
+      </span>
+    </button>
+
+    <button
+      class="nav-btn"
+      data-panel="liquidity"
+    >
+      <span class="icon">💧</span>
+      <span class="text">
+        Liquidity
+      </span>
+    </button>
+
+    <button
+      class="nav-btn"
+      data-panel="absorption"
+    >
+      <span class="icon">🧲</span>
+      <span class="text">
+        Absorption
+      </span>
+    </button>
+
+    <button
+      class="nav-btn"
+      data-panel="orderbook"
+    >
+      <span class="icon">📖</span>
+      <span class="text">
+        Order Book
+      </span>
+    </button>
+
+    <button
+      class="nav-btn"
+      data-panel="delta"
+    >
+      <span class="icon">Δ</span>
+      <span class="text">
+        Delta / CVD
+      </span>
+    </button>
+
+    <button
+      class="nav-btn"
+      data-panel="large"
+    >
+      <span class="icon">🐋</span>
+      <span class="text">
+        Large Trades
+      </span>
+    </button>
+
+  </nav>
+
+  <section
+    id="panel"
+    class="panel"
+  ></section>
+
+</div>
+
+<script>
+"use strict";
+
+const state = {
+  category: "linear",
+  symbol: "BTCUSDT",
+  interval: "1",
+
+  candles: [],
+  footprints: [],
+  orderbook: null,
+
+  selectedIndex: -1,
+  selectedTime: 0,
+
+  tickSize: 0.01,
+  decimals: 2,
+
+  currentPanel:
+    "footprint",
+
+  liveTrades: [],
+  socket: null,
+
+  chart: {
+    offset: 0,
+    scale: 1,
+    dragging: false,
+    lastX: 0,
+    pinchDistance: 0
+  }
+};
+
+const $ = id =>
+  document.getElementById(id);
+
+const chart =
+  $("chart");
+
+const ctx =
+  chart.getContext("2d");
+
+const status =
+  $("status");
+
+const category =
+  $("category");
+
+const symbol =
+  $("symbol");
+
+const interval =
+  $("interval");
+
+const panel =
+  $("panel");
+
+const chartInfo =
+  $("chartInfo");
+
+function setStatus(
+  text,
+  type = ""
+) {
+  status.textContent =
+    text;
+
+  status.className =
+    "status " + type;
+}
+
+function fmt(
+  value,
+  digits = state.decimals
+) {
+  if (
+    value === null ||
+    value === undefined ||
+    !Number.isFinite(
+      Number(value)
+    )
+  ) {
+    return "—";
+  }
+
+  return Number(
+    value
+  ).toLocaleString(
+    "en-US",
+    {
+      maximumFractionDigits:
+        Math.max(
+          0,
+          digits
+        )
+    }
+  );
+}
+
+function fmtVolume(
+  value
+) {
+  if (
+    value === null ||
+    value === undefined
+  ) {
+    return "—";
+  }
+
+  const n =
+    Number(value);
+
+  if (!Number.isFinite(n)) {
+    return "—";
+  }
+
+  if (
+    Math.abs(n) >=
+    1000000
+  ) {
+    return (
+      (n / 1000000)
+        .toFixed(2) +
+      "M"
+    );
+  }
+
+  if (
+    Math.abs(n) >=
+    1000
+  ) {
+    return (
+      (n / 1000)
+        .toFixed(2) +
+      "K"
+    );
+  }
+
+  return fmt(
+    n,
+    4
+  );
+}
+
+function fmtTime(
+  timestamp
+) {
+  if (!timestamp) {
+    return "—";
+  }
+
+  const d =
+    new Date(
+      timestamp
+    );
+
+  return (
+    String(
+      d.getHours()
+    ).padStart(2,"0") +
+    ":" +
+    String(
+      d.getMinutes()
+    ).padStart(2,"0")
+  );
+}
+
+function roundToStep(
+  value,
+  step
+) {
+  const v =
+    Number(value);
+
+  const s =
+    Number(step);
+
+  if (
+    !Number.isFinite(v)
+  ) {
+    return 0;
+  }
+
+  if (
+    !Number.isFinite(s) ||
+    s <= 0
+  ) {
+    return v;
+  }
+
+  return Number(
+    (
+      Math.round(
+        v / s
+      ) * s
+    ).toFixed(
+      Math.min(
+        12,
+        state.decimals + 2
+      )
+    )
+  );
+}
+
+function setCanvasSize() {
+  const rect =
+    chart.getBoundingClientRect();
+
+  const dpr =
+    Math.max(
+      1,
+      window.devicePixelRatio ||
+        1
+    );
+
+  chart.width =
+    Math.round(
+      rect.width * dpr
+    );
+
+  chart.height =
+    Math.round(
+      rect.height * dpr
+    );
+
+  ctx.setTransform(
+    dpr,
+    0,
+    0,
+    dpr,
+    0,
+    0
+  );
+
+  drawChart();
+}
+
+function clearCanvas() {
+  const rect =
+    chart.getBoundingClientRect();
+
+  ctx.clearRect(
+    0,
+    0,
+    rect.width,
+    rect.height
+  );
+}
+
+function drawChart() {
+  clearCanvas();
+
+  const rect =
+    chart.getBoundingClientRect();
+
+  const width =
+    rect.width;
+
+  const height =
+    rect.height;
+
+  const candles =
+    state.candles;
+
+  if (!candles.length) {
+    ctx.fillStyle =
+      "#71879a";
+
+    ctx.textAlign =
+      "center";
+
+    ctx.font =
+      "13px Arial";
+
+    ctx.fillText(
+      "داده‌ای برای نمایش وجود ندارد",
+      width / 2,
+      height / 2
+    );
+
+    return;
+  }
+
+  const left =
+    12;
+
+  const right =
+    64;
+
+  const top =
+    18;
+
+  const bottom =
+    30;
+
+  const plotWidth =
+    width -
+    left -
+    right;
+
+  const plotHeight =
+    height -
+    top -
+    bottom;
+
+  const minPrice =
+    Math.min(
+      ...candles.map(
+        x => x.low
+      )
+    );
+
+  const maxPrice =
+    Math.max(
+      ...candles.map(
+        x => x.high
+      )
+    );
+
+  const range =
+    Math.max(
+      maxPrice -
+        minPrice,
+      state.tickSize
+    );
+
+  const pad =
+    range * 0.06;
+
+  const lo =
+    minPrice - pad;
+
+  const hi =
+    maxPrice + pad;
+
+  const visibleCount =
+    Math.max(
+      10,
+      Math.min(
+        candles.length,
+        Math.round(
+          70 /
+          state.chart.scale
+        )
+      )
+    );
+
+  const maxOffset =
+    Math.max(
+      0,
+      candles.length -
+        visibleCount
+    );
+
+  state.chart.offset =
+    Math.max(
+      0,
+      Math.min(
+        maxOffset,
+        state.chart.offset
+      )
+    );
+
+  const start =
+    Math.max(
+      0,
+      candles.length -
+        visibleCount -
+        state.chart.offset
+    );
+
+  const visible =
+    candles.slice(
+      start,
+      start +
+        visibleCount
+    );
+
+  const slot =
+    plotWidth /
+    Math.max(
+      1,
+      visible.length
+    );
+
+  function priceY(price) {
+    return (
+      top +
+      (hi - price) /
+        (hi - lo) *
+        plotHeight
+    );
+  }
+
+  ctx.strokeStyle =
+    "#12222d";
+
+  ctx.lineWidth =
+    1;
+
+  for (
+    let i = 0;
+    i <= 5;
+    i++
+  ) {
+    const y =
+      top +
+      plotHeight *
+        i / 5;
+
+    ctx.beginPath();
+
+    ctx.moveTo(
+      left,
+      y
+    );
+
+    ctx.lineTo(
+      left +
+        plotWidth,
+      y
+    );
+
+    ctx.stroke();
+
+    const price =
+      hi -
+      (hi - lo) *
+        i / 5;
+
+    ctx.fillStyle =
+      "#64798a";
+
+    ctx.font =
+      "10px Arial";
+
+    ctx.textAlign =
+      "left";
+
+    ctx.fillText(
+      fmt(
+        price
+      ),
+      left +
+        plotWidth +
+        7,
+      y + 3
+    );
+  }
+
+  visible.forEach(
+    (candle, i) => {
+      const globalIndex =
+        start + i;
+
+      const x =
+        left +
+        i * slot +
+        slot / 2;
+
+      const openY =
+        priceY(
+          candle.open
+        );
+
+      const closeY =
+        priceY(
+          candle.close
+        );
+
+      const highY =
+        priceY(
+          candle.high
+        );
+
+      const lowY =
+        priceY(
+          candle.low
+        );
+
+      const bullish =
+        candle.close >=
+        candle.open;
+
+      const selected =
+        globalIndex ===
+        state.selectedIndex;
+
+      ctx.strokeStyle =
+        bullish
+          ? "#45df83"
+          : "#ff5d6d";
+
+      ctx.lineWidth =
+        selected
+          ? 2
+          : 1;
+
+      ctx.beginPath();
+
+      ctx.moveTo(
+        x,
+        highY
+      );
+
+      ctx.lineTo(
+        x,
+        lowY
+      );
+
+      ctx.stroke();
+
+      const bodyTop =
+        Math.min(
+          openY,
+          closeY
+        );
+
+      const bodyBottom =
+        Math.max(
+          openY,
+          closeY
+        );
+
+      const bodyHeight =
+        Math.max(
+          2,
+          bodyBottom -
+            bodyTop
+        );
+
+      const bodyWidth =
+        Math.max(
+          3,
+          slot * 0.58
+        );
+
+      ctx.fillStyle =
+        bullish
+          ? "#2fcf76"
+          : "#ef5666";
+
+      ctx.fillRect(
+        x -
+          bodyWidth / 2,
+        bodyTop,
+        bodyWidth,
+        bodyHeight
+      );
+
+      if (selected) {
+        ctx.strokeStyle =
+          "#e8edf2";
+
+        ctx.lineWidth =
+          1;
+
+        ctx.strokeRect(
+          x -
+            bodyWidth / 2 -
+            2,
+          bodyTop - 2,
+          bodyWidth + 4,
+          bodyHeight + 4
+        );
+      }
+
+      if (
+        i === 0 ||
+        i ===
+          Math.floor(
+            visible.length / 2
+          ) ||
+        i ===
+          visible.length - 1
+      ) {
+        ctx.fillStyle =
+          "#667b8d";
+
+        ctx.font =
+          "9px Arial";
+
+        ctx.textAlign =
+          "center";
+
+        ctx.fillText(
+          fmtTime(
+            candle.time
+          ),
+          x,
+          height - 10
+        );
+      }
+    }
+  );
+
+  ctx.strokeStyle =
+    "#20333f";
+
+  ctx.beginPath();
+
+  ctx.moveTo(
+    left +
+      plotWidth,
+    top
+  );
+
+  ctx.lineTo(
+    left +
+      plotWidth,
+    top +
+      plotHeight
+  );
+
+  ctx.stroke();
+
+  if (
+    state.selectedIndex >= 0
+  ) {
+    const c =
+      candles[
+        state.selectedIndex
+      ];
+
+    if (c) {
+      chartInfo.textContent =
+        `${fmtTime(c.time)} · O ${fmt(c.open)} · H ${fmt(c.high)} · L ${fmt(c.low)} · C ${fmt(c.close)}`;
+    }
+  }
+}
+
+function candleAtPoint(
+  clientX
+) {
+  const rect =
+    chart.getBoundingClientRect();
+
+  const left =
+    12;
+
+  const right =
+    64;
+
+  const plotWidth =
+    rect.width -
+    left -
+    right;
+
+  const visibleCount =
+    Math.max(
+      10,
+      Math.min(
+        state.candles.length,
+        Math.round(
+          70 /
+          state.chart.scale
+        )
+      )
+    );
+
+  const maxOffset =
+    Math.max(
+      0,
+      state.candles.length -
+        visibleCount
+    );
+
+  const offset =
+    Math.max(
+      0,
+      Math.min(
+        maxOffset,
+        state.chart.offset
+      )
+    );
+
+  const start =
+    Math.max(
+      0,
+      state.candles.length -
+        visibleCount -
+        offset
+    );
+
+  const slot =
+    plotWidth /
+    Math.max(
+      1,
+      visibleCount
+    );
+
+  const x =
+    clientX -
+    rect.left -
+    left;
+
+  const index =
+    Math.floor(
+      x / slot
+    );
+
+  const globalIndex =
+    start + index;
+
+  if (
+    globalIndex < 0 ||
+    globalIndex >=
+      state.candles.length
+  ) {
+    return -1;
+  }
+
+  return globalIndex;
+}
+
+async function selectCandle(
+  index
+) {
+  if (
+    index < 0 ||
+    index >=
+      state.candles.length
+  ) {
+    return;
+  }
+
+  state.selectedIndex =
+    index;
+
+  state.selectedTime =
+    state.candles[
+      index
+    ].time;
+
+  drawChart();
+
+  if (
+    state.currentPanel ===
+    "footprint"
+  ) {
+    renderFootprint();
+  }
+}
+
+async function loadSymbols() {
+  try {
+    const response =
+      await fetch(
+        `/api/symbols?category=${encodeURIComponent(
+          state.category
+        )}`
+      );
+
+    const data =
+      await response.json();
+
+    if (
+      !data.ok
+    ) {
+      throw new Error(
+        data.error ||
+          "خطا در دریافت ارزها"
+      );
+    }
+
+    const list =
+      $("symbols");
+
+    list.innerHTML =
+      "";
+
+    for (
+      const item of
+        data.symbols || []
+    ) {
+      const option =
+        document.createElement(
+          "option"
+        );
+
+      option.value =
+        item.symbol;
+
+      list.appendChild(
+        option
+      );
+    }
+  } catch (
+    error
+  ) {
+    console.error(
+      error
+    );
+  }
+}
+
+async function loadMarket() {
+  state.symbol =
+    symbol.value
+      .trim()
+      .toUpperCase();
+
+  state.category =
+    category.value;
+
+  state.interval =
+    interval.value;
+
+  if (
+    !state.symbol
+  ) {
+    return;
+  }
+
+  setStatus(
+    "🔄 دریافت بازار...",
+    ""
+  );
+
+  document.body.classList.add(
+    "loading"
+  );
+
+  try {
+    const url =
+      `/api/market?category=${encodeURIComponent(
+        state.category
+      )}&symbol=${encodeURIComponent(
+        state.symbol
+      )}&interval=${encodeURIComponent(
+        state.interval
+      )}`;
+
+    const response =
+      await fetch(url);
+
+    const data =
+      await response.json();
+
+    if (
+      !data.ok
+    ) {
+      throw new Error(
+        data.error ||
+          "خطای بازار"
+      );
+    }
+
+    state.candles =
+      data.candles || [];
+
+    state.orderbook =
+      data.orderbook || null;
+
+    state.tickSize =
+      Number(
+        data.tickSize ||
+          0.00000001
+      );
+
+    state.decimals =
+      Number(
+        data.decimals ||
+          0
+      );
+
+    state.selectedIndex =
+      state.candles.length
+        ? state.candles.length - 1
+        : -1;
+
+    state.selectedTime =
+      state.selectedIndex >= 0
+        ? state.candles[
+            state.selectedIndex
+          ].time
+        : 0;
+
+    state.chart.offset =
+      0;
+
+    state.chart.scale =
+      1;
+
+    drawChart();
+
+    await loadFootprints();
+
+    renderPanel();
+
+    setStatus(
+      `🟢 ${state.symbol} · Bybit`,
+      "online"
+    );
+
+    connectWebSocket();
+  } catch (
+    error
+  ) {
+    console.error(
+      error
+    );
+
+    setStatus(
+      "🔴 " +
+        (
+          error?.message ||
+          "خطا در دریافت داده"
+        ),
+      "error"
+    );
+
+    panel.innerHTML =
+      `
+      <div class="empty">
+        خطا در دریافت اطلاعات بازار
+        <br>
+        ${escapeHtml(
+          error?.message ||
+            ""
+        )}
+      </div>
+      `;
+  } finally {
+    document.body.classList.remove(
+      "loading"
+    );
+  }
+}
+
+async function loadFootprints() {
+  try {
+    const url =
+      `/api/footprint?category=${encodeURIComponent(
+        state.category
+      )}&symbol=${encodeURIComponent(
+        state.symbol
+      )}&interval=${encodeURIComponent(
+        state.interval
+      )}`;
+
+    const response =
+      await fetch(url);
+
+    const data =
+      await response.json();
+
+    if (
+      !data.ok
+    ) {
+      throw new Error(
+        data.error ||
+          "خطا در Footprint"
+      );
+    }
+
+    state.footprints =
+      data.footprints || [];
+
+    if (
+      state.selectedTime
+    ) {
+      const found =
+        state.footprints.findIndex(
+          x =>
+            x.time ===
+            state.selectedTime
+        );
+
+      if (
+        found >= 0
+      ) {
+        state.selectedIndex =
+          found;
+      }
+    }
+  } catch (
+    error
+  ) {
+    console.error(
+      error
+    );
+
+    state.footprints =
+      [];
+  }
+}
+
+function getSelectedFootprint() {
+  if (
+    state.selectedTime
+  ) {
+    const found =
+      state.footprints.find(
+        x =>
+          x.time ===
+          state.selectedTime
+      );
+
+    if (found) {
+      return found;
+    }
+  }
+
+  return (
+    state.footprints[
+      state.footprints.length -
+        1
+    ] || null
+  );
+}
+
+function renderPanel() {
+  if (
+    state.currentPanel ===
+    "footprint"
+  ) {
+    renderFootprint();
+    return;
+  }
+
+  if (
+    state.currentPanel ===
+    "orderbook"
+  ) {
+    renderOrderbook();
+    return;
+  }
+
+  if (
+    state.currentPanel ===
+    "delta"
+  ) {
+    renderDelta();
+    return;
+  }
+
+  if (
+    state.currentPanel ===
+    "liquidity"
+  ) {
+    renderLiquidity();
+    return;
+  }
+
+  if (
+    state.currentPanel ===
+    "absorption"
+  ) {
+    renderAbsorption();
+    return;
+  }
+
+  if (
+    state.currentPanel ===
+    "large"
+  ) {
+    renderLargeTrades();
+    return;
+  }
+
+  if (
+    state.currentPanel ===
+    "heatmap"
+  ) {
+    renderHeatmap();
+    return;
+  }
+}
+
+function renderFootprint() {
+  const fp =
+    getSelectedFootprint();
+
+  if (!fp) {
+    panel.innerHTML =
+      `
+      <div class="empty">
+        Footprint برای این کندل موجود نیست.
+      </div>
+      `;
+
+    return;
+  }
+
+  const s =
+    fp.summary || {};
+
+  const imbalance =
+    fp.imbalance || {};
+
+  const levels =
+    fp.levels || [];
+
+  const maxVolume =
+    Math.max(
+      1,
+      ...levels.map(
+        x => x.volume
+      )
+    );
+
+  let rows =
+    "";
+
+  for (
+    const level of levels
+  ) {
+    const delta =
+      Number(
+        level.delta || 0
+      );
+
+    const deltaClass =
+      delta > 0
+        ? "delta-positive"
+        : delta < 0
+          ? "delta-negative"
+          : "neutral";
+
+    const barClass =
+      delta >= 0
+        ? "buy"
+        : "sell";
+
+    const barWidth =
+      Math.max(
+        2,
+        Math.min(
+          100,
+          Math.abs(
+            level.volume
+          ) /
+            maxVolume *
+            100
+        )
+      );
+
+    rows += `
+      <tr>
+        <td class="bid">
+          ${fmtVolume(level.bid)}
+        </td>
+
+        <td class="ask">
+          ${fmtVolume(level.ask)}
+        </td>
+
+        <td class="price-cell">
+          ${fmt(level.price)}
+        </td>
+
+        <td class="${deltaClass}">
+          ${delta > 0 ? "+" : ""}
+          ${fmtVolume(delta)}
+        </td>
+
+        <td>
+          <div class="level-bar ${barClass}">
+            <span style="width:${barWidth}%"></span>
+          </div>
+        </td>
+
+        <td>
+          ${fmtVolume(level.volume)}
+        </td>
+      </tr>
+    `;
+  }
+
+  panel.innerHTML =
+    `
+    <div class="panel-title">
+      <strong>
+        🧱 Footprint
+      </strong>
+
+      <span>
+        ${state.symbol}
+        ·
+        ${state.interval}m
+        ·
+        ${fmtTime(fp.time)}
+      </span>
+    </div>
+
+    <div class="stats">
+
+      <div class="stat">
+        <small>Buy Volume</small>
+        <b class="green">
+          ${fmtVolume(s.buyVolume)}
+        </b>
+      </div>
+
+      <div class="stat">
+        <small>Sell Volume</small>
+        <b class="red">
+          ${fmtVolume(s.sellVolume)}
+        </b>
+      </div>
+
+      <div class="stat">
+        <small>Total Volume</small>
+        <b>
+          ${fmtVolume(s.volume)}
+        </b>
+      </div>
+
+      <div class="stat">
+        <small>Delta</small>
+        <b class="${
+          s.delta >= 0
+            ? "green"
+            : "red"
+        }">
+          ${
+            s.delta >= 0
+              ? "+"
+              : ""
+          }${fmtVolume(s.delta)}
+        </b>
+      </div>
+
+      <div class="stat">
+        <small>Delta %</small>
+        <b class="${
+          s.deltaPercent >= 0
+            ? "green"
+            : "red"
+        }">
+          ${
+            s.deltaPercent >= 0
+              ? "+"
+              : ""
+          }${fmt(s.deltaPercent,2)}%
+        </b>
+      </div>
+
+      <div class="stat">
+        <small>Buy / Sell</small>
+        <b>
+          ${
+            s.buySellRatio ===
+            null
+              ? "—"
+              : fmt(
+                  s.buySellRatio,
+                  2
+                )
+          }
+        </b>
+      </div>
+
+      <div class="stat">
+        <small>POC</small>
+        <b class="yellow">
+          ${fmt(s.poc)}
+        </b>
+      </div>
+
+      <div class="stat">
+        <small>VAH / VAL</small>
+        <b>
+          ${fmt(s.vah)}
+          /
+          ${fmt(s.val)}
+        </b>
+      </div>
+
+      <div class="stat">
+        <small>Max +Delta</small>
+        <b class="green">
+          ${fmt(s.maxPositiveDelta)}
+        </b>
+      </div>
+
+      <div class="stat">
+        <small>Max -Delta</small>
+        <b class="red">
+          ${fmt(s.maxNegativeDelta)}
+        </b>
+      </div>
+
+      <div class="stat">
+        <small>Trades</small>
+        <b>
+          ${fmt(s.tradeCount,0)}
+        </b>
+      </div>
+
+      <div class="stat">
+        <small>Pressure</small>
+        <b class="${
+          s.pressure ===
+          "BUY_PRESSURE"
+            ? "green"
+            : s.pressure ===
+              "SELL_PRESSURE"
+              ? "red"
+              : "neutral"
+        }">
+          ${
+            s.pressure ===
+            "BUY_PRESSURE"
+              ? "BUY"
+              : s.pressure ===
+                "SELL_PRESSURE"
+                ? "SELL"
+                : "NEUTRAL"
+          }
+        </b>
+      </div>
+
+    </div>
+
+    <div class="footprint-wrap">
+      <table class="footprint">
+
+        <thead>
+          <tr>
+            <th>Bid</th>
+            <th>Ask</th>
+            <th>Price</th>
+            <th>Delta</th>
+            <th>Volume</th>
+            <th>Total</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          ${
+            rows ||
+            `
+            <tr>
+              <td
+                colspan="6"
+                class="empty"
+              >
+                برای این کندل معامله ذخیره‌شده‌ای وجود ندارد.
+              </td>
+            </tr>
+            `
+          }
+        </tbody>
+
+      </table>
+    </div>
+
+    <div class="message">
+      Imbalance خرید:
+      ${fmt(imbalance.buyCount,0)}
+      ·
+      Imbalance فروش:
+      ${fmt(imbalance.sellCount,0)}
+      ·
+      Stacked Buy:
+      ${fmt(imbalance.stackedBuy,0)}
+      ·
+      Stacked Sell:
+      ${fmt(imbalance.stackedSell,0)}
+    </div>
+    `;
+}
+
+function renderOrderbook() {
+  const book =
+    state.orderbook;
+
+  if (!book) {
+    panel.innerHTML =
+      `
+      <div class="empty">
+        Order Book موجود نیست.
+      </div>
+      `;
+
+    return;
+  }
+
+  const asks =
+    (book.asks || [])
+      .slice(0,20);
+
+  const bids =
+    (book.bids || [])
+      .slice(0,20);
+
+  const max =
+    Math.max(
+      1,
+      ...asks.map(
+        x => x.size
+      ),
+      ...bids.map(
+        x => x.size
+      )
+    );
+
+  const makeRows =
+    (items, cls) =>
+      items.map(
+        x => `
+          <div class="book-row">
+            <span>
+              ${fmt(x.price)}
+            </span>
+            <span>
+              ${fmtVolume(x.size)}
+            </span>
+          </div>
+        `
+      ).join("");
+
+  panel.innerHTML =
+    `
+    <div class="panel-title">
+      <strong>
+        📖 Order Book
+      </strong>
+
+      <span>
+        Bid ${fmt(book.bestBid)}
+        ·
+        Ask ${fmt(book.bestAsk)}
+      </span>
+    </div>
+
+    <div class="stats">
+
+      <div class="stat">
+        <small>Buy Liquidity</small>
+        <b class="green">
+          ${fmtVolume(book.buyLiquidity)}
+        </b>
+      </div>
+
+      <div class="stat">
+        <small>Sell Liquidity</small>
+        <b class="red">
+          ${fmtVolume(book.sellLiquidity)}
+        </b>
+      </div>
+
+      <div class="stat">
+        <small>Buy Share</small>
+        <b class="green">
+          ${fmt(book.buyShare,2)}%
+        </b>
+      </div>
+
+      <div class="stat">
+        <small>Sell Share</small>
+        <b class="red">
+          ${fmt(book.sellShare,2)}%
+        </b>
+      </div>
+
+    </div>
+
+    <div class="orderbook">
+
+      <div class="book-side ask-side">
+        <div class="book-title">
+          🔴 ASK
+        </div>
+
+        ${makeRows(
+          asks,
+          "ask"
+        )}
+      </div>
+
+      <div class="book-side bid-side">
+        <div class="book-title">
+          🟢 BID
+        </div>
+
+        ${makeRows(
+          bids,
+          "bid"
+        )}
+      </div>
+
+    </div>
+
+    <div class="message">
+      فشار سفارشات:
+      <strong>
+        ${
+          book.pressure ===
+          "BUY_PRESSURE"
+            ? "🟢 خرید"
+            : book.pressure ===
+              "SELL_PRESSURE"
+              ? "🔴 فروش"
+              : "⚪ خنثی"
+        }
+      </strong>
+    </div>
+    `;
+}
+
+function renderDelta() {
+  const fp =
+    getSelectedFootprint();
+
+  if (!fp) {
+    panel.innerHTML =
+      `
+      <div class="empty">
+        داده Delta موجود نیست.
+      </div>
+      `;
+
+    return;
+  }
+
+  const s =
+    fp.summary || {};
+
+  const historical =
+    state.footprints || [];
+
+  let cvd = 0;
+
+  const selectedTime =
+    fp.time;
+
+  for (
+    const item of historical
+  ) {
+    if (
+      item.time >
+      selectedTime
+    ) {
+      break;
+    }
+
+    cvd +=
+      Number(
+        item.summary?.delta ||
+          0
+      );
+  }
+
+  const previous =
+    historical
+      .filter(
+        x =>
+          x.time <
+          selectedTime
+      )
+      .slice(-1)[0];
+
+  const previousCvd =
+    previous
+      ? historical
+          .filter(
+            x =>
+              x.time <=
+              previous.time
+          )
+          .reduce(
+            (sum, x) =>
+              sum +
+              Number(
+                x.summary?.delta ||
+                  0
+              ),
+            0
+          )
+      : 0;
+
+  const cvdChange =
+    cvd -
+    previousCvd;
+
+  panel.innerHTML =
+    `
+    <div class="panel-title">
+      <strong>
+        Δ Delta / CVD
+      </strong>
+
+      <span>
+        ${fmtTime(fp.time)}
+      </span>
+    </div>
+
+    <div class="stats">
+
+      <div class="stat">
+        <small>Candle Delta</small>
+        <b class="${
+          s.delta >= 0
+            ? "green"
+            : "red"
+        }">
+          ${
+            s.delta >= 0
+              ? "+"
+              : ""
+          }${fmtVolume(s.delta)}
+        </b>
+      </div>
+
+      <div class="stat">
+        <small>Delta %</small>
+        <b class="${
+          s.deltaPercent >= 0
+            ? "green"
+            : "red"
+        }">
+          ${
+            s.deltaPercent >= 0
+              ? "+"
+              : ""
+          }${fmt(s.deltaPercent,2)}%
+        </b>
+      </div>
+
+      <div class="stat">
+        <small>CVD</small>
+        <b class="${
+          cvd >= 0
+            ? "green"
+            : "red"
+        }">
+          ${fmtVolume(cvd)}
+        </b>
+      </div>
+
+      <div class="stat">
+        <small>CVD Change</small>
+        <b class="${
+          cvdChange >= 0
+            ? "green"
+            : "red"
+        }">
+          ${
+            cvdChange >= 0
+              ? "+"
+              : ""
+          }${fmtVolume(cvdChange)}
+        </b>
+      </div>
+
+    </div>
+
+    <div class="message">
+      CVD بر اساس Delta کندل‌های موجود محاسبه شده است.
+    </div>
+    `;
+}
+
+function renderLiquidity() {
+  const book =
+    state.orderbook;
+
+  if (!book) {
+    panel.innerHTML =
+      `
+      <div class="empty">
+        Liquidity موجود نیست.
+      </div>
+      `;
+
+    return;
+  }
+
+  const asks =
+    book.asks || [];
+
+  const bids =
+    book.bids || [];
+
+  const biggestAsk =
+    [...asks].sort(
+      (a,b) =>
+        b.size -
+        a.size
+    )[0];
+
+  const biggestBid =
+    [...bids].sort(
+      (a,b) =>
+        b.size -
+        a.size
+    )[0];
+
+  panel.innerHTML =
+    `
+    <div class="panel-title">
+      <strong>
+        💧 Liquidity
+      </strong>
+
+      <span>
+        نزدیک‌ترین نقدینگی
+      </span>
+    </div>
+
+    <div class="stats">
+
+      <div class="stat">
+        <small>Best Bid</small>
+        <b class="green">
+          ${fmt(book.bestBid)}
+        </b>
+      </div>
+
+      <div class="stat">
+        <small>Best Ask</small>
+        <b class="red">
+          ${fmt(book.bestAsk)}
+        </b>
+      </div>
+
+      <div class="stat">
+        <small>Largest Bid</small>
+        <b class="green">
+          ${
+            biggestBid
+              ? fmt(
+                  biggestBid.price
+                )
+              : "—"
+          }
+        </b>
+      </div>
+
+      <div class="stat">
+        <small>Largest Ask</small>
+        <b class="red">
+          ${
+            biggestAsk
+              ? fmt(
+                  biggestAsk.price
+                )
+              : "—"
+          }
+        </b>
+      </div>
+
+    </div>
+
+    <div class="message">
+      Buy Liquidity:
+      ${fmtVolume(book.buyLiquidity)}
+      ·
+      Sell Liquidity:
+      ${fmtVolume(book.sellLiquidity)}
+    </div>
+    `;
+}
+
+function renderAbsorption() {
+  const fp =
+    getSelectedFootprint();
+
+  if (!fp) {
+    panel.innerHTML =
+      `
+      <div class="empty">
+        داده Absorption موجود نیست.
+      </div>
+      `;
+
+    return;
+  }
+
+  const levels =
+    fp.levels || [];
+
+  const candidates =
+    levels
+      .filter(
+        x =>
+          x.volume > 0 &&
+          Math.abs(
+            x.deltaPercent || 0
+          ) < 15
+      )
+      .sort(
+        (a,b) =>
+          b.volume -
+          a.volume
+      )
+      .slice(0,10);
+
+  panel.innerHTML =
+    `
+    <div class="panel-title">
+      <strong>
+        🧲 Absorption
+      </strong>
+
+      <span>
+        حجم بالا + Delta کم
+      </span>
+    </div>
+
+    ${
+      candidates.length
+        ? `
+          <div class="footprint-wrap">
+            <table class="footprint">
+              <thead>
+                <tr>
+                  <th>Price</th>
+                  <th>Bid</th>
+                  <th>Ask</th>
+                  <th>Volume</th>
+                  <th>Delta %</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                ${
+                  candidates
+                    .map(
+                      x => `
+                        <tr>
+                          <td class="price-cell">
+                            ${fmt(x.price)}
+                          </td>
+
+                          <td class="bid">
+                            ${fmtVolume(x.bid)}
+                          </td>
+
+                          <td class="ask">
+                            ${fmtVolume(x.ask)}
+                          </td>
+
+                          <td>
+                            ${fmtVolume(x.volume)}
+                          </td>
+
+                          <td class="${
+                            x.deltaPercent >= 0
+                              ? "green"
+                              : "red"
+                          }">
+                            ${fmt(x.deltaPercent,2)}%
+                          </td>
+                        </tr>
+                      `
+                    )
+                    .join("")
+                }
+              </tbody>
+            </table>
+          </div>
+        `
+        : `
+          <div class="empty">
+            ناحیه Absorption مشخصی پیدا نشد.
+          </div>
+        `
+    }
+    `;
+}
+
+function renderLargeTrades() {
+  const fp =
+    getSelectedFootprint();
+
+  if (!fp) {
+    panel.innerHTML =
+      `
+      <div class="empty">
+        داده Large Trades موجود نیست.
+      </div>
+      `;
+
+    return;
+  }
+
+  const largest =
+    fp.summary
+      ?.largestTrade;
+
+  panel.innerHTML =
+    `
+    <div class="panel-title">
+      <strong>
+        🐋 Large Trades
+      </strong>
+
+      <span>
+        معاملات بزرگ کندل انتخابی
+      </span>
+    </div>
+
+    <div class="stats">
+
+      <div class="stat">
+        <small>Largest Price</small>
+        <b>
+          ${
+            largest
+              ? fmt(
+                  largest.price
+                )
+              : "—"
+          }
+        </b>
+      </div>
+
+      <div class="stat">
+        <small>Largest Qty</small>
+        <b>
+          ${
+            largest
+              ? fmtVolume(
+                  largest.qty
+                )
+              : "—"
+          }
+        </b>
+      </div>
+
+      <div class="stat">
+        <small>Notional</small>
+        <b>
+          ${
+            largest
+              ? fmtVolume(
+                  largest.notional
+                )
+              : "—"
+          }
+        </b>
+      </div>
+
+      <div class="stat">
+        <small>Side</small>
+        <b class="${
+          largest?.side ===
+          "buy"
+            ? "green"
+            : "red"
+        }">
+          ${
+            largest
+              ? largest.side.toUpperCase()
+              : "—"
+          }
+        </b>
+      </div>
+
+    </div>
+
+    <div class="message">
+      Block Buy:
+      ${fmtVolume(
+        fp.summary
+          ?.blockBuyVolume
+      )}
+      ·
+      Block Sell:
+      ${fmtVolume(
+        fp.summary
+          ?.blockSellVolume
+      )}
+    </div>
+    `;
+}
+
+function renderHeatmap() {
+  const levels =
+    getSelectedFootprint()
+      ?.levels || [];
+
+  if (!levels.length) {
+    panel.innerHTML =
+      `
+      <div class="empty">
+        داده Heatmap موجود نیست.
+      </div>
+      `;
+
+    return;
+  }
+
+  const max =
+    Math.max(
+      1,
+      ...levels.map(
+        x => x.volume
+      )
+    );
+
+  panel.innerHTML =
+    `
+    <div class="panel-title">
+      <strong>
+        🔥 Heatmap
+      </strong>
+
+      <span>
+        شدت حجم معاملات در سطوح قیمت
+      </span>
+    </div>
+
+    <div class="footprint-wrap">
+
+      <table class="footprint">
+
+        <thead>
+          <tr>
+            <th>Price</th>
+            <th>Bid</th>
+            <th>Ask</th>
+            <th>Volume</th>
+            <th>Intensity</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          ${
+            levels
+              .map(
+                x => {
+                  const pct =
+                    Math.min(
+                      100,
+                      x.volume /
+                        max *
+                        100
+                    );
+
+                  return `
+                    <tr>
+                      <td class="price-cell">
+                        ${fmt(x.price)}
+                      </td>
+
+                      <td class="bid">
+                        ${fmtVolume(x.bid)}
+                      </td>
+
+                      <td class="ask">
+                        ${fmtVolume(x.ask)}
+                      </td>
+
+                      <td>
+                        ${fmtVolume(x.volume)}
+                      </td>
+
+                      <td>
+                        <div class="level-bar buy">
+                          <span
+                            style="width:${pct}%"
+                          ></span>
+                        </div>
+                      </td>
+                    </tr>
+                  `;
+                }
+              )
+              .join("")
+          }
+        </tbody>
+
+      </table>
+
+    </div>
+    `;
+}
+
+function escapeHtml(
+  value
+) {
+  return String(
+    value || ""
+  )
+    .replace(
+      /&/g,
+      "&amp;"
+    )
+    .replace(
+      /</g,
+      "&lt;"
+    )
+    .replace(
+      />/g,
+      "&gt;"
+    )
+    .replace(
+      /"/g,
+      "&quot;"
+    )
+    .replace(
+      /'/g,
+      "&#039;"
+    );
+}
+
+function websocketUrl() {
+  if (
+    state.category ===
+    "spot"
+  ) {
+    return (
+      "wss://stream.bybit.com/v5/public/spot"
+    );
+  }
+
+  return (
+    "wss://stream.bybit.com/v5/public/linear"
+  );
+}
+
+function connectWebSocket() {
+  if (
+    state.socket
+  ) {
+    try {
+      state.socket.close();
+    } catch {}
+  }
+
+  const ws =
+    new WebSocket(
+      websocketUrl()
+    );
+
+  state.socket =
+    ws;
+
+  ws.onopen =
+    () => {
+      setStatus(
+        `🟢 ${state.symbol} · Live`,
+        "online"
+      );
+
+      ws.send(
+        JSON.stringify({
+          op: "subscribe",
+          args: [
+            `publicTrade.${state.symbol}`,
+            `kline.${state.interval}.${state.symbol}`
+          ]
+        })
+      );
+    };
+
+  ws.onmessage =
+    event => {
+      try {
+        const message =
+          JSON.parse(
+            event.data
+          );
+
+        if (
+          message.topic?.startsWith(
+            "publicTrade."
+          )
+        ) {
+          handleLiveTrades(
+            message.data || []
+          );
+        }
+
+        if (
+          message.topic?.startsWith(
+            "kline."
+          )
+        ) {
+          handleLiveKline(
+            message.data || []
+          );
+        }
+      } catch (
+        error
+      ) {
+        console.error(
+          error
+        );
+      }
+    };
+
+  ws.onerror =
+    () => {
+      setStatus(
+        `🟠 Live قطع شد`,
+        ""
+      );
+    };
+
+  ws.onclose =
+    () => {
+      if (
+        state.socket ===
+        ws
+      ) {
+        setTimeout(
+          () => {
+            if (
+              document.visibilityState !==
+              "hidden"
+            ) {
+              connectWebSocket();
+            }
+          },
+          3000
+        );
+      }
+    };
+}
+
+function normalizeLiveTrade(
+  trade
+) {
+  return {
+    id:
+      trade.execId ||
+      `${trade.T}-${trade.p}-${trade.v}-${trade.S}`,
+    time:
+      Number(
+        trade.T || 0
+      ),
+    price:
+      Number(
+        trade.p || 0
+      ),
+    qty:
+      Number(
+        trade.v || 0
+      ),
+    side:
+      String(
+        trade.S || ""
+      ).toLowerCase(),
+    isBlockTrade:
+      Boolean(
+        trade.isBlockTrade
+      )
+  };
+}
+
+function handleLiveTrades(
+  list
+) {
+  for (
+    const raw of list
+  ) {
+    const trade =
+      normalizeLiveTrade(
+        raw
+      );
+
+    if (
+      !trade.time ||
+      !trade.price ||
+      !trade.qty ||
+      (
+        trade.side !==
+          "buy" &&
+        trade.side !==
+          "sell"
+      )
+    ) {
+      continue;
+    }
+
+    state.liveTrades.push(
+      trade
+    );
+
+    if (
+      state.liveTrades.length >
+      5000
+    ) {
+      state.liveTrades =
+        state.liveTrades.slice(
+          -4000
+        );
+    }
+
+    saveLiveTrade(
+      trade
+    );
+  }
+
+  if (
+    state.currentPanel ===
+    "footprint"
+  ) {
+    renderLiveFootprint();
+  }
+}
+
+let saveQueue =
+  Promise.resolve();
+
+function saveLiveTrade(
+  trade
+) {
+  saveQueue =
+    saveQueue.then(
+      async () => {
+        try {
+          await fetch(
+            `/api/collector/trade?category=${encodeURIComponent(
+              state.category
+            )}&symbol=${encodeURIComponent(
+              state.symbol
+            )}`,
+            {
+              method:
+                "POST",
+              headers: {
+                "Content-Type":
+                  "application/json"
+              },
+              body:
+                JSON.stringify(
+                  trade
+                )
+            }
+          );
+        } catch (
+          error
+        ) {
+          console.error(
+            error
+          );
+        }
+      }
+    );
+}
+
+function handleLiveKline(
+  list
+) {
+  if (
+    !Array.isArray(
+      list
+    )
+  ) {
+    return;
+  }
+
+  for (
+    const item of list
+  ) {
+    const candle = {
+      time:
+        Number(
+          item.start
+        ),
+      open:
+        Number(
+          item.open
+        ),
+      high:
+        Number(
+          item.high
+        ),
+      low:
+        Number(
+          item.low
+        ),
+      close:
+        Number(
+          item.close
+        ),
+      volume:
+        Number(
+          item.volume
+        ),
+      turnover:
+        Number(
+          item.turnover
+        )
+    };
+
+    if (
+      !candle.time
+    ) {
+      continue;
+    }
+
+    const index =
+      state.candles.findIndex(
+        x =>
+          x.time ===
+          candle.time
+      );
+
+    if (
+      index >= 0
+    ) {
+      state.candles[
+        index
+      ] =
+        candle;
+    } else {
+      state.candles.push(
+        candle
+      );
+
+      state.candles.sort(
+        (a,b) =>
+          a.time -
+          b.time
+      );
+
+      if (
+        state.candles.length >
+        3000
+      ) {
+        state.candles =
+          state.candles.slice(
+            -2500
+          );
+      }
+    }
+
+    if (
+      state.selectedTime ===
+      candle.time
+    ) {
+      state.selectedIndex =
+        state.candles.findIndex(
+          x =>
+            x.time ===
+            candle.time
+        );
+    }
+  }
+
+  drawChart();
+
+  if (
+    state.currentPanel ===
+    "footprint"
+  ) {
+    renderLiveFootprint();
+  }
+}
+
+function renderLiveFootprint() {
+  const fp =
+    getSelectedFootprint();
+
+  if (
+    !fp ||
+    state.selectedTime !==
+      state.candles[
+        state.selectedIndex
+      ]?.time
+  ) {
+    return;
+  }
+
+  if (
+    state.liveTrades.length ===
+    0
+  ) {
+    return;
+  }
+
+  const candle =
+    state.candles[
+      state.selectedIndex
+    ];
+
+  if (!candle) {
+    return;
+  }
+
+  const start =
+    candle.time;
+
+  const seconds =
+    TF_MAP[
+      state.interval
+    ];
+
+  const end =
+    start +
+    seconds *
+      1000;
+
+  const live =
+    aggregateClientTrades(
+      state.liveTrades,
+      start,
+      end
+    );
+
+  if (!live) {
+    return;
+  }
+
+  const merged = {
+    ...fp,
+    levels:
+      live.levels,
+    summary:
+      live.summary,
+    imbalance:
+      live.imbalance
+  };
+
+  renderFootprintObject(
+    merged
+  );
+}
+
+function aggregateClientTrades(
+  trades,
+  start,
+  end
+) {
+  const map =
+    new Map();
+
+  let buyVolume = 0;
+  let sellVolume = 0;
+
+  let buyTrades = 0;
+  let sellTrades = 0;
+
+  let largestTrade =
+    null;
+
+  for (
+    const trade of trades
+  ) {
+    if (
+      trade.time <
+        start ||
+      trade.time >=
+        end
+    ) {
+      continue;
+    }
+
+    const notional =
+      trade.price *
+      trade.qty;
+
+    if (
+      !largestTrade ||
+      notional >
+        largestTrade.notional
+    ) {
+      largestTrade = {
+        time:
+          trade.time,
+        price:
+          trade.price,
+        qty:
+          trade.qty,
+        side:
+          trade.side,
+        notional
+      };
+    }
+
+    const price =
+      roundToStep(
+        trade.price,
+        state.tickSize
+      );
+
+    const key =
+      String(price);
+
+    if (!map.has(key)) {
+      map.set(key, {
+        price,
+        bid: 0,
+        ask: 0,
+        volume: 0,
+        delta: 0,
+        trades: 0
+      });
+    }
+
+    const level =
+      map.get(key);
+
+    level.volume +=
+      trade.qty;
+
+    level.trades +=
+      1;
+
+    if (
+      trade.side ===
+      "buy"
+    ) {
+      level.ask +=
+        trade.qty;
+
+      level.delta +=
+        trade.qty;
+
+      buyVolume +=
+        trade.qty;
+
+      buyTrades +=
+        1;
+    } else {
+      level.bid +=
+        trade.qty;
+
+      level.delta -=
+        trade.qty;
+
+      sellVolume +=
+        trade.qty;
+
+      sellTrades +=
+        1;
+    }
+  }
+
+  const levels =
+    [...map.values()]
+      .sort(
+        (a,b) =>
+          b.price -
+          a.price
+      );
+
+  for (
+    const level of levels
+  ) {
+    level.deltaPercent =
+      level.volume > 0
+        ? level.delta /
+          level.volume *
+          100
+        : 0;
+  }
+
+  const volume =
+    buyVolume +
+    sellVolume;
+
+  const delta =
+    buyVolume -
+    sellVolume;
+
+  const deltaPercent =
+    volume > 0
+      ? delta /
+        volume *
+        100
+      : 0;
+
+  let poc =
+    null;
+
+  for (
+    const level of levels
+  ) {
+    if (
+      !poc ||
+      level.volume >
+        poc.volume
+    ) {
+      poc =
+        level;
+    }
+  }
+
+  return {
+    levels,
+
+    summary: {
+      buyVolume,
+      sellVolume,
+      volume,
+      delta,
+      deltaPercent,
+
+      buyTrades,
+      sellTrades,
+
+      tradeCount:
+        buyTrades +
+        sellTrades,
+
+      buySellRatio:
+        sellVolume > 0
+          ? buyVolume /
+            sellVolume
+          : null,
+
+      poc:
+        poc?.price ??
+        null,
+
+      largestTrade,
+
+      pressure:
+        deltaPercent >=
+        10
+          ? "BUY_PRESSURE"
+          : deltaPercent <=
+            -10
+            ? "SELL_PRESSURE"
+            : "NEUTRAL"
+    },
+
+    imbalance: {
+      buy: [],
+      sell: [],
+      buyCount: 0,
+      sellCount: 0,
+      stackedBuy: 0,
+      stackedSell: 0
+    }
+  };
+}
+
+function renderFootprintObject(
+  fp
+) {
+  const s =
+    fp.summary || {};
+
+  const levels =
+    fp.levels || [];
+
+  const maxVolume =
+    Math.max(
+      1,
+      ...levels.map(
+        x =>
+          Number(
+            x.volume || 0
+          )
+      )
+    );
+
+  const rows =
+    levels.map(
+      level => {
+        const delta =
+          Number(
+            level.delta ||
+              0
+          );
+
+        const deltaClass =
+          delta > 0
+            ? "delta-positive"
+            : delta < 0
+              ? "delta-negative"
+              : "neutral";
+
+        const width =
+          Math.max(
+            2,
+            Math.min(
+              100,
+              Number(
+                level.volume ||
+                  0
+              ) /
+                maxVolume *
+                100
+            )
+          );
+
+        return `
+          <tr>
+
+            <td class="bid">
+              ${fmtVolume(level.bid)}
+            </td>
+
+            <td class="ask">
+              ${fmtVolume(level.ask)}
+            </td>
+
+            <td class="price-cell">
+              ${fmt(level.price)}
+            </td>
+
+            <td class="${deltaClass}">
+              ${
+                delta >= 0
+                  ? "+"
+                  : ""
+              }${fmtVolume(delta)}
+            </td>
+
+            <td>
+              <div class="level-bar ${
+                delta >= 0
+                  ? "buy"
+                  : "sell"
+              }">
+                <span
+                  style="width:${width}%"
+                ></span>
+              </div>
+            </td>
+
+            <td>
+              ${fmtVolume(level.volume)}
+            </td>
+
+          </tr>
+        `;
+      }
+    ).join("");
+
+  panel.innerHTML =
+    `
+    <div class="panel-title">
+      <strong>
+        🧱 Footprint · Live
+      </strong>
+
+      <span>
+        ${state.symbol}
+        ·
+        ${fmtTime(
+          state.selectedTime
+        )}
+      </span>
+    </div>
+
+    <div class="stats">
+
+      <div class="stat">
+        <small>Buy</small>
+        <b class="green">
+          ${fmtVolume(s.buyVolume)}
+        </b>
+      </div>
+
+      <div class="stat">
+        <small>Sell</small>
+        <b class="red">
+          ${fmtVolume(s.sellVolume)}
+        </b>
+      </div>
+
+      <div class="stat">
+        <small>Volume</small>
+        <b>
+          ${fmtVolume(s.volume)}
+        </b>
+      </div>
+
+      <div class="stat">
+        <small>Delta</small>
+        <b class="${
+          s.delta >= 0
+            ? "green"
+            : "red"
+        }">
+          ${
+            s.delta >= 0
+              ? "+"
+              : ""
+          }${fmtVolume(s.delta)}
+        </b>
+      </div>
+
+      <div class="stat">
+        <small>Delta %</small>
+        <b class="${
+          s.deltaPercent >= 0
+            ? "green"
+            : "red"
+        }">
+          ${fmt(s.deltaPercent,2)}%
+        </b>
+      </div>
+
+      <div class="stat">
+        <small>Trades</small>
+        <b>
+          ${fmt(s.tradeCount,0)}
+        </b>
+      </div>
+
+      <div class="stat">
+        <small>POC</small>
+        <b class="yellow">
+          ${fmt(s.poc)}
+        </b>
+      </div>
+
+      <div class="stat">
+        <small>Pressure</small>
+        <b class="${
+          s.pressure ===
+          "BUY_PRESSURE"
+            ? "green"
+            : s.pressure ===
+              "SELL_PRESSURE"
+              ? "red"
+              : "neutral"
+        }">
+          ${
+            s.pressure ===
+            "BUY_PRESSURE"
+              ? "BUY"
+              : s.pressure ===
+                "SELL_PRESSURE"
+                ? "SELL"
+                : "NEUTRAL"
+          }
+        </b>
+      </div>
+
+    </div>
+
+    <div class="footprint-wrap">
+      <table class="footprint">
+
+        <thead>
+          <tr>
+            <th>Bid</th>
+            <th>Ask</th>
+            <th>Price</th>
+            <th>Delta</th>
+            <th>Volume</th>
+            <th>Total</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          ${rows}
+        </tbody>
+
+      </table>
+    </div>
+    `;
+}
+
+function setupNavigation() {
+  document
+    .querySelectorAll(
+      ".nav-btn"
+    )
+    .forEach(
+      button => {
+        button.addEventListener(
+          "click",
+          () => {
+            document
+              .querySelectorAll(
+                ".nav-btn"
+              )
+              .forEach(
+                x =>
+                  x.classList.remove(
+                    "active"
+                  )
+              );
+
+            button.classList.add(
+              "active"
+            );
+
+            state.currentPanel =
+              button.dataset.panel;
+
+            renderPanel();
+          }
+        );
+      }
+    );
+}
+
+function setupChartInput() {
+  chart.addEventListener(
+    "pointerdown",
+    event => {
+      state.chart.dragging =
+        true;
+
+      state.chart.lastX =
+        event.clientX;
+
+      chart.setPointerCapture(
+        event.pointerId
+      );
+    }
+  );
+
+  chart.addEventListener(
+    "pointermove",
+    event => {
+      if (
+        !state.chart.dragging
+      ) {
+        return;
+      }
+
+      const dx =
+        event.clientX -
+        state.chart.lastX;
+
+      state.chart.lastX =
+        event.clientX;
+
+      const width =
+        chart.clientWidth;
+
+      const visible =
+        Math.max(
+          10,
+          Math.min(
+            state.candles.length,
+            Math.round(
+              70 /
+              state.chart.scale
+            )
+          )
+        );
+
+      const pixelsPerCandle =
+        Math.max(
+          2,
+          width /
+            visible
+        );
+
+      const movement =
+        dx /
+        pixelsPerCandle;
+
+      state.chart.offset -=
+        movement;
+
+      const maxOffset =
+        Math.max(
+          0,
+          state.candles.length -
+            visible
+        );
+
+      state.chart.offset =
+        Math.max(
+          0,
+          Math.min(
+            maxOffset,
+            state.chart.offset
+          )
+        );
+
+      drawChart();
+    }
+  );
+
+  chart.addEventListener(
+    "pointerup",
+    event => {
+      state.chart.dragging =
+        false;
+
+      try {
+        chart.releasePointerCapture(
+          event.pointerId
+        );
+      } catch {}
+    }
+  );
+
+  chart.addEventListener(
+    "pointercancel",
+    () => {
+      state.chart.dragging =
+        false;
+    }
+  );
+
+  chart.addEventListener(
+    "click",
+    event => {
+      if (
+        Math.abs(
+          event.clientX -
+          state.chart.lastX
+        ) > 5
+      ) {
+        return;
+      }
+
+      const index =
+        candleAtPoint(
+          event.clientX
+        );
+
+      if (
+        index >= 0
+      ) {
+        selectCandle(
+          index
+        );
+      }
+    }
+  );
+
+  chart.addEventListener(
+    "wheel",
+    event => {
+      event.preventDefault();
+
+      const old =
+        state.chart.scale;
+
+      if (
+        event.deltaY < 0
+      ) {
+        state.chart.scale =
+          Math.min(
+            4,
+            state.chart.scale *
+              1.15
+          );
+      } else {
+        state.chart.scale =
+          Math.max(
+            0.35,
+            state.chart.scale /
+              1.15
+          );
+      }
+
+      if (
+        old !==
+        state.chart.scale
+      ) {
+        drawChart();
+      }
+    },
+    {
+      passive:false
+    }
+  );
+
+  chart.addEventListener(
+    "touchstart",
+    event => {
+      if (
+        event.touches.length ===
+        2
+      ) {
+        state.chart.pinchDistance =
+          touchDistance(
+            event.touches[0],
+            event.touches[1]
+          );
+      }
+    },
+    {
+      passive:true
+    }
+  );
+
+  chart.addEventListener(
+    "touchmove",
+    event => {
+      if (
+        event.touches.length !==
+        2
+      ) {
+        return;
+      }
+
+      event.preventDefault();
+
+      const distance =
+        touchDistance(
+          event.touches[0],
+          event.touches[1]
+        );
+
+      if (
+        !state.chart.pinchDistance
+      ) {
+        state.chart.pinchDistance =
+          distance;
+
+        return;
+      }
+
+      const ratio =
+        distance /
+        state.chart.pinchDistance;
+
+      if (
+        ratio > 1.01
+      ) {
+        state.chart.scale =
+          Math.min(
+            4,
+            state.chart.scale *
+              1.03
+          );
+      } else if (
+        ratio < 0.99
+      ) {
+        state.chart.scale =
+          Math.max(
+            0.35,
+            state.chart.scale /
+              1.03
+          );
+      }
+
+      state.chart.pinchDistance =
+        distance;
+
+      drawChart();
+    },
+    {
+      passive:false
+    }
+  );
+
+  chart.addEventListener(
+    "touchend",
+    () => {
+      state.chart.pinchDistance =
+        0;
+    }
+  );
+}
+
+function touchDistance(
+  a,
+  b
+) {
+  const dx =
+    a.clientX -
+    b.clientX;
+
+  const dy =
+    a.clientY -
+    b.clientY;
+
+  return Math.sqrt(
+    dx * dx +
+    dy * dy
+  );
+}
+
+category.addEventListener(
+  "change",
+  async () => {
+    state.category =
+      category.value;
+
+    await loadSymbols();
+
+    await loadMarket();
+  }
+);
+
+interval.addEventListener(
+  "change",
+  async () => {
+    state.interval =
+      interval.value;
+
+    await loadMarket();
+  }
+);
+
+symbol.addEventListener(
+  "change",
+  async () => {
+    await loadMarket();
+  }
+);
+
+$("reload").addEventListener(
+  "click",
+  async () => {
+    await loadMarket();
+  }
+);
+
+window.addEventListener(
+  "resize",
+  () => {
+    setCanvasSize();
+  }
+);
+
+document.addEventListener(
+  "visibilitychange",
+  () => {
+    if (
+      document.visibilityState ===
+      "visible"
+    ) {
+      if (
+        !state.socket ||
+        state.socket.readyState !==
+          WebSocket.OPEN
+      ) {
+        connectWebSocket();
+      }
+    }
+  }
+);
+
+async function start() {
+  setupNavigation();
+
+  setupChartInput();
+
+  setCanvasSize();
+
+  try {
+    const response =
+      await fetch(
+        "/api/health"
+      );
+
+    const data =
+      await response.json();
+
+    if (
+      data.ok
+    ) {
+      setStatus(
+        "🟢 Worker Online",
+        "online"
+      );
+    }
+  } catch (
+    error
+  ) {
+    setStatus(
+      "🔴 Worker Offline",
+      "error"
+    );
+  }
+
+  await loadSymbols();
+
+  await loadMarket();
+}
+
+start();
+</script>
+
+</body>
+</html>
