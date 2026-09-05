@@ -3,423 +3,374 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport"
-      content="width=device-width,
-               initial-scale=1,
-               maximum-scale=5,
-               viewport-fit=cover">
+      content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 
-<title>Bybit Order Flow</title>
+<title>Absorption Zone Scanner</title>
 
 <style>
-:root{
-  --bg:#070b11;
-  --panel:#0d131c;
-  --panel2:#111923;
-  --border:#1d2a38;
-  --text:#e8edf3;
-  --muted:#8795a5;
-  --green:#19d47b;
-  --red:#ff4d61;
-  --blue:#42a5ff;
-  --yellow:#f4c84b;
-}
-
 *{
   box-sizing:border-box;
   -webkit-tap-highlight-color:transparent;
 }
 
-html,
-body{
+html,body{
   margin:0;
   padding:0;
-  width:100%;
-  min-height:100%;
-  background:var(--bg);
-  color:var(--text);
-  font-family:
-    Arial,
-    "Tahoma",
-    sans-serif;
+  background:#070b10;
+  color:#e9eef5;
+  font-family:Tahoma,Arial,sans-serif;
 }
 
 body{
-  overflow-x:hidden;
-}
-
-button,
-select{
-  font:inherit;
+  min-height:100vh;
 }
 
 .app{
   width:100%;
-  min-height:100vh;
-  background:var(--bg);
+  max-width:1500px;
+  margin:auto;
+  padding:10px;
 }
 
-/* TOP */
-
-.topbar{
-  position:sticky;
-  top:0;
-  z-index:50;
-  display:flex;
-  gap:8px;
-  align-items:center;
-  padding:
-    calc(8px + env(safe-area-inset-top))
-    10px
-    8px;
-  background:
-    rgba(7,11,17,.96);
-  border-bottom:
-    1px solid var(--border);
-  backdrop-filter:blur(10px);
+.card{
+  background:#0d141c;
+  border:1px solid #202c38;
+  border-radius:14px;
+  padding:10px;
+  margin-bottom:10px;
 }
 
-.logo{
-  font-weight:900;
-  white-space:nowrap;
-  font-size:15px;
+.header{
+  text-align:center;
+  padding:8px 4px 12px;
 }
 
-.control{
-  min-width:0;
-  flex:1;
+.header h1{
+  margin:4px 0;
+  font-size:22px;
 }
 
-.control select{
+.header p{
+  margin:4px 0;
+  color:#8795a5;
+  font-size:12px;
+}
+
+.controls{
+  display:grid;
+  grid-template-columns:
+    minmax(100px,1fr)
+    minmax(100px,1fr)
+    minmax(80px,1fr)
+    auto;
+  gap:7px;
+}
+
+input,select,button{
   width:100%;
-  height:38px;
-  color:var(--text);
-  background:var(--panel2);
-  border:
-    1px solid var(--border);
+  min-height:42px;
   border-radius:9px;
-  padding:0 9px;
-  outline:none;
+  border:1px solid #2a3744;
+  background:#111b25;
+  color:#fff;
+  padding:8px 10px;
+  font-size:14px;
 }
 
-.status{
-  display:flex;
-  align-items:center;
-  gap:5px;
-  white-space:nowrap;
-  font-size:11px;
-  color:var(--green);
-}
-
-/* NAV */
-
-.nav{
-  position:sticky;
-  top:58px;
-  z-index:45;
-  display:flex;
-  gap:6px;
-  padding:7px 8px;
-  background:rgba(7,11,17,.94);
-  border-bottom:
-    1px solid var(--border);
-  overflow-x:auto;
-}
-
-.nav::-webkit-scrollbar{
-  display:none;
-}
-
-.nav button{
-  flex:0 0 auto;
-  min-width:62px;
-  height:42px;
-  border:
-    1px solid var(--border);
-  border-radius:10px;
-  color:var(--muted);
-  background:var(--panel);
+button{
   cursor:pointer;
 }
 
-.nav button.active{
-  color:white;
-  border-color:var(--blue);
-  background:#102338;
+button:active{
+  transform:scale(.98);
 }
 
-.nav .icon{
-  display:block;
-  font-size:18px;
+.primary{
+  background:#126b4e;
+  border-color:#188764;
 }
 
-.nav .label{
-  display:block;
-  font-size:9px;
-  margin-top:2px;
+.danger{
+  background:#652b35;
+  border-color:#843b48;
 }
 
-/* CHART */
-
-.chart-wrap{
-  width:100%;
-  padding:8px;
+.status{
+  margin-top:8px;
+  padding:9px;
+  border-radius:9px;
+  background:#0a1118;
+  color:#aeb9c5;
+  text-align:center;
+  font-size:12px;
 }
 
-.chart-card{
+.chartWrap{
   position:relative;
   width:100%;
-  height:58vh;
-  min-height:360px;
-  max-height:760px;
+  height:520px;
   overflow:hidden;
-  background:
-    linear-gradient(
-      180deg,
-      #0b1119,
-      #080d14
-    );
-  border:
-    1px solid var(--border);
-  border-radius:12px;
-  touch-action:none;
+  border-radius:10px;
+  background:#080e14;
 }
 
 #chart{
   width:100%;
   height:100%;
   display:block;
+  touch-action:none;
 }
 
-/* PANEL */
-
-.panel{
-  margin:0 8px 20px;
-  border:
-    1px solid var(--border);
-  border-radius:12px;
-  background:var(--panel);
-  overflow:hidden;
-}
-
-.panel-head{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  padding:10px 12px;
-  border-bottom:
-    1px solid var(--border);
-}
-
-.panel-title{
-  font-weight:900;
-  font-size:14px;
-}
-
-.panel-sub{
-  color:var(--muted);
-  font-size:10px;
-}
-
-#panelContent{
-  padding:10px;
-}
-
-/* SUMMARY */
-
-.summary{
-  display:grid;
-  grid-template-columns:
-    repeat(4,minmax(0,1fr));
-  gap:6px;
-  margin-bottom:10px;
-}
-
-.stat{
-  background:var(--panel2);
-  border:
-    1px solid var(--border);
-  border-radius:8px;
-  padding:7px;
-  text-align:center;
-}
-
-.stat .k{
-  color:var(--muted);
-  font-size:9px;
-}
-
-.stat .v{
-  margin-top:4px;
-  font-size:12px;
-  font-weight:900;
-}
-
-.buy{
-  color:var(--green)!important;
-}
-
-.sell{
-  color:var(--red)!important;
-}
-
-/* FOOTPRINT */
-
-.fp-scroll{
-  width:100%;
-  overflow:auto;
-  direction:ltr;
-  touch-action:pan-x pan-y;
-  border:
-    1px solid var(--border);
-  border-radius:9px;
-}
-
-.fp{
-  position:relative;
-  min-width:650px;
-  padding:8px;
-  direction:ltr;
-}
-
-.fp-row{
-  display:grid;
-  grid-template-columns:
-    110px
-    130px
-    130px
-    110px
-    110px;
-  min-height:27px;
-  align-items:center;
-  border-bottom:
-    1px solid rgba(255,255,255,.035);
-}
-
-.fp-row.head{
-  color:var(--muted);
-  font-size:9px;
-  position:sticky;
-  top:0;
-  background:var(--panel);
-}
-
-.fp-cell{
-  position:relative;
-  min-height:27px;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  font-size:11px;
-  font-weight:700;
-}
-
-.price{
-  color:#dce5ee;
-}
-
-.bid{
-  color:var(--red);
-}
-
-.ask{
-  color:var(--green);
-}
-
-.delta{
-  font-weight:900;
-}
-
-.delta.pos{
-  color:var(--green);
-}
-
-.delta.neg{
-  color:var(--red);
-}
-
-.volume{
-  position:relative;
-  padding:0 8px;
-}
-
-.volume-bar{
+.chartInfo{
   position:absolute;
-  top:4px;
-  bottom:4px;
-  right:3px;
-  opacity:.16;
-  border-radius:3px;
+  left:8px;
+  top:8px;
+  z-index:2;
+  background:rgba(4,8,12,.8);
+  border:1px solid #263442;
+  border-radius:8px;
+  padding:6px 8px;
+  font-size:11px;
+  direction:ltr;
 }
 
-.volume-text{
-  position:relative;
-  z-index:1;
+.nav{
+  display:grid;
+  grid-template-columns:repeat(7,1fr);
+  gap:5px;
+  overflow-x:auto;
 }
 
-.imbalance-buy{
-  background:
-    rgba(25,212,123,.13);
+.nav button{
+  min-width:80px;
+  font-size:12px;
+  padding:6px;
 }
 
-.imbalance-sell{
-  background:
-    rgba(255,77,97,.13);
+.nav button.active{
+  border-color:#22c994;
+  background:#10291f;
 }
 
-.poc{
-  outline:
-    1px solid var(--yellow);
-  background:
-    rgba(244,200,75,.08);
-}
-
-/* OTHER PANELS */
-
-.placeholder{
-  padding:30px 15px;
-  text-align:center;
-  color:var(--muted);
-}
-
-.placeholder strong{
-  display:block;
-  color:white;
+.panelTitle{
+  font-size:15px;
+  font-weight:bold;
   margin-bottom:8px;
 }
 
-/* LANDSCAPE */
+.stats{
+  display:grid;
+  grid-template-columns:
+    repeat(4,1fr);
+  gap:7px;
+}
 
-@media (orientation:landscape){
-  .chart-card{
-    height:78vh;
-    max-height:none;
-    min-height:280px;
+.stat{
+  background:#0a1118;
+  border:1px solid #202c38;
+  border-radius:9px;
+  padding:9px;
+  text-align:center;
+  font-size:11px;
+  color:#8795a5;
+}
+
+.stat b{
+  display:block;
+  margin-top:5px;
+  color:#fff;
+  font-size:13px;
+}
+
+.green{
+  color:#27d996!important;
+}
+
+.red{
+  color:#ff5b68!important;
+}
+
+.yellow{
+  color:#ffd166!important;
+}
+
+.blue{
+  color:#58a6ff!important;
+}
+
+.flowGrid{
+  display:grid;
+  grid-template-columns:
+    repeat(4,1fr);
+  gap:6px;
+}
+
+.flowBox{
+  background:#091018;
+  border:1px solid #1e2a36;
+  border-radius:8px;
+  padding:8px;
+  font-size:11px;
+}
+
+.flowBox b{
+  display:block;
+  margin-top:4px;
+  font-size:13px;
+}
+
+.footprint{
+  overflow:auto;
+  max-height:600px;
+}
+
+.fpHead{
+  display:grid;
+  grid-template-columns:
+    1fr 1fr 80px 1fr 1fr;
+  min-width:520px;
+  position:sticky;
+  top:0;
+  background:#0d141c;
+  z-index:3;
+}
+
+.fpHead div{
+  padding:7px;
+  text-align:center;
+  border-bottom:1px solid #293642;
+  font-size:11px;
+}
+
+.fpRow{
+  display:grid;
+  grid-template-columns:
+    1fr 1fr 80px 1fr 1fr;
+  min-width:520px;
+  align-items:center;
+}
+
+.fpRow div{
+  padding:5px;
+  text-align:center;
+  border-bottom:1px solid #17222d;
+  font-size:11px;
+}
+
+.fpBid{
+  color:#ff6672;
+}
+
+.fpAsk{
+  color:#27d996;
+}
+
+.fpPrice{
+  color:#dfe8f2;
+  font-weight:bold;
+}
+
+.fpDeltaPos{
+  color:#27d996;
+}
+
+.fpDeltaNeg{
+  color:#ff6672;
+}
+
+.bar{
+  height:7px;
+  border-radius:5px;
+  background:#17212b;
+  overflow:hidden;
+}
+
+.bar i{
+  display:block;
+  height:100%;
+  background:#22c994;
+}
+
+.book{
+  overflow:auto;
+}
+
+.bookRow{
+  display:grid;
+  grid-template-columns:
+    1fr 1fr 1fr;
+  min-width:360px;
+  gap:4px;
+  padding:5px;
+  border-bottom:1px solid #17212b;
+  font-size:11px;
+  text-align:center;
+}
+
+.section{
+  margin-top:10px;
+}
+
+.muted{
+  color:#758392;
+}
+
+.error{
+  background:#32151a;
+  border:1px solid #74303a;
+  color:#ff7b86;
+  padding:10px;
+  border-radius:9px;
+}
+
+.success{
+  background:#0e2b20;
+  border:1px solid #1e7256;
+  color:#42dda5;
+  padding:10px;
+  border-radius:9px;
+}
+
+@media(max-width:800px){
+  .controls{
+    grid-template-columns:
+      1fr 1fr;
+  }
+
+  .chartWrap{
+    height:430px;
+  }
+
+  .stats{
+    grid-template-columns:
+      repeat(2,1fr);
+  }
+
+  .flowGrid{
+    grid-template-columns:
+      repeat(2,1fr);
   }
 
   .nav{
-    top:54px;
+    display:flex;
   }
 
-  .topbar{
-    padding-top:6px;
-    padding-bottom:6px;
+  .nav button{
+    flex:0 0 86px;
   }
 }
 
-/* SMALL */
-
-@media(max-width:600px){
-  .logo{
-    display:none;
+@media(max-width:500px){
+  .app{
+    padding:6px;
   }
 
-  .summary{
-    grid-template-columns:
-      repeat(2,minmax(0,1fr));
+  .chartWrap{
+    height:390px;
   }
 
-  .chart-card{
-    height:56vh;
+  .header h1{
+    font-size:18px;
   }
 }
 </style>
@@ -429,33 +380,25 @@ select{
 
 <div class="app">
 
-  <!-- TOP -->
-  <header class="topbar">
+  <div class="header">
+    <h1>📊 Absorption Zone Scanner</h1>
+    <p>تحلیل Order Flow واقعی Bybit</p>
+  </div>
 
-    <div class="logo">
-      📊 Order Flow
-    </div>
+  <div class="card">
 
-    <div class="control">
+    <div class="controls">
+
       <select id="category">
-        <option value="linear">
-          Futures
-        </option>
-        <option value="spot">
-          Spot
-        </option>
+        <option value="linear">Futures</option>
+        <option value="spot">Spot</option>
       </select>
-    </div>
 
-    <div class="control">
-      <select id="symbol">
-        <option>
-          BTCUSDT
-        </option>
-      </select>
-    </div>
+      <input
+        id="symbol"
+        value="BTCUSDT"
+        placeholder="BTCUSDT">
 
-    <div class="control">
       <select id="interval">
         <option value="1">1m</option>
         <option value="3">3m</option>
@@ -464,111 +407,92 @@ select{
         <option value="30">30m</option>
         <option value="60">1H</option>
       </select>
+
+      <button
+        id="refresh"
+        class="primary">
+        ↻ بروزرسانی
+      </button>
+
     </div>
-
-    <div class="status"
-         id="status">
-      🟡 اتصال...
-    </div>
-
-  </header>
-
-  <!-- ICONS -->
-  <nav class="nav">
-
-    <button
-      class="active"
-      data-panel="footprint">
-      <span class="icon">🧱</span>
-      <span class="label">Footprint</span>
-    </button>
-
-    <button data-panel="heatmap">
-      <span class="icon">🔥</span>
-      <span class="label">Heatmap</span>
-    </button>
-
-    <button data-panel="liquidity">
-      <span class="icon">💧</span>
-      <span class="label">Liquidity</span>
-    </button>
-
-    <button data-panel="absorption">
-      <span class="icon">🧲</span>
-      <span class="label">Absorption</span>
-    </button>
-
-    <button data-panel="orderbook">
-      <span class="icon">📖</span>
-      <span class="label">Order Book</span>
-    </button>
-
-    <button data-panel="delta">
-      <span class="icon">Δ</span>
-      <span class="label">Delta/CVD</span>
-    </button>
-
-    <button data-panel="large">
-      <span class="icon">🐋</span>
-      <span class="label">Large Trades</span>
-    </button>
-
-  </nav>
-
-  <!-- FIXED CHART -->
-  <main class="chart-wrap">
 
     <div
-      class="chart-card"
-      id="chartCard">
+      id="status"
+      class="status">
+      🟡 آماده
+    </div>
+
+  </div>
+
+  <div class="card">
+
+    <div class="chartWrap">
 
       <canvas id="chart"></canvas>
 
-    </div>
-
-  </main>
-
-  <!-- INFORMATION -->
-  <section class="panel">
-
-    <div class="panel-head">
-
-      <div>
-        <div
-          class="panel-title"
-          id="panelTitle">
-          🧱 Footprint
-        </div>
-
-        <div
-          class="panel-sub"
-          id="panelSub">
-          کندل را لمس کنید
-        </div>
-      </div>
-
       <div
-        id="selectedTime"
-        class="panel-sub">
-        —
+        id="chartInfo"
+        class="chartInfo">
+        کندل را لمس کنید
       </div>
 
     </div>
 
-    <div id="panelContent"></div>
+  </div>
 
-  </section>
+  <div class="card">
+
+    <div
+      id="nav"
+      class="nav">
+
+      <button
+        data-panel="footprint"
+        class="active">
+        🧱 Footprint
+      </button>
+
+      <button data-panel="heatmap">
+        🔥 Heatmap
+      </button>
+
+      <button data-panel="liquidity">
+        💧 Liquidity
+      </button>
+
+      <button data-panel="absorption">
+        🧲 Absorption
+      </button>
+
+      <button data-panel="book">
+        📖 Order Book
+      </button>
+
+      <button data-panel="delta">
+        Δ Delta / CVD
+      </button>
+
+      <button data-panel="large">
+        🐋 Large Trades
+      </button>
+
+    </div>
+
+  </div>
+
+  <div id="panel"></div>
 
 </div>
 
 <script>
 "use strict";
 
-/* =====================================================
-   CONFIG
-===================================================== */
+/* =========================================================
+   GLOBAL
+========================================================= */
 
-const API = "";
+const $ = id =>
+  document.getElementById(id);
 
 const state = {
   category: "linear",
@@ -576,50 +500,97 @@ const state = {
   interval: "1",
 
   candles: [],
-  selectedIndex: -1,
-  selectedFootprint: null,
+  trades: [],
+  market: null,
+  footprint: null,
 
-  tickSize: 0.01,
-  priceDecimals: 2,
+  selected: -1,
+  panel: "footprint",
+
+  timer: null,
 
   zoom: 1,
   offset: 0,
 
-  panel: "footprint",
-
-  ws: null,
-  wsConnected: false,
-
-  liveTrades: [],
-
-  cvd: 0
+  dragging: false,
+  lastX: 0
 };
 
-/* =====================================================
-   DOM
-===================================================== */
+/* =========================================================
+   SAFE JSON
+========================================================= */
 
-const $ = id =>
-  document.getElementById(id);
+async function api(path) {
+  const response =
+    await fetch(
+      path,
+      {
+        cache: "no-store",
+        headers: {
+          Accept:
+            "application/json"
+        }
+      }
+    );
 
-const canvas =
-  $("chart");
+  const text =
+    await response.text();
 
-const ctx =
-  canvas.getContext("2d");
+  if (!text.trim()) {
+    throw new Error(
+      `Worker پاسخ خالی داد (${response.status})`
+    );
+  }
 
-const chartCard =
-  $("chartCard");
+  let data;
 
-/* =====================================================
+  try {
+    data =
+      JSON.parse(text);
+  } catch {
+    throw new Error(
+      `Worker پاسخ JSON معتبر نداد (${response.status})`
+    );
+  }
+
+  if (!response.ok) {
+    throw new Error(
+      data.error ||
+      `HTTP ${response.status}`
+    );
+  }
+
+  if (!data.ok) {
+    throw new Error(
+      data.error ||
+      "خطای Worker"
+    );
+  }
+
+  return data;
+}
+
+/* =========================================================
+   STATUS
+========================================================= */
+
+function status(text) {
+  $("status").textContent =
+    text;
+}
+
+/* =========================================================
    FORMAT
-===================================================== */
+========================================================= */
 
-function fmt(v, digits = 2){
-  if (!Number.isFinite(v))
+function fmt(v, digits = 2) {
+  const n = Number(v);
+
+  if (!Number.isFinite(n)) {
     return "—";
+  }
 
-  return Number(v).toLocaleString(
+  return n.toLocaleString(
     "en-US",
     {
       maximumFractionDigits:
@@ -628,259 +599,233 @@ function fmt(v, digits = 2){
   );
 }
 
-function fmtPrice(v){
-  return Number(v).toFixed(
-    state.priceDecimals
-  );
-}
+function pct(v) {
+  const n = Number(v);
 
-function fmtTime(ms){
-  if (!ms)
+  if (!Number.isFinite(n)) {
     return "—";
-
-  return new Date(ms)
-    .toLocaleString(
-      "fa-IR",
-      {
-        month:"2-digit",
-        day:"2-digit",
-        hour:"2-digit",
-        minute:"2-digit"
-      }
-    );
-}
-
-/* =====================================================
-   STATUS
-===================================================== */
-
-function setStatus(text, color){
-  const el = $("status");
-
-  el.textContent = text;
-
-  el.style.color =
-    color ||
-    "var(--green)";
-}
-
-/* =====================================================
-   API
-===================================================== */
-
-async function api(path, params = {}){
-  const qs =
-    new URLSearchParams(params)
-      .toString();
-
-  const url =
-    `${API}${path}?${qs}`;
-
-  const r =
-    await fetch(url, {
-      cache:"no-store"
-    });
-
-  const data =
-    await r.json();
-
-  if (!data.ok){
-    throw new Error(
-      data.error ||
-      "API Error"
-    );
   }
 
-  return data;
+  return n.toFixed(2) + "%";
 }
 
-/* =====================================================
-   LOAD SYMBOLS
-===================================================== */
+/* =========================================================
+   LOAD
+========================================================= */
 
-async function loadSymbols(){
+async function load() {
+  stopLive();
 
-  setStatus(
-    "🟡 دریافت ارزها...",
-    "var(--yellow)"
-  );
+  state.category =
+    $("category").value;
 
-  const data =
-    await api(
-      "/api/symbols",
-      {
-        category:
-          state.category
-      }
+  state.symbol =
+    $("symbol").value
+      .trim()
+      .toUpperCase();
+
+  state.interval =
+    $("interval").value;
+
+  if (!state.symbol) {
+    status("🔴 نماد وارد نشده است");
+    return;
+  }
+
+  try {
+    status(
+      "🟡 دریافت داده واقعی Bybit..."
     );
 
-  const select =
-    $("symbol");
-
-  const old =
-    state.symbol;
-
-  select.innerHTML = "";
-
-  for (const s of data.symbols){
-
-    const opt =
-      document.createElement(
-        "option"
+    const data =
+      await api(
+        `/api/market?category=${encodeURIComponent(state.category)}&symbol=${encodeURIComponent(state.symbol)}&interval=${encodeURIComponent(state.interval)}`
       );
 
-    opt.value =
-      s.symbol;
+    state.market = data;
+    state.candles =
+      data.candles || [];
 
-    opt.textContent =
-      s.symbol;
+    state.trades =
+      data.trades || [];
 
-    select.appendChild(
-      opt
+    state.selected =
+      state.candles.length - 1;
+
+    state.zoom = 1;
+    state.offset = 0;
+
+    drawChart();
+    renderPanel();
+
+    await loadSelectedFootprint();
+
+    status(
+      `🟢 متصل به Bybit · ${state.symbol}`
     );
-  }
 
-  if (
-    data.symbols.some(
-      x => x.symbol === old
-    )
-  ){
-    select.value = old;
-  } else {
-    select.value =
-      data.symbols[0]?.symbol ||
-      "BTCUSDT";
+    startLive();
 
-    state.symbol =
-      select.value;
+  } catch (e) {
+
+    console.error(e);
+
+    $("panel").innerHTML =
+      `<div class="card error">
+        ${escapeHtml(
+          e.message ||
+          "خطا در دریافت اطلاعات بازار"
+        )}
+      </div>`;
+
+    status(
+      "🔴 " +
+      (
+        e.message ||
+        "خطا در دریافت اطلاعات بازار"
+      )
+    );
   }
 }
 
-/* =====================================================
-   LOAD MARKET
-===================================================== */
+/* =========================================================
+   LIVE
+========================================================= */
 
-async function loadMarket(){
+function startLive() {
+  stopLive();
 
-  setStatus(
-    "🟡 دریافت داده...",
-    "var(--yellow)"
-  );
+  state.timer =
+    setInterval(
+      async () => {
 
-  const data =
-    await api(
-      "/api/market",
-      {
-        category:
-          state.category,
-        symbol:
-          state.symbol,
-        interval:
-          state.interval
-      }
+        try {
+
+          const data =
+            await api(
+              `/api/market?category=${encodeURIComponent(state.category)}&symbol=${encodeURIComponent(state.symbol)}&interval=${encodeURIComponent(state.interval)}`
+            );
+
+          state.market =
+            data;
+
+          state.candles =
+            data.candles || [];
+
+          drawChart();
+
+          if (
+            state.selected >=
+            state.candles.length
+          ) {
+            state.selected =
+              state.candles.length - 1;
+          }
+
+          await loadSelectedFootprint();
+
+          status(
+            `🟢 زنده · ${new Date().toLocaleTimeString("fa-IR")}`
+          );
+
+        } catch (e) {
+
+          status(
+            "🟠 " +
+            (
+              e.message ||
+              "خطا در بروزرسانی"
+            )
+          );
+
+        }
+
+      },
+      5000
     );
-
-  const m =
-    data.data;
-
-  state.candles =
-    m.candles || [];
-
-  state.tickSize =
-    Number(m.tickSize) || 0.01;
-
-  state.priceDecimals =
-    Number(m.priceDecimals) || 2;
-
-  state.selectedIndex =
-    state.candles.length - 1;
-
-  state.zoom = 1;
-  state.offset = 0;
-
-  setStatus(
-    "🟢 Bybit",
-    "var(--green)"
-  );
-
-  drawChart();
-
-  await loadSelectedFootprint();
-
-  connectWebSocket();
 }
 
-/* =====================================================
-   LOAD FOOTPRINT
-===================================================== */
+function stopLive() {
+  if (state.timer) {
+    clearInterval(
+      state.timer
+    );
 
-async function loadSelectedFootprint(){
+    state.timer = null;
+  }
+}
+
+/* =========================================================
+   FOOTPRINT
+========================================================= */
+
+async function loadSelectedFootprint() {
 
   if (
-    state.selectedIndex < 0 ||
-    !state.candles.length
-  ){
+    state.selected < 0 ||
+    !state.candles[state.selected]
+  ) {
     return;
   }
 
   const candle =
     state.candles[
-      state.selectedIndex
+      state.selected
     ];
 
-  const data =
-    await api(
-      "/api/footprint",
-      {
-        category:
-          state.category,
-        symbol:
-          state.symbol,
-        interval:
-          state.interval
-      }
-    );
+  try {
 
-  const list =
-    data.data?.candles || [];
+    const data =
+      await api(
+        `/api/footprint?category=${encodeURIComponent(state.category)}&symbol=${encodeURIComponent(state.symbol)}&interval=${encodeURIComponent(state.interval)}&time=${encodeURIComponent(candle.time)}`
+      );
 
-  const match =
-    list.find(
-      x =>
-        Number(x.time) ===
-        Number(candle.time)
-    );
+    state.footprint =
+      data.footprint;
 
-  state.selectedFootprint =
-    match?.footprint || null;
+    if (
+      state.panel ===
+      "footprint"
+    ) {
+      renderPanel();
+    }
 
-  renderPanel();
+  } catch (e) {
+
+    state.footprint = {
+      rows: [],
+      error:
+        e.message
+    };
+
+    renderPanel();
+  }
 }
 
-/* =====================================================
-   CANVAS SIZE
-===================================================== */
+/* =========================================================
+   CHART
+========================================================= */
 
-function resizeCanvas(){
+function drawChart() {
+
+  const canvas =
+    $("chart");
 
   const rect =
     canvas.getBoundingClientRect();
 
   const dpr =
-    Math.min(
-      window.devicePixelRatio || 1,
-      2
-    );
+    window.devicePixelRatio ||
+    1;
 
   canvas.width =
-    Math.floor(
-      rect.width * dpr
-    );
+    rect.width * dpr;
 
   canvas.height =
-    Math.floor(
-      rect.height * dpr
-    );
+    rect.height * dpr;
+
+  const ctx =
+    canvas.getContext("2d");
 
   ctx.setTransform(
     dpr,
@@ -891,38 +836,8 @@ function resizeCanvas(){
     0
   );
 
-  drawChart();
-}
-
-window.addEventListener(
-  "resize",
-  resizeCanvas
-);
-
-window.addEventListener(
-  "orientationchange",
-  () => {
-    setTimeout(
-      resizeCanvas,
-      250
-    );
-  }
-);
-
-/* =====================================================
-   CHART
-===================================================== */
-
-function drawChart(){
-
-  const rect =
-    canvas.getBoundingClientRect();
-
-  const W =
-    rect.width;
-
-  const H =
-    rect.height;
+  const W = rect.width;
+  const H = rect.height;
 
   ctx.clearRect(
     0,
@@ -933,13 +848,20 @@ function drawChart(){
 
   if (
     !state.candles.length
-  ){
-    drawText(
-      "در حال دریافت داده...",
+  ) {
+    ctx.fillStyle =
+      "#6f7d8b";
+
+    ctx.font =
+      "13px Tahoma";
+
+    ctx.textAlign =
+      "center";
+
+    ctx.fillText(
+      "داده‌ای وجود ندارد",
       W / 2,
-      H / 2,
-      14,
-      "#8795a5"
+      H / 2
     );
 
     return;
@@ -947,46 +869,49 @@ function drawChart(){
 
   const left = 8;
   const right = 72;
-  const top = 15;
-  const bottom = 34;
+  const top = 25;
+  const bottom = 30;
 
-  const cw =
+  const chartW =
     W - left - right;
 
-  const ch =
+  const chartH =
     H - top - bottom;
 
   const visible =
     Math.max(
-      12,
-      Math.floor(
-        70 / state.zoom
-      )
-    );
-
-  const maxVisible =
-    Math.min(
-      visible,
-      state.candles.length
-    );
-
-  let end =
-    state.candles.length -
-    Math.round(state.offset);
-
-  end =
-    Math.max(
-      maxVisible,
+      20,
       Math.min(
         state.candles.length,
-        end
+        Math.floor(
+          80 / state.zoom
+        )
       )
     );
 
-  let start =
+  const maxOffset =
     Math.max(
       0,
-      end - maxVisible
+      state.candles.length -
+      visible
+    );
+
+  state.offset =
+    Math.max(
+      0,
+      Math.min(
+        state.offset,
+        maxOffset
+      )
+    );
+
+  const start =
+    state.offset;
+
+  const end =
+    Math.min(
+      state.candles.length,
+      start + visible
     );
 
   const arr =
@@ -995,117 +920,139 @@ function drawChart(){
       end
     );
 
-  if (!arr.length)
-    return;
+  let hi =
+    Math.max(
+      ...arr.map(
+        x => x.high
+      )
+    );
 
-  let min =
-    Infinity;
+  let lo =
+    Math.min(
+      ...arr.map(
+        x => x.low
+      )
+    );
 
-  let max =
-    -Infinity;
-
-  for (const c of arr){
-
-    min =
-      Math.min(
-        min,
-        c.low
-      );
-
-    max =
-      Math.max(
-        max,
-        c.high
-      );
+  if (hi === lo) {
+    hi += 1;
+    lo -= 1;
   }
 
   const pad =
-    (max - min) * .08 ||
-    Math.max(
-      1,
-      max * .001
+    (hi - lo) * .06;
+
+  hi += pad;
+  lo -= pad;
+
+  function py(price) {
+    return (
+      top +
+      (
+        hi - price
+      ) /
+      (
+        hi - lo
+      ) *
+      chartH
+    );
+  }
+
+  ctx.strokeStyle =
+    "#18232d";
+
+  ctx.lineWidth = 1;
+
+  for (
+    let i = 0;
+    i <= 5;
+    i++
+  ) {
+
+    const y =
+      top +
+      chartH *
+      i / 5;
+
+    ctx.beginPath();
+    ctx.moveTo(
+      left,
+      y
     );
 
-  min -= pad;
-  max += pad;
+    ctx.lineTo(
+      W - right,
+      y
+    );
 
-  drawGrid(
-    left,
-    top,
-    cw,
-    ch,
-    min,
-    max
-  );
+    ctx.stroke();
+
+    const price =
+      hi -
+      (
+        hi - lo
+      ) *
+      i / 5;
+
+    ctx.fillStyle =
+      "#718090";
+
+    ctx.font =
+      "10px Arial";
+
+    ctx.textAlign =
+      "left";
+
+    ctx.fillText(
+      fmt(price, 6),
+      W - right + 5,
+      y + 3
+    );
+  }
 
   const gap =
-    cw / arr.length;
+    chartW / arr.length;
 
-  const body =
+  const bodyW =
     Math.max(
       2,
-      Math.min(
-        18,
-        gap * .65
-      )
+      gap * .58
     );
 
   arr.forEach(
     (c, i) => {
 
+      const index =
+        start + i;
+
       const x =
         left +
-        gap * i +
+        i * gap +
         gap / 2;
 
       const yHigh =
-        priceY(
-          c.high,
-          min,
-          max,
-          top,
-          ch
-        );
+        py(c.high);
 
       const yLow =
-        priceY(
-          c.low,
-          min,
-          max,
-          top,
-          ch
-        );
+        py(c.low);
 
       const yOpen =
-        priceY(
-          c.open,
-          min,
-          max,
-          top,
-          ch
-        );
+        py(c.open);
 
       const yClose =
-        priceY(
-          c.close,
-          min,
-          max,
-          top,
-          ch
-        );
+        py(c.close);
 
-      const up =
-        c.close >= c.open;
-
-      const color =
-        up
-          ? "#19d47b"
-          : "#ff4d61";
+      const selected =
+        index ===
+        state.selected;
 
       ctx.strokeStyle =
-        color;
+        c.close >= c.open
+          ? "#27d996"
+          : "#ff5968";
 
-      ctx.lineWidth = 1;
+      ctx.lineWidth =
+        selected ? 3 : 1;
 
       ctx.beginPath();
 
@@ -1121,929 +1068,721 @@ function drawChart(){
 
       ctx.stroke();
 
-      const y =
+      const bodyTop =
         Math.min(
           yOpen,
           yClose
         );
 
-      const h =
+      const bodyHeight =
         Math.max(
           1,
           Math.abs(
-            yClose - yOpen
+            yClose -
+            yOpen
           )
         );
 
       ctx.fillStyle =
-        color;
+        c.close >= c.open
+          ? "#27d996"
+          : "#ff5968";
 
       ctx.fillRect(
-        x - body / 2,
-        y,
-        body,
-        h
+        x - bodyW / 2,
+        bodyTop,
+        bodyW,
+        bodyHeight
       );
 
-      const realIndex =
-        start + i;
-
-      if (
-        realIndex ===
-        state.selectedIndex
-      ){
+      if (selected) {
 
         ctx.strokeStyle =
-          "#f4c84b";
+          "#ffd166";
 
-        ctx.lineWidth = 2;
+        ctx.lineWidth = 1;
 
         ctx.strokeRect(
-          x - body,
-          yHigh - 3,
-          body * 2,
-          yLow - yHigh + 6
+          x - bodyW / 2 - 3,
+          bodyTop - 3,
+          bodyW + 6,
+          bodyHeight + 6
+        );
+      }
+
+      if (
+        i === 0 ||
+        i === arr.length - 1 ||
+        i % Math.ceil(
+          arr.length / 7
+        ) === 0
+      ) {
+
+        ctx.fillStyle =
+          "#657383";
+
+        ctx.font =
+          "9px Arial";
+
+        ctx.textAlign =
+          "center";
+
+        ctx.fillText(
+          new Date(
+            c.time
+          ).toLocaleTimeString(
+            "en-US",
+            {
+              hour:
+                "2-digit",
+              minute:
+                "2-digit"
+            }
+          ),
+          x,
+          H - 8
         );
       }
     }
   );
 
-  drawYAxis(
-    left + cw,
-    top,
-    ch,
-    min,
-    max
-  );
-
-  drawXAxis(
-    left,
-    top + ch,
-    cw,
-    arr
-  );
-}
-
-function priceY(
-  price,
-  min,
-  max,
-  top,
-  h
-){
-  return (
-    top +
-    (max - price) /
-    (max - min) *
-    h
-  );
-}
-
-/* =====================================================
-   GRID
-===================================================== */
-
-function drawGrid(
-  x,
-  y,
-  w,
-  h,
-  min,
-  max
-){
-
-  ctx.strokeStyle =
-    "rgba(255,255,255,.045)";
-
-  ctx.lineWidth = 1;
-
-  const rows = 7;
-
-  for (
-    let i = 0;
-    i <= rows;
-    i++
-  ){
-
-    const yy =
-      y +
-      h *
-      i / rows;
-
-    ctx.beginPath();
-
-    ctx.moveTo(
-      x,
-      yy
-    );
-
-    ctx.lineTo(
-      x + w,
-      yy
-    );
-
-    ctx.stroke();
-  }
-
-  const cols = 8;
-
-  for (
-    let i = 0;
-    i <= cols;
-    i++
-  ){
-
-    const xx =
-      x +
-      w *
-      i / cols;
-
-    ctx.beginPath();
-
-    ctx.moveTo(
-      xx,
-      y
-    );
-
-    ctx.lineTo(
-      xx,
-      y + h
-    );
-
-    ctx.stroke();
-  }
-}
-
-/* =====================================================
-   Y AXIS
-===================================================== */
-
-function drawYAxis(
-  x,
-  y,
-  h,
-  min,
-  max
-){
-
-  ctx.fillStyle =
-    "#8795a5";
-
-  ctx.font =
-    "10px Arial";
-
-  ctx.textAlign =
-    "left";
-
-  const rows = 7;
-
-  for (
-    let i = 0;
-    i <= rows;
-    i++
-  ){
-
-    const p =
-      max -
-      (max - min) *
-      i / rows;
-
-    const yy =
-      y +
-      h *
-      i / rows;
-
-    ctx.fillText(
-      fmtPrice(p),
-      x + 7,
-      yy + 3
-    );
-  }
-}
-
-/* =====================================================
-   X AXIS
-===================================================== */
-
-function drawXAxis(
-  x,
-  y,
-  w,
-  arr
-){
-
-  ctx.fillStyle =
-    "#8795a5";
-
-  ctx.font =
-    "10px Arial";
-
-  ctx.textAlign =
-    "center";
-
-  if (!arr.length)
-    return;
-
-  const count =
-    Math.min(
-      7,
-      arr.length
-    );
-
-  for (
-    let i = 0;
-    i < count;
-    i++
-  ){
-
-    const index =
-      Math.floor(
-        i *
-        (arr.length - 1) /
-        Math.max(
-          1,
-          count - 1
-        )
-      );
-
-    const c =
-      arr[index];
-
-    const xx =
-      x +
-      w *
-      index /
-      Math.max(
-        1,
-        arr.length - 1
-      );
-
-    const d =
-      new Date(
-        c.time
-      );
-
-    const label =
-      d.toLocaleTimeString(
-        "fa-IR",
-        {
-          hour:"2-digit",
-          minute:"2-digit"
-        }
-      );
-
-    ctx.fillText(
-      label,
-      xx,
-      y + 20
-    );
-  }
-}
-
-function drawText(
-  text,
-  x,
-  y,
-  size,
-  color
-){
-
-  ctx.fillStyle =
-    color;
-
-  ctx.font =
-    `${size}px Arial`;
-
-  ctx.textAlign =
-    "center";
-
-  ctx.fillText(
-    text,
-    x,
-    y
-  );
-}
-
-/* =====================================================
-   TOUCH / MOUSE
-===================================================== */
-
-let pointerStart = null;
-let pinchStart = null;
-
-chartCard.addEventListener(
-  "pointerdown",
-  e => {
-
-    chartCard.setPointerCapture(
-      e.pointerId
-    );
-
-    pointerStart = {
-      x:e.clientX,
-      y:e.clientY,
-      offset:state.offset,
-      time:Date.now()
-    };
-  }
-);
-
-chartCard.addEventListener(
-  "pointermove",
-  e => {
-
-    if (!pointerStart)
-      return;
-
-    const dx =
-      e.clientX -
-      pointerStart.x;
-
-    const rect =
-      chartCard.getBoundingClientRect();
-
-    const visible =
-      Math.max(
-        12,
-        Math.floor(
-          70 / state.zoom
-        )
-      );
-
-    const candlesPerPixel =
-      visible /
-      rect.width;
-
-    state.offset =
-      pointerStart.offset +
-      dx *
-      candlesPerPixel;
-
-    state.offset =
-      Math.max(
-        0,
-        Math.min(
-          state.candles.length - 1,
-          state.offset
-        )
-      );
-
-    drawChart();
-  }
-);
-
-chartCard.addEventListener(
-  "pointerup",
-  e => {
-
-    if (!pointerStart)
-      return;
-
-    const dx =
-      e.clientX -
-      pointerStart.x;
-
-    const dy =
-      e.clientY -
-      pointerStart.y;
-
-    const elapsed =
-      Date.now() -
-      pointerStart.time;
-
-    const moved =
-      Math.sqrt(
-        dx * dx +
-        dy * dy
-      );
-
-    pointerStart = null;
-
-    if (
-      moved < 12 &&
-      elapsed < 500
-    ){
-      selectCandle(
-        e.clientX,
-        e.clientY
-      );
-    }
-  }
-);
-
-chartCard.addEventListener(
-  "wheel",
-  e => {
-
-    e.preventDefault();
-
-    const factor =
-      e.deltaY < 0
-        ? 1.15
-        : .87;
-
-    state.zoom =
-      Math.max(
-        .5,
-        Math.min(
-          8,
-          state.zoom *
-          factor
-        )
-      );
-
-    drawChart();
-  },
-  {
-    passive:false
-  }
-);
-
-/* PINCH */
-
-let touches = new Map();
-
-chartCard.addEventListener(
-  "pointerdown",
-  e => {
-    touches.set(
-      e.pointerId,
-      {
-        x:e.clientX,
-        y:e.clientY
-      }
-    );
-
-    if (touches.size === 2){
-
-      const a =
-        [...touches.values()][0];
-
-      const b =
-        [...touches.values()][1];
-
-      pinchStart =
-        Math.hypot(
-          a.x-b.x,
-          a.y-b.y
-        );
-    }
-  }
-);
-
-chartCard.addEventListener(
-  "pointermove",
-  e => {
-
-    if (!touches.has(
-      e.pointerId
-    ))
-      return;
-
-    touches.set(
-      e.pointerId,
-      {
-        x:e.clientX,
-        y:e.clientY
-      }
-    );
-
-    if (
-      touches.size === 2 &&
-      pinchStart
-    ){
-
-      const a =
-        [...touches.values()][0];
-
-      const b =
-        [...touches.values()][1];
-
-      const d =
-        Math.hypot(
-          a.x-b.x,
-          a.y-b.y
-        );
-
-      const factor =
-        d / pinchStart;
-
-      state.zoom =
-        Math.max(
-          .5,
-          Math.min(
-            8,
-            state.zoom *
-            factor
-          )
-        );
-
-      pinchStart = d;
-
-      drawChart();
-    }
-  }
-);
-
-chartCard.addEventListener(
-  "pointerup",
-  e => {
-
-    touches.delete(
-      e.pointerId
-    );
-
-    if (
-      touches.size < 2
-    ){
-      pinchStart = null;
-    }
-  }
-);
-
-/* =====================================================
-   SELECT CANDLE
-===================================================== */
-
-async function selectCandle(
-  clientX,
-  clientY
-){
-
-  const rect =
-    chartCard.getBoundingClientRect();
-
-  const x =
-    clientX -
-    rect.left;
-
-  const W =
-    rect.width;
-
-  const left = 8;
-  const right = 72;
-
-  const cw =
-    W -
-    left -
-    right;
-
-  const visible =
-    Math.max(
-      12,
-      Math.floor(
-        70 / state.zoom
-      )
-    );
-
-  const end =
-    Math.max(
-      visible,
-      Math.min(
-        state.candles.length,
-        state.candles.length -
-        Math.round(state.offset)
-      )
-    );
-
-  const start =
-    Math.max(
-      0,
-      end - visible
-    );
-
-  const local =
-    Math.floor(
-      (x - left) /
-      (cw / visible)
-    );
-
-  const index =
-    Math.max(
-      start,
-      Math.min(
-        end - 1,
-        start + local
-      )
-    );
-
-  state.selectedIndex =
-    index;
-
-  drawChart();
-
-  await loadSelectedFootprint();
-}
-
-/* =====================================================
-   RENDER PANEL
-===================================================== */
-
-function renderPanel(){
-
-  const content =
-    $("panelContent");
-
-  if (
-    state.panel !==
-    "footprint"
-  ){
-
-    renderOtherPanel();
-
-    return;
-  }
-
-  $("panelTitle").textContent =
-    "🧱 Footprint";
-
-  $("panelSub").textContent =
-    "Bid × Ask · Delta · Volume · Imbalance";
-
-  const c =
+  const selectedCandle =
     state.candles[
-      state.selectedIndex
+      state.selected
     ];
 
-  if (!c){
+  if (selectedCandle) {
 
-    content.innerHTML =
-      `<div class="placeholder">
-        کندلی انتخاب نشده است.
-      </div>`;
+    $("chartInfo").textContent =
+      `${new Date(
+        selectedCandle.time
+      ).toLocaleTimeString(
+        "fa-IR"
+      )} · O ${fmt(
+        selectedCandle.open,
+        6
+      )} · H ${fmt(
+        selectedCandle.high,
+        6
+      )} · L ${fmt(
+        selectedCandle.low,
+        6
+      )} · C ${fmt(
+        selectedCandle.close,
+        6
+      )}`;
+  }
+}
 
+/* =========================================================
+   PANEL
+========================================================= */
+
+function renderPanel() {
+
+  const p =
+    state.panel;
+
+  if (p === "footprint") {
+    renderFootprint();
     return;
   }
 
-  $("selectedTime").textContent =
-    fmtTime(c.time);
-
-  const fp =
-    state.selectedFootprint;
-
-  if (!fp){
-
-    content.innerHTML =
-      `<div class="placeholder">
-        <strong>اطلاعات Footprint موجود نیست</strong>
-        برای این کندل هنوز معامله خام قابل دریافت نیست.
-      </div>`;
-
+  if (p === "heatmap") {
+    renderHeatmap();
     return;
   }
 
-  const s =
-    fp.summary;
+  if (p === "liquidity") {
+    renderLiquidity();
+    return;
+  }
 
-  const deltaClass =
-    s.delta >= 0
-      ? "buy"
-      : "sell";
+  if (p === "absorption") {
+    renderAbsorption();
+    return;
+  }
 
-  const levels =
-    fp.levels || [];
+  if (p === "book") {
+    renderBook();
+    return;
+  }
 
-  const maxVol =
-    Math.max(
-      1,
-      ...levels.map(
-        x => x.totalVolume
-      )
-    );
+  if (p === "delta") {
+    renderDelta();
+    return;
+  }
 
-  let html = "";
+  if (p === "large") {
+    renderLargeTrades();
+  }
+}
+
+/* =========================================================
+   FOOTPRINT PANEL
+========================================================= */
+
+function renderFootprint() {
+
+  const f =
+    state.footprint;
+
+  if (!f) {
+    $("panel").innerHTML =
+      `<div class="card">
+        در حال دریافت Footprint...
+      </div>`;
+    return;
+  }
+
+  const rows =
+    f.rows || [];
+
+  let html = `
+    <div class="card">
+
+      <div class="panelTitle">
+        🧱 Footprint
+      </div>
+
+      <div class="stats">
+
+        <div class="stat">
+          Buy
+          <b class="green">
+            ${fmt(f.buyValue,0)}
+          </b>
+        </div>
+
+        <div class="stat">
+          Sell
+          <b class="red">
+            ${fmt(f.sellValue,0)}
+          </b>
+        </div>
+
+        <div class="stat">
+          Delta
+          <b class="${
+            f.delta >= 0
+              ? "green"
+              : "red"
+          }">
+            ${fmt(f.delta,0)}
+          </b>
+        </div>
+
+        <div class="stat">
+          Delta %
+          <b class="${
+            f.deltaPercent >= 0
+              ? "green"
+              : "red"
+          }">
+            ${pct(f.deltaPercent)}
+          </b>
+        </div>
+
+      </div>
+
+      <div class="flowGrid section">
+
+        <div class="flowBox">
+          Volume
+          <b>${fmt(f.volume,2)}</b>
+        </div>
+
+        <div class="flowBox">
+          Trades
+          <b>${fmt(f.tradeCount,0)}</b>
+        </div>
+
+        <div class="flowBox">
+          POC
+          <b>
+            ${fmt(
+              f.poc?.price,
+              8
+            )}
+          </b>
+        </div>
+
+        <div class="flowBox">
+          Source
+          <b class="green">
+            REAL
+          </b>
+        </div>
+
+      </div>
+
+      <div class="footprint section">
+
+        <div class="fpHead">
+          <div>Bid</div>
+          <div>Price</div>
+          <div>Delta</div>
+          <div>Ask</div>
+          <div>Volume</div>
+        </div>
+  `;
+
+  if (!rows.length) {
+
+    html += `
+      <div class="error">
+        برای این کندل معامله واقعی در داده
+        فعلی Bybit موجود نیست.
+      </div>
+    `;
+
+  } else {
+
+    for (const r of rows) {
+
+      html += `
+        <div class="fpRow">
+
+          <div class="fpBid">
+            ${fmt(r.bid,4)}
+          </div>
+
+          <div class="fpPrice">
+            ${fmt(r.price,8)}
+          </div>
+
+          <div class="${
+            r.delta >= 0
+              ? "fpDeltaPos"
+              : "fpDeltaNeg"
+          }">
+            ${fmt(r.delta,4)}
+          </div>
+
+          <div class="fpAsk">
+            ${fmt(r.ask,4)}
+          </div>
+
+          <div>
+            ${fmt(r.volume,4)}
+
+            <div class="bar">
+              <i style="width:${Math.min(
+                100,
+                r.volume /
+                Math.max(
+                  1,
+                  f.poc?.volume || 1
+                ) *
+                100
+              )}%"></i>
+            </div>
+          </div>
+
+        </div>
+      `;
+    }
+  }
 
   html += `
-    <div class="summary">
-
-      <div class="stat">
-        <div class="k">
-          Volume
-        </div>
-        <div class="v">
-          ${fmt(s.volume,4)}
-        </div>
       </div>
 
-      <div class="stat">
-        <div class="k">
-          Delta
-        </div>
-        <div class="v ${deltaClass}">
-          ${s.delta >= 0 ? "+" : ""}
-          ${fmt(s.delta,4)}
-        </div>
-      </div>
-
-      <div class="stat">
-        <div class="k">
-          Buy
-        </div>
-        <div class="v buy">
-          ${fmt(s.buyVolume,4)}
-        </div>
-      </div>
-
-      <div class="stat">
-        <div class="k">
-          Sell
-        </div>
-        <div class="v sell">
-          ${fmt(s.sellVolume,4)}
-        </div>
-      </div>
-
-      <div class="stat">
-        <div class="k">
-          Delta %
-        </div>
-        <div class="v ${deltaClass}">
-          ${s.deltaPercent >= 0 ? "+" : ""}
-          ${fmt(s.deltaPercent,2)}%
-        </div>
-      </div>
-
-      <div class="stat">
-        <div class="k">
-          Trades
-        </div>
-        <div class="v">
-          ${fmt(s.trades,0)}
-        </div>
-      </div>
-
-      <div class="stat">
-        <div class="k">
-          POC
-        </div>
-        <div class="v">
-          ${s.poc == null
-            ? "—"
-            : fmtPrice(s.poc)}
-        </div>
-      </div>
-
-      <div class="stat">
-        <div class="k">
-          VAH / VAL
-        </div>
-        <div class="v">
-          ${
-            s.vah == null
-              ? "—"
-              :
-                `${fmtPrice(s.vah)}
-                 /
-                 ${fmtPrice(s.val)}`
-          }
-        </div>
+      <div class="muted section">
+        ${escapeHtml(
+          f.note || ""
+        )}
       </div>
 
     </div>
   `;
 
-  html += `
-    <div class="fp-scroll">
-      <div class="fp">
+  $("panel").innerHTML =
+    html;
+}
 
-        <div class="fp-row head">
+/* =========================================================
+   HEATMAP
+========================================================= */
 
-          <div class="fp-cell">
-            Delta
-          </div>
+function renderHeatmap() {
 
-          <div class="fp-cell">
+  const ob =
+    state.market?.orderbook;
+
+  if (!ob) return;
+
+  const bids =
+    ob.buyWalls || [];
+
+  const asks =
+    ob.sellWalls || [];
+
+  $("panel").innerHTML = `
+    <div class="card">
+
+      <div class="panelTitle">
+        🔥 Heatmap نقدینگی
+      </div>
+
+      <div class="stats">
+
+        <div class="stat">
+          Buy Liquidity
+          <b class="green">
+            $${fmt(
+              ob.buyLiquidity,
+              0
+            )}
+          </b>
+        </div>
+
+        <div class="stat">
+          Sell Liquidity
+          <b class="red">
+            $${fmt(
+              ob.sellLiquidity,
+              0
+            )}
+          </b>
+        </div>
+
+        <div class="stat">
+          Buy Share
+          <b class="green">
+            ${pct(
+              ob.buyShare
+            )}
+          </b>
+        </div>
+
+        <div class="stat">
+          Sell Share
+          <b class="red">
+            ${pct(
+              ob.sellShare
+            )}
+          </b>
+        </div>
+
+      </div>
+
+      <div class="section">
+        <b>🧱 Buy Walls</b>
+
+        ${bids.slice(0,10).map(
+          x => `
+            <div class="bookRow">
+              <span class="green">
+                ${fmt(
+                  x.price,
+                  8
+                )}
+              </span>
+              <span>
+                ${fmt(
+                  x.size,
+                  4
+                )}
+              </span>
+              <span>
+                $${fmt(
+                  x.value,
+                  0
+                )}
+              </span>
+            </div>
+          `
+        ).join("")}
+
+      </div>
+
+      <div class="section">
+        <b>🧱 Sell Walls</b>
+
+        ${asks.slice(0,10).map(
+          x => `
+            <div class="bookRow">
+              <span class="red">
+                ${fmt(
+                  x.price,
+                  8
+                )}
+              </span>
+              <span>
+                ${fmt(
+                  x.size,
+                  4
+                )}
+              </span>
+              <span>
+                $${fmt(
+                  x.value,
+                  0
+                )}
+              </span>
+            </div>
+          `
+        ).join("")}
+
+      </div>
+
+    </div>
+  `;
+}
+
+/* =========================================================
+   LIQUIDITY
+========================================================= */
+
+function renderLiquidity() {
+
+  const ob =
+    state.market?.orderbook;
+
+  $("panel").innerHTML = `
+    <div class="card">
+
+      <div class="panelTitle">
+        💧 Liquidity
+      </div>
+
+      <div class="stats">
+
+        <div class="stat">
+          Buy
+          <b class="green">
+            $${fmt(
+              ob?.buyLiquidity,
+              0
+            )}
+          </b>
+        </div>
+
+        <div class="stat">
+          Sell
+          <b class="red">
+            $${fmt(
+              ob?.sellLiquidity,
+              0
+            )}
+          </b>
+        </div>
+
+        <div class="stat">
+          Imbalance
+          <b class="${
+            (ob?.imbalance || 0) >= 0
+              ? "green"
+              : "red"
+          }">
+            ${pct(
+              ob?.imbalance || 0
+            )}
+          </b>
+        </div>
+
+        <div class="stat">
+          Pressure
+          <b>
+            ${escapeHtml(
+              ob?.pressure ||
+              "—"
+            )}
+          </b>
+        </div>
+
+      </div>
+
+    </div>
+  `;
+}
+
+/* =========================================================
+   ABSORPTION
+========================================================= */
+
+function renderAbsorption() {
+
+  const f =
+    state.footprint;
+
+  if (!f) return;
+
+  const delta =
+    Number(f.deltaPercent || 0);
+
+  const detected =
+    Math.abs(delta) >= 10;
+
+  $("panel").innerHTML = `
+    <div class="card">
+
+      <div class="panelTitle">
+        🧲 Absorption
+      </div>
+
+      <div class="${
+        detected
+          ? "success"
+          : "status"
+      }">
+
+        ${
+          detected
+            ? (
+              delta > 0
+                ? "🟢 فشار خرید / احتمال جذب فروش"
+                : "🔴 فشار فروش / احتمال جذب خرید"
+            )
+            : "⚪ جذب قطعی شناسایی نشد"
+        }
+
+      </div>
+
+      <div class="stats section">
+
+        <div class="stat">
+          Delta
+          <b class="${
+            delta >= 0
+              ? "green"
+              : "red"
+          }">
+            ${pct(delta)}
+          </b>
+        </div>
+
+        <div class="stat">
+          Buy
+          <b class="green">
+            $${fmt(
+              f.buyValue,
+              0
+            )}
+          </b>
+        </div>
+
+        <div class="stat">
+          Sell
+          <b class="red">
+            $${fmt(
+              f.sellValue,
+              0
+            )}
+          </b>
+        </div>
+
+        <div class="stat">
+          Trades
+          <b>
+            ${fmt(
+              f.tradeCount,
+              0
+            )}
+          </b>
+        </div>
+
+      </div>
+
+      <div class="muted section">
+        تشخیص Absorption فقط از داده معاملات
+        واقعی موجود انجام می‌شود و از رنگ کندل
+        برای ساخت Delta استفاده نمی‌شود.
+      </div>
+
+    </div>
+  `;
+}
+
+/* =========================================================
+   ORDER BOOK
+========================================================= */
+
+function renderBook() {
+
+  const ob =
+    state.market?.rawOrderbook;
+
+  if (!ob) return;
+
+  const max =
+    Math.max(
+      ob.bids.length,
+      ob.asks.length
+    );
+
+  let html = `
+    <div class="card">
+
+      <div class="panelTitle">
+        📖 Order Book
+      </div>
+
+      <div class="book">
+
+        <div class="bookRow">
+          <b class="green">
             Bid
-          </div>
+          </b>
 
-          <div class="fp-cell">
+          <b>
             Price
-          </div>
+          </b>
 
-          <div class="fp-cell">
+          <b class="red">
             Ask
-          </div>
-
-          <div class="fp-cell">
-            Volume
-          </div>
-
+          </b>
         </div>
   `;
 
-  for (const l of levels){
-
-    const dClass =
-      l.delta >= 0
-        ? "pos"
-        : "neg";
-
-    let rowClass = "";
-
-    if (
-      s.poc != null &&
-      Math.abs(
-        l.price - s.poc
-      ) <=
-        state.tickSize * 1.01
-    ){
-      rowClass += " poc";
-    }
-
-    if (
-      fp.imbalance?.buy?.some(
-        p =>
-          Math.abs(
-            p-l.price
-          ) <=
-            state.tickSize * 1.01
-      )
-    ){
-      rowClass +=
-        " imbalance-buy";
-    }
-
-    if (
-      fp.imbalance?.sell?.some(
-        p =>
-          Math.abs(
-            p-l.price
-          ) <=
-            state.tickSize * 1.01
-      )
-    ){
-      rowClass +=
-        " imbalance-sell";
-    }
-
-    const width =
-      Math.max(
-        2,
-        l.totalVolume /
-        maxVol *
-        100
-      );
+  for (
+    let i = 0;
+    i < Math.min(max,50);
+    i++
+  ) {
 
     html += `
-      <div class="fp-row${rowClass}">
+      <div class="bookRow">
 
-        <div
-          class="fp-cell delta ${dClass}">
+        <span class="green">
           ${
-            l.delta >= 0
-              ? "+"
-              : ""
-          }${fmt(
-            l.delta,
-            4
-          )}
-        </div>
+            ob.bids[i]
+              ? fmt(
+                  ob.bids[i].size,
+                  4
+                )
+              : "—"
+          }
+        </span>
 
-        <div class="fp-cell bid">
-          ${fmt(
-            l.bid,
-            4
-          )}
-        </div>
+        <span>
+          ${
+            ob.bids[i]
+              ? fmt(
+                  ob.bids[i].price,
+                  8
+                )
+              : (
+                ob.asks[i]
+                  ? fmt(
+                      ob.asks[i].price,
+                      8
+                    )
+                  : "—"
+              )
+          }
+        </span>
 
-        <div
-          class="fp-cell price">
-          ${fmtPrice(
-            l.price
-          )}
-        </div>
-
-        <div class="fp-cell ask">
-          ${fmt(
-            l.ask,
-            4
-          )}
-        </div>
-
-        <div class="fp-cell volume">
-
-          <div
-            class="volume-bar"
-            style="
-              width:${width}%;
-              background:
-                ${
-                  l.delta >= 0
-                    ? "var(--green)"
-                    : "var(--red)"
-                };
-            ">
-          </div>
-
-          <span
-            class="volume-text">
-            ${fmt(
-              l.totalVolume,
-              4
-            )}
-          </span>
-
-        </div>
+        <span class="red">
+          ${
+            ob.asks[i]
+              ? fmt(
+                  ob.asks[i].size,
+                  4
+                )
+              : "—"
+          }
+        </span>
 
       </div>
     `;
@@ -2051,750 +1790,550 @@ function renderPanel(){
 
   html += `
       </div>
+
     </div>
   `;
 
-  content.innerHTML =
+  $("panel").innerHTML =
     html;
 }
 
-/* =====================================================
-   OTHER PANELS
-===================================================== */
+/* =========================================================
+   DELTA / CVD
+========================================================= */
 
-function renderOtherPanel(){
+function renderDelta() {
 
-  const content =
-    $("panelContent");
+  const f =
+    state.market?.flow;
 
-  const map = {
+  if (!f) return;
 
-    heatmap: [
-      "🔥 Heatmap",
-      "Heatmap نقدینگی",
-      "در مرحله بعد روی همین چارت ثابت اضافه می‌شود."
-    ],
+  $("panel").innerHTML = `
+    <div class="card">
 
-    liquidity: [
-      "💧 Liquidity",
-      "نقدینگی",
-      "Buy Wall · Sell Wall · Liquidity Pools"
-    ],
+      <div class="panelTitle">
+        Δ Delta / CVD
+      </div>
 
-    absorption: [
-      "🧲 Absorption",
-      "جذب سفارش",
-      "تشخیص جذب خرید و فروش از معاملات واقعی"
-    ],
+      <div class="stats">
 
-    orderbook: [
-      "📖 Order Book",
-      "دفتر سفارشات",
-      "Bid / Ask و عمق لحظه‌ای بازار"
-    ],
+        <div class="stat">
+          Buy
+          <b class="green">
+            $${fmt(
+              f.buyValue,
+              0
+            )}
+          </b>
+        </div>
 
-    delta: [
-      "Δ Delta / CVD",
-      "Delta و CVD",
-      "Delta کل و CVD تجمعی"
-    ],
+        <div class="stat">
+          Sell
+          <b class="red">
+            $${fmt(
+              f.sellValue,
+              0
+            )}
+          </b>
+        </div>
 
-    large: [
-      "🐋 Large Trades",
-      "معاملات بزرگ",
-      "تشخیص معاملات غیرعادی و Block Trade"
-    ]
+        <div class="stat">
+          Delta
+          <b class="${
+            f.delta >= 0
+              ? "green"
+              : "red"
+          }">
+            $${fmt(
+              f.delta,
+              0
+            )}
+          </b>
+        </div>
 
-  };
+        <div class="stat">
+          Delta %
+          <b class="${
+            f.deltaPercent >= 0
+              ? "green"
+              : "red"
+          }">
+            ${pct(
+              f.deltaPercent
+            )}
+          </b>
+        </div>
 
-  const item =
-    map[state.panel];
+      </div>
 
-  $("panelTitle").textContent =
-    item?.[0] || "Order Flow";
+      <div class="flowGrid section">
 
-  $("panelSub").textContent =
-    item?.[1] || "";
+        <div class="flowBox">
+          Buy Trades
+          <b class="green">
+            ${fmt(
+              f.buyTrades,
+              0
+            )}
+          </b>
+        </div>
 
-  $("selectedTime").textContent =
-    "";
+        <div class="flowBox">
+          Sell Trades
+          <b class="red">
+            ${fmt(
+              f.sellTrades,
+              0
+            )}
+          </b>
+        </div>
 
-  content.innerHTML = `
-    <div class="placeholder">
-      <strong>
-        ${item?.[0] || ""}
-      </strong>
-      ${item?.[2] || ""}
+        <div class="flowBox">
+          Large Buy
+          <b class="green">
+            $${fmt(
+              f.largeBuy,
+              0
+            )}
+          </b>
+        </div>
+
+        <div class="flowBox">
+          Large Sell
+          <b class="red">
+            $${fmt(
+              f.largeSell,
+              0
+            )}
+          </b>
+        </div>
+
+      </div>
+
+      <div class="section status">
+        Pressure:
+        ${escapeHtml(
+          f.pressure
+        )}
+      </div>
+
     </div>
   `;
 }
 
-/* =====================================================
-   NAV
-===================================================== */
+/* =========================================================
+   LARGE TRADES
+========================================================= */
+
+function renderLargeTrades() {
+
+  const list =
+    state.trades || [];
+
+  const sorted =
+    [...list]
+      .map(x => ({
+        ...x,
+        value:
+          x.price * x.size
+      }))
+      .sort(
+        (a,b) =>
+          b.value - a.value
+      )
+      .slice(0,30);
+
+  $("panel").innerHTML = `
+    <div class="card">
+
+      <div class="panelTitle">
+        🐋 Large Trades
+      </div>
+
+      <div class="book">
+
+        <div class="bookRow">
+          <b>زمان</b>
+          <b>Price</b>
+          <b>Value</b>
+        </div>
+
+        ${sorted.map(
+          x => `
+            <div class="bookRow">
+
+              <span>
+                ${new Date(
+                  x.time
+                ).toLocaleTimeString(
+                  "fa-IR"
+                )}
+              </span>
+
+              <span class="${
+                x.side === "buy"
+                  ? "green"
+                  : "red"
+              }">
+                ${fmt(
+                  x.price,
+                  8
+                )}
+              </span>
+
+              <span>
+                $${fmt(
+                  x.value,
+                  0
+                )}
+              </span>
+
+            </div>
+          `
+        ).join("")}
+
+      </div>
+
+    </div>
+  `;
+}
+
+/* =========================================================
+   NAVIGATION
+========================================================= */
+
+$("nav");
 
 document
   .querySelectorAll(
-    ".nav button"
+    "#nav button"
   )
-  .forEach(btn => {
+  .forEach(
+    button => {
 
-    btn.addEventListener(
-      "click",
-      () => {
+      button.addEventListener(
+        "click",
+        async () => {
 
-        document
-          .querySelectorAll(
-            ".nav button"
-          )
-          .forEach(
-            x =>
-              x.classList.remove(
-                "active"
-              )
+          document
+            .querySelectorAll(
+              "#nav button"
+            )
+            .forEach(
+              x =>
+                x.classList.remove(
+                  "active"
+                )
+            );
+
+          button.classList.add(
+            "active"
           );
 
-        btn.classList.add(
-          "active"
-        );
+          state.panel =
+            button.dataset.panel;
 
-        state.panel =
-          btn.dataset.panel;
+          renderPanel();
 
-        renderPanel();
-      }
+          if (
+            state.panel ===
+            "footprint"
+          ) {
+            await loadSelectedFootprint();
+          }
+        }
+      );
+    }
+  );
+
+/* =========================================================
+   CHART TOUCH / MOUSE
+========================================================= */
+
+const canvas =
+  $("chart");
+
+canvas.addEventListener(
+  "pointerdown",
+  e => {
+
+    state.dragging = true;
+    state.lastX =
+      e.clientX;
+
+    canvas.setPointerCapture(
+      e.pointerId
     );
-  });
+  }
+);
 
-/* =====================================================
-   SELECT EVENTS
-===================================================== */
+canvas.addEventListener(
+  "pointermove",
+  e => {
+
+    if (!state.dragging) {
+      return;
+    }
+
+    const dx =
+      e.clientX -
+      state.lastX;
+
+    state.lastX =
+      e.clientX;
+
+    const rect =
+      canvas.getBoundingClientRect();
+
+    const visible =
+      Math.max(
+        20,
+        Math.min(
+          state.candles.length,
+          Math.floor(
+            80 / state.zoom
+          )
+        )
+      );
+
+    const pxPerCandle =
+      rect.width /
+      visible;
+
+    const move =
+      Math.round(
+        -dx /
+        pxPerCandle
+      );
+
+    state.offset =
+      Math.max(
+        0,
+        Math.min(
+          state.candles.length -
+          visible,
+          state.offset +
+          move
+        )
+      );
+
+    drawChart();
+  }
+);
+
+canvas.addEventListener(
+  "pointerup",
+  e => {
+
+    state.dragging =
+      false;
+
+    try {
+      canvas.releasePointerCapture(
+        e.pointerId
+      );
+    } catch {}
+  }
+);
+
+canvas.addEventListener(
+  "pointercancel",
+  () => {
+    state.dragging =
+      false;
+  }
+);
+
+canvas.addEventListener(
+  "wheel",
+  e => {
+
+    e.preventDefault();
+
+    const old =
+      state.zoom;
+
+    state.zoom =
+      e.deltaY < 0
+        ? Math.min(
+            8,
+            state.zoom * 1.15
+          )
+        : Math.max(
+            1,
+            state.zoom / 1.15
+          );
+
+    if (
+      old !== state.zoom
+    ) {
+      drawChart();
+    }
+  },
+  {
+    passive:false
+  }
+);
+
+/* =========================================================
+   CANDLE SELECTION
+========================================================= */
+
+canvas.addEventListener(
+  "click",
+  async e => {
+
+    if (
+      !state.candles.length
+    ) {
+      return;
+    }
+
+    const rect =
+      canvas.getBoundingClientRect();
+
+    const x =
+      e.clientX -
+      rect.left;
+
+    const left = 8;
+    const right = 72;
+
+    const chartW =
+      rect.width -
+      left -
+      right;
+
+    const visible =
+      Math.max(
+        20,
+        Math.min(
+          state.candles.length,
+          Math.floor(
+            80 / state.zoom
+          )
+        )
+      );
+
+    const gap =
+      chartW /
+      visible;
+
+    const local =
+      Math.floor(
+        (x - left) /
+        gap
+      );
+
+    if (
+      local < 0 ||
+      local >= visible
+    ) {
+      return;
+    }
+
+    const index =
+      state.offset +
+      local;
+
+    if (
+      !state.candles[index]
+    ) {
+      return;
+    }
+
+    state.selected =
+      index;
+
+    drawChart();
+
+    if (
+      state.panel ===
+      "footprint"
+    ) {
+      await loadSelectedFootprint();
+    } else {
+      renderPanel();
+    }
+  }
+);
+
+/* =========================================================
+   BUTTONS
+========================================================= */
+
+$("refresh")
+  .addEventListener(
+    "click",
+    load
+  );
 
 $("category")
   .addEventListener(
     "change",
-    async e => {
-
-      state.category =
-        e.target.value;
-
-      try{
-
-        await loadSymbols();
-
-        state.symbol =
-          $("symbol").value;
-
-        await loadMarket();
-
-      }catch(err){
-
-        console.error(err);
-
-        setStatus(
-          "🔴 خطا",
-          "var(--red)"
-        );
-      }
-    }
-  );
-
-$("symbol")
-  .addEventListener(
-    "change",
-    async e => {
-
-      state.symbol =
-        e.target.value;
-
-      try{
-        await loadMarket();
-      }catch(err){
-        console.error(err);
-
-        setStatus(
-          "🔴 خطا",
-          "var(--red)"
-        );
-      }
-    }
+    load
   );
 
 $("interval")
   .addEventListener(
     "change",
-    async e => {
+    load
+  );
 
-      state.interval =
-        e.target.value;
-
-      try{
-        await loadMarket();
-      }catch(err){
-        console.error(err);
-
-        setStatus(
-          "🔴 خطا",
-          "var(--red)"
-        );
+$("symbol")
+  .addEventListener(
+    "keydown",
+    e => {
+      if (
+        e.key === "Enter"
+      ) {
+        load();
       }
     }
   );
 
-/* =====================================================
-   BYBIT PUBLIC WEBSOCKET
-===================================================== */
+window.addEventListener(
+  "resize",
+  drawChart
+);
 
-function connectWebSocket(){
+/* =========================================================
+   ESCAPE
+========================================================= */
 
-  if (state.ws){
+function escapeHtml(value) {
 
-    try{
-      state.ws.close();
-    }catch(_){}
-  }
-
-  const ws =
-    new WebSocket(
-      "wss://stream.bybit.com/v5/public/linear"
-    );
-
-  state.ws =
-    ws;
-
-  ws.onopen = () => {
-
-    state.wsConnected =
-      true;
-
-    setStatus(
-      "🟢 Bybit Live",
-      "var(--green)"
-    );
-
-    ws.send(
-      JSON.stringify({
-        op:"subscribe",
-        args:[
-          `publicTrade.${state.symbol}`,
-          `kline.${state.interval}.${state.symbol}`
-        ]
-      })
-    );
-  };
-
-  ws.onmessage = event => {
-
-    try{
-
-      const msg =
-        JSON.parse(
-          event.data
-        );
-
-      if (
-        msg.topic?.startsWith(
-          "publicTrade."
-        )
-      ){
-
-        handleLiveTrade(
-          msg.data || []
-        );
-      }
-
-      if (
-        msg.topic?.startsWith(
-          "kline."
-        )
-      ){
-
-        handleLiveKline(
-          msg.data || []
-        );
-      }
-
-    }catch(err){
-
-      console.error(
-        "WS message",
-        err
-      );
-    }
-  };
-
-  ws.onerror = () => {
-
-    state.wsConnected =
-      false;
-
-    setStatus(
-      "🟡 Live reconnect...",
-      "var(--yellow)"
-    );
-  };
-
-  ws.onclose = () => {
-
-    state.wsConnected =
-      false;
-
-    setTimeout(
-      () => {
-
-        if (
-          state.symbol &&
-          state.ws === ws
-        ){
-          connectWebSocket();
-        }
-
-      },
-      3000
-    );
-  };
-}
-
-/* =====================================================
-   LIVE TRADES
-===================================================== */
-
-function handleLiveTrade(
-  trades
-){
-
-  for (const t of trades){
-
-    const trade = {
-      time:
-        Number(t.T),
-      price:
-        Number(t.p),
-      size:
-        Number(t.v),
-      side:
-        String(t.S || "")
-          .toLowerCase()
-    };
-
-    state.liveTrades.push(
-      trade
-    );
-
-    if (
-      trade.side ===
-      "buy"
-    ){
-      state.cvd +=
-        trade.size;
-    } else {
-      state.cvd -=
-        trade.size;
-    }
-  }
-
-  const cutoff =
-    Date.now() -
-    24 * 60 * 60 * 1000;
-
-  state.liveTrades =
-    state.liveTrades.filter(
-      x => x.time >= cutoff
-    );
-
-  updateCurrentCandle();
-
-  if (
-    state.panel ===
-    "footprint"
-  ){
-    renderLiveFootprint();
-  }
-}
-
-/* =====================================================
-   LIVE KLINE
-===================================================== */
-
-function handleLiveKline(
-  rows
-){
-
-  for (const k of rows){
-
-    const time =
-      Number(k.start);
-
-    const candle = {
-      time,
-      open:
-        Number(k.open),
-      high:
-        Number(k.high),
-      low:
-        Number(k.low),
-      close:
-        Number(k.close),
-      volume:
-        Number(k.volume),
-      turnover:
-        Number(k.turnover)
-    };
-
-    const i =
-      state.candles.findIndex(
-        x =>
-          Number(x.time) ===
-          time
-      );
-
-    if (i >= 0){
-
-      state.candles[i] =
-        candle;
-
-    } else {
-
-      state.candles.push(
-        candle
-      );
-
-      state.candles.sort(
-        (a,b) =>
-          a.time - b.time
-      );
-    }
-  }
-
-  if (
-    state.selectedIndex <
-    0
-  ){
-    state.selectedIndex =
-      state.candles.length - 1;
-  }
-
-  drawChart();
-}
-
-function updateCurrentCandle(){
-
-  if (
-    !state.liveTrades.length
+  return String(
+    value ?? ""
   )
-    return;
-
-  const last =
-    state.liveTrades[
-      state.liveTrades.length - 1
-    ];
-
-  const seconds =
-    Number(
-      TF_MAP[state.interval]
+    .replace(
+      /&/g,
+      "&amp;"
+    )
+    .replace(
+      /</g,
+      "&lt;"
+    )
+    .replace(
+      />/g,
+      "&gt;"
+    )
+    .replace(
+      /"/g,
+      "&quot;"
+    )
+    .replace(
+      /'/g,
+      "&#039;"
     );
-
-  if (!seconds)
-    return;
-
-  const bucket =
-    Math.floor(
-      last.time /
-      (seconds * 1000)
-    ) *
-    seconds *
-    1000;
-
-  let c =
-    state.candles.find(
-      x =>
-        x.time === bucket
-    );
-
-  if (!c){
-
-    c = {
-      time:bucket,
-      open:last.price,
-      high:last.price,
-      low:last.price,
-      close:last.price,
-      volume:0,
-      turnover:0
-    };
-
-    state.candles.push(c);
-
-    state.candles.sort(
-      (a,b) =>
-        a.time-b.time
-    );
-  }
-
-  c.high =
-    Math.max(
-      c.high,
-      last.price
-    );
-
-  c.low =
-    Math.min(
-      c.low,
-      last.price
-    );
-
-  c.close =
-    last.price;
-
-  c.volume +=
-    last.size;
-
-  c.turnover +=
-    last.price *
-    last.size;
 }
 
-/* =====================================================
-   LIVE FOOTPRINT
-===================================================== */
-
-function renderLiveFootprint(){
-
-  if (
-    state.selectedIndex !==
-    state.candles.length - 1
-  ){
-    return;
-  }
-
-  const c =
-    state.candles[
-      state.selectedIndex
-    ];
-
-  if (!c)
-    return;
-
-  const start =
-    c.time;
-
-  const end =
-    c.time +
-    Number(
-      TF_MAP[state.interval]
-    ) *
-    1000;
-
-  const trades =
-    state.liveTrades.filter(
-      t =>
-        t.time >= start &&
-        t.time < end
-    );
-
-  if (!trades.length)
-    return;
-
-  const fp =
-    buildClientFootprint(
-      c,
-      trades
-    );
-
-  state.selectedFootprint =
-    fp;
-
-  renderPanel();
-}
-
-function buildClientFootprint(
-  candle,
-  trades
-){
-
-  const map =
-    new Map();
-
-  for (
-    const t of trades
-  ){
-
-    const price =
-      roundToStep(
-        t.price,
-        state.tickSize
-      );
-
-    const key =
-      price.toFixed(12);
-
-    if (!map.has(key)){
-
-      map.set(
-        key,
-        {
-          price,
-          bid:0,
-          ask:0,
-          totalVolume:0,
-          trades:0
-        }
-      );
-    }
-
-    const r =
-      map.get(key);
-
-    if (
-      t.side ===
-      "buy"
-    ){
-      r.ask +=
-        t.size;
-    } else {
-      r.bid +=
-        t.size;
-    }
-
-    r.totalVolume +=
-      t.size;
-
-    r.trades++;
-  }
-
-  const levels =
-    [...map.values()]
-      .sort(
-        (a,b) =>
-          b.price-a.price
-      )
-      .map(
-        x => ({
-          ...x,
-          delta:
-            x.ask-x.bid,
-          deltaPercent:
-            x.totalVolume
-              ? (
-                (x.ask-x.bid) /
-                x.totalVolume
-              ) * 100
-              : 0
-        })
-      );
-
-  let buy = 0;
-  let sell = 0;
-  let volume = 0;
-  let poc = null;
-  let max = -1;
-
-  for (
-    const l of levels
-  ){
-
-    buy += l.ask;
-    sell += l.bid;
-    volume +=
-      l.totalVolume;
-
-    if (
-      l.totalVolume >
-      max
-    ){
-
-      max =
-        l.totalVolume;
-
-      poc =
-        l.price;
-    }
-  }
-
-  return {
-    candleTime:
-      candle.time,
-
-    levels,
-
-    summary:{
-      buyVolume:buy,
-      sellVolume:sell,
-      volume,
-      delta:
-        buy-sell,
-      deltaPercent:
-        volume
-          ? (
-            (buy-sell) /
-            volume
-          ) * 100
-          : 0,
-      trades:
-        trades.length,
-      poc,
-      vah:
-        levels.length
-          ? levels[0].price
-          : null,
-      val:
-        levels.length
-          ? levels[
-              levels.length-1
-            ].price
-          : null
-    },
-
-    imbalance:{
-      buy:[],
-      sell:[],
-      stackedBuy:[],
-      stackedSell:[]
-    }
-  };
-}
-
-/* =====================================================
+/* =========================================================
    START
-===================================================== */
+========================================================= */
 
-async function init(){
-
-  try{
-
-    resizeCanvas();
-
-    await loadSymbols();
-
-    state.symbol =
-      $("symbol").value ||
-      "BTCUSDT";
-
-    await loadMarket();
-
-  }catch(err){
-
-    console.error(err);
-
-    setStatus(
-      "🔴 اتصال برقرار نشد",
-      "var(--red)"
-    );
-
-    $("panelContent")
-      .innerHTML = `
-        <div class="placeholder">
-          <strong>
-            خطا در اتصال به Worker
-          </strong>
-          ${err.message}
-        </div>
-      `;
-  }
-}
-
-init();
-
+load();
 </script>
 
 </body>
