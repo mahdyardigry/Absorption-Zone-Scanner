@@ -141,222 +141,425 @@ canvas{
 }
 
 /* =========================================================
-   FOOTPRINT BOX
-========================================================= */
+   FOOTPRINT PANEL — SELECTED CANDLE
+   ========================================================= */
 
 .footprint-panel{
- background:#080f16;
- border:1px solid #253746;
- border-radius:12px;
- margin-top:12px;
- overflow:hidden
+  margin-top:14px;
+  border:1px solid #263449;
+  border-radius:14px;
+  background:#0b111b;
+  overflow:hidden;
 }
 
 .fp-head{
- display:flex;
- align-items:center;
- justify-content:space-between;
- gap:10px;
- padding:10px 12px;
- background:#0d1822;
- border-bottom:1px solid #20313d;
- flex-wrap:wrap
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  padding:12px 14px;
+  border-bottom:1px solid #263449;
+  background:#0e1622;
 }
 
-.fp-title{
- font-size:13px;
- font-weight:bold
+.fp-head strong{
+  color:#f4f7fb;
+  font-size:14px;
 }
 
 #fpStatus{
- color:#8ea2b2;
- font-size:10px
+  color:#91a4bb;
+  font-size:11px;
 }
 
 .fp-box{
- width:100%;
- overflow-x:auto;
- overflow-y:hidden;
- padding:10px
+  width:100%;
+  overflow-x:auto;
+  overflow-y:hidden;
+  padding:12px;
+  box-sizing:border-box;
 }
 
 .fp-inner{
- min-width:720px;
- position:relative
+  min-width:850px;
 }
 
-.fp-columns{
- display:grid;
- grid-template-columns:
-  150px
-  150px
-  105px
-  130px
-  1fr;
- align-items:center;
- gap:0;
- min-height:32px
+/* عنوان ستون‌ها */
+.fp-main-head{
+  display:grid;
+  grid-template-columns:
+    90px
+    minmax(130px,1fr)
+    170px
+    90px
+    minmax(130px,1fr)
+    90px;
+
+  align-items:center;
+  min-height:34px;
+  border-bottom:1px solid #263449;
+  color:#8fa3ba;
+  font-size:10px;
+  font-weight:700;
+  text-align:center;
+  direction:ltr;
 }
 
-.fp-column-title{
- font-size:10px;
- text-align:center;
- color:#8397a8;
- padding:7px 4px;
- border-bottom:1px solid #1e303d
+.fp-main-head .bid-title{
+  color:#ff6675;
 }
 
-.fp-column-title.bid{
- color:#ff6675
+.fp-main-head .ask-title{
+  color:#35e58a;
 }
 
-.fp-column-title.ask{
- color:#35e58a
+.fp-main-head .delta-title{
+  color:#f4c95d;
 }
 
-.fp-column-title.delta{
- color:#ffd166
+/* بدنه اصلی Footprint */
+.fp-main{
+  display:grid;
+  grid-template-columns:
+    90px
+    minmax(130px,1fr)
+    170px
+    90px
+    minmax(130px,1fr)
+    90px;
+
+  position:relative;
+  direction:ltr;
+  border-bottom:1px solid #263449;
 }
 
-.fp-column-title.vol{
- color:#6fa8ff
+/* ستون‌های عددی */
+.fp-bid-values,
+.fp-bid-bars,
+.fp-candle-stage,
+.fp-delta-values,
+.fp-ask-bars,
+.fp-ask-values{
+  position:relative;
 }
 
-.fp-levels{
- position:relative
+/* هر سطح */
+.fp-level-row{
+  height:30px;
+  min-height:30px;
+  box-sizing:border-box;
+  border-bottom:1px solid rgba(255,255,255,.045);
+  display:flex;
+  align-items:center;
 }
 
-.fp-row{
- display:grid;
- grid-template-columns:
-  150px
-  150px
-  105px
-  130px
-  1fr;
- align-items:center;
- min-height:30px;
- border-bottom:1px solid rgba(40,58,70,.35);
- position:relative
+/* Bid */
+.fp-bid-values .fp-level-row{
+  justify-content:flex-end;
+  padding-right:8px;
 }
 
-.fp-row:nth-child(even){
- background:rgba(255,255,255,.012)
+.fp-bid-number{
+  color:#ff6675;
+  font-size:11px;
+  font-weight:700;
+  white-space:nowrap;
 }
 
-.fp-price{
- text-align:center;
- color:#d8e5ee;
- font-size:10px;
- font-weight:bold
+/* Ask */
+.fp-ask-values .fp-level-row{
+  justify-content:flex-start;
+  padding-left:8px;
 }
 
-.fp-bid{
- text-align:center;
- color:#ff6675;
- font-size:11px;
- font-weight:bold;
- position:relative
+.fp-ask-number{
+  color:#35e58a;
+  font-size:11px;
+  font-weight:700;
+  white-space:nowrap;
 }
 
-.fp-ask{
- text-align:center;
- color:#35e58a;
- font-size:11px;
- font-weight:bold;
- position:relative
+/* هیستوگرام Bid */
+.fp-bid-bars .fp-level-row{
+  justify-content:flex-end;
+  padding-right:4px;
 }
 
-.fp-delta{
- text-align:center;
- font-size:10px;
- font-weight:bold
+.fp-bar-wrap{
+  width:100%;
+  height:18px;
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
 }
 
-.fp-delta.pos{
- color:#35e58a
+.fp-bar-bid{
+  height:14px;
+  min-width:1px;
+  border-radius:4px 0 0 4px;
+  background:rgba(255,72,92,.72);
+  box-shadow:0 0 8px rgba(255,72,92,.12);
 }
 
-.fp-delta.neg{
- color:#ff6675
+/* هیستوگرام Ask */
+.fp-ask-bars .fp-level-row{
+  justify-content:flex-start;
+  padding-left:4px;
 }
 
-.fp-vol{
- height:20px;
- position:relative;
- display:flex;
- align-items:center;
- padding-left:5px;
- padding-right:5px
+.fp-bar-ask{
+  height:14px;
+  min-width:1px;
+  border-radius:0 4px 4px 0;
+  background:rgba(53,229,138,.72);
+  box-shadow:0 0 8px rgba(53,229,138,.12);
 }
 
-.fp-vol-bar{
- height:14px;
- border-radius:3px;
- opacity:.8;
- min-width:1px
+/* Delta */
+.fp-delta-values .fp-level-row{
+  justify-content:center;
 }
 
-.fp-vol-text{
- position:absolute;
- left:8px;
- top:3px;
- font-size:9px;
- color:#d7e3ec;
- direction:ltr;
- text-align:left
+.fp-delta-number{
+  min-width:66px;
+  text-align:center;
+  padding:3px 5px;
+  border-radius:5px;
+  font-size:10px;
+  font-weight:800;
+  box-sizing:border-box;
 }
+
+.fp-delta-positive{
+  color:#35e58a;
+  background:rgba(53,229,138,.08);
+  border:1px solid rgba(53,229,138,.18);
+}
+
+.fp-delta-negative{
+  color:#ff6675;
+  background:rgba(255,102,117,.08);
+  border:1px solid rgba(255,102,117,.18);
+}
+
+.fp-delta-zero{
+  color:#aab7c7;
+  background:rgba(170,183,199,.06);
+  border:1px solid rgba(170,183,199,.12);
+}
+
+/* =========================================================
+   CENTER CANDLE
+   ========================================================= */
+
+.fp-candle-stage{
+  height:auto;
+  min-height:34px;
+  background:
+    linear-gradient(
+      90deg,
+      rgba(255,255,255,.025),
+      rgba(255,255,255,.055),
+      rgba(255,255,255,.025)
+    );
+
+  border-left:1px solid #263449;
+  border-right:1px solid #263449;
+}
+
+/* ریل قیمت */
+.fp-price-rail{
+  position:absolute;
+  left:0;
+  right:0;
+  top:0;
+  bottom:0;
+  pointer-events:none;
+  z-index:1;
+}
+
+.fp-price-row{
+  height:30px;
+  min-height:30px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  border-bottom:1px solid rgba(255,255,255,.045);
+  box-sizing:border-box;
+}
+
+.fp-price-label{
+  position:relative;
+  z-index:3;
+  padding:2px 5px;
+  border-radius:4px;
+  background:rgba(11,17,27,.82);
+  color:#c8d4e2;
+  font-size:9px;
+  font-weight:700;
+  white-space:nowrap;
+}
+
+/* لایه کندل */
+.fp-candle-layer{
+  position:absolute;
+  left:0;
+  right:0;
+  top:0;
+  bottom:0;
+  pointer-events:none;
+  z-index:4;
+}
+
+/* Wick */
+.fp-candle-wick{
+  position:absolute;
+  width:2px;
+  left:50%;
+  transform:translateX(-50%);
+  border-radius:2px;
+  opacity:.95;
+}
+
+/* Body */
+.fp-candle-body{
+  position:absolute;
+  left:50%;
+  transform:translateX(-50%);
+  width:34px;
+  min-height:5px;
+  border-radius:5px;
+  box-sizing:border-box;
+}
+
+/* صعودی */
+.fp-candle-up{
+  background:#35e58a;
+  border:1px solid #35e58a;
+  box-shadow:
+    0 0 12px rgba(53,229,138,.35),
+    inset 0 0 8px rgba(255,255,255,.08);
+}
+
+/* نزولی */
+.fp-candle-down{
+  background:#ff6675;
+  border:1px solid #ff6675;
+  box-shadow:
+    0 0 12px rgba(255,102,117,.35),
+    inset 0 0 8px rgba(255,255,255,.08);
+}
+
+/* خطوط OHLC کنار کندل */
+.fp-ohlc{
+  position:absolute;
+  left:50%;
+  transform:translateX(-50%);
+  width:100%;
+  pointer-events:none;
+  z-index:5;
+}
+
+.fp-ohlc-label{
+  position:absolute;
+  font-size:8px;
+  font-weight:800;
+  padding:2px 4px;
+  border-radius:4px;
+  background:#111a28;
+  border:1px solid #2c3a4f;
+  color:#c7d2df;
+  white-space:nowrap;
+}
+
+/* وضعیت بدون داده */
+.fp-empty{
+  padding:30px 15px;
+  text-align:center;
+  color:#8191a5;
+  font-size:12px;
+  border:1px dashed #2b394d;
+  border-radius:10px;
+  background:#0b111b;
+}
+
+/* =========================================================
+   TOTALS
+   ========================================================= */
 
 .fp-totals{
- display:grid;
- grid-template-columns:repeat(5,1fr);
- gap:7px;
- padding:10px;
- background:#0c151e;
- border-top:1px solid #263746
+  display:grid;
+  grid-template-columns:repeat(5,1fr);
+  gap:8px;
+  margin-top:10px;
 }
 
 .fp-total{
- background:#101d28;
- border:1px solid #20313e;
- border-radius:8px;
- padding:8px;
- text-align:center
+  min-height:52px;
+  padding:8px;
+  border:1px solid #263449;
+  border-radius:9px;
+  background:#0e1622;
+  text-align:center;
+  box-sizing:border-box;
 }
 
-.fp-total span{
- display:block;
- font-size:9px;
- color:#8194a4;
- margin-bottom:5px
+.fp-total-label{
+  color:#7f91a7;
+  font-size:9px;
+  margin-bottom:5px;
 }
 
-.fp-total b{
- font-size:12px
+.fp-total-value{
+  color:#edf3fa;
+  font-size:12px;
+  font-weight:800;
 }
 
-.fp-total.ask b{
- color:#35e58a
+.fp-total-bid .fp-total-value{
+  color:#ff6675;
 }
 
-.fp-total.bid b{
- color:#ff6675
+.fp-total-ask .fp-total-value{
+  color:#35e58a;
 }
 
-.fp-total.delta b{
- color:#ffd166
+.fp-total-delta .fp-total-value{
+  color:#f4c95d;
 }
 
-.fp-total.volume b{
- color:#6fa8ff
+/* موبایل */
+@media(max-width:800px){
+
+  .fp-box{
+    padding:8px;
+  }
+
+  .fp-inner{
+    min-width:780px;
+  }
+
+  .fp-main-head,
+  .fp-main{
+    grid-template-columns:
+      75px
+      minmax(110px,1fr)
+      150px
+      80px
+      minmax(110px,1fr)
+      75px;
+  }
+
+  .fp-totals{
+    grid-template-columns:repeat(5, minmax(100px,1fr));
+    min-width:780px;
+  }
+
+  .fp-candle-body{
+    width:30px;
+  }
 }
 
-.fp-empty{
- padding:35px 15px;
- text-align:center;
- color:#718596;
- font-size:12px
-}
 
 /* =========================================================
    CARDS
