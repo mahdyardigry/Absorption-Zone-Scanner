@@ -1,5 +1,5 @@
 const BYBIT = "https://api.bybit.com";
-const VERSION = "ABSORPTION-ZONE-SCANNER-V4";
+const VERSION = "ABSORPTION-ZONE-SCANNER-V4-FIX";
 
 const DEFAULT_SYMBOL = "BTCUSDT";
 const DEFAULT_CATEGORY = "linear";
@@ -13,105 +13,104 @@ function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
     headers: {
-      "content-type": "application/json; charset=utf-8",
+      "content-type": "application/json; charset=UTF-8",
       "cache-control": "no-store, no-cache, must-revalidate, max-age=0",
-      "pragma": "no-cache"
+      "pragma": "no-cache",
+      "expires": "0",
+      "x-scanner-version": VERSION
     }
   });
 }
 
-function errorJson(message, status = 500, extra = {}) {
+function err(message, status = 500) {
   return json({
     ok: false,
     error: String(message || "Unknown error"),
-    ...extra
+    version: VERSION
   }, status);
 }
 
-function normalizeCategory(value) {
-  const v = String(value || "").toLowerCase();
-
-  if (v === "spot") return "spot";
-  if (v === "linear" || v === "futures" || v === "future") {
-    return "linear";
-  }
-
-  return DEFAULT_CATEGORY;
-}
-
-function normalizeInterval(value) {
-  const v = String(value || DEFAULT_INTERVAL);
-
-  const allowed = new Set([
-    "1",
-    "3",
-    "5",
-    "15",
-    "30",
-    "60",
-    "120",
-    "240",
-    "360",
-    "720",
-    "D"
-  ]);
-
-  return allowed.has(v) ? v : DEFAULT_INTERVAL;
-}
-
 function normalizeSymbol(value) {
-  let s = String(value || DEFAULT_SYMBOL)
+  let s = String(value || "")
     .trim()
     .toUpperCase()
     .replace(/[^A-Z0-9]/g, "");
 
   if (!s || s === "USDT" || s === "BUSDT") {
-    return DEFAULT_SYMBOL;
+    return "BTCUSDT";
   }
 
   if (s === "BTC") {
     return "BTCUSDT";
   }
 
-  if (!s.endsWith("USDT") && s.length >= 2) {
+  if (!s.endsWith("USDT")) {
     s += "USDT";
   }
 
   return s;
 }
 
-function number(value, fallback = 0) {
-  const n = Number(value);
+function normalizeCategory(value) {
+  const s = String(value || "").toLowerCase();
+
+  if (s === "spot") {
+    return "spot";
+  }
+
+  return "linear";
+}
+
+function normalizeInterval(value) {
+  const allowed = [
+    "1",
+    "3",
+    "5",
+    "15",
+    "30",
+    "60"
+  ];
+
+  const s = String(value || "1");
+
+  return allowed.includes(s)
+    ? s
+    : "1";
+}
+
+function num(v, fallback = 0) {
+  const n = Number(v);
   return Number.isFinite(n) ? n : fallback;
 }
 
-function safeTime(value) {
-  const n = Number(value);
-  return Number.isFinite(n) ? n : Date.now();
-}
-
 async function bybit(path, params = {}) {
-  const url = new URL(BYBIT + path);
+
+  const u = new URL(BYBIT + path);
 
   for (const [key, value] of Object.entries(params)) {
-    if (value !== undefined && value !== null && value !== "") {
-      url.searchParams.set(key, String(value));
+    if (
+      value !== undefined &&
+      value !== null &&
+      value !== ""
+    ) {
+      u.searchParams.set(key, String(value));
     }
   }
 
   let response;
 
   try {
-    response = await fetch(url.toString(), {
+    response = await fetch(u.toString(), {
       method: "GET",
       headers: {
-        "accept": "application/json"
+        "Accept": "application/json"
       },
       signal: AbortSignal.timeout(15000)
     });
-  } catch (err) {
+  } catch (e) {
     throw new Error(
-      `خطا در اتصال به Bybit: ${err?.message || "Network error"}`
+      "اتصال به Bybit برقرار نشد: " +
+      (e?.message || "network error")
     );
   }
 
@@ -119,7 +118,8 @@ async function bybit(path, params = {}) {
 
   if (!text || !text.trim()) {
     throw new Error(
-      `پاسخ خالی از Bybit دریافت شد — HTTP ${response.status}`
+      "Bybit پاسخ خالی برگرداند. HTTP " +
+      response.status
     );
   }
 
@@ -127,16 +127,17 @@ async function bybit(path, params = {}) {
 
   try {
     data = JSON.parse(text);
-  } catch {
+  } catch (e) {
     throw new Error(
-      `پاسخ Bybit JSON نیست — HTTP ${response.status}`
+      "Bybit پاسخ JSON معتبر برنگرداند. HTTP " +
+      response.status
     );
   }
 
   if (!response.ok) {
     throw new Error(
       data?.retMsg ||
-      `خطای HTTP ${response.status} از Bybit`
+      `Bybit HTTP ${response.status}`
     );
   }
 
@@ -150,112 +151,195 @@ async function bybit(path, params = {}) {
   return data;
 }
 
-async function getKlines(category, symbol, interval) {
-  const data = await bybit("/v5/market/kline", {
-    category,
-    symbol,
-    interval,
-    limit: KLINE_LIMIT
-  });
+async function getKlines(
+  category,
+  symbol,
+  interval
+) {
 
-  const rows = data?.result?.list || [];
+  const data = await bybit(
+    "/v5/market/kline",
+    {
+      category,
+      symbol,
+      interval,
+      limit: KLINE_LIMIT
+    }
+  );
+
+  const rows =
+    data?.result?.list || [];
 
   return rows
-    .map(row => ({
-      time: number(row[0]),
-      open: number(row[1]),
-      high: number(row[2]),
-      low: number(row[3]),
-      close: number(row[4]),
-      volume: number(row[5]),
-      turnover: number(row[6])
+    .map(x => ({
+      time: num(x[0]),
+      open: num(x[1]),
+      high: num(x[2]),
+      low: num(x[3]),
+      close: num(x[4]),
+      volume: num(x[5]),
+      turnover: num(x[6])
     }))
     .filter(x =>
-      x.time > 0 &&
+      x.time &&
       x.open > 0 &&
       x.high > 0 &&
       x.low > 0 &&
       x.close > 0
     )
-    .sort((a, b) => a.time - b.time);
+    .sort(
+      (a, b) =>
+        a.time - b.time
+    );
 }
 
-async function getTrades(category, symbol) {
-  const data = await bybit("/v5/market/recent-trade", {
-    category,
-    symbol,
-    limit: TRADE_LIMIT
-  });
+async function getTrades(
+  category,
+  symbol
+) {
 
-  const rows = data?.result?.list || [];
+  const data = await bybit(
+    "/v5/market/recent-trade",
+    {
+      category,
+      symbol,
+      limit: TRADE_LIMIT
+    }
+  );
+
+  const rows =
+    data?.result?.list || [];
 
   return rows
-    .map((row, index) => {
+    .map((x, i) => {
+
+      const price =
+        num(x.price);
+
+      const qty =
+        num(x.size);
+
       const side =
-        String(row.side || "").toLowerCase() === "buy"
+        String(x.side || "")
+          .toLowerCase() === "buy"
           ? "buy"
           : "sell";
 
       return {
-        id: row.execId || `${row.time || Date.now()}-${index}`,
-        time: safeTime(row.time),
-        price: number(row.price),
-        qty: number(row.size),
+        id:
+          x.execId ||
+          `${x.time}-${i}`,
+        time:
+          num(x.time, Date.now()),
+        price,
+        qty,
         side,
-        value: number(row.price) * number(row.size),
-        isBlock: false
+        value:
+          price * qty
       };
     })
     .filter(x =>
-      x.time > 0 &&
+      x.time &&
       x.price > 0 &&
       x.qty > 0
     );
 }
 
-async function getOrderbook(category, symbol) {
-  const data = await bybit("/v5/market/orderbook", {
-    category,
-    symbol,
-    limit: ORDERBOOK_LIMIT
-  });
+async function getOrderbook(
+  category,
+  symbol
+) {
 
-  const result = data?.result || {};
+  const data = await bybit(
+    "/v5/market/orderbook",
+    {
+      category,
+      symbol,
+      limit: ORDERBOOK_LIMIT
+    }
+  );
 
-  const bids = (result.b || [])
-    .map(row => ({
-      price: number(row[0]),
-      qty: number(row[1])
-    }))
-    .filter(x => x.price > 0 && x.qty > 0);
+  const r =
+    data?.result || {};
 
-  const asks = (result.a || [])
-    .map(row => ({
-      price: number(row[0]),
-      qty: number(row[1])
-    }))
-    .filter(x => x.price > 0 && x.qty > 0);
+  const bids =
+    (r.b || [])
+      .map(x => ({
+        price: num(x[0]),
+        qty: num(x[1])
+      }))
+      .filter(x =>
+        x.price > 0 &&
+        x.qty > 0
+      );
+
+  const asks =
+    (r.a || [])
+      .map(x => ({
+        price: num(x[0]),
+        qty: num(x[1])
+      }))
+      .filter(x =>
+        x.price > 0 &&
+        x.qty > 0
+      );
 
   return {
-    timestamp: number(result.ts, Date.now()),
-    updateId: result.u || null,
+    timestamp:
+      num(r.ts, Date.now()),
+
     bids,
+
     asks,
-    bestBid: bids.length ? bids[0].price : 0,
-    bestAsk: asks.length ? asks[0].price : 0
+
+    bestBid:
+      bids[0]?.price || 0,
+
+    bestAsk:
+      asks[0]?.price || 0
   };
 }
 
-async function getTicker(category, symbol) {
-  const data = await bybit("/v5/market/tickers", {
-    category,
-    symbol
-  });
+async function getTicker(
+  category,
+  symbol
+) {
 
-  return data?.result?.list?.[0] || {};
+  const data = await bybit(
+    "/v5/market/tickers",
+    {
+      category,
+      symbol
+    }
+  );
+
+  return (
+    data?.result?.list?.[0] ||
+    {}
+  );
 }
 
-function aggregateTrades(trades) {
+function median(values) {
+
+  const a =
+    values
+      .filter(Number.isFinite)
+      .sort((x, y) => x - y);
+
+  if (!a.length) {
+    return 0;
+  }
+
+  const m =
+    Math.floor(a.length / 2);
+
+  return a.length % 2
+    ? a[m]
+    : (a[m - 1] + a[m]) / 2;
+}
+
+function tradeStats(trades) {
+
   let buyVolume = 0;
   let sellVolume = 0;
 
@@ -265,388 +349,553 @@ function aggregateTrades(trades) {
   let buyTrades = 0;
   let sellTrades = 0;
 
-  let largeBuyVolume = 0;
-  let largeSellVolume = 0;
+  const values =
+    trades
+      .map(x => x.value)
+      .filter(x => x > 0)
+      .sort((a, b) => a - b);
 
-  const values = trades
-    .map(x => x.value)
-    .filter(x => Number.isFinite(x) && x > 0)
-    .sort((a, b) => a - b);
-
-  const avg =
+  const average =
     values.length
-      ? values.reduce((a, b) => a + b, 0) / values.length
+      ? values.reduce(
+          (a, b) => a + b,
+          0
+        ) / values.length
       : 0;
 
   const p95 =
     values.length
-      ? values[Math.floor((values.length - 1) * 0.95)]
+      ? values[
+          Math.floor(
+            (values.length - 1) *
+            0.95
+          )
+        ]
       : 0;
 
-  const largeThreshold = Math.max(
-    avg * 5,
-    p95,
-    0
-  );
+  const largeThreshold =
+    Math.max(
+      average * 5,
+      p95
+    );
 
-  for (const trade of trades) {
-    if (trade.side === "buy") {
-      buyVolume += trade.qty;
-      buyValue += trade.value;
+  let largeBuyVolume = 0;
+  let largeSellVolume = 0;
+
+  for (const t of trades) {
+
+    if (t.side === "buy") {
+
+      buyVolume += t.qty;
+      buyValue += t.value;
       buyTrades++;
 
-      if (trade.value >= largeThreshold && largeThreshold > 0) {
-        largeBuyVolume += trade.qty;
+      if (
+        t.value >=
+        largeThreshold &&
+        largeThreshold > 0
+      ) {
+        largeBuyVolume += t.qty;
       }
+
     } else {
-      sellVolume += trade.qty;
-      sellValue += trade.value;
+
+      sellVolume += t.qty;
+      sellValue += t.value;
       sellTrades++;
 
-      if (trade.value >= largeThreshold && largeThreshold > 0) {
-        largeSellVolume += trade.qty;
+      if (
+        t.value >=
+        largeThreshold &&
+        largeThreshold > 0
+      ) {
+        largeSellVolume += t.qty;
       }
     }
   }
 
-  const totalVolume = buyVolume + sellVolume;
-  const totalValue = buyValue + sellValue;
+  const totalVolume =
+    buyVolume + sellVolume;
 
-  const delta = buyVolume - sellVolume;
-  const deltaValue = buyValue - sellValue;
+  const delta =
+    buyVolume - sellVolume;
 
   const deltaPercent =
     totalVolume > 0
-      ? (delta / totalVolume) * 100
+      ? delta /
+        totalVolume *
+        100
       : 0;
 
-  let pressure = "NEUTRAL";
+  let pressure =
+    "NEUTRAL";
 
   if (deltaPercent >= 10) {
-    pressure = "BUY_PRESSURE";
+    pressure =
+      "BUY_PRESSURE";
   } else if (deltaPercent <= -10) {
-    pressure = "SELL_PRESSURE";
+    pressure =
+      "SELL_PRESSURE";
   }
 
   return {
     buyVolume,
     sellVolume,
     totalVolume,
+
     buyValue,
     sellValue,
-    totalValue,
+
     delta,
-    deltaValue,
+
     deltaPercent,
+
     buyTrades,
     sellTrades,
+
     largeBuyVolume,
     largeSellVolume,
+
     largeThreshold,
+
     pressure
   };
 }
 
-function buildFootprint(trades, candles) {
-  const result = [];
+function orderbookStats(book) {
 
-  for (const candle of candles) {
-    const start = candle.time;
-    const end =
-      candles.indexOf(candle) < candles.length - 1
-        ? candles[candles.indexOf(candle) + 1].time
-        : Date.now();
+  const bids =
+    book.bids || [];
 
-    const inside = trades.filter(t =>
-      t.time >= start &&
-      t.time < end
+  const asks =
+    book.asks || [];
+
+  const buyLiquidity =
+    bids.reduce(
+      (s, x) =>
+        s + x.qty,
+      0
     );
 
-    const levels = new Map();
+  const sellLiquidity =
+    asks.reduce(
+      (s, x) =>
+        s + x.qty,
+      0
+    );
 
-    for (const trade of inside) {
-      const priceKey = trade.price.toString();
-
-      if (!levels.has(priceKey)) {
-        levels.set(priceKey, {
-          price: trade.price,
-          buyVolume: 0,
-          sellVolume: 0,
-          delta: 0,
-          trades: 0
-        });
-      }
-
-      const level = levels.get(priceKey);
-
-      if (trade.side === "buy") {
-        level.buyVolume += trade.qty;
-      } else {
-        level.sellVolume += trade.qty;
-      }
-
-      level.delta =
-        level.buyVolume - level.sellVolume;
-
-      level.trades++;
-    }
-
-    const levelsArray = Array.from(levels.values())
-      .sort((a, b) => b.price - a.price);
-
-    const stats = aggregateTrades(inside);
-
-    result.push({
-      time: candle.time,
-      open: candle.open,
-      high: candle.high,
-      low: candle.low,
-      close: candle.close,
-      levels: levelsArray,
-      ...stats
-    });
-  }
-
-  return result;
-}
-
-function analyzeOrderbook(orderbook) {
-  const bids = orderbook.bids || [];
-  const asks = orderbook.asks || [];
-
-  const buyLiquidity = bids.reduce(
-    (sum, x) => sum + x.qty,
-    0
-  );
-
-  const sellLiquidity = asks.reduce(
-    (sum, x) => sum + x.qty,
-    0
-  );
-
-  const totalLiquidity =
-    buyLiquidity + sellLiquidity;
+  const total =
+    buyLiquidity +
+    sellLiquidity;
 
   const buyShare =
-    totalLiquidity > 0
-      ? buyLiquidity / totalLiquidity * 100
+    total
+      ? buyLiquidity /
+        total *
+        100
       : 0;
 
   const sellShare =
-    totalLiquidity > 0
-      ? sellLiquidity / totalLiquidity * 100
+    total
+      ? sellLiquidity /
+        total *
+        100
       : 0;
 
-  let pressure = "NEUTRAL";
+  let pressure =
+    "NEUTRAL";
 
-  if (buyShare > sellShare + 8) {
-    pressure = "BUY_PRESSURE";
-  } else if (sellShare > buyShare + 8) {
-    pressure = "SELL_PRESSURE";
+  if (
+    buyShare >
+    sellShare + 8
+  ) {
+    pressure =
+      "BUY_PRESSURE";
   }
 
-  const bidValues = bids.map(x => x.qty);
-  const askValues = asks.map(x => x.qty);
+  if (
+    sellShare >
+    buyShare + 8
+  ) {
+    pressure =
+      "SELL_PRESSURE";
+  }
 
-  const bidMedian = median(bidValues);
-  const askMedian = median(askValues);
+  const bidMedian =
+    median(
+      bids.map(x => x.qty)
+    );
 
-  const bidWalls = bids
-    .filter(x =>
+  const askMedian =
+    median(
+      asks.map(x => x.qty)
+    );
+
+  const bidWalls =
+    bids.filter(x =>
       bidMedian > 0 &&
-      x.qty >= bidMedian * 4
-    )
-    .map(x => ({
-      ...x,
-      type: "BUY_WALL"
-    }));
+      x.qty >=
+      bidMedian * 4
+    );
 
-  const askWalls = asks
-    .filter(x =>
+  const askWalls =
+    asks.filter(x =>
       askMedian > 0 &&
-      x.qty >= askMedian * 4
-    )
-    .map(x => ({
-      ...x,
-      type: "SELL_WALL"
-    }));
+      x.qty >=
+      askMedian * 4
+    );
 
   return {
     buyLiquidity,
     sellLiquidity,
-    totalLiquidity,
+    totalLiquidity: total,
+
     buyShare,
     sellShare,
+
     pressure,
+
     bidWalls,
     askWalls,
-    bestBid: orderbook.bestBid,
-    bestAsk: orderbook.bestAsk,
+
+    bestBid:
+      book.bestBid,
+
+    bestAsk:
+      book.bestAsk,
+
     spread:
-      orderbook.bestAsk > 0 &&
-      orderbook.bestBid > 0
-        ? orderbook.bestAsk - orderbook.bestBid
+      book.bestAsk &&
+      book.bestBid
+        ? book.bestAsk -
+          book.bestBid
         : 0
   };
 }
 
-function median(values) {
-  const arr = values
-    .filter(x => Number.isFinite(x))
-    .sort((a, b) => a - b);
+function footprint(
+  candles,
+  trades
+) {
 
-  if (!arr.length) return 0;
+  return candles.map(
+    (candle, index) => {
 
-  const mid = Math.floor(arr.length / 2);
+      const next =
+        candles[index + 1];
 
-  return arr.length % 2
-    ? arr[mid]
-    : (arr[mid - 1] + arr[mid]) / 2;
+      const end =
+        next
+          ? next.time
+          : Date.now();
+
+      const inside =
+        trades.filter(t =>
+          t.time >= candle.time &&
+          t.time < end
+        );
+
+      const levels =
+        new Map();
+
+      for (const t of inside) {
+
+        const key =
+          String(t.price);
+
+        if (!levels.has(key)) {
+
+          levels.set(
+            key,
+            {
+              price: t.price,
+              buyVolume: 0,
+              sellVolume: 0,
+              delta: 0,
+              trades: 0
+            }
+          );
+        }
+
+        const level =
+          levels.get(key);
+
+        if (t.side === "buy") {
+          level.buyVolume += t.qty;
+        } else {
+          level.sellVolume += t.qty;
+        }
+
+        level.delta =
+          level.buyVolume -
+          level.sellVolume;
+
+        level.trades++;
+      }
+
+      const stats =
+        tradeStats(inside);
+
+      return {
+        time: candle.time,
+        open: candle.open,
+        high: candle.high,
+        low: candle.low,
+        close: candle.close,
+
+        buyVolume:
+          stats.buyVolume,
+
+        sellVolume:
+          stats.sellVolume,
+
+        delta:
+          stats.delta,
+
+        deltaPercent:
+          stats.deltaPercent,
+
+        pressure:
+          stats.pressure,
+
+        levels:
+          Array.from(
+            levels.values()
+          ).sort(
+            (a, b) =>
+              b.price - a.price
+          )
+      };
+    }
+  );
 }
 
-function calculateCVD(trades) {
+function makeCVD(trades) {
+
   let cvd = 0;
 
   return trades
     .slice()
-    .sort((a, b) => a.time - b.time)
+    .sort(
+      (a, b) =>
+        a.time - b.time
+    )
     .map(t => {
-      cvd +=
+
+      const delta =
         t.side === "buy"
           ? t.qty
           : -t.qty;
 
+      cvd += delta;
+
       return {
         time: t.time,
-        delta: t.side === "buy"
-          ? t.qty
-          : -t.qty,
+        delta,
         cvd
       };
     });
 }
 
-function detectAbsorption(trades, orderbook) {
-  const stats = aggregateTrades(trades);
+function absorption(
+  stats,
+  book
+) {
 
-  const buyLarge = stats.largeBuyVolume;
-  const sellLarge = stats.largeSellVolume;
-
-  const bidWallQty =
+  const strongestBid =
     Math.max(
       0,
-      ...(orderbook.bids || []).map(x => x.qty)
+      ...(book.bids || [])
+        .map(x => x.qty)
     );
 
-  const askWallQty =
+  const strongestAsk =
     Math.max(
       0,
-      ...(orderbook.asks || []).map(x => x.qty)
+      ...(book.asks || [])
+        .map(x => x.qty)
     );
 
-  const buyAbsorption =
-    sellLarge > buyLarge &&
-    bidWallQty > 0;
+  const buy =
+    stats.largeBuyVolume;
 
-  const sellAbsorption =
-    buyLarge > sellLarge &&
-    askWallQty > 0;
+  const sell =
+    stats.largeSellVolume;
 
-  let signal = "NONE";
+  let signal =
+    "NONE";
 
-  if (buyAbsorption) {
-    signal = "BUY_ABSORPTION";
+  if (
+    sell > buy &&
+    strongestBid > 0
+  ) {
+    signal =
+      "BUY_ABSORPTION";
   }
 
-  if (sellAbsorption) {
-    signal = "SELL_ABSORPTION";
+  if (
+    buy > sell &&
+    strongestAsk > 0
+  ) {
+    signal =
+      "SELL_ABSORPTION";
   }
 
   return {
     signal,
-    buyAbsorption,
-    sellAbsorption,
-    largeBuyVolume: buyLarge,
-    largeSellVolume: sellLarge,
-    strongestBidWall: bidWallQty,
-    strongestAskWall: askWallQty
+
+    buyAbsorption:
+      signal ===
+      "BUY_ABSORPTION",
+
+    sellAbsorption:
+      signal ===
+      "SELL_ABSORPTION",
+
+    largeBuyVolume: buy,
+    largeSellVolume: sell,
+
+    strongestBidWall:
+      strongestBid,
+
+    strongestAskWall:
+      strongestAsk
   };
 }
 
-async function marketData(category, symbol, interval) {
-  const [candles, trades, orderbook, ticker] =
-    await Promise.all([
-      getKlines(category, symbol, interval),
-      getTrades(category, symbol),
-      getOrderbook(category, symbol),
-      getTicker(category, symbol)
-    ]);
+async function market(
+  category,
+  symbol,
+  interval
+) {
 
-  const tradeStats = aggregateTrades(trades);
-  const orderbookStats = analyzeOrderbook(orderbook);
-  const absorption = detectAbsorption(
-    trades,
-    orderbook
-  );
-
-  const footprint = buildFootprint(
-    trades,
-    candles
-  );
-
-  const cvd = calculateCVD(trades);
-
-  return {
-    ok: true,
-    version: VERSION,
-    timestamp: Date.now(),
-    category,
-    symbol,
-    interval,
+  const [
     candles,
     trades,
     orderbook,
+    ticker
+  ] = await Promise.all([
+    getKlines(
+      category,
+      symbol,
+      interval
+    ),
+
+    getTrades(
+      category,
+      symbol
+    ),
+
+    getOrderbook(
+      category,
+      symbol
+    ),
+
+    getTicker(
+      category,
+      symbol
+    )
+  ]);
+
+  const stats =
+    tradeStats(trades);
+
+  const bookStats =
+    orderbookStats(
+      orderbook
+    );
+
+  return {
+    ok: true,
+
+    version: VERSION,
+
+    timestamp:
+      Date.now(),
+
+    category,
+    symbol,
+    interval,
+
+    candles,
+
+    trades,
+
+    orderbook,
+
     ticker,
-    tradeStats,
-    orderbookStats,
-    absorption,
-    footprint,
-    cvd
+
+    tradeStats:
+      stats,
+
+    orderbookStats:
+      bookStats,
+
+    absorption:
+      absorption(
+        stats,
+        orderbook
+      ),
+
+    footprint:
+      footprint(
+        candles,
+        trades
+      ),
+
+    cvd:
+      makeCVD(trades)
   };
 }
 
-async function assetResponse(request, env) {
-  if (!env || !env.ASSETS) {
+async function assets(
+  request,
+  env
+) {
+
+  if (!env?.ASSETS) {
+
     return new Response(
-      "ASSETS binding is not available.",
+      "ASSETS binding not found",
       {
         status: 500,
         headers: {
-          "content-type": "text/plain; charset=utf-8"
+          "content-type":
+            "text/plain; charset=UTF-8"
         }
       }
     );
   }
 
-  const url = new URL(request.url);
+  const url =
+    new URL(request.url);
 
   if (
     url.pathname === "/" ||
     url.pathname === "/index.html"
   ) {
-    url.pathname = "/index.html";
+    url.pathname =
+      "/index.html";
   }
 
-  const assetRequest = new Request(
-    url.toString(),
-    request
-  );
+  const assetRequest =
+    new Request(
+      url.toString(),
+      {
+        method: "GET",
+        headers: request.headers
+      }
+    );
 
   const response =
-    await env.ASSETS.fetch(assetRequest);
+    await env.ASSETS.fetch(
+      assetRequest
+    );
 
   const headers =
-    new Headers(response.headers);
+    new Headers(
+      response.headers
+    );
 
   headers.set(
     "cache-control",
@@ -659,98 +908,132 @@ async function assetResponse(request, env) {
   );
 
   headers.set(
-    "x-absorption-version",
+    "expires",
+    "0"
+  );
+
+  headers.set(
+    "x-scanner-version",
     VERSION
   );
 
   return new Response(
     response.body,
     {
-      status: response.status,
-      statusText: response.statusText,
+      status:
+        response.status,
+      statusText:
+        response.statusText,
       headers
     }
   );
 }
 
 export class CollectorDO {
+
   constructor(state, env) {
     this.state = state;
     this.env = env;
   }
 
   async fetch(request) {
-    const url = new URL(request.url);
+
+    const url =
+      new URL(request.url);
 
     try {
+
       if (
         request.method === "POST" &&
         url.pathname === "/add"
       ) {
-        const body = await request.text();
 
-        if (!body.trim()) {
+        const text =
+          await request.text();
+
+        if (!text.trim()) {
           return json({
             ok: true,
             added: 0
           });
         }
 
-        let trades;
+        let incoming;
 
         try {
-          trades = JSON.parse(body);
+          incoming =
+            JSON.parse(text);
         } catch {
-          return errorJson(
-            "Invalid collector payload",
+          return err(
+            "Collector JSON invalid",
             400
           );
         }
 
-        if (!Array.isArray(trades)) {
-          return errorJson(
-            "Trades must be an array",
+        if (
+          !Array.isArray(incoming)
+        ) {
+          return err(
+            "Trades array required",
             400
           );
         }
 
-        const existing =
-          (await this.state.storage.get("trades")) || [];
+        const old =
+          (await this.state.storage.get(
+            "trades"
+          )) || [];
 
-        const map = new Map();
+        const map =
+          new Map();
 
-        for (const trade of existing) {
-          if (trade?.id) {
-            map.set(String(trade.id), trade);
+        for (const t of old) {
+          if (t?.id) {
+            map.set(
+              String(t.id),
+              t
+            );
           }
         }
 
-        for (const trade of trades) {
-          if (trade?.id) {
-            map.set(String(trade.id), trade);
+        for (const t of incoming) {
+          if (t?.id) {
+            map.set(
+              String(t.id),
+              t
+            );
           }
         }
 
         const cutoff =
-          Date.now() - 24 * 60 * 60 * 1000;
+          Date.now() -
+          24 * 60 * 60 * 1000;
 
-        const merged =
-          Array.from(map.values())
-            .filter(t => number(t.time) >= cutoff)
-            .sort((a, b) =>
-              number(a.time) - number(b.time)
-            )
-            .slice(-20000);
+        const result =
+          Array.from(
+            map.values()
+          )
+          .filter(
+            t =>
+              num(t.time) >=
+              cutoff
+          )
+          .sort(
+            (a, b) =>
+              num(a.time) -
+              num(b.time)
+          )
+          .slice(-20000);
 
         await this.state.storage.put(
           "trades",
-          merged
+          result
         );
 
         return json({
           ok: true,
-          added: trades.length,
-          stored: merged.length
+          stored:
+            result.length
         });
       }
 
@@ -758,8 +1041,11 @@ export class CollectorDO {
         request.method === "GET" &&
         url.pathname === "/trades"
       ) {
+
         const trades =
-          (await this.state.storage.get("trades")) || [];
+          (await this.state.storage.get(
+            "trades"
+          )) || [];
 
         return json({
           ok: true,
@@ -767,67 +1053,97 @@ export class CollectorDO {
         });
       }
 
-      return errorJson(
+      return err(
         "Collector route not found",
         404
       );
-    } catch (err) {
-      return errorJson(
-        err?.message || "Collector error"
+
+    } catch (e) {
+
+      return err(
+        e?.message ||
+        "Collector error"
       );
     }
   }
 }
 
 export default {
+
   async fetch(request, env) {
-    const url = new URL(request.url);
+
+    const url =
+      new URL(request.url);
 
     try {
-      if (url.pathname === "/api/health") {
+
+      if (
+        url.pathname ===
+        "/api/health"
+      ) {
+
         return json({
           ok: true,
           version: VERSION,
-          service: "Absorption Zone Scanner",
-          timestamp: Date.now()
+          service:
+            "Absorption Zone Scanner",
+          timestamp:
+            Date.now()
         });
       }
 
-      if (url.pathname === "/api/market") {
+      if (
+        url.pathname ===
+        "/api/market"
+      ) {
+
         const category =
           normalizeCategory(
-            url.searchParams.get("category")
+            url.searchParams.get(
+              "category"
+            )
           );
 
         const symbol =
           normalizeSymbol(
-            url.searchParams.get("symbol")
+            url.searchParams.get(
+              "symbol"
+            )
           );
 
         const interval =
           normalizeInterval(
-            url.searchParams.get("interval")
+            url.searchParams.get(
+              "interval"
+            )
           );
 
-        const data =
-          await marketData(
+        return json(
+          await market(
             category,
             symbol,
             interval
-          );
-
-        return json(data);
+          )
+        );
       }
 
-      if (url.pathname === "/api/trades") {
+      if (
+        url.pathname ===
+        "/api/trades"
+      ) {
+
         const category =
           normalizeCategory(
-            url.searchParams.get("category")
+            url.searchParams.get(
+              "category"
+            )
           );
 
         const symbol =
           normalizeSymbol(
-            url.searchParams.get("symbol")
+            url.searchParams.get(
+              "symbol"
+            )
           );
 
         const trades =
@@ -842,22 +1158,31 @@ export default {
           category,
           symbol,
           trades,
-          stats: aggregateTrades(trades)
+          stats:
+            tradeStats(trades)
         });
       }
 
-      if (url.pathname === "/api/orderbook") {
+      if (
+        url.pathname ===
+        "/api/orderbook"
+      ) {
+
         const category =
           normalizeCategory(
-            url.searchParams.get("category")
+            url.searchParams.get(
+              "category"
+            )
           );
 
         const symbol =
           normalizeSymbol(
-            url.searchParams.get("symbol")
+            url.searchParams.get(
+              "symbol"
+            )
           );
 
-        const orderbook =
+        const book =
           await getOrderbook(
             category,
             symbol
@@ -868,40 +1193,53 @@ export default {
           version: VERSION,
           category,
           symbol,
-          orderbook,
+          orderbook: book,
           analysis:
-            analyzeOrderbook(orderbook)
+            orderbookStats(book)
         });
       }
 
-      if (url.pathname === "/api/footprint") {
+      if (
+        url.pathname ===
+        "/api/footprint"
+      ) {
+
         const category =
           normalizeCategory(
-            url.searchParams.get("category")
+            url.searchParams.get(
+              "category"
+            )
           );
 
         const symbol =
           normalizeSymbol(
-            url.searchParams.get("symbol")
+            url.searchParams.get(
+              "symbol"
+            )
           );
 
         const interval =
           normalizeInterval(
-            url.searchParams.get("interval")
+            url.searchParams.get(
+              "interval"
+            )
           );
 
-        const [candles, trades] =
-          await Promise.all([
-            getKlines(
-              category,
-              symbol,
-              interval
-            ),
-            getTrades(
-              category,
-              symbol
-            )
-          ]);
+        const [
+          candles,
+          trades
+        ] = await Promise.all([
+          getKlines(
+            category,
+            symbol,
+            interval
+          ),
+
+          getTrades(
+            category,
+            symbol
+          )
+        ]);
 
         return json({
           ok: true,
@@ -910,37 +1248,54 @@ export default {
           symbol,
           interval,
           footprint:
-            buildFootprint(
-              trades,
-              candles
+            footprint(
+              candles,
+              trades
             ),
           stats:
-            aggregateTrades(trades)
+            tradeStats(trades)
         });
       }
 
-      if (url.pathname === "/api/analyze") {
+      if (
+        url.pathname ===
+        "/api/analyze"
+      ) {
+
         const category =
           normalizeCategory(
-            url.searchParams.get("category")
+            url.searchParams.get(
+              "category"
+            )
           );
 
         const symbol =
           normalizeSymbol(
-            url.searchParams.get("symbol")
+            url.searchParams.get(
+              "symbol"
+            )
           );
 
         const interval =
           normalizeInterval(
-            url.searchParams.get("interval")
+            url.searchParams.get(
+              "interval"
+            )
           );
 
         const data =
-          await marketData(
+          await market(
             category,
             symbol,
             interval
           );
+
+        const cvd =
+          data.cvd.length
+            ? data.cvd[
+                data.cvd.length - 1
+              ].cvd
+            : 0;
 
         return json({
           ok: true,
@@ -949,6 +1304,13 @@ export default {
           category,
           interval,
           analysis: {
+            delta:
+              data.tradeStats.delta,
+
+            deltaPercent:
+              data.tradeStats
+                .deltaPercent,
+
             tradePressure:
               data.tradeStats.pressure,
 
@@ -958,33 +1320,21 @@ export default {
             absorption:
               data.absorption,
 
-            delta:
-              data.tradeStats.delta,
-
-            deltaPercent:
-              data.tradeStats.deltaPercent,
-
-            cvd:
-              data.cvd.length
-                ? data.cvd[data.cvd.length - 1].cvd
-                : 0
+            cvd
           }
         });
       }
 
-      return assetResponse(
+      return assets(
         request,
         env
       );
-    } catch (err) {
-      return errorJson(
-        err?.message ||
-        "خطای ناشناخته Worker",
-        500,
-        {
-          version: VERSION,
-          path: url.pathname
-        }
+
+    } catch (e) {
+
+      return err(
+        e?.message ||
+        "Worker error"
       );
     }
   }
