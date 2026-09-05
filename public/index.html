@@ -2,240 +2,357 @@
 <html lang="fa" dir="rtl">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <title>Bybit Smart Money Order Flow</title>
 
 <style>
 *{
- box-sizing:border-box;
+  box-sizing:border-box;
+  -webkit-tap-highlight-color:transparent;
 }
 
 html,body{
- margin:0;
- padding:0;
- background:#071018;
- color:#e8eef5;
- font-family:Tahoma,Arial,sans-serif;
+  margin:0;
+  padding:0;
+  width:100%;
+  min-height:100%;
+  background:#080b10;
+  color:#e8edf5;
+  font-family:Tahoma,Arial,sans-serif;
 }
 
 body{
- min-height:100vh;
+  overflow-x:hidden;
 }
 
-button,input{
- font:inherit;
+button,
+input,
+select{
+  font:inherit;
 }
 
 button{
- cursor:pointer;
+  cursor:pointer;
 }
 
 .app{
- max-width:1600px;
- margin:auto;
- padding:12px;
-}
-
-header,
-.toolbar,
-.panel,
-.card,
-.scan-panel{
- background:#0d1721;
- border:1px solid #1d2b38;
- border-radius:14px;
-}
-
-header{
- padding:16px;
- margin-bottom:10px;
-}
-
-h1{
- margin:0 0 6px;
- font-size:21px;
-}
-
-.sub{
- color:#8ea1b3;
- font-size:12px;
-}
-
-.toolbar{
- padding:10px;
- display:flex;
- gap:7px;
- flex-wrap:wrap;
- align-items:center;
- margin-bottom:10px;
-}
-
-input,
-button{
- border:1px solid #263746;
- background:#101d28;
- color:#eef5fb;
- border-radius:9px;
- padding:9px 12px;
-}
-
-input{
- width:130px;
-}
-
-button:hover{
- filter:brightness(1.15);
-}
-
-button.active{
- border-color:#31d17c;
- box-shadow:0 0 0 1px #31d17c inset;
-}
-
-#status{
- font-size:12px;
- color:#6f8190;
- margin-right:auto;
+  width:min(1600px,100%);
+  margin:auto;
+  padding:12px;
 }
 
 .panel{
- padding:10px;
- margin-bottom:10px;
+  background:#0d1219;
+  border:1px solid #202936;
+  border-radius:14px;
+  padding:12px;
+  margin-bottom:12px;
+  box-shadow:0 8px 30px rgba(0,0,0,.18);
+}
+
+.header{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  flex-wrap:wrap;
+}
+
+.title{
+  font-size:20px;
+  font-weight:800;
+}
+
+.subtitle{
+  color:#8d9aaa;
+  font-size:12px;
+  margin-top:5px;
+}
+
+.status{
+  padding:8px 12px;
+  border-radius:10px;
+  background:#111923;
+  color:#8d9aaa;
+  font-size:12px;
+}
+
+.toolbar{
+  display:flex;
+  flex-wrap:wrap;
+  gap:7px;
+  align-items:center;
+  margin-top:12px;
+}
+
+.toolbar input,
+.toolbar select{
+  height:38px;
+  border:1px solid #283342;
+  background:#0a0f15;
+  color:#e8edf5;
+  border-radius:9px;
+  padding:0 11px;
+  outline:none;
+}
+
+.toolbar input{
+  width:150px;
+  direction:ltr;
+}
+
+.btn{
+  height:38px;
+  border:1px solid #293544;
+  background:#121a24;
+  color:#dce4ee;
+  border-radius:9px;
+  padding:0 13px;
+}
+
+.btn:hover{
+  background:#182230;
+}
+
+.btn.active{
+  background:#1c3345;
+  border-color:#367fa8;
+}
+
+.btn.green{
+  border-color:#246944;
+}
+
+.btn.red{
+  border-color:#74343d;
+}
+
+.tf-buttons{
+  display:flex;
+  gap:5px;
+  direction:ltr;
 }
 
 .chart-wrap{
- position:relative;
- width:100%;
- height:min(72vh,720px);
- min-height:420px;
- background:#050b10;
- border-radius:10px;
- overflow:hidden;
- touch-action:none;
+  position:relative;
+  width:100%;
+  height:600px;
+  overflow:hidden;
+  border-radius:12px;
+  background:#080c12;
+  border:1px solid #1c2631;
+  touch-action:none;
 }
 
-canvas{
- display:block;
- width:100%;
- height:100%;
- touch-action:none;
+#chart{
+  display:block;
+  width:100%;
+  height:100%;
+  touch-action:none;
 }
 
-.full{
- position:absolute;
- left:10px;
- top:10px;
- z-index:5;
- padding:7px 10px;
+.chart-tools{
+  position:absolute;
+  top:9px;
+  right:9px;
+  z-index:5;
+  display:flex;
+  gap:5px;
+  flex-wrap:wrap;
 }
 
-.layerbar{
- display:flex;
- gap:6px;
- flex-wrap:wrap;
- margin-top:8px;
+.chart-tools button{
+  height:31px;
+  padding:0 9px;
+  border:1px solid #293441;
+  background:rgba(10,15,21,.88);
+  color:#aeb9c7;
+  border-radius:7px;
+  font-size:11px;
 }
 
-.layerbar button{
- font-size:10px;
- padding:6px 8px;
+.chart-tools button.active{
+  color:#fff;
+  border-color:#4c718b;
+  background:#16232d;
+}
+
+.layers{
+  display:flex;
+  gap:5px;
+  flex-wrap:wrap;
+  margin-top:9px;
+}
+
+.layer-btn{
+  border:1px solid #26313d;
+  background:#0b1118;
+  color:#8996a6;
+  border-radius:7px;
+  padding:6px 9px;
+  font-size:11px;
+}
+
+.layer-btn.active{
+  color:#e8edf5;
+  background:#16202b;
+  border-color:#3b5368;
 }
 
 .help{
- font-size:11px;
- color:#728698;
- margin-top:7px;
- line-height:1.8;
+  margin-top:9px;
+  color:#738093;
+  font-size:11px;
+  line-height:1.8;
 }
 
+/* =========================================================
+   CARDS
+========================================================= */
+
+.cards{
+  display:grid;
+  grid-template-columns:repeat(8,minmax(0,1fr));
+  gap:8px;
+}
+
+.card{
+  background:#0a1017;
+  border:1px solid #202b37;
+  border-radius:10px;
+  padding:10px;
+  min-height:72px;
+}
+
+.card-title{
+  font-size:10px;
+  color:#738093;
+  margin-bottom:8px;
+}
+
+.card-value{
+  font-size:14px;
+  font-weight:800;
+  direction:ltr;
+  text-align:right;
+}
+
+.buy{
+  color:#35e58a;
+}
+
+.sell{
+  color:#ff6675;
+}
+
+.neutral{
+  color:#c4ced9;
+}
 
 /* =========================================================
    FOOTPRINT
 ========================================================= */
 
 .footprint-panel{
- margin-top:14px;
- border:1px solid #263449;
- border-radius:14px;
- background:#0b111b;
- overflow:hidden;
+  margin-top:12px;
 }
 
 .fp-head{
- display:flex;
- align-items:center;
- justify-content:space-between;
- gap:10px;
- padding:12px 14px;
- border-bottom:1px solid #263449;
- background:#0e1622;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  margin-bottom:9px;
 }
 
-.fp-head strong{
- color:#f4f7fb;
- font-size:14px;
+.fp-title{
+  font-size:15px;
+  font-weight:800;
 }
 
 #fpStatus{
- color:#91a4bb;
- font-size:11px;
+  color:#7f8c9d;
+  font-size:11px;
+}
+
+.fp-controls{
+  display:flex;
+  gap:5px;
+  direction:ltr;
+}
+
+.fp-controls button{
+  width:32px;
+  height:30px;
+  border:1px solid #293542;
+  background:#111923;
+  color:#c9d3de;
+  border-radius:7px;
 }
 
 .fp-box{
- width:100%;
- overflow-x:auto;
- overflow-y:hidden;
- padding:12px;
+  position:relative;
+  width:100%;
+  min-height:280px;
+  overflow:hidden;
+  border:1px solid #202c38;
+  border-radius:12px;
+  background:
+    linear-gradient(rgba(255,255,255,.018) 1px,transparent 1px),
+    #080d13;
+  background-size:100% 30px;
+  touch-action:none;
+  overscroll-behavior:contain;
+}
+
+.fp-scroll{
+  position:relative;
+  width:100%;
+  height:100%;
+  min-height:280px;
+  overflow:auto;
+  touch-action:pan-y pinch-zoom;
+  scrollbar-width:thin;
 }
 
 .fp-inner{
- min-width:850px;
+  position:relative;
+  width:100%;
+  min-width:920px;
+  padding:0 8px 8px;
+  transform-origin:top center;
 }
 
 .fp-main-head{
- display:grid;
- grid-template-columns:
-  90px
-  minmax(130px,1fr)
-  170px
-  90px
-  minmax(130px,1fr)
-  90px;
- align-items:center;
- min-height:34px;
- border-bottom:1px solid #263449;
- color:#8fa3ba;
- font-size:10px;
- font-weight:700;
- text-align:center;
- direction:ltr;
-}
-
-.fp-main-head .bid-title{
- color:#ff6675;
-}
-
-.fp-main-head .ask-title{
- color:#35e58a;
-}
-
-.fp-main-head .delta-title{
- color:#f4c95d;
+  display:grid;
+  grid-template-columns:
+    90px
+    minmax(125px,1fr)
+    300px
+    90px
+    minmax(125px,1fr)
+    90px;
+  height:36px;
+  align-items:center;
+  border-bottom:1px solid #25313d;
+  color:#788697;
+  font-size:10px;
+  font-weight:800;
+  text-align:center;
+  direction:ltr;
 }
 
 .fp-main{
- display:grid;
- grid-template-columns:
-  90px
-  minmax(130px,1fr)
-  170px
-  90px
-  minmax(130px,1fr)
-  90px;
- position:relative;
- direction:ltr;
- border-bottom:1px solid #263449;
+  display:grid;
+  grid-template-columns:
+    90px
+    minmax(125px,1fr)
+    300px
+    90px
+    minmax(125px,1fr)
+    90px;
+  direction:ltr;
+  position:relative;
 }
 
 .fp-bid-values,
@@ -244,1171 +361,991 @@ canvas{
 .fp-delta-values,
 .fp-ask-bars,
 .fp-ask-values{
- position:relative;
+  position:relative;
 }
 
 .fp-level-row{
- height:30px;
- min-height:30px;
- box-sizing:border-box;
- border-bottom:1px solid rgba(255,255,255,.045);
- display:flex;
- align-items:center;
+  height:30px;
+  min-height:30px;
+  display:flex;
+  align-items:center;
+  position:relative;
 }
 
 .fp-bid-values .fp-level-row{
- justify-content:flex-end;
- padding-right:8px;
-}
-
-.fp-bid-number{
- color:#ff6675;
- font-size:11px;
- font-weight:700;
- white-space:nowrap;
+  justify-content:center;
+  color:#ff6675;
+  font-size:10px;
+  direction:ltr;
 }
 
 .fp-ask-values .fp-level-row{
- justify-content:flex-start;
- padding-left:8px;
-}
-
-.fp-ask-number{
- color:#35e58a;
- font-size:11px;
- font-weight:700;
- white-space:nowrap;
-}
-
-.fp-bid-bars .fp-level-row{
- justify-content:flex-end;
- padding-right:4px;
-}
-
-.fp-bar-wrap{
- width:100%;
- height:18px;
- display:flex;
- align-items:center;
- justify-content:flex-end;
-}
-
-.fp-bar-bid{
- height:14px;
- min-width:1px;
- border-radius:4px 0 0 4px;
- background:rgba(255,72,92,.72);
- box-shadow:0 0 8px rgba(255,72,92,.12);
-}
-
-.fp-ask-bars .fp-level-row{
- justify-content:flex-start;
- padding-left:4px;
-}
-
-.fp-bar-ask{
- height:14px;
- min-width:1px;
- border-radius:0 4px 4px 0;
- background:rgba(53,229,138,.72);
- box-shadow:0 0 8px rgba(53,229,138,.12);
+  justify-content:center;
+  color:#35e58a;
+  font-size:10px;
+  direction:ltr;
 }
 
 .fp-delta-values .fp-level-row{
- justify-content:center;
+  justify-content:center;
+  font-size:10px;
+  font-weight:800;
+  direction:ltr;
 }
 
-.fp-delta-number{
- min-width:66px;
- text-align:center;
- padding:3px 5px;
- border-radius:5px;
- font-size:10px;
- font-weight:800;
+.fp-bar-row{
+  height:30px;
+  display:flex;
+  align-items:center;
+  padding:0 6px;
+  position:relative;
 }
 
-.fp-delta-positive{
- color:#35e58a;
- background:rgba(53,229,138,.08);
- border:1px solid rgba(53,229,138,.18);
+.fp-bar-track{
+  width:100%;
+  height:15px;
+  border-radius:3px;
+  background:#111923;
+  overflow:hidden;
+  position:relative;
 }
 
-.fp-delta-negative{
- color:#ff6675;
- background:rgba(255,102,117,.08);
- border:1px solid rgba(255,102,117,.18);
+.fp-bar{
+  height:100%;
+  border-radius:3px;
+  min-width:0;
+  transition:width .15s ease;
 }
 
-.fp-delta-zero{
- color:#aab7c7;
- background:rgba(170,183,199,.06);
- border:1px solid rgba(170,183,199,.12);
+.fp-bid-bar{
+  background:rgba(255,72,91,.70);
+  margin-left:auto;
 }
 
+.fp-ask-bar{
+  background:rgba(53,229,138,.70);
+  margin-right:auto;
+}
 
-/* =========================================================
-   CENTER CANDLE
-========================================================= */
+.fp-bar-value{
+  position:absolute;
+  top:50%;
+  transform:translateY(-50%);
+  font-size:8px;
+  color:#d6dee7;
+  z-index:2;
+  direction:ltr;
+  pointer-events:none;
+}
 
+.fp-bid-bars .fp-bar-value{
+  right:6px;
+}
+
+.fp-ask-bars .fp-bar-value{
+  left:6px;
+}
+
+/* مرکز فوت پرینت */
 .fp-candle-stage{
- height:auto;
- min-height:34px;
- background:
-  linear-gradient(
-   90deg,
-   rgba(255,255,255,.025),
-   rgba(255,255,255,.055),
-   rgba(255,255,255,.025)
-  );
- border-left:1px solid #263449;
- border-right:1px solid #263449;
+  height:auto;
+  min-height:30px;
+  border-left:1px solid #1d2935;
+  border-right:1px solid #1d2935;
+  background:
+    linear-gradient(90deg,
+      rgba(255,255,255,.018),
+      rgba(255,255,255,.035),
+      rgba(255,255,255,.018));
+  overflow:hidden;
 }
 
 .fp-price-rail{
- position:absolute;
- left:0;
- right:0;
- top:0;
- bottom:0;
- pointer-events:none;
- z-index:1;
+  position:relative;
+  width:100%;
 }
 
 .fp-price-row{
- height:30px;
- min-height:30px;
- display:flex;
- align-items:center;
- justify-content:center;
- border-bottom:1px solid rgba(255,255,255,.045);
+  height:30px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  position:relative;
 }
 
 .fp-price-label{
- position:relative;
- z-index:3;
- padding:2px 5px;
- border-radius:4px;
- background:rgba(11,17,27,.82);
- color:#c8d4e2;
- font-size:9px;
- font-weight:700;
- white-space:nowrap;
+  position:absolute;
+  left:50%;
+  transform:translateX(-50%);
+  z-index:1;
+  font-size:9px;
+  color:#738193;
+  background:rgba(8,13,19,.72);
+  padding:2px 4px;
+  border-radius:3px;
+  direction:ltr;
+  pointer-events:none;
+}
+
+.fp-price-row::before{
+  content:"";
+  position:absolute;
+  left:0;
+  right:0;
+  top:14px;
+  height:1px;
+  background:rgba(150,165,180,.07);
 }
 
 .fp-candle-layer{
- position:absolute;
- left:0;
- right:0;
- top:0;
- bottom:0;
- pointer-events:none;
- z-index:4;
+  position:absolute;
+  inset:0;
+  pointer-events:none;
+  z-index:4;
 }
 
 .fp-candle-wick{
- position:absolute;
- width:3px;
- left:50%;
- transform:translateX(-50%);
- border-radius:3px;
+  position:absolute;
+  width:3px;
+  border-radius:3px;
+  left:50%;
+  transform:translateX(-50%);
+  opacity:.42;
+  background:#aeb9c5;
 }
 
 .fp-candle-body{
- position:absolute;
- left:50%;
- transform:translateX(-50%);
- width:38px;
- min-height:6px;
- border-radius:5px;
+  position:absolute;
+  left:50%;
+  transform:translateX(-50%);
+  width:145px;
+  min-height:18px;
+  border-radius:4px;
+  opacity:.18;
+  border:1px solid currentColor;
+  box-shadow:0 0 16px rgba(255,255,255,.025);
 }
 
 .fp-candle-up{
- background:#35e58a;
- border:1px solid #35e58a;
- box-shadow:
-  0 0 12px rgba(53,229,138,.35),
-  inset 0 0 8px rgba(255,255,255,.08);
+  color:#35e58a;
+  background:rgba(53,229,138,.32);
 }
 
 .fp-candle-down{
- background:#ff6675;
- border:1px solid #ff6675;
- box-shadow:
-  0 0 12px rgba(255,102,117,.35),
-  inset 0 0 8px rgba(255,255,255,.08);
+  color:#ff6675;
+  background:rgba(255,102,117,.32);
+}
+
+.fp-candle-midline{
+  position:absolute;
+  left:50%;
+  transform:translateX(-50%);
+  width:145px;
+  height:1px;
+  background:rgba(255,255,255,.20);
+}
+
+.fp-side-data{
+  position:absolute;
+  left:50%;
+  transform:translateX(-50%);
+  width:270px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  z-index:8;
+  pointer-events:none;
+}
+
+.fp-side-data .fp-bid-inside,
+.fp-side-data .fp-ask-inside{
+  width:110px;
+  text-align:center;
+  font-size:9px;
+  font-weight:800;
+  direction:ltr;
+  padding:3px 4px;
+  border-radius:4px;
+  background:rgba(5,9,13,.76);
+  border:1px solid rgba(255,255,255,.06);
+  white-space:nowrap;
+}
+
+.fp-bid-inside{
+  color:#ff6675;
+}
+
+.fp-ask-inside{
+  color:#35e58a;
+}
+
+.fp-delta-inside{
+  position:absolute;
+  left:50%;
+  transform:translateX(-50%);
+  font-size:8px;
+  font-weight:800;
+  padding:2px 4px;
+  border-radius:3px;
+  background:rgba(5,9,13,.82);
+  direction:ltr;
+  z-index:9;
 }
 
 .fp-ohlc{
- position:absolute;
- left:50%;
- transform:translateX(-50%);
- width:100%;
- pointer-events:none;
- z-index:5;
+  position:absolute;
+  top:6px;
+  right:7px;
+  z-index:10;
+  display:flex;
+  gap:5px;
+  font-size:8px;
+  color:#8390a0;
+  direction:ltr;
+  background:rgba(5,9,13,.75);
+  padding:4px 5px;
+  border-radius:4px;
 }
 
-.fp-ohlc-label{
- position:absolute;
- font-size:8px;
- font-weight:800;
- padding:2px 4px;
- border-radius:4px;
- background:#111a28;
- border:1px solid #2c3a4f;
- color:#c7d2df;
- white-space:nowrap;
+.fp-ohlc b{
+  color:#cbd4de;
+}
+
+.fp-fixed-range{
+  position:absolute;
+  bottom:5px;
+  left:50%;
+  transform:translateX(-50%);
+  z-index:10;
+  font-size:8px;
+  color:#778495;
+  background:rgba(5,9,13,.72);
+  padding:3px 7px;
+  border-radius:4px;
+  white-space:nowrap;
 }
 
 .fp-empty{
- padding:30px 15px;
- text-align:center;
- color:#8191a5;
- font-size:12px;
- border:1px dashed #2b394d;
- border-radius:10px;
- background:#0b111b;
+  min-height:220px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  color:#687587;
+  font-size:12px;
+  direction:rtl;
 }
 
-
-/* =========================================================
-   TOTALS
-========================================================= */
-
 .fp-totals{
- display:grid;
- grid-template-columns:repeat(5,1fr);
- gap:8px;
- margin-top:10px;
+  display:grid;
+  grid-template-columns:repeat(5,1fr);
+  gap:7px;
+  margin-top:8px;
 }
 
 .fp-total{
- min-height:52px;
- padding:8px;
- border:1px solid #263449;
- border-radius:9px;
- background:#0e1622;
- text-align:center;
+  background:#0a1017;
+  border:1px solid #202b36;
+  border-radius:8px;
+  padding:8px;
+  text-align:center;
 }
 
 .fp-total-label{
- color:#7f91a7;
- font-size:9px;
- margin-bottom:5px;
+  font-size:9px;
+  color:#718092;
+  margin-bottom:5px;
 }
 
 .fp-total-value{
- color:#edf3fa;
- font-size:12px;
- font-weight:800;
+  font-size:11px;
+  font-weight:800;
+  direction:ltr;
 }
-
-.fp-total-bid .fp-total-value{
- color:#ff6675;
-}
-
-.fp-total-ask .fp-total-value{
- color:#35e58a;
-}
-
-.fp-total-delta .fp-total-value{
- color:#f4c95d;
-}
-
-
-/* =========================================================
-   CARDS
-========================================================= */
-
-.cards{
- display:grid;
- grid-template-columns:repeat(8,1fr);
- gap:8px;
- margin-bottom:10px;
-}
-
-.card{
- padding:10px;
- min-height:80px;
-}
-
-.card span{
- display:block;
- color:#8295a6;
- font-size:11px;
-}
-
-.card b{
- display:block;
- font-size:17px;
- margin-top:8px;
-}
-
-.green{
- color:#35e58a!important;
-}
-
-.red{
- color:#ff6675!important;
-}
-
-.yellow{
- color:#ffd166!important;
-}
-
 
 /* =========================================================
    SCAN
 ========================================================= */
 
 .scan-panel{
- padding:10px;
- margin-bottom:10px;
+  display:grid;
+  grid-template-columns:1fr auto auto;
+  gap:10px;
+  align-items:center;
 }
 
-.scan-row{
- display:flex;
- gap:8px;
- align-items:center;
- flex-wrap:wrap;
+.scan-state{
+  color:#8996a6;
+  font-size:12px;
 }
 
 .results{
- display:grid;
- grid-template-columns:repeat(auto-fill,minmax(180px,1fr));
- gap:8px;
- margin-top:10px;
+  display:grid;
+  gap:7px;
+  margin-top:10px;
 }
 
 .result{
- padding:9px;
- background:#101d28;
- border:1px solid #20313e;
- border-radius:9px;
- cursor:pointer;
+  border:1px solid #202b36;
+  background:#0a1017;
+  border-radius:9px;
+  padding:10px;
 }
 
-.result:hover{
- border-color:#365062;
+.result-main{
+  display:flex;
+  justify-content:space-between;
+  gap:8px;
 }
 
+.result-symbol{
+  font-weight:800;
+  direction:ltr;
+}
+
+.result-score{
+  direction:ltr;
+}
+
+.result-sub{
+  color:#748194;
+  font-size:10px;
+  margin-top:6px;
+}
 
 /* =========================================================
    TRADES
 ========================================================= */
 
-.trades{
- overflow:auto;
- max-height:360px;
+.trade-wrap{
+  overflow:auto;
+  border:1px solid #202b36;
+  border-radius:9px;
 }
 
-table{
- width:100%;
- border-collapse:collapse;
- font-size:11px;
+.trade-table{
+  width:100%;
+  min-width:600px;
+  border-collapse:collapse;
+  direction:ltr;
 }
 
-th,td{
- padding:7px;
- border-bottom:1px solid #182632;
- text-align:center;
+.trade-table th,
+.trade-table td{
+  padding:8px;
+  border-bottom:1px solid #18212b;
+  text-align:center;
+  font-size:10px;
 }
 
-th{
- position:sticky;
- top:0;
- background:#0d1721;
- z-index:2;
+.trade-table th{
+  color:#728092;
+  background:#0a1017;
 }
 
+.trade-buy{
+  color:#35e58a;
+}
+
+.trade-sell{
+  color:#ff6675;
+}
 
 /* =========================================================
-   MOBILE
+   RESPONSIVE
 ========================================================= */
 
 @media(max-width:1100px){
-
- .cards{
-  grid-template-columns:repeat(4,1fr);
- }
+  .cards{
+    grid-template-columns:repeat(4,1fr);
+  }
 }
 
-@media(max-width:650px){
+@media(max-width:700px){
+  .app{
+    padding:7px;
+  }
 
- .app{
-  padding:6px;
- }
+  .chart-wrap{
+    height:480px;
+  }
 
- header{
-  padding:12px;
- }
+  .cards{
+    grid-template-columns:repeat(2,1fr);
+  }
 
- h1{
-  font-size:17px;
- }
+  .scan-panel{
+    grid-template-columns:1fr;
+  }
 
- .chart-wrap{
-  height:62vh;
-  min-height:380px;
- }
+  .fp-box{
+    min-height:330px;
+  }
 
- .cards{
-  grid-template-columns:repeat(2,1fr);
- }
+  .fp-inner{
+    min-width:850px;
+  }
 
- input{
-  width:110px;
- }
+  .fp-main-head,
+  .fp-main{
+    grid-template-columns:
+      75px
+      120px
+      285px
+      75px
+      120px
+      75px;
+  }
 
- .layerbar button{
-  font-size:9px;
-  padding:5px 6px;
- }
+  .fp-candle-body,
+  .fp-candle-midline{
+    width:265px;
+  }
 
- .fp-inner{
-  min-width:780px;
- }
+  .fp-side-data{
+    width:255px;
+  }
 
- .fp-totals{
-  grid-template-columns:repeat(5,minmax(110px,1fr));
- }
+  .fp-side-data .fp-bid-inside,
+  .fp-side-data .fp-ask-inside{
+    width:100px;
+  }
+
+  .fp-totals{
+    grid-template-columns:repeat(2,1fr);
+  }
 }
 </style>
 </head>
-
 
 <body>
 
 <div class="app">
 
-<header>
+  <div class="panel">
+    <div class="header">
+      <div>
+        <div class="title">📊 اسکنر شخصی Bybit — Smart Money Order Flow</div>
+        <div class="subtitle">
+          تحلیل واقعی بازار بر پایه معاملات، Order Book، Delta، Absorption و Footprint
+        </div>
+      </div>
+      <div id="status" class="status">🟡 در حال اتصال...</div>
+    </div>
+
+    <div class="toolbar">
+
+      <input id="symbol" value="BTCUSDT" placeholder="BTCUSDT">
+
+      <select id="category">
+        <option value="linear">BUSDT</option>
+        <option value="spot">SPOT</option>
+      </select>
+
+      <button id="analyze" class="btn active">🔎 تحلیل</button>
+      <button id="live" class="btn green">🟢 Live</button>
+      <button id="stop" class="btn red">⏹ توقف</button>
+
+      <div class="tf-buttons">
+        <button class="btn tf active" data-tf="1">1m</button>
+        <button class="btn tf" data-tf="3">3m</button>
+        <button class="btn tf" data-tf="5">5m</button>
+        <button class="btn tf" data-tf="15">15m</button>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="panel">
+
+    <div class="chart-wrap" id="chartWrap">
+
+      <canvas id="chart"></canvas>
+
+      <div class="chart-tools">
+        <button data-layer="candles" class="chart-layer active">🕯 کندل</button>
+        <button data-layer="heatmap" class="chart-layer active">🔥 Heatmap</button>
+        <button data-layer="walls" class="chart-layer active">🧱 Walls</button>
+        <button data-layer="liquidity" class="chart-layer active">💧 Liquidity</button>
+        <button data-layer="absorption" class="chart-layer active">🧲 Absorption</button>
+        <button data-layer="sweep" class="chart-layer active">⚡ Sweep</button>
+        <button data-layer="blocks" class="chart-layer active">🟪 Blocks</button>
+        <button data-layer="delta" class="chart-layer active">Δ Delta</button>
+        <button data-layer="bidask" class="chart-layer active">BID/ASK</button>
+        <button id="fullscreenBtn">⛶</button>
+      </div>
+
+    </div>
+
+    <div class="layers">
+      <button class="layer-btn active" data-layer="candles">کندل</button>
+      <button class="layer-btn active" data-layer="heatmap">Heatmap</button>
+      <button class="layer-btn active" data-layer="walls">Buy/Sell Wall</button>
+      <button class="layer-btn active" data-layer="liquidity">Liquidity</button>
+      <button class="layer-btn active" data-layer="absorption">Absorption</button>
+      <button class="layer-btn active" data-layer="sweep">Sweep</button>
+      <button class="layer-btn active" data-layer="blocks">Order Block</button>
+      <button class="layer-btn active" data-layer="delta">Delta</button>
+      <button class="layer-btn active" data-layer="bidask">Bid / Ask</button>
+    </div>
+
+    <div class="help">
+      لمس کندل = انتخاب Footprint · کشیدن = حرکت چارت · Pinch = Zoom چارت · دابل‌تپ = Zoom ·
+      داخل Footprint نیز Pinch/لمس برای بزرگ‌نمایی و کوچک‌نمایی مستقل فعال است.
+    </div>
+
+    <!-- =====================================================
+         FOOTPRINT
+    ====================================================== -->
+
+    <div class="footprint-panel">
+
+      <div class="fp-head">
+        <div>
+          <div class="fp-title">🧱 Footprint — Selected Candle</div>
+          <div id="fpStatus">یک کندل را انتخاب کنید</div>
+        </div>
+
+        <div class="fp-controls">
+          <button id="fpZoomOut">−</button>
+          <button id="fpZoomReset">1×</button>
+          <button id="fpZoomIn">+</button>
+        </div>
+      </div>
+
+      <div class="fp-box" id="fpBox">
+
+        <div class="fp-scroll" id="fpScroll">
+
+          <div class="fp-inner" id="fpInner">
+
+            <div class="fp-main-head">
+              <div>BID / SELL</div>
+              <div>VOLUME</div>
+              <div>PRICE / CANDLE</div>
+              <div>DELTA</div>
+              <div>VOLUME</div>
+              <div>ASK / BUY</div>
+            </div>
 
-<h1>
-📊 اسکنر شخصی Bybit — Smart Money Order Flow
-</h1>
+            <div id="fpLevels" class="fp-main">
 
-<div class="sub">
-تحلیل واقعی بازار بر پایه معاملات، Order Book، Delta، Absorption، Sweep، Blocks و Footprint
-</div>
+              <div class="fp-empty" style="grid-column:1/-1">
+                برای مشاهده Footprint یک کندل را لمس کنید
+              </div>
 
-</header>
+            </div>
 
+          </div>
 
-<!-- =====================================================
-     TOOLBAR
-===================================================== -->
+        </div>
 
-<div class="toolbar">
+      </div>
 
-<input
- id="symbol"
- value="BTCUSDT"
- autocomplete="off"
->
+      <div class="fp-totals">
 
-<button id="analyzeBtn">
-🔎 تحلیل
-</button>
+        <div class="fp-total">
+          <div class="fp-total-label">Total Bid / Sell</div>
+          <div id="fpTotalBid" class="fp-total-value sell">0</div>
+        </div>
 
-<button id="liveBtn">
-🟢 Live
-</button>
+        <div class="fp-total">
+          <div class="fp-total-label">Total Ask / Buy</div>
+          <div id="fpTotalAsk" class="fp-total-value buy">0</div>
+        </div>
 
-<button id="stopBtn">
-⏹ توقف
-</button>
+        <div class="fp-total">
+          <div class="fp-total-label">Total Delta</div>
+          <div id="fpTotalDelta" class="fp-total-value">0</div>
+        </div>
 
-<button class="tf active" data-tf="1">
-1m
-</button>
+        <div class="fp-total">
+          <div class="fp-total-label">Total Volume</div>
+          <div id="fpTotalVolume" class="fp-total-value">0</div>
+        </div>
 
-<button class="tf" data-tf="3">
-3m
-</button>
+        <div class="fp-total">
+          <div class="fp-total-label">Price Levels</div>
+          <div id="fpTotalLevels" class="fp-total-value">0</div>
+        </div>
 
-<button class="tf" data-tf="5">
-5m
-</button>
+      </div>
 
-<button class="tf" data-tf="15">
-15m
-</button>
+    </div>
 
-<span id="status">
-در حال اتصال...
-</span>
+  </div>
 
-</div>
+  <!-- =======================================================
+       CARDS
+  ======================================================== -->
 
+  <div class="panel">
 
-<!-- =====================================================
-     CHART
-===================================================== -->
+    <div class="cards">
 
-<div class="panel">
+      <div class="card">
+        <div class="card-title">PRICE</div>
+        <div id="price" class="card-value neutral">—</div>
+      </div>
 
-<div class="chart-wrap" id="chartWrap">
+      <div class="card">
+        <div class="card-title">BUY VOLUME</div>
+        <div id="buy" class="card-value buy">—</div>
+      </div>
 
-<button class="full" id="fullBtn">
-⛶
-</button>
+      <div class="card">
+        <div class="card-title">SELL VOLUME</div>
+        <div id="sell" class="card-value sell">—</div>
+      </div>
 
-<canvas id="chart"></canvas>
+      <div class="card">
+        <div class="card-title">DELTA</div>
+        <div id="delta" class="card-value neutral">—</div>
+      </div>
 
-</div>
+      <div class="card">
+        <div class="card-title">BID BOOK</div>
+        <div id="bidBook" class="card-value sell">—</div>
+      </div>
 
+      <div class="card">
+        <div class="card-title">ASK BOOK</div>
+        <div id="askBook" class="card-value buy">—</div>
+      </div>
 
-<div class="layerbar">
+      <div class="card">
+        <div class="card-title">ABSORPTION</div>
+        <div id="absorption" class="card-value neutral">—</div>
+      </div>
 
-<button data-layer="candles" class="active">
-🕯 کندل
-</button>
+      <div class="card">
+        <div class="card-title">SIGNAL</div>
+        <div id="signal" class="card-value neutral">—</div>
+      </div>
 
-<button data-layer="heatmap" class="active">
-🔥 Heatmap
-</button>
+    </div>
 
-<button data-layer="walls" class="active">
-🧱 Walls
-</button>
+  </div>
 
-<button data-layer="liquidity" class="active">
-💧 Liquidity
-</button>
+  <!-- =======================================================
+       SCANNER
+  ======================================================== -->
 
-<button data-layer="absorption" class="active">
-🟡 Absorption
-</button>
+  <div class="panel">
 
-<button data-layer="sweep" class="active">
-🎯 Sweep
-</button>
+    <div class="scan-panel">
 
-<button data-layer="blocks" class="active">
-🐋 Blocks
-</button>
+      <div id="scanState" class="scan-state">
+        اسکن متوقف است
+      </div>
 
-<button data-layer="delta" class="active">
-Δ Delta
-</button>
+      <button id="scanStart" class="btn green">🟢 شروع اسکن</button>
+      <button id="scanStop" class="btn red">⏹ توقف اسکن</button>
 
-<button data-layer="bidask" class="active">
-Bid/Ask
-</button>
+    </div>
 
-</div>
+    <div id="results" class="results"></div>
 
+  </div>
 
-<div class="help">
-لمس کندل = Footprint همان کندل · لمس و کشیدن = جابه‌جایی · دو انگشت = زوم · چرخ ماوس = زوم · دابل‌تپ = زوم
-</div>
+  <!-- =======================================================
+       TRADES
+  ======================================================== -->
 
+  <div class="panel">
 
-<!-- =====================================================
-     SELECTED CANDLE FOOTPRINT
-===================================================== -->
+    <div class="fp-title" style="margin-bottom:9px">
+      📋 معاملات واقعی Bybit
+    </div>
 
-<div class="footprint-panel">
+    <div class="trade-wrap">
 
-<div class="fp-head">
+      <table class="trade-table">
 
-<strong>
-🧱 Footprint — کندل انتخاب‌شده
-</strong>
+        <thead>
+          <tr>
+            <th>TIME</th>
+            <th>PRICE</th>
+            <th>QTY</th>
+            <th>VALUE</th>
+            <th>SIDE</th>
+          </tr>
+        </thead>
 
-<span id="fpStatus">
-یک کندل را انتخاب کنید
-</span>
+        <tbody id="tradeBody"></tbody>
 
-</div>
+      </table>
 
+    </div>
 
-<div class="fp-box">
-
-<div class="fp-inner">
-
-
-<div class="fp-main-head">
-
-<div class="bid-title">
-BID / SELL
-</div>
-
-<div class="bid-title">
-VOLUME
-</div>
-
-<div>
-PRICE / CANDLE
-</div>
-
-<div class="delta-title">
-DELTA
-</div>
-
-<div class="ask-title">
-VOLUME
-</div>
-
-<div class="ask-title">
-ASK / BUY
-</div>
-
-</div>
-
-
-<div id="fpLevels">
-
-<div class="fp-empty">
-برای مشاهده Footprint یک کندل را انتخاب کنید
-</div>
-
-</div>
-
-
-<div class="fp-totals">
-
-
-<div class="fp-total fp-total-bid">
-
-<div class="fp-total-label">
-TOTAL BID / SELL
-</div>
-
-<div
- id="fpTotalBid"
- class="fp-total-value"
->
-—
-</div>
-
-</div>
-
-
-<div class="fp-total fp-total-ask">
-
-<div class="fp-total-label">
-TOTAL ASK / BUY
-</div>
-
-<div
- id="fpTotalAsk"
- class="fp-total-value"
->
-—
-</div>
-
-</div>
-
-
-<div class="fp-total fp-total-delta">
-
-<div class="fp-total-label">
-TOTAL DELTA
-</div>
-
-<div
- id="fpTotalDelta"
- class="fp-total-value"
->
-—
-</div>
-
-</div>
-
-
-<div class="fp-total">
-
-<div class="fp-total-label">
-TOTAL VOLUME
-</div>
-
-<div
- id="fpTotalVolume"
- class="fp-total-value"
->
-—
-</div>
-
-</div>
-
-
-<div class="fp-total">
-
-<div class="fp-total-label">
-PRICE LEVELS
-</div>
-
-<div
- id="fpTotalLevels"
- class="fp-total-value"
->
-—
-</div>
+  </div>
 
 </div>
-
-
-</div>
-
-</div>
-
-</div>
-
-</div>
-
-
-<!-- =====================================================
-     CARDS
-===================================================== -->
-
-<div class="cards">
-
-<div class="card">
-<span>Price</span>
-<b id="price">—</b>
-</div>
-
-<div class="card">
-<span>Buy / Ask Aggressor</span>
-<b id="buy" class="green">—</b>
-</div>
-
-<div class="card">
-<span>Sell / Bid Aggressor</span>
-<b id="sell" class="red">—</b>
-</div>
-
-<div class="card">
-<span>Delta</span>
-<b id="delta">—</b>
-</div>
-
-<div class="card">
-<span>Bid Book</span>
-<b id="bidBook">—</b>
-</div>
-
-<div class="card">
-<span>Ask Book</span>
-<b id="askBook">—</b>
-</div>
-
-<div class="card">
-<span>Absorption</span>
-<b id="absorption">—</b>
-</div>
-
-<div class="card">
-<span>Score / Signal</span>
-<b id="signal">—</b>
-</div>
-
-</div>
-
-
-<!-- =====================================================
-     SCAN
-===================================================== -->
-
-<div class="scan-panel">
-
-<div class="scan-row">
-
-<strong>
-🔎 اسکن بازار
-</strong>
-
-<button id="scanStart">
-🟢 شروع اسکن
-</button>
-
-<button id="scanStop">
-⏹ توقف اسکن
-</button>
-
-<span id="scanState">
-متوقف
-</span>
-
-</div>
-
-<div
- id="results"
- class="results"
-></div>
-
-</div>
-
-
-<!-- =====================================================
-     TRADES
-===================================================== -->
-
-<div class="panel">
-
-<div class="trades">
-
-<table>
-
-<thead>
-
-<tr>
-
-<th>
-زمان
-</th>
-
-<th>
-قیمت
-</th>
-
-<th>
-حجم
-</th>
-
-<th>
-ارزش
-</th>
-
-<th>
-Side
-</th>
-
-</tr>
-
-</thead>
-
-<tbody id="tradeBody">
-
-</tbody>
-
-</table>
-
-</div>
-
-</div>
-
-</div>
-
 
 <script>
-
 /* =========================================================
    GLOBAL
 ========================================================= */
 
-const API=location.origin;
+const API_BASE = "";
+const DEFAULT_TF = "1";
 
-let symbol="BTCUSDT";
-let interval="1";
-let data=null;
+let TF = DEFAULT_TF;
+let data = {};
+let selectedIndex = -1;
 
-let liveTimer=null;
-let scanTimer=null;
-let scanOffset=0;
+let candles = [];
+let trades = [];
 
-let selectedIndex=-1;
+let liveTimer = null;
+let scanTimer = null;
 
-const canvas=
- document.getElementById("chart");
+let chartCanvas = document.getElementById("chart");
+let chartWrap = document.getElementById("chartWrap");
+let ctx = chartCanvas.getContext("2d");
 
-const ctx=
- canvas.getContext("2d");
+let viewStart = 0;
+let viewEnd = 0;
 
-const layers={
- candles:true,
- heatmap:true,
- walls:true,
- liquidity:true,
- absorption:true,
- sweep:true,
- blocks:true,
- delta:true,
- bidask:true
+let dragging = false;
+let dragStartX = 0;
+let dragStartView = 0;
+
+let pinchStartDistance = 0;
+let pinchStartRange = 0;
+
+let lastTapTime = 0;
+let lastTapX = 0;
+
+let layers = {
+  candles:true,
+  heatmap:true,
+  walls:true,
+  liquidity:true,
+  absorption:true,
+  sweep:true,
+  blocks:true,
+  delta:true,
+  bidask:true
 };
 
-let viewStart=0;
-let viewCount=70;
+let fpZoom = 1;
+let fpTouchStartDistance = 0;
+let fpTouchStartZoom = 1;
+let fpLastY = 0;
+let fpDragging = false;
 
-let pointers=new Map();
-let dragStart=null;
-let moved=false;
-let pinchStart=null;
-let lastTap=0;
-let crosshair=null;
+const $ = id => document.getElementById(id);
 
+const num = (v,d=0) => {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : d;
+};
 
-/* =========================================================
-   HELPERS
-========================================================= */
-
-function num(v){
-
- const x=Number(v);
-
- return Number.isFinite(x)
-  ?x
-  :0;
-}
-
-
-function clamp(v,min,max){
-
- return Math.max(
-  min,
-  Math.min(max,v)
- );
-}
-
+const clamp = (v,a,b) => Math.max(a,Math.min(b,v));
 
 function fmt(v,d=2){
-
- v=num(v);
-
- if(Math.abs(v)>=1000000000)
-  return (v/1e9).toFixed(2)+"B";
-
- if(Math.abs(v)>=1000000)
-  return (v/1e6).toFixed(2)+"M";
-
- if(Math.abs(v)>=1000)
-  return (v/1000).toFixed(2)+"K";
-
- return v.toFixed(d);
+  const n = num(v);
+  if(!Number.isFinite(n)) return "0";
+  return n.toLocaleString("en-US",{
+    maximumFractionDigits:d
+  });
 }
 
+function signed(v,d=2){
+  const n = num(v);
+  return `${n >= 0 ? "+" : ""}${fmt(n,d)}`;
+}
 
 function priceFmt(v){
-
- v=num(v);
-
- if(v>=1000)
-  return v.toFixed(2);
-
- if(v>=1)
-  return v.toFixed(4);
-
- if(v>=.01)
-  return v.toFixed(5);
-
- if(v>=.0001)
-  return v.toFixed(7);
-
- return v.toFixed(10);
+  const n = num(v);
+  if(n >= 1000) return fmt(n,2);
+  if(n >= 1) return fmt(n,4);
+  if(n >= .01) return fmt(n,6);
+  return fmt(n,8);
 }
 
+function timeText(v){
+  const n = num(v);
+  if(!n) return "—";
 
-function signed(v){
+  const d = new Date(n < 10000000000 ? n * 1000 : n);
 
- v=num(v);
+  if(Number.isNaN(d.getTime())) return "—";
 
- return v>=0
-  ?"+"+fmt(v)
-  :fmt(v);
+  return d.toLocaleTimeString("fa-IR",{
+    hour:"2-digit",
+    minute:"2-digit",
+    second:"2-digit"
+  });
 }
 
-
-function timeText(t){
-
- if(!t)
-  return "—";
-
- return new Date(
-  num(t)
- ).toLocaleTimeString(
-  "fa-IR",
-  {
-   hour:"2-digit",
-   minute:"2-digit",
-   second:"2-digit"
-  }
- );
+function intervalMilliseconds(tf){
+  return Number(tf) * 60 * 1000;
 }
 
-
-function normalizeTime(t){
-
- const n=num(t);
-
- if(!n)
-  return 0;
-
- return n<1000000000000
-  ?n*1000
-  :n;
+function candleStart(c){
+  return num(
+    c?.startTime ??
+    c?.start ??
+    c?.time ??
+    c?.timestamp ??
+    c?.openTime ??
+    c?.t
+  );
 }
-
-
-function intervalMilliseconds(){
-
- return Number(interval)*60*1000;
-}
-
-
-function candleStart(time){
-
- const t=normalizeTime(time);
-
- const ms=intervalMilliseconds();
-
- return Math.floor(t/ms)*ms;
-}
-
 
 /* =========================================================
-   CANDLES
+   NORMALIZE CANDLES
 ========================================================= */
+
+function normalizeCandle(c){
+
+  if(Array.isArray(c)){
+    return {
+      time:num(c[0]),
+      open:num(c[1]),
+      high:num(c[2]),
+      low:num(c[3]),
+      close:num(c[4]),
+      volume:num(c[5]),
+      turnover:num(c[6])
+    };
+  }
+
+  return {
+    time:candleStart(c),
+    open:num(c?.open ?? c?.o),
+    high:num(c?.high ?? c?.h),
+    low:num(c?.low ?? c?.l),
+    close:num(c?.close ?? c?.c),
+    volume:num(c?.volume ?? c?.v),
+    turnover:num(c?.turnover ?? c?.q)
+  };
+}
 
 function getCandles(){
 
- if(!data)
+  const sources = [
+    data?.selectedCandles,
+    data?.candles,
+    data?.chart?.candles,
+    data?.data?.candles,
+    data?.data?.chart?.candles
+  ];
+
+  for(const source of sources){
+
+    if(Array.isArray(source)){
+      const arr = source.map(normalizeCandle).filter(x =>
+        x.time && x.open !== undefined
+      );
+
+      if(arr.length) return arr;
+    }
+
+    if(source && typeof source === "object"){
+
+      const candidate =
+        source[TF] ??
+        source[`tf${TF}`] ??
+        source[String(TF)];
+
+      if(Array.isArray(candidate)){
+        const arr = candidate
+          .map(normalizeCandle)
+          .filter(x => x.time);
+
+        if(arr.length) return arr;
+      }
+    }
+  }
+
   return [];
-
- if(Array.isArray(data.selectedCandles))
-  return data.selectedCandles;
-
- if(Array.isArray(data.candles))
-  return data.candles;
-
- if(
-  data.candles&&
-  typeof data.candles==="object"
- ){
-
-  const key="tf"+interval;
-
-  if(Array.isArray(data.candles[key]))
-   return data.candles[key];
-
-  if(Array.isArray(data.candles[interval]))
-   return data.candles[interval];
- }
-
- if(data.chart){
-
-  if(Array.isArray(data.chart.candles))
-   return data.chart.candles;
-
-  if(
-   data.chart.candles&&
-   Array.isArray(
-    data.chart.candles["tf"+interval]
-   )
-  )
-   return data.chart.candles["tf"+interval];
- }
-
- if(data.data){
-
-  if(Array.isArray(data.data.candles))
-   return data.data.candles;
-
-  if(
-   data.data.chart&&
-   Array.isArray(data.data.chart.candles)
-  )
-   return data.data.chart.candles;
- }
-
- return [];
 }
 
-
 /* =========================================================
-   TRADE NORMALIZATION
+   NORMALIZE TRADES
 ========================================================= */
 
 function normalizeTrade(t){
 
- if(!t)
-  return null;
+  const time = num(
+    t?.time ??
+    t?.T ??
+    t?.timestamp ??
+    t?.ts ??
+    t?.execTime
+  );
 
- const time=normalizeTime(
-  t.time ??
-  t.T ??
-  t.timestamp ??
-  t.ts ??
-  t.execTime
- );
+  const price = num(
+    t?.price ??
+    t?.p ??
+    t?.execPrice
+  );
 
- const price=num(
-  t.price ??
-  t.p ??
-  t.execPrice
- );
+  const size = num(
+    t?.size ??
+    t?.qty ??
+    t?.q ??
+    t?.execQty
+  );
 
- const size=num(
-  t.size ??
-  t.qty ??
-  t.q ??
-  t.execQty
- );
+  let side =
+    t?.side ??
+    t?.S ??
+    t?.aggressor ??
+    t?.aggressorSide ??
+    t?.direction ??
+    "";
 
- let side=String(
-  t.side ??
-  t.S ??
-  t.aggressor ??
-  t.aggressorSide ??
-  t.direction ??
-  ""
- ).toUpperCase();
+  side = String(side).toUpperCase();
 
- if(side==="B")
-  side="BUY";
+  if(side === "B") side = "BUY";
+  if(side === "S") side = "SELL";
 
- if(side==="S")
-  side="SELL";
+  if(side.includes("BUY")) side = "BUY";
+  else if(side.includes("SELL")) side = "SELL";
 
- if(
-  side!=="BUY"&&
-  side!=="SELL"
- )
-  return null;
-
- if(!time||!price||!size)
-  return null;
-
- return {
-  time,
-  price,
-  size,
-  side,
-  value:price*size
- };
+  return {
+    time,
+    price,
+    size,
+    side,
+    value:price * size
+  };
 }
-
 
 function getTrades(){
 
- const candidates=[
-  data?.trades,
-  data?.recentTrades,
-  data?.tradeList,
-  data?.currentTrades,
-  data?.data?.trades,
-  data?.data?.recentTrades,
-  data?.market?.trades
- ];
+  const sources = [
+    data?.trades,
+    data?.recentTrades,
+    data?.tradeList,
+    data?.currentTrades,
+    data?.data?.trades,
+    data?.data?.recentTrades,
+    data?.market?.trades
+  ];
 
- let source=[];
+  for(const source of sources){
 
- for(const x of candidates){
+    if(Array.isArray(source)){
 
-  if(
-   Array.isArray(x)&&
-   x.length
-  ){
+      const arr = source
+        .map(normalizeTrade)
+        .filter(x =>
+          x.time &&
+          x.price > 0 &&
+          x.size >= 0 &&
+          (x.side === "BUY" || x.side === "SELL")
+        );
 
-   source=x;
-   break;
+      if(arr.length) return arr;
+    }
   }
- }
 
- return source
-  .map(normalizeTrade)
-  .filter(Boolean);
+  return [];
 }
-
 
 /* =========================================================
    PRICE STEP
@@ -1416,111 +1353,49 @@ function getTrades(){
 
 function detectPriceStep(){
 
- const info=
-  data?.instrument ??
-  data?.instrumentInfo ??
-  data?.symbolInfo ??
-  data?.meta ??
-  data?.data?.instrument ??
-  data?.data?.instrumentInfo;
+  const instrument =
+    data?.instrument ??
+    data?.instrumentInfo ??
+    data?.data?.instrument ??
+    {};
 
- if(info){
+  const tick = num(
+    instrument?.tickSize ??
+    instrument?.priceFilter?.tickSize ??
+    instrument?.priceFilter?.tick_size
+  );
 
-  const x=
-   info.tickSize ??
-   info.priceFilter?.tickSize ??
-   info.price_filter?.tickSize ??
-   info.price_filter?.tick_size;
+  if(tick > 0) return tick;
 
-  if(Number(x)>0)
-   return Number(x);
- }
-
- const trades=getTrades();
-
- const prices=[
-  ...new Set(
-   trades
+  const prices = trades
     .map(x=>x.price)
     .filter(x=>x>0)
-  )
- ].sort((a,b)=>a-b);
+    .sort((a,b)=>a-b);
 
- const diffs=[];
+  let smallest = Infinity;
 
- for(let i=1;i<prices.length;i++){
+  for(let i=1;i<prices.length;i++){
 
-  const d=
-   prices[i]-prices[i-1];
+    const diff = prices[i] - prices[i-1];
 
-  if(
-   d>0&&
-   Number.isFinite(d)
-  )
-   diffs.push(d);
- }
+    if(diff > 0 && diff < smallest){
+      smallest = diff;
+    }
+  }
 
- if(diffs.length){
+  if(Number.isFinite(smallest) && smallest > 0){
+    return smallest;
+  }
 
-  diffs.sort(
-   (a,b)=>a-b
-  );
+  const p = candles[selectedIndex]?.close || 1;
 
-  if(diffs[0]>0)
-   return diffs[0];
- }
+  if(p >= 10000) return 1;
+  if(p >= 1000) return .1;
+  if(p >= 100) return .01;
+  if(p >= 1) return .0001;
 
- const candles=getCandles();
-
- const cp=[];
-
- for(
-  const c of candles.slice(-30)
- ){
-
-  cp.push(
-   num(c.open),
-   num(c.high),
-   num(c.low),
-   num(c.close)
-  );
- }
-
- const maxPrice=Math.max(
-  ...cp.filter(x=>x>0),
-  ...trades.map(x=>x.price),
-  1
- );
-
- if(maxPrice>=1000)
-  return .01;
-
- if(maxPrice>=1)
-  return .0001;
-
- if(maxPrice>=.01)
-  return .000001;
-
- if(maxPrice>=.0001)
-  return .00000001;
-
- return .000000001;
+  return Math.pow(10,Math.floor(Math.log10(p))-2);
 }
-
-
-function roundPrice(price,step){
-
- price=num(price);
- step=num(step);
-
- if(!step)
-  return price;
-
- return Math.round(
-  price/step
- )*step;
-}
-
 
 /* =========================================================
    REAL TRADE FOOTPRINT
@@ -1528,415 +1403,223 @@ function roundPrice(price,step){
 
 function buildFootprintFromTrades(candle){
 
- if(!candle)
-  return null;
+  if(!candle || !trades.length) return null;
 
- const start=
-  candleStart(candle.time);
+  const start = candleStart(candle);
+  const end = start + intervalMilliseconds(TF);
 
- const end=
-  start+intervalMilliseconds();
+  const step = detectPriceStep();
 
- const trades=
-  getTrades().filter(t=>
-   t.time>=start&&
-   t.time<end
-  );
+  const map = new Map();
 
- if(!trades.length)
-  return null;
+  for(const t of trades){
 
- const step=
-  detectPriceStep();
+    if(t.time < start || t.time >= end) continue;
 
- const map=new Map();
+    if(!t.price || !t.size) continue;
 
- let buy=0;
- let sell=0;
- let volume=0;
+    const rounded =
+      Math.round(t.price / step) * step;
 
- let buyTrades=0;
- let sellTrades=0;
+    const key = rounded.toFixed(12);
 
- for(const t of trades){
+    if(!map.has(key)){
 
-  const price=
-   roundPrice(
-    t.price,
-    step
-   );
+      map.set(key,{
+        price:rounded,
+        bid:0,
+        ask:0,
+        volume:0,
+        delta:0,
+        trades:0
+      });
 
-  const key=String(price);
-
-  if(!map.has(key)){
-
-   map.set(
-    key,
-    {
-     price,
-     bidVolume:0,
-     askVolume:0,
-     delta:0,
-     trades:0,
-     buyTrades:0,
-     sellTrades:0
     }
-   );
+
+    const row = map.get(key);
+
+    row.volume += t.size;
+    row.trades++;
+
+    if(t.side === "BUY"){
+      row.ask += t.size;
+      row.delta += t.size;
+    }else{
+      row.bid += t.size;
+      row.delta -= t.size;
+    }
   }
 
-  const level=
-   map.get(key);
+  if(!map.size) return null;
 
-  if(t.side==="BUY"){
+  const levels = [...map.values()]
+    .sort((a,b)=>b.price-a.price)
+    .map(x=>({
+      ...x,
+      volume:x.bid+x.ask
+    }));
 
-   level.askVolume+=t.size;
-   level.buyTrades++;
+  const bid = levels.reduce((s,x)=>s+x.bid,0);
+  const ask = levels.reduce((s,x)=>s+x.ask,0);
 
-   buy+=t.size;
-   buyTrades++;
-
-  }else{
-
-   level.bidVolume+=t.size;
-   level.sellTrades++;
-
-   sell+=t.size;
-   sellTrades++;
-  }
-
-  level.delta=
-   level.askVolume-
-   level.bidVolume;
-
-  level.trades++;
-
-  volume+=t.size;
- }
-
- const levels=[
-  ...map.values()
- ].sort(
-  (a,b)=>b.price-a.price
- );
-
- return {
-
-  time:candle.time,
-
-  open:num(candle.open),
-  high:num(candle.high),
-  low:num(candle.low),
-  close:num(candle.close),
-
-  levels,
-
-  buyVolume:buy,
-  sellVolume:sell,
-
-  askVolume:buy,
-  bidVolume:sell,
-
-  flowVolume:volume,
-  volume,
-
-  delta:buy-sell,
-
-  buyTrades,
-  sellTrades,
-
-  source:"REAL TRADES"
- };
+  return {
+    levels,
+    bid,
+    ask,
+    sell:bid,
+    buy:ask,
+    volume:bid+ask,
+    delta:ask-bid,
+    source:"REAL TRADES"
+  };
 }
 
-
 /* =========================================================
-   SERVER FOOTPRINT
+   WORKER FOOTPRINT
 ========================================================= */
 
 function normalizeServerLevel(x){
 
- if(!x)
-  return null;
+  const price = num(
+    x?.price ??
+    x?.p ??
+    x?.level ??
+    x?.priceLevel
+  );
 
- const price=num(
-  x.price ??
-  x.p ??
-  x.priceLevel ??
-  x.level ??
-  x.price_level
- );
+  const bid = num(
+    x?.bid ??
+    x?.sell ??
+    x?.bidVolume ??
+    x?.sellVolume
+  );
 
- const bid=num(
-  x.bidVolume ??
-  x.bid ??
-  x.sellVolume ??
-  x.sell ??
-  x.Bid ??
-  x.BID ??
-  x.bidQty
- );
+  const ask = num(
+    x?.ask ??
+    x?.buy ??
+    x?.askVolume ??
+    x?.buyVolume
+  );
 
- const ask=num(
-  x.askVolume ??
-  x.ask ??
-  x.buyVolume ??
-  x.buy ??
-  x.Ask ??
-  x.ASK ??
-  x.askQty
- );
+  const delta =
+    x?.delta !== undefined
+      ? num(x.delta)
+      : ask - bid;
 
- if(!price)
-  return null;
-
- return {
-  price,
-  bidVolume:bid,
-  askVolume:ask,
-  delta:num(
-   x.delta ??
-   ask-bid
-  )
- };
+  return {
+    price,
+    bid,
+    ask,
+    volume:bid+ask,
+    delta
+  };
 }
-
 
 function extractFootprintLevels(source){
 
- if(!source)
+  if(!source) return [];
+
+  if(Array.isArray(source)){
+    return source
+      .map(normalizeServerLevel)
+      .filter(x=>x.price>0);
+  }
+
+  const candidates = [
+    source.levels,
+    source.footprint,
+    source.footprint?.levels,
+    source.data?.levels
+  ];
+
+  for(const c of candidates){
+
+    if(Array.isArray(c)){
+
+      const arr = c
+        .map(normalizeServerLevel)
+        .filter(x=>x.price>0);
+
+      if(arr.length) return arr;
+    }
+  }
+
   return [];
-
- if(Array.isArray(source))
-  return source;
-
- if(Array.isArray(source.levels))
-  return source.levels;
-
- if(Array.isArray(source.footprint))
-  return source.footprint;
-
- if(
-  source.footprint&&
-  Array.isArray(
-   source.footprint.levels
-  )
- )
-  return source.footprint.levels;
-
- return [];
 }
-
 
 function serverFootprint(candle,index){
 
- if(!candle)
+  const fpSources = [
+    data?.footprints,
+    data?.data?.footprints
+  ];
+
+  for(const source of fpSources){
+
+    if(!source) continue;
+
+    let candidate = null;
+
+    if(Array.isArray(source)){
+      candidate = source.find((x,i)=>{
+
+        if(num(x?.index,-999) === index) return true;
+
+        const xt = num(
+          x?.time ??
+          x?.timestamp ??
+          x?.startTime
+        );
+
+        return xt &&
+          Math.abs(xt-candle.time) <
+          intervalMilliseconds(TF);
+      });
+    }
+
+    if(source && !Array.isArray(source)){
+      candidate =
+        source[index] ??
+        source[String(index)] ??
+        source[candle.time] ??
+        source[String(candle.time)];
+    }
+
+    const levels = extractFootprintLevels(candidate);
+
+    if(levels.length){
+
+      const bid = levels.reduce((s,x)=>s+x.bid,0);
+      const ask = levels.reduce((s,x)=>s+x.ask,0);
+
+      return {
+        levels,
+        bid,
+        ask,
+        sell:bid,
+        buy:ask,
+        volume:bid+ask,
+        delta:ask-bid,
+        source:"WORKER FOOTPRINT"
+      };
+    }
+  }
+
   return null;
-
- let raw=[];
-
- raw=
-  extractFootprintLevels(
-   candle
-  );
-
- if(!raw.length)
-  raw=
-   extractFootprintLevels(
-    candle.footprint
-   );
-
- if(
-  !raw.length&&
-  data?.footprint
- )
-  raw=
-   extractFootprintLevels(
-    data.footprint
-   );
-
- if(
-  !raw.length&&
-  data?.data?.footprint
- )
-  raw=
-   extractFootprintLevels(
-    data.data.footprint
-   );
-
- if(
-  !raw.length&&
-  Array.isArray(data?.footprints)
- ){
-
-  const found=
-   data.footprints.find(x=>
-
-    Math.abs(
-     normalizeTime(
-      x.time ??
-      x.timestamp ??
-      x.candleTime ??
-      x.start
-     )-
-     normalizeTime(
-      candle.time
-     )
-    )<
-    intervalMilliseconds()
-   );
-
-  if(found)
-   raw=
-    extractFootprintLevels(
-     found
-    );
- }
-
- if(
-  !raw.length&&
-  Array.isArray(
-   data?.data?.footprints
-  )
- ){
-
-  const found=
-   data.data.footprints.find(x=>
-
-    Math.abs(
-     normalizeTime(
-      x.time ??
-      x.timestamp ??
-      x.candleTime ??
-      x.start
-     )-
-     normalizeTime(
-      candle.time
-     )
-    )<
-    intervalMilliseconds()
-   );
-
-  if(found)
-   raw=
-    extractFootprintLevels(
-     found
-    );
- }
-
- if(!raw.length)
-  return null;
-
- const levels=
-  raw
-   .map(normalizeServerLevel)
-   .filter(Boolean)
-   .sort(
-    (a,b)=>b.price-a.price
-   );
-
- if(!levels.length)
-  return null;
-
- let buy=0;
- let sell=0;
-
- for(const l of levels){
-
-  buy+=num(l.askVolume);
-  sell+=num(l.bidVolume);
- }
-
- const serverBuy=num(
-  candle.buyVolume ??
-  candle.askVolume
- );
-
- const serverSell=num(
-  candle.sellVolume ??
-  candle.bidVolume
- );
-
- return {
-
-  time:candle.time,
-
-  open:num(candle.open),
-  high:num(candle.high),
-  low:num(candle.low),
-  close:num(candle.close),
-
-  levels,
-
-  buyVolume:
-   serverBuy||buy,
-
-  sellVolume:
-   serverSell||sell,
-
-  askVolume:
-   serverBuy||buy,
-
-  bidVolume:
-   serverSell||sell,
-
-  flowVolume:
-   num(
-    candle.flowVolume ??
-    candle.volume
-   )||
-   buy+sell,
-
-  volume:
-   num(candle.volume)||
-   buy+sell,
-
-  delta:
-   Number.isFinite(
-    Number(candle.delta)
-   )
-    ?num(candle.delta)
-    :buy-sell,
-
-  source:"WORKER FOOTPRINT"
- };
 }
-
-
-/* =========================================================
-   MASTER FOOTPRINT
-========================================================= */
 
 function getFootprint(index){
 
- const candles=
-  getCandles();
+  const candle = candles[index];
 
- if(
-  index<0||
-  index>=candles.length
- )
-  return null;
+  if(!candle) return null;
 
- const candle=
-  candles[index];
+  const server = serverFootprint(candle,index);
 
- const server=
-  serverFootprint(
-   candle,
-   index
-  );
+  if(server) return server;
 
- if(
-  server&&
-  server.levels?.length
- )
-  return server;
-
- return buildFootprintFromTrades(
-  candle
- );
+  return buildFootprintFromTrades(candle);
 }
-
 
 /* =========================================================
    FOOTPRINT RENDER
@@ -1944,2515 +1627,2153 @@ function getFootprint(index){
 
 function renderSelectedFootprint(){
 
- const root=
-  document.getElementById(
-   "fpLevels"
+  const container = $("fpLevels");
+
+  if(!container) return;
+
+  container.innerHTML = "";
+
+  const candle = candles[selectedIndex];
+
+  if(!candle){
+
+    container.innerHTML = `
+      <div class="fp-empty" style="grid-column:1/-1">
+        برای مشاهده Footprint یک کندل را لمس کنید
+      </div>
+    `;
+
+    $("fpStatus").textContent =
+      "یک کندل را انتخاب کنید";
+
+    return;
+  }
+
+  const fp = getFootprint(selectedIndex);
+
+  if(!fp || !fp.levels.length){
+
+    container.innerHTML = `
+      <div class="fp-empty" style="grid-column:1/-1">
+        اطلاعات سطحی Footprint برای این کندل موجود نیست
+      </div>
+    `;
+
+    $("fpStatus").textContent =
+      `${timeText(candle.time)} · داده سطحی موجود نیست`;
+
+    $("fpTotalBid").textContent = "0";
+    $("fpTotalAsk").textContent = "0";
+    $("fpTotalDelta").textContent = "0";
+    $("fpTotalVolume").textContent = "0";
+    $("fpTotalLevels").textContent = "0";
+
+    return;
+  }
+
+  let levels = fp.levels
+    .map(normalizeServerLevel)
+    .filter(x=>x.price>0)
+    .sort((a,b)=>b.price-a.price);
+
+  /*
+    اگر تعداد Level ها خیلی زیاد باشد، سطح‌ها را با توجه
+    به حجم مهم‌تر نگه می‌داریم؛ اما برای Footprint واقعی
+    ترجیح با همه Level های موجود است.
+  */
+  if(levels.length > 100){
+    levels = levels.slice(0,100);
+  }
+
+  const maxVolume = Math.max(
+    1,
+    ...levels.map(x=>x.volume)
   );
 
- const status=
-  document.getElementById(
-   "fpStatus"
+  const minLevelPrice =
+    Math.min(...levels.map(x=>x.price));
+
+  const maxLevelPrice =
+    Math.max(...levels.map(x=>x.price));
+
+  /*
+    دامنه تصویری کندل از High/Low هم استفاده می‌کند تا
+    خود کندل حتی اگر High/Low در Level معامله‌ای نباشد
+    کامل دیده شود.
+  */
+  const visualHigh = Math.max(
+    maxLevelPrice,
+    candle.high
   );
 
- const totalVolumeEl=
-  document.getElementById(
-   "fpTotalVolume"
+  const visualLow = Math.min(
+    minLevelPrice,
+    candle.low
   );
 
- const totalAskEl=
-  document.getElementById(
-   "fpTotalAsk"
-  );
-
- const totalBidEl=
-  document.getElementById(
-   "fpTotalBid"
-  );
-
- const totalDeltaEl=
-  document.getElementById(
-   "fpTotalDelta"
-  );
-
- const totalLevelsEl=
-  document.getElementById(
-   "fpTotalLevels"
-  );
-
- if(!root)
-  return;
-
-
- function reset(){
-
-  root.innerHTML=`
-   <div class="fp-empty">
-    برای مشاهده Footprint یک کندل را انتخاب کنید
-   </div>
-  `;
-
-  if(status)
-   status.textContent=
-    "یک کندل را انتخاب کنید";
-
-  if(totalVolumeEl)
-   totalVolumeEl.textContent="—";
-
-  if(totalAskEl)
-   totalAskEl.textContent="—";
-
-  if(totalBidEl)
-   totalBidEl.textContent="—";
-
-  if(totalDeltaEl)
-   totalDeltaEl.textContent="—";
-
-  if(totalLevelsEl)
-   totalLevelsEl.textContent="—";
- }
-
-
- if(
-  selectedIndex<0
- ){
-
-  reset();
-  return;
- }
-
-
- const candles=
-  getCandles();
-
- const candle=
-  candles[selectedIndex];
-
- if(!candle){
-
-  reset();
-  return;
- }
-
-
- const fp=
-  getFootprint(
-   selectedIndex
-  );
-
-
- if(
-  !fp||
-  !Array.isArray(fp.levels)||
-  !fp.levels.length
- ){
-
-  root.innerHTML=`
-   <div class="fp-empty">
-    اطلاعات Level برای این کندل در داده فعلی موجود نیست
-   </div>
-  `;
-
-  if(status)
-   status.textContent=
-    `${timeText(candle.time)} · ${interval}m · بدون Level`;
-
-  if(totalVolumeEl)
-   totalVolumeEl.textContent=
-    fmt(
-     candle.volume ??
-     candle.flowVolume
-    );
-
-  if(totalAskEl)
-   totalAskEl.textContent=
-    fmt(
-     candle.buyVolume ??
-     candle.askVolume
-    );
-
-  if(totalBidEl)
-   totalBidEl.textContent=
-    fmt(
-     candle.sellVolume ??
-     candle.bidVolume
-    );
-
-  if(totalDeltaEl)
-   totalDeltaEl.textContent=
-    signed(candle.delta);
-
-  if(totalLevelsEl)
-   totalLevelsEl.textContent="0";
-
-  return;
- }
-
-
- const levels=
-  fp.levels
-   .map(l=>({
-
-    price:num(
-     l.price ??
-     l.p
-    ),
-
-    bid:num(
-     l.bidVolume ??
-     l.bid ??
-     l.sellVolume ??
-     l.sell
-    ),
-
-    ask:num(
-     l.askVolume ??
-     l.ask ??
-     l.buyVolume ??
-     l.buy
-    ),
-
-    delta:
-     Number.isFinite(
-      Number(l.delta)
-     )
-      ?num(l.delta)
-      :num(
-       l.askVolume ??
-       l.ask ??
-       l.buyVolume ??
-       l.buy
-      )-
-       num(
-        l.bidVolume ??
-        l.bid ??
-        l.sellVolume ??
-        l.sell
-       )
-   }))
-
-   .filter(l=>
-    Number.isFinite(l.price)
-   )
-
-   .sort(
-    (a,b)=>b.price-a.price
-   );
-
-
- if(!levels.length){
-
-  reset();
-  return;
- }
-
-
- let totalBid=0;
- let totalAsk=0;
-
- for(const l of levels){
-
-  totalBid+=l.bid;
-  totalAsk+=l.ask;
- }
-
-
- const calculatedVolume=
-  totalBid+totalAsk;
-
- const totalVolume=
-  num(fp.volume)||
-  num(fp.flowVolume)||
-  calculatedVolume;
-
- const totalDelta=
-  Number.isFinite(
-   Number(fp.delta)
-  )
-   ?num(fp.delta)
-   :totalAsk-totalBid;
-
-
- const maxLevelVolume=
-  Math.max(
-   1,
-   ...levels.map(
-    l=>Math.max(
-     l.bid,
-     l.ask
-    )
-   )
-  );
-
-
- /* =======================================================
-    CANDLE RANGE
- ======================================================= */
-
- const open=num(
-  candle.open ??
-  candle.o
- );
-
- const high=num(
-  candle.high ??
-  candle.h
- );
-
- const low=num(
-  candle.low ??
-  candle.l
- );
-
- const close=num(
-  candle.close ??
-  candle.c
- );
-
-
- const topPrice=
-  Math.max(
-   high||levels[0].price,
-   levels[0].price
-  );
-
- const bottomPrice=
-  Math.min(
-   low||
-   levels[levels.length-1].price,
-   levels[levels.length-1].price
-  );
-
- const priceRange=
-  topPrice-bottomPrice||1;
-
- const rowHeight=30;
-
- const stageHeight=
-  levels.length*rowHeight;
-
-
- function priceToY(price){
-
-  return clamp(
-   (
-    (topPrice-price)/
-    priceRange
-   )*
-   stageHeight,
-   0,
-   stageHeight
-  );
- }
-
-
- /* =======================================================
-    CANDLE
- ======================================================= */
-
- let candleHTML="";
-
- if(
-  high>0&&
-  low>0
- ){
-
-  const wickTop=
-   priceToY(high);
-
-  const wickBottom=
-   priceToY(low);
-
-  const bodyTop=
-   priceToY(
+  const range =
     Math.max(
-     open,
-     close
-    )
-   );
+      visualHigh-visualLow,
+      detectPriceStep()
+    );
 
-  const bodyBottom=
-   priceToY(
-    Math.min(
-     open,
-     close
-    )
-   );
+  const rowHeight = 30;
+  const stageHeight = levels.length * rowHeight;
 
-  const bodyHeight=
-   Math.max(
-    5,
-    bodyBottom-bodyTop
-   );
+  const main = document.createElement("div");
+  main.className = "fp-main";
 
-  const bullish=
-   close>=open;
+  const bidValues = document.createElement("div");
+  bidValues.className = "fp-bid-values";
 
-  candleHTML=`
+  const bidBars = document.createElement("div");
+  bidBars.className = "fp-bid-bars";
 
-   <div
-    class="fp-candle-wick ${
-     bullish
-      ?"fp-candle-up"
-      :"fp-candle-down"
-    }"
-    style="
-     top:${wickTop}px;
-     height:${Math.max(
-      3,
-      wickBottom-wickTop
-     )}px;
-    "
-   ></div>
+  const stage = document.createElement("div");
+  stage.className = "fp-candle-stage";
 
-   <div
-    class="fp-candle-body ${
-     bullish
-      ?"fp-candle-up"
-      :"fp-candle-down"
-    }"
-    style="
-     top:${bodyTop}px;
-     height:${bodyHeight}px;
-    "
-   ></div>
+  const deltaValues = document.createElement("div");
+  deltaValues.className = "fp-delta-values";
 
-   <div class="fp-ohlc">
+  const askBars = document.createElement("div");
+  askBars.className = "fp-ask-bars";
 
-    <div
-     class="fp-ohlc-label"
-     style="
-      top:${Math.max(
-       0,
-       wickTop-10
-      )}px;
-      left:calc(50% + 24px);
-     "
-    >
-     H
-    </div>
+  const askValues = document.createElement("div");
+  askValues.className = "fp-ask-values";
 
-    <div
-     class="fp-ohlc-label"
-     style="
-      top:${Math.min(
-       stageHeight-18,
-       wickBottom
-      )}px;
-      left:calc(50% + 24px);
-     "
-    >
-     L
-    </div>
+  /*
+    ارتفاع ستون‌های کناری دقیقاً برابر مرکز است.
+  */
+  [
+    bidValues,
+    bidBars,
+    stage,
+    deltaValues,
+    askBars,
+    askValues
+  ].forEach(el=>{
+    el.style.height = `${stageHeight}px`;
+  });
 
-   </div>
-  `;
- }
+  /*
+    Price rail
+  */
+  const rail = document.createElement("div");
+  rail.className = "fp-price-rail";
+  rail.style.height = `${stageHeight}px`;
 
+  /*
+    candle layer
+  */
+  const candleLayer = document.createElement("div");
+  candleLayer.className = "fp-candle-layer";
+  candleLayer.style.height = `${stageHeight}px`;
 
- /* =======================================================
-    COLUMNS
- ======================================================= */
+  function priceToY(price){
 
- let bidValues="";
- let bidBars="";
- let priceRows="";
- let deltaValues="";
- let askBars="";
- let askValues="";
+    const p = clamp(
+      num(price),
+      visualLow,
+      visualHigh
+    );
 
+    return (
+      (visualHigh-p) / range
+    ) * (stageHeight-rowHeight)
+      + rowHeight/2;
+  }
 
- for(const l of levels){
+  /*
+    Wick
+  */
+  const wick = document.createElement("div");
+  wick.className = "fp-candle-wick";
 
-  const bidWidth=
-   l.bid>0
-    ?Math.max(
-     1,
-     l.bid/maxLevelVolume*100
-    )
-    :0;
+  const highY = priceToY(candle.high);
+  const lowY = priceToY(candle.low);
 
-  const askWidth=
-   l.ask>0
-    ?Math.max(
-     1,
-     l.ask/maxLevelVolume*100
-    )
-    :0;
+  wick.style.top = `${highY}px`;
+  wick.style.height =
+    `${Math.max(3,lowY-highY)}px`;
 
+  /*
+    Body
+  */
+  const body = document.createElement("div");
 
-  let deltaClass=
-   "fp-delta-zero";
+  const up = candle.close >= candle.open;
 
-  if(l.delta>0)
-   deltaClass=
-    "fp-delta-positive";
+  body.className =
+    `fp-candle-body ${
+      up
+        ? "fp-candle-up"
+        : "fp-candle-down"
+    }`;
 
-  if(l.delta<0)
-   deltaClass=
-    "fp-delta-negative";
+  const openY = priceToY(candle.open);
+  const closeY = priceToY(candle.close);
 
+  const bodyTop =
+    Math.min(openY,closeY);
 
-  bidValues+=`
+  const bodyHeight =
+    Math.max(
+      20,
+      Math.abs(closeY-openY)
+    );
 
-   <div class="fp-level-row">
+  body.style.top = `${bodyTop}px`;
+  body.style.height = `${bodyHeight}px`;
 
-    <span class="fp-bid-number">
-     ${fmt(l.bid,2)}
-    </span>
+  /*
+    وسط کندل
+  */
+  const midline = document.createElement("div");
+  midline.className = "fp-candle-midline";
 
-   </div>
-  `;
+  const middlePrice =
+    (candle.open+candle.close)/2;
 
+  midline.style.top =
+    `${priceToY(middlePrice)}px`;
 
-  bidBars+=`
+  /*
+    OHLC
+  */
+  const ohlc = document.createElement("div");
+  ohlc.className = "fp-ohlc";
 
-   <div class="fp-level-row">
-
-    <div class="fp-bar-wrap">
-
-     <div
-      class="fp-bar-bid"
-      style="
-       width:${bidWidth}%;
-      "
-     ></div>
-
-    </div>
-
-   </div>
+  ohlc.innerHTML = `
+    <span>O <b>${priceFmt(candle.open)}</b></span>
+    <span>H <b>${priceFmt(candle.high)}</b></span>
+    <span>L <b>${priceFmt(candle.low)}</b></span>
+    <span>C <b>${priceFmt(candle.close)}</b></span>
   `;
 
+  /*
+    اطلاعات Bid / Ask داخل خود ناحیه کندل.
+    هر سطح قیمت یک جفت Bid/Ask دارد.
+  */
+  levels.forEach((level,i)=>{
 
-  priceRows+=`
+    const rowY = i * rowHeight;
 
-   <div class="fp-price-row">
+    /*
+      Price
+    */
+    const priceRow =
+      document.createElement("div");
 
-    <span class="fp-price-label">
-     ${priceFmt(l.price)}
-    </span>
+    priceRow.className = "fp-price-row";
 
-   </div>
-  `;
+    const priceLabel =
+      document.createElement("div");
 
+    priceLabel.className =
+      "fp-price-label";
 
-  deltaValues+=`
+    priceLabel.textContent =
+      priceFmt(level.price);
 
-   <div class="fp-level-row">
+    priceRow.appendChild(priceLabel);
+    rail.appendChild(priceRow);
 
-    <span
-     class="fp-delta-number ${deltaClass}"
-    >
-     ${
-      l.delta>=0
-       ?"+"
-       :""
-     }${fmt(l.delta,2)}
-    </span>
+    /*
+      BID number
+    */
+    const bidRow =
+      document.createElement("div");
 
-   </div>
-  `;
+    bidRow.className =
+      "fp-level-row";
 
+    bidRow.innerHTML =
+      `<span>${fmt(level.bid,2)}</span>`;
 
-  askBars+=`
+    bidValues.appendChild(bidRow);
 
-   <div class="fp-level-row">
+    /*
+      BID histogram
+    */
+    const bidBarRow =
+      document.createElement("div");
 
-    <div class="fp-bar-wrap">
+    bidBarRow.className =
+      "fp-bar-row";
 
-     <div
-      class="fp-bar-ask"
-      style="
-       width:${askWidth}%;
-      "
-     ></div>
+    const bidTrack =
+      document.createElement("div");
 
-    </div>
+    bidTrack.className =
+      "fp-bar-track";
 
-   </div>
-  `;
+    const bidBar =
+      document.createElement("div");
 
+    bidBar.className =
+      "fp-bar fp-bid-bar";
 
-  askValues+=`
+    const bidPct =
+      clamp(
+        level.bid/maxVolume*100,
+        0,
+        100
+      );
 
-   <div class="fp-level-row">
+    bidBar.style.width =
+      `${bidPct}%`;
 
-    <span class="fp-ask-number">
-     ${fmt(l.ask,2)}
-    </span>
+    const bidValue =
+      document.createElement("span");
 
-   </div>
-  `;
- }
+    bidValue.className =
+      "fp-bar-value";
 
+    bidValue.textContent =
+      fmt(level.bid,2);
 
- /* =======================================================
-    FINAL FOOTPRINT
- ======================================================= */
+    bidTrack.appendChild(bidBar);
+    bidTrack.appendChild(bidValue);
+    bidBarRow.appendChild(bidTrack);
+    bidBars.appendChild(bidBarRow);
 
- root.innerHTML=`
+    /*
+      DELTA
+    */
+    const deltaRow =
+      document.createElement("div");
 
-  <div
-   class="fp-main"
-   style="
-    grid-template-columns:
-     90px
-     minmax(130px,1fr)
-     170px
-     90px
-     minmax(130px,1fr)
-     90px;
-   "
-  >
+    deltaRow.className =
+      "fp-level-row";
 
-   <div class="fp-bid-values">
-    ${bidValues}
-   </div>
+    const deltaEl =
+      document.createElement("span");
 
-   <div class="fp-bid-bars">
-    ${bidBars}
-   </div>
+    deltaEl.textContent =
+      signed(level.delta,2);
 
-   <div
-    class="fp-candle-stage"
-    style="
-     height:${stageHeight}px;
-    "
-   >
+    deltaEl.style.color =
+      level.delta >= 0
+        ? "#35e58a"
+        : "#ff6675";
 
-    <div class="fp-price-rail">
-     ${priceRows}
-    </div>
+    deltaRow.appendChild(deltaEl);
+    deltaValues.appendChild(deltaRow);
 
-    <div class="fp-candle-layer">
-     ${candleHTML}
-    </div>
+    /*
+      ASK histogram
+    */
+    const askBarRow =
+      document.createElement("div");
 
-   </div>
+    askBarRow.className =
+      "fp-bar-row";
 
-   <div class="fp-delta-values">
-    ${deltaValues}
-   </div>
+    const askTrack =
+      document.createElement("div");
 
-   <div class="fp-ask-bars">
-    ${askBars}
-   </div>
+    askTrack.className =
+      "fp-bar-track";
 
-   <div class="fp-ask-values">
-    ${askValues}
-   </div>
+    const askBar =
+      document.createElement("div");
 
-  </div>
- `;
+    askBar.className =
+      "fp-bar fp-ask-bar";
 
+    const askPct =
+      clamp(
+        level.ask/maxVolume*100,
+        0,
+        100
+      );
 
- /* =======================================================
-    TOTALS
- ======================================================= */
+    askBar.style.width =
+      `${askPct}%`;
 
- if(totalBidEl)
-  totalBidEl.textContent=
-   fmt(totalBid,2);
+    const askValue =
+      document.createElement("span");
 
- if(totalAskEl)
-  totalAskEl.textContent=
-   fmt(totalAsk,2);
+    askValue.className =
+      "fp-bar-value";
 
- if(totalVolumeEl)
-  totalVolumeEl.textContent=
-   fmt(totalVolume,2);
+    askValue.textContent =
+      fmt(level.ask,2);
 
- if(totalDeltaEl){
+    askTrack.appendChild(askBar);
+    askTrack.appendChild(askValue);
+    askBarRow.appendChild(askTrack);
+    askBars.appendChild(askBarRow);
 
-  totalDeltaEl.textContent=
-   signed(totalDelta);
+    /*
+      ASK number
+    */
+    const askRow =
+      document.createElement("div");
 
-  totalDeltaEl.className=
-   "fp-total-value "+
-   (
-    totalDelta>=0
-     ?"green"
-     :"red"
-   );
- }
+    askRow.className =
+      "fp-level-row";
 
- if(totalLevelsEl)
-  totalLevelsEl.textContent=
-   String(levels.length);
+    askRow.innerHTML =
+      `<span>${fmt(level.ask,2)}</span>`;
 
+    askValues.appendChild(askRow);
 
- if(status){
+    /*
+      Bid / Ask دقیقاً در هر Price Level داخل
+      محدوده خود کندل.
+    */
+    const sideData =
+      document.createElement("div");
 
-  status.textContent=
-   `${timeText(candle.time)} · ${interval}m · ${fp.source||"FOOTPRINT"} · ${levels.length} Level`;
- }
+    sideData.className =
+      "fp-side-data";
+
+    sideData.style.top =
+      `${rowY + 5}px`;
+
+    sideData.innerHTML = `
+      <div class="fp-bid-inside">
+        ${fmt(level.bid,2)}
+      </div>
+
+      <div class="fp-ask-inside">
+        ${fmt(level.ask,2)}
+      </div>
+    `;
+
+    candleLayer.appendChild(sideData);
+
+    /*
+      Delta داخل ناحیه مرکزی و روی همان Level
+    */
+    const deltaInside =
+      document.createElement("div");
+
+    deltaInside.className =
+      "fp-delta-inside";
+
+    deltaInside.style.top =
+      `${rowY + 20}px`;
+
+    deltaInside.style.color =
+      level.delta >= 0
+        ? "#35e58a"
+        : "#ff6675";
+
+    deltaInside.textContent =
+      `Δ ${signed(level.delta,2)}`;
+
+    candleLayer.appendChild(deltaInside);
+
+  });
+
+  candleLayer.appendChild(wick);
+  candleLayer.appendChild(body);
+  candleLayer.appendChild(midline);
+  candleLayer.appendChild(ohlc);
+
+  const fixedRange =
+    document.createElement("div");
+
+  fixedRange.className =
+    "fp-fixed-range";
+
+  fixedRange.textContent =
+    `Fixed Range · Max Volume ${fmt(maxVolume,2)}`;
+
+  candleLayer.appendChild(fixedRange);
+
+  stage.appendChild(rail);
+  stage.appendChild(candleLayer);
+
+  main.appendChild(bidValues);
+  main.appendChild(bidBars);
+  main.appendChild(stage);
+  main.appendChild(deltaValues);
+  main.appendChild(askBars);
+  main.appendChild(askValues);
+
+  container.appendChild(main);
+
+  /*
+    Zoom Footprint
+  */
+  applyFootprintZoom();
+
+  /*
+    Status
+  */
+  $("fpStatus").textContent =
+    `${TF}m · ${timeText(candle.time)} · ` +
+    `${levels.length} Levels · ${fp.source}`;
+
+  /*
+    Totals
+  */
+  $("fpTotalBid").textContent =
+    fmt(fp.bid,2);
+
+  $("fpTotalAsk").textContent =
+    fmt(fp.ask,2);
+
+  const totalDelta =
+    num(fp.delta,fp.ask-fp.bid);
+
+  const deltaEl =
+    $("fpTotalDelta");
+
+  deltaEl.textContent =
+    signed(totalDelta,2);
+
+  deltaEl.className =
+    `fp-total-value ${
+      totalDelta >= 0
+        ? "buy"
+        : "sell"
+    }`;
+
+  $("fpTotalVolume").textContent =
+    fmt(
+      num(fp.volume,fp.bid+fp.ask),
+      2
+    );
+
+  $("fpTotalLevels").textContent =
+    fmt(levels.length,0);
 }
 
+/* =========================================================
+   FOOTPRINT ZOOM
+========================================================= */
+
+function applyFootprintZoom(){
+
+  const inner = $("fpInner");
+
+  if(!inner) return;
+
+  inner.style.transform =
+    `scale(${fpZoom})`;
+
+  inner.style.width =
+    `${100/fpZoom}%`;
+
+  inner.style.minWidth =
+    `${920/fpZoom}px`;
+}
+
+function changeFootprintZoom(delta){
+
+  fpZoom = clamp(
+    fpZoom + delta,
+    .65,
+    2.5
+  );
+
+  applyFootprintZoom();
+}
+
+$("fpZoomIn")?.addEventListener(
+  "click",
+  ()=>{
+    changeFootprintZoom(.15);
+  }
+);
+
+$("fpZoomOut")?.addEventListener(
+  "click",
+  ()=>{
+    changeFootprintZoom(-.15);
+  }
+);
+
+$("fpZoomReset")?.addEventListener(
+  "click",
+  ()=>{
+    fpZoom = 1;
+    applyFootprintZoom();
+  }
+);
 
 /* =========================================================
-   CANVAS
+   FOOTPRINT TOUCH / PINCH
+========================================================= */
+
+const fpBox = $("fpBox");
+
+fpBox?.addEventListener(
+  "touchstart",
+  e=>{
+
+    if(e.touches.length === 2){
+
+      const dx =
+        e.touches[0].clientX -
+        e.touches[1].clientX;
+
+      const dy =
+        e.touches[0].clientY -
+        e.touches[1].clientY;
+
+      fpTouchStartDistance =
+        Math.hypot(dx,dy);
+
+      fpTouchStartZoom =
+        fpZoom;
+
+      return;
+    }
+
+    if(e.touches.length === 1){
+
+      fpLastY =
+        e.touches[0].clientY;
+
+      fpDragging = true;
+    }
+
+  },
+  {passive:true}
+);
+
+fpBox?.addEventListener(
+  "touchmove",
+  e=>{
+
+    if(e.touches.length === 2){
+
+      const dx =
+        e.touches[0].clientX -
+        e.touches[1].clientX;
+
+      const dy =
+        e.touches[0].clientY -
+        e.touches[1].clientY;
+
+      const distance =
+        Math.hypot(dx,dy);
+
+      if(fpTouchStartDistance > 0){
+
+        const ratio =
+          distance / fpTouchStartDistance;
+
+        fpZoom =
+          clamp(
+            fpTouchStartZoom * ratio,
+            .65,
+            2.5
+          );
+
+        applyFootprintZoom();
+      }
+
+      return;
+    }
+
+    /*
+      یک انگشت = اسکرول عمودی Footprint
+    */
+    if(
+      e.touches.length === 1 &&
+      fpDragging
+    ){
+
+      const y =
+        e.touches[0].clientY;
+
+      const dy =
+        y - fpLastY;
+
+      const scroll =
+        $("fpScroll");
+
+      if(scroll){
+        scroll.scrollTop -= dy;
+      }
+
+      fpLastY = y;
+    }
+
+  },
+  {passive:true}
+);
+
+fpBox?.addEventListener(
+  "touchend",
+  e=>{
+
+    if(e.touches.length < 2){
+      fpTouchStartDistance = 0;
+    }
+
+    if(e.touches.length === 0){
+      fpDragging = false;
+    }
+
+  },
+  {passive:true}
+);
+
+fpBox?.addEventListener(
+  "wheel",
+  e=>{
+
+    /*
+      Ctrl + Wheel = Zoom
+      Wheel معمولی = اسکرول
+    */
+    if(e.ctrlKey){
+
+      e.preventDefault();
+
+      changeFootprintZoom(
+        e.deltaY < 0 ? .08 : -.08
+      );
+
+    }
+
+  },
+  {passive:false}
+);
+
+/* =========================================================
+   CHART RESIZE
 ========================================================= */
 
 function resizeCanvas(){
 
- const r=
-  canvas.getBoundingClientRect();
+  if(!chartCanvas || !ctx) return;
 
- const dpr=
-  Math.min(
-   window.devicePixelRatio||1,
-   3
+  const rect =
+    chartCanvas.getBoundingClientRect();
+
+  const dpr =
+    window.devicePixelRatio || 1;
+
+  chartCanvas.width =
+    Math.max(1,Math.floor(rect.width*dpr));
+
+  chartCanvas.height =
+    Math.max(1,Math.floor(rect.height*dpr));
+
+  ctx.setTransform(
+    dpr,0,0,dpr,0,0
   );
 
- canvas.width=
-  Math.max(
-   1,
-   Math.floor(r.width*dpr)
-  );
-
- canvas.height=
-  Math.max(
-   1,
-   Math.floor(r.height*dpr)
-  );
-
- ctx.setTransform(
-  dpr,
-  0,
-  0,
-  dpr,
-  0,
-  0
- );
-
- drawChart();
+  drawChart();
 }
 
-
-function clampView(){
-
- const candles=
-  getCandles();
-
- if(!candles.length){
-
-  viewStart=0;
-  return;
- }
-
- viewCount=
-  Math.max(
-   8,
-   Math.min(
-    viewCount,
-    candles.length
-   )
-  );
-
- viewStart=
-  Math.max(
-   0,
-   Math.min(
-    viewStart,
-    Math.max(
-     0,
-     candles.length-viewCount
-    )
-   )
-  );
-}
-
-
-function visibleCandles(){
-
- const candles=
-  getCandles();
-
- clampView();
-
- return candles.slice(
-  viewStart,
-  viewStart+viewCount
- );
-}
-
+window.addEventListener(
+  "resize",
+  resizeCanvas
+);
 
 /* =========================================================
-   RANGE
+   VIEW
 ========================================================= */
 
-function priceRange(candles){
+function ensureView(){
 
- if(!candles.length)
-  return {
-   low:0,
-   high:1
-  };
+  if(!candles.length){
+    viewStart = 0;
+    viewEnd = 0;
+    return;
+  }
 
- let low=
-  Math.min(
-   ...candles.map(
-    x=>num(
-     x.low
-    )
-   )
-  );
+  if(viewEnd <= viewStart){
 
- let high=
-  Math.max(
-   ...candles.map(
-    x=>num(
-     x.high
-    )
-   )
-  );
+    viewEnd = candles.length;
+    viewStart =
+      Math.max(0,candles.length-100);
+  }
 
- if(!Number.isFinite(low))
-  low=0;
-
- if(!Number.isFinite(high))
-  high=1;
-
- const pad=
-  (high-low||1)*.08;
-
- return {
-  low:low-pad,
-  high:high+pad
- };
-}
-
-
-function yPrice(
- price,
- range,
- h,
- top,
- bottom
-){
-
- const span=
-  range.high-
-  range.low||1;
-
- return top+
-  (
-   range.high-price
-  )/
-  span*
-  (
-   h-top-bottom
-  );
-}
-
-
-function xCandle(
- i,
- count,
- w,
- left,
- right
-){
-
- return left+
-  (i+.5)*
-  (
-   w-left-right
-  )/
-  count;
-}
-
-
-/* =========================================================
-   GRID
-========================================================= */
-
-function drawGrid(
- w,
- h,
- left,
- right,
- top,
- bottom,
- range
-){
-
- ctx.strokeStyle="#15232e";
- ctx.fillStyle="#687d8e";
- ctx.font="10px Tahoma";
-
- for(let i=0;i<=6;i++){
-
-  const p=
-   range.low+
-   (
-    range.high-
-    range.low
-   )*
-   i/6;
-
-  const y=
-   yPrice(
-    p,
-    range,
-    h,
-    top,
-    bottom
-   );
-
-  ctx.beginPath();
-
-  ctx.moveTo(
-   left,
-   y
-  );
-
-  ctx.lineTo(
-   w-right,
-   y
-  );
-
-  ctx.stroke();
-
-  ctx.fillText(
-   priceFmt(p),
-   w-right+5,
-   y+3
-  );
- }
-}
-
-
-/* =========================================================
-   HEATMAP
-========================================================= */
-
-function drawHeatmap(
- candles,
- w,
- h,
- left,
- right,
- top,
- bottom
-){
-
- if(!layers.heatmap)
-  return;
-
- let max=0;
-
- for(const c of candles){
-
-  max=Math.max(
-   max,
-   Math.abs(
-    num(c.deltaPercent)
-   )
-  );
- }
-
- max=Math.max(
-  max,
-  1
- );
-
- const cw=
-  (
-   w-left-right
-  )/
-  candles.length;
-
- candles.forEach(
-  (c,i)=>{
-
-   const strength=
-    Math.min(
-     1,
-     Math.abs(
-      num(c.deltaPercent)
-     )/max
+  viewStart =
+    clamp(
+      Math.floor(viewStart),
+      0,
+      Math.max(0,candles.length-1)
     );
 
-   if(!strength)
-    return;
+  viewEnd =
+    clamp(
+      Math.ceil(viewEnd),
+      viewStart+1,
+      candles.length
+    );
+}
 
-   ctx.fillStyle=
-    num(c.delta)>=0
-     ?`rgba(35,229,138,${.025+.10*strength})`
-     :`rgba(255,72,92,${.025+.10*strength})`;
+/* =========================================================
+   CHART PRICE RANGE
+========================================================= */
 
-   ctx.fillRect(
-    left+i*cw,
-    top,
-    Math.max(1,cw-1),
-    h-top-bottom
-   );
+function visiblePriceRange(){
+
+  ensureView();
+
+  const visible =
+    candles.slice(
+      viewStart,
+      viewEnd
+    );
+
+  if(!visible.length){
+    return {
+      min:0,
+      max:1
+    };
   }
- );
+
+  let min =
+    Math.min(
+      ...visible.map(x=>num(x.low))
+    );
+
+  let max =
+    Math.max(
+      ...visible.map(x=>num(x.high))
+    );
+
+  if(!(max>min)){
+    const p =
+      visible[visible.length-1].close || 1;
+
+    min = p*.995;
+    max = p*1.005;
+  }
+
+  const pad =
+    (max-min)*.08;
+
+  return {
+    min:min-pad,
+    max:max+pad
+  };
 }
 
-
 /* =========================================================
-   ORDER BOOK
+   CHART HELPERS
 ========================================================= */
 
-function drawOrderBook(
- w,
- h,
- left,
- right,
- top,
- bottom,
- range
-){
+function xForIndex(i,width){
 
- if(!layers.bidask)
-  return;
+  const count =
+    Math.max(1,viewEnd-viewStart);
 
- const orderbook=
-  data?.orderbook ??
-  data?.book ??
-  data?.data?.orderbook;
-
- if(!orderbook)
-  return;
-
- const bids=
-  orderbook.bids||[];
-
- const asks=
-  orderbook.asks||[];
-
- const all=[
-  ...bids,
-  ...asks
- ];
-
- if(!all.length)
-  return;
-
- const values=
-  all.map(
-   x=>num(
-    x.value ??
-    x.size ??
-    x.qty
-   )
-  );
-
- const max=
-  Math.max(
-   ...values,
-   1
-  );
-
- for(const raw of bids){
-
-  const price=
-   num(
-    raw.price ??
-    raw.p
-   );
-
-  const value=
-   num(
-    raw.value ??
-    raw.size ??
-    raw.qty
-   );
-
-  const y=
-   yPrice(
-    price,
-    range,
-    h,
-    top,
-    bottom
-   );
-
-  if(
-   y<top||
-   y>h-bottom
-  )
-   continue;
-
-  const len=
-   value/max*
-   Math.min(
-    110,
-    (w-left-right)*.18
-   );
-
-  ctx.fillStyle=
-   "rgba(255,65,83,.16)";
-
-  ctx.fillRect(
-   left,
-   y-2,
-   len,
-   4
-  );
- }
-
- for(const raw of asks){
-
-  const price=
-   num(
-    raw.price ??
-    raw.p
-   );
-
-  const value=
-   num(
-    raw.value ??
-    raw.size ??
-    raw.qty
-   );
-
-  const y=
-   yPrice(
-    price,
-    range,
-    h,
-    top,
-    bottom
-   );
-
-  if(
-   y<top||
-   y>h-bottom
-  )
-   continue;
-
-  const len=
-   value/max*
-   Math.min(
-    110,
-    (w-left-right)*.18
-   );
-
-  ctx.fillStyle=
-   "rgba(40,225,132,.16)";
-
-  ctx.fillRect(
-   w-right-len,
-   y-2,
-   len,
-   4
-  );
- }
+  return (
+    (i-viewStart+.5) /
+    count
+  ) * width;
 }
 
+function yForPrice(price,height,range){
+
+  return (
+    1 -
+    (price-range.min) /
+    (range.max-range.min)
+  ) * height;
+}
 
 /* =========================================================
-   WALLS
+   DRAW GRID
 ========================================================= */
 
-function drawWalls(
- w,
- h,
- left,
- right,
- top,
- bottom,
- range
-){
+function drawGrid(width,height,range){
 
- if(!layers.walls)
-  return;
+  ctx.save();
 
- const wall=
-  data?.wall;
+  ctx.strokeStyle =
+    "rgba(130,145,160,.08)";
 
- if(!wall)
-  return;
+  ctx.lineWidth = 1;
 
- const walls=[
+  const rows = 8;
 
-  [
-   wall.nearBuyWall,
-   "#ff4f62"
-  ],
+  for(let i=0;i<=rows;i++){
 
-  [
-   wall.nearSellWall,
-   "#35e58a"
-  ]
+    const y =
+      i/rows*height;
 
- ];
+    ctx.beginPath();
+    ctx.moveTo(0,y);
+    ctx.lineTo(width,y);
+    ctx.stroke();
 
- for(
-  const [x,color]
-  of walls
- ){
+    const price =
+      range.max -
+      i/rows*
+      (range.max-range.min);
 
-  if(!x?.price)
-   continue;
+    ctx.fillStyle =
+      "#687587";
 
-  const y=
-   yPrice(
-    x.price,
-    range,
-    h,
-    top,
-    bottom
-   );
+    ctx.font =
+      "10px Tahoma";
 
-  if(
-   y<top||
-   y>h-bottom
-  )
-   continue;
+    ctx.textAlign =
+      "right";
 
-  ctx.strokeStyle=color;
-  ctx.lineWidth=1.5;
-  ctx.setLineDash([6,4]);
+    ctx.fillText(
+      priceFmt(price),
+      width-5,
+      y-3
+    );
+  }
+
+  const cols = 10;
+
+  for(let i=0;i<=cols;i++){
+
+    const x =
+      i/cols*width;
+
+    ctx.beginPath();
+    ctx.moveTo(x,0);
+    ctx.lineTo(x,height);
+    ctx.stroke();
+  }
+
+  ctx.restore();
+}
+
+/* =========================================================
+   DRAW CANDLES
+========================================================= */
+
+function drawCandles(width,height,range){
+
+  if(!layers.candles) return;
+
+  const count =
+    Math.max(1,viewEnd-viewStart);
+
+  const cell =
+    width/count;
+
+  const bodyWidth =
+    Math.max(2,cell*.58);
+
+  for(let i=viewStart;i<viewEnd;i++){
+
+    const c = candles[i];
+
+    const x =
+      xForIndex(i,width);
+
+    const yOpen =
+      yForPrice(c.open,height,range);
+
+    const yClose =
+      yForPrice(c.close,height,range);
+
+    const yHigh =
+      yForPrice(c.high,height,range);
+
+    const yLow =
+      yForPrice(c.low,height,range);
+
+    const up =
+      c.close >= c.open;
+
+    ctx.save();
+
+    ctx.strokeStyle =
+      up
+        ? "#35e58a"
+        : "#ff6675";
+
+    ctx.fillStyle =
+      up
+        ? "#35e58a"
+        : "#ff6675";
+
+    ctx.globalAlpha =
+      i === selectedIndex ? .95 : .72;
+
+    ctx.lineWidth = 1;
+
+    ctx.beginPath();
+    ctx.moveTo(x,yHigh);
+    ctx.lineTo(x,yLow);
+    ctx.stroke();
+
+    const top =
+      Math.min(yOpen,yClose);
+
+    const bodyH =
+      Math.max(
+        1,
+        Math.abs(yClose-yOpen)
+      );
+
+    ctx.fillRect(
+      x-bodyWidth/2,
+      top,
+      bodyWidth,
+      bodyH
+    );
+
+    if(i === selectedIndex){
+
+      ctx.globalAlpha = 1;
+
+      ctx.strokeStyle =
+        "#f5d76e";
+
+      ctx.lineWidth = 2;
+
+      ctx.strokeRect(
+        x-bodyWidth/2-3,
+        top-3,
+        bodyWidth+6,
+        bodyH+6
+      );
+    }
+
+    ctx.restore();
+  }
+}
+
+/* =========================================================
+   DRAW CANDLE STATS
+========================================================= */
+
+function drawCandleStats(width,height,range){
+
+  if(!layers.delta) return;
+
+  for(let i=viewStart;i<viewEnd;i++){
+
+    if(i === selectedIndex) continue;
+
+    const c = candles[i];
+
+    const x =
+      xForIndex(i,width);
+
+    const y =
+      yForPrice(
+        c.close,
+        height,
+        range
+      );
+
+    const fp =
+      getFootprint(i);
+
+    if(!fp) continue;
+
+    const delta =
+      num(fp.delta);
+
+    ctx.save();
+
+    ctx.font =
+      "8px Tahoma";
+
+    ctx.textAlign =
+      "center";
+
+    ctx.fillStyle =
+      delta >= 0
+        ? "#35e58a"
+        : "#ff6675";
+
+    ctx.globalAlpha = .65;
+
+    ctx.fillText(
+      signed(delta,0),
+      x,
+      y-8
+    );
+
+    ctx.restore();
+  }
+}
+
+/* =========================================================
+   DRAW HEATMAP
+========================================================= */
+
+function drawHeatmap(width,height,range){
+
+  if(!layers.heatmap) return;
+
+  const fp =
+    selectedIndex >= 0
+      ? getFootprint(selectedIndex)
+      : null;
+
+  if(!fp) return;
+
+  const maxV =
+    Math.max(
+      1,
+      ...fp.levels.map(x=>x.volume)
+    );
+
+  ctx.save();
+
+  for(const level of fp.levels){
+
+    const y =
+      yForPrice(
+        level.price,
+        height,
+        range
+      );
+
+    const intensity =
+      clamp(
+        level.volume/maxV,
+        0,
+        1
+      );
+
+    ctx.fillStyle =
+      level.delta >= 0
+        ? `rgba(53,229,138,${.025+.12*intensity})`
+        : `rgba(255,102,117,${.025+.12*intensity})`;
+
+    ctx.fillRect(
+      0,
+      y-4,
+      width,
+      8
+    );
+  }
+
+  ctx.restore();
+}
+
+/* =========================================================
+   DRAW ORDER BOOK
+========================================================= */
+
+function drawOrderBook(width,height,range){
+
+  if(!layers.bidask) return;
+
+  const book =
+    data?.orderbook ??
+    data?.orderBook ??
+    data?.data?.orderbook ??
+    data?.data?.orderBook;
+
+  if(!book) return;
+
+  const bids =
+    book.bids ||
+    book.bid ||
+    [];
+
+  const asks =
+    book.asks ||
+    book.ask ||
+    [];
+
+  ctx.save();
+
+  ctx.globalAlpha = .12;
+
+  function drawSide(arr,positive){
+
+    if(!Array.isArray(arr)) return;
+
+    const values =
+      arr.slice(0,40).map(x=>{
+
+        if(Array.isArray(x)){
+          return {
+            price:num(x[0]),
+            size:num(x[1])
+          };
+        }
+
+        return {
+          price:num(x.price ?? x.p),
+          size:num(x.size ?? x.q)
+        };
+      });
+
+    const maxSize =
+      Math.max(
+        1,
+        ...values.map(x=>x.size)
+      );
+
+    values.forEach(x=>{
+
+      if(!x.price) return;
+
+      const y =
+        yForPrice(
+          x.price,
+          height,
+          range
+        );
+
+      const w =
+        x.size/maxSize*
+        width*.22;
+
+      ctx.fillStyle =
+        positive
+          ? "#35e58a"
+          : "#ff6675";
+
+      if(positive){
+        ctx.fillRect(
+          width-w,
+          y-2,
+          w,
+          4
+        );
+      }else{
+        ctx.fillRect(
+          0,
+          y-2,
+          w,
+          4
+        );
+      }
+
+    });
+  }
+
+  drawSide(bids,false);
+  drawSide(asks,true);
+
+  ctx.restore();
+}
+
+/* =========================================================
+   DRAW LIQUIDITY
+========================================================= */
+
+function drawLiquidity(width,height,range){
+
+  if(!layers.liquidity) return;
+
+  const liquidity =
+    data?.liquidity ??
+    data?.liquidityZones ??
+    data?.data?.liquidity;
+
+  if(!Array.isArray(liquidity)) return;
+
+  ctx.save();
+
+  liquidity.forEach(x=>{
+
+    const price =
+      num(x.price ?? x.level);
+
+    if(!price) return;
+
+    const y =
+      yForPrice(
+        price,
+        height,
+        range
+      );
+
+    ctx.strokeStyle =
+      "rgba(90,160,255,.38)";
+
+    ctx.setLineDash([4,4]);
+
+    ctx.beginPath();
+    ctx.moveTo(0,y);
+    ctx.lineTo(width,y);
+    ctx.stroke();
+  });
+
+  ctx.restore();
+}
+
+/* =========================================================
+   DRAW WALLS
+========================================================= */
+
+function drawWalls(width,height,range){
+
+  if(!layers.walls) return;
+
+  const walls =
+    data?.walls ??
+    data?.orderbook?.walls ??
+    data?.data?.walls;
+
+  if(!walls) return;
+
+  ctx.save();
+
+  const buyWalls =
+    walls.buyWalls ||
+    walls.buys ||
+    [];
+
+  const sellWalls =
+    walls.sellWalls ||
+    walls.sells ||
+    [];
+
+  function draw(arr,color){
+
+    if(!Array.isArray(arr)) return;
+
+    arr.forEach(w=>{
+
+      const price =
+        num(
+          w.price ??
+          w.level
+        );
+
+      if(!price) return;
+
+      const y =
+        yForPrice(
+          price,
+          height,
+          range
+        );
+
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 2;
+
+      ctx.beginPath();
+      ctx.moveTo(0,y);
+      ctx.lineTo(width,y);
+      ctx.stroke();
+    });
+  }
+
+  draw(
+    buyWalls,
+    "rgba(53,229,138,.55)"
+  );
+
+  draw(
+    sellWalls,
+    "rgba(255,102,117,.55)"
+  );
+
+  ctx.restore();
+}
+
+/* =========================================================
+   DRAW BLOCKS
+========================================================= */
+
+function drawBlocks(width,height,range){
+
+  if(!layers.blocks) return;
+
+  const blocks =
+    data?.blocks ??
+    data?.orderBlocks ??
+    data?.data?.blocks;
+
+  if(!Array.isArray(blocks)) return;
+
+  ctx.save();
+
+  blocks.forEach(b=>{
+
+    const high =
+      num(b.high ?? b.top);
+
+    const low =
+      num(b.low ?? b.bottom);
+
+    if(!(high && low)) return;
+
+    const y1 =
+      yForPrice(
+        high,
+        height,
+        range
+      );
+
+    const y2 =
+      yForPrice(
+        low,
+        height,
+        range
+      );
+
+    ctx.fillStyle =
+      b.type === "SELL"
+        ? "rgba(255,102,117,.06)"
+        : "rgba(53,229,138,.06)";
+
+    ctx.fillRect(
+      0,
+      Math.min(y1,y2),
+      width,
+      Math.abs(y2-y1)
+    );
+  });
+
+  ctx.restore();
+}
+
+/* =========================================================
+   DRAW SWEEP
+========================================================= */
+
+function drawSweep(width,height,range){
+
+  if(!layers.sweep) return;
+
+  const sweeps =
+    data?.sweeps ??
+    data?.sweep ??
+    data?.data?.sweeps;
+
+  if(!Array.isArray(sweeps)) return;
+
+  ctx.save();
+
+  sweeps.forEach(s=>{
+
+    const price =
+      num(s.price ?? s.level);
+
+    const index =
+      num(s.index,-1);
+
+    if(!price || index < viewStart || index > viewEnd){
+      return;
+    }
+
+    const x =
+      xForIndex(index,width);
+
+    const y =
+      yForPrice(
+        price,
+        height,
+        range
+      );
+
+    ctx.fillStyle =
+      "#f5d76e";
+
+    ctx.beginPath();
+    ctx.arc(x,y,4,0,Math.PI*2);
+    ctx.fill();
+  });
+
+  ctx.restore();
+}
+
+/* =========================================================
+   CROSSHAIR
+========================================================= */
+
+let crosshair = null;
+
+function drawCrosshair(width,height){
+
+  if(!crosshair) return;
+
+  ctx.save();
+
+  ctx.strokeStyle =
+    "rgba(210,220,230,.18)";
+
+  ctx.setLineDash([3,3]);
 
   ctx.beginPath();
-
-  ctx.moveTo(
-   left,
-   y
-  );
-
-  ctx.lineTo(
-   w-right,
-   y
-  );
-
+  ctx.moveTo(crosshair.x,0);
+  ctx.lineTo(crosshair.x,height);
   ctx.stroke();
 
-  ctx.setLineDash([]);
-
-  ctx.fillStyle=color;
-  ctx.font="10px Tahoma";
-
-  ctx.fillText(
-   `${priceFmt(x.price)} ${fmt(x.value)}`,
-   left+5,
-   y-4
-  );
- }
-}
-
-
-/* =========================================================
-   LIQUIDITY
-========================================================= */
-
-function drawLiquidity(
- w,
- h,
- left,
- right,
- top,
- bottom,
- range
-){
-
- if(!layers.liquidity)
-  return;
-
- const zones=
-  data?.liquidityZones||
-  data?.liquidity||
-  [];
-
- if(!Array.isArray(zones))
-  return;
-
- for(
-  const z of zones.slice(0,30)
- ){
-
-  const price=
-   num(
-    z.price ??
-    z.level
-   );
-
-  if(!price)
-   continue;
-
-  const y=
-   yPrice(
-    price,
-    range,
-    h,
-    top,
-    bottom
-   );
-
-  if(
-   y<top||
-   y>h-bottom
-  )
-   continue;
-
-  ctx.strokeStyle=
-   z.side==="BUY"
-    ?"rgba(255,65,83,.28)"
-    :"rgba(53,229,138,.28)";
-
   ctx.beginPath();
-
-  ctx.moveTo(
-   left,
-   y
-  );
-
-  ctx.lineTo(
-   w-right,
-   y
-  );
-
+  ctx.moveTo(0,crosshair.y);
+  ctx.lineTo(width,crosshair.y);
   ctx.stroke();
- }
+
+  ctx.restore();
 }
 
-
 /* =========================================================
-   BLOCKS
-========================================================= */
-
-function drawBlocks(
- w,
- h,
- left,
- right,
- top,
- bottom,
- range
-){
-
- if(!layers.blocks)
-  return;
-
- const blocks=
-  data?.blocks||[];
-
- if(!Array.isArray(blocks))
-  return;
-
- for(
-  const b of blocks.slice(-20)
- ){
-
-  const price=
-   num(
-    b.price ??
-    b.level
-   );
-
-  if(!price)
-   continue;
-
-  const y=
-   yPrice(
-    price,
-    range,
-    h,
-    top,
-    bottom
-   );
-
-  if(
-   y<top||
-   y>h-bottom
-  )
-   continue;
-
-  ctx.fillStyle=
-   b.aggressor==="BUY"
-    ?"rgba(53,229,138,.75)"
-    :"rgba(255,70,90,.75)";
-
-  ctx.beginPath();
-
-  ctx.arc(
-   left+18,
-   y,
-   4,
-   0,
-   Math.PI*2
-  );
-
-  ctx.fill();
- }
-}
-
-
-/* =========================================================
-   CANDLE STATS
-========================================================= */
-
-function drawCandleStats(
- c,
- x,
- range,
- h,
- top,
- bottom
-){
-
- if(!layers.bidask)
-  return;
-
- const high=
-  yPrice(
-   num(c.high),
-   range,
-   h,
-   top,
-   bottom
-  );
-
- const low=
-  yPrice(
-   num(c.low),
-   range,
-   h,
-   top,
-   bottom
-  );
-
- const ask=
-  num(
-   c.buyVolume ??
-   c.askVolume
-  );
-
- const bid=
-  num(
-   c.sellVolume ??
-   c.bidVolume
-  );
-
- const delta=
-  num(c.delta);
-
- ctx.font="8px Tahoma";
- ctx.textAlign="center";
-
- ctx.fillStyle="#35e58a";
-
- ctx.fillText(
-  `A ${fmt(ask,1)}`,
-  x,
-  Math.max(
-   top+9,
-   high-4
-  )
- );
-
- ctx.fillStyle="#ff6675";
-
- ctx.fillText(
-  `B ${fmt(bid,1)}`,
-  x,
-  Math.min(
-   h-bottom-17,
-   low+12
-  )
- );
-
- if(layers.delta){
-
-  ctx.fillStyle=
-   delta>=0
-    ?" #35e58a".trim()
-    :"#ff6675";
-
-  ctx.fillText(
-   `Δ ${signed(delta)}`,
-   x,
-   h-bottom+11
-  );
-
-  ctx.fillStyle="#90a4b5";
-
-  ctx.fillText(
-   `V ${fmt(
-    c.flowVolume ??
-    c.volume,
-    1
-   )}`,
-   x,
-   h-bottom+22
-  );
- }
-
- ctx.textAlign="left";
-}
-
-
-/* =========================================================
-   MAIN CHART
+   DRAW CHART
 ========================================================= */
 
 function drawChart(){
 
- const r=
-  canvas.getBoundingClientRect();
+  if(!ctx || !chartCanvas) return;
 
- const w=r.width;
- const h=r.height;
+  const rect =
+    chartCanvas.getBoundingClientRect();
 
- ctx.clearRect(
-  0,
-  0,
-  w,
-  h
- );
+  const width =
+    rect.width;
 
- const candles=
-  visibleCandles();
+  const height =
+    rect.height;
 
- if(!candles.length){
+  if(width <= 0 || height <= 0) return;
 
-  ctx.fillStyle="#6e8292";
-  ctx.font="13px Tahoma";
-
-  ctx.fillText(
-   "داده‌ای برای نمایش وجود ندارد",
-   20,
-   30
-  );
-
-  return;
- }
-
- const left=55;
- const right=70;
- const top=25;
- const bottom=55;
-
- const range=
-  priceRange(candles);
-
- drawGrid(
-  w,
-  h,
-  left,
-  right,
-  top,
-  bottom,
-  range
- );
-
- drawHeatmap(
-  candles,
-  w,
-  h,
-  left,
-  right,
-  top,
-  bottom
- );
-
- drawOrderBook(
-  w,
-  h,
-  left,
-  right,
-  top,
-  bottom,
-  range
- );
-
- drawLiquidity(
-  w,
-  h,
-  left,
-  right,
-  top,
-  bottom,
-  range
- );
-
- drawWalls(
-  w,
-  h,
-  left,
-  right,
-  top,
-  bottom,
-  range
- );
-
- const usable=
-  (w-left-right)/
-  candles.length;
-
- const bodyW=
-  Math.max(
-   2,
-   Math.min(
-    18,
-    usable*.62
-   )
-  );
-
-
- candles.forEach(
-  (c,i)=>{
-
-   const x=
-    xCandle(
-     i,
-     candles.length,
-     w,
-     left,
-     right
-    );
-
-   const high=
-    yPrice(
-     num(c.high),
-     range,
-     h,
-     top,
-     bottom
-    );
-
-   const low=
-    yPrice(
-     num(c.low),
-     range,
-     h,
-     top,
-     bottom
-    );
-
-   const open=
-    yPrice(
-     num(c.open),
-     range,
-     h,
-     top,
-     bottom
-    );
-
-   const close=
-    yPrice(
-     num(c.close),
-     range,
-     h,
-     top,
-     bottom
-    );
-
-
-   if(layers.candles){
-
-    ctx.strokeStyle=
-     num(c.close)>=num(c.open)
-      ?"rgba(53,229,138,.9)"
-      :"rgba(255,102,117,.9)";
-
-    ctx.lineWidth=1;
-
-    ctx.beginPath();
-
-    ctx.moveTo(
-     x,
-     high
-    );
-
-    ctx.lineTo(
-     x,
-     low
-    );
-
-    ctx.stroke();
-
-    const y=
-     Math.min(
-      open,
-      close
-     );
-
-    const bh=
-     Math.max(
-      1,
-      Math.abs(
-       close-open
-      )
-     );
-
-    ctx.fillStyle=
-     num(c.close)>=num(c.open)
-      ?"rgba(53,229,138,.85)"
-      :"rgba(255,102,117,.85)";
-
-    ctx.fillRect(
-     x-bodyW/2,
-     y,
-     bodyW,
-     bh
-    );
-   }
-
-
-   if(
-    selectedIndex!==
-    viewStart+i
-   ){
-
-    drawCandleStats(
-     c,
-     x,
-     range,
-     h,
-     top,
-     bottom
-    );
-   }
-
-
-   const absoluteIndex=
-    viewStart+i;
-
-
-   if(
-    absoluteIndex===
-    selectedIndex
-   ){
-
-    ctx.strokeStyle="#ffd166";
-    ctx.lineWidth=2;
-
-    ctx.strokeRect(
-     x-bodyW*.95,
-     high-8,
-     bodyW*1.9,
-     low-high+16
-    );
-
-    ctx.fillStyle="#ffd166";
-
-    ctx.beginPath();
-
-    ctx.arc(
-     x,
-     top+5,
-     3,
-     0,
-     Math.PI*2
-    );
-
-    ctx.fill();
-   }
-
-
-   if(
-    layers.absorption&&
-    data?.absorption?.detected&&
-    absoluteIndex===
-    candles.length-1
-   ){
-
-    ctx.fillStyle="#ffd166";
-
-    ctx.beginPath();
-
-    ctx.arc(
-     x,
-     high-12,
-     6,
-     0,
-     Math.PI*2
-    );
-
-    ctx.fill();
-   }
-
-  }
- );
-
-
- drawBlocks(
-  w,
-  h,
-  left,
-  right,
-  top,
-  bottom,
-  range
- );
-
-
- if(
-  layers.sweep&&
-  data?.sweep?.detected
- ){
-
-  const sweepPrice=
-   num(
-    data.sweep.price
-   );
-
-  if(sweepPrice){
-
-   const y=
-    yPrice(
-     sweepPrice,
-     range,
-     h,
-     top,
-     bottom
-    );
-
-   ctx.strokeStyle="#ffd166";
-   ctx.setLineDash([3,3]);
-
-   ctx.beginPath();
-
-   ctx.moveTo(
-    left,
-    y
-   );
-
-   ctx.lineTo(
-    w-right,
-    y
-   );
-
-   ctx.stroke();
-
-   ctx.setLineDash([]);
-  }
- }
-
-
- ctx.fillStyle="#708494";
- ctx.font="9px Tahoma";
-
- candles.forEach(
-  (c,i)=>{
-
-   if(
-    i%
-    Math.max(
-     1,
-     Math.floor(
-      candles.length/7
-     )
-    )!==0
-   )
-    return;
-
-   const x=
-    xCandle(
-     i,
-     candles.length,
-     w,
-     left,
-     right
-    );
-
-   ctx.fillText(
-    timeText(c.time),
-    x-18,
-    h-8
-   );
-  }
- );
-
-
- if(crosshair){
-
-  const x=
-   crosshair.x;
-
-  const y=
-   crosshair.y;
-
-  ctx.strokeStyle=
-   "rgba(200,220,235,.3)";
-
-  ctx.setLineDash([4,4]);
-
-  ctx.beginPath();
-
-  ctx.moveTo(
-   x,
-   top
-  );
-
-  ctx.lineTo(
-   x,
-   h-bottom
-  );
-
-  ctx.stroke();
-
-  ctx.beginPath();
-
-  ctx.moveTo(
-   left,
-   y
-  );
-
-  ctx.lineTo(
-   w-right,
-   y
-  );
-
-  ctx.stroke();
-
-  ctx.setLineDash([]);
- }
-}
-
-
-/* =========================================================
-   POINTER INDEX
-========================================================= */
-
-function pointerIndex(clientX){
-
- const r=
-  canvas.getBoundingClientRect();
-
- const left=55;
- const right=70;
-
- const candles=
-  getCandles();
-
- if(!candles.length)
-  return -1;
-
- const usable=
-  r.width-left-right;
-
- if(usable<=0)
-  return -1;
-
- let i=
-  Math.floor(
-   (
-    clientX-r.left-left
-   )/
-   usable*
-   viewCount
-  );
-
- i=
-  clamp(
-   i,
-   0,
-   Math.max(
+  ctx.clearRect(
     0,
-    viewCount-1
-   )
+    0,
+    width,
+    height
   );
 
- return clamp(
-  viewStart+i,
-  0,
-  candles.length-1
- );
+  ctx.fillStyle =
+    "#080c12";
+
+  ctx.fillRect(
+    0,
+    0,
+    width,
+    height
+  );
+
+  ensureView();
+
+  if(!candles.length){
+
+    ctx.fillStyle =
+      "#657386";
+
+    ctx.font =
+      "12px Tahoma";
+
+    ctx.textAlign =
+      "center";
+
+    ctx.fillText(
+      "داده‌ای برای نمایش وجود ندارد",
+      width/2,
+      height/2
+    );
+
+    return;
+  }
+
+  const range =
+    visiblePriceRange();
+
+  drawGrid(
+    width,
+    height,
+    range
+  );
+
+  drawHeatmap(
+    width,
+    height,
+    range
+  );
+
+  drawBlocks(
+    width,
+    height,
+    range
+  );
+
+  drawLiquidity(
+    width,
+    height,
+    range
+  );
+
+  drawOrderBook(
+    width,
+    height,
+    range
+  );
+
+  drawWalls(
+    width,
+    height,
+    range
+  );
+
+  drawSweep(
+    width,
+    height,
+    range
+  );
+
+  drawCandles(
+    width,
+    height,
+    range
+  );
+
+  drawCandleStats(
+    width,
+    height,
+    range
+  );
+
+  drawCrosshair(
+    width,
+    height
+  );
+
+  /*
+    Footprint هیچ‌وقت روی چارت رسم نمی‌شود.
+    فقط در کادر پایین نمایش داده می‌شود.
+  */
 }
 
-
 /* =========================================================
-   SELECT
+   SELECT CANDLE
 ========================================================= */
 
 function selectIndex(i){
 
- const candles=
-  getCandles();
+  if(!candles.length) return;
 
- if(!candles.length)
-  return;
-
- selectedIndex=
-  clamp(
-   i,
-   0,
-   candles.length-1
-  );
-
- renderSelectedFootprint();
-
- drawChart();
-}
-
-
-/* =========================================================
-   ZOOM
-========================================================= */
-
-function zoomAt(
- clientX,
- factor
-){
-
- const candles=
-  getCandles();
-
- if(!candles.length)
-  return;
-
- const r=
-  canvas.getBoundingClientRect();
-
- const left=55;
- const right=70;
-
- const ratio=
-  clamp(
-   (
-    clientX-r.left-left
-   )/
-   (
-    r.width-left-right
-   ),
-   0,
-   1
-  );
-
- const center=
-  viewStart+
-  ratio*viewCount;
-
- const next=
-  clamp(
-   Math.round(
-    viewCount*factor
-   ),
-   8,
-   candles.length
-  );
-
- viewStart=
-  Math.round(
-   center-
-   ratio*next
-  );
-
- viewCount=next;
-
- clampView();
-
- drawChart();
-}
-
-
-/* =========================================================
-   POINTER DOWN
-========================================================= */
-
-canvas.addEventListener(
- "pointerdown",
- e=>{
-
-  canvas.setPointerCapture?.(
-   e.pointerId
-  );
-
-  pointers.set(
-   e.pointerId,
-   {
-    x:e.clientX,
-    y:e.clientY
-   }
-  );
-
-  moved=false;
-
-  if(pointers.size===1){
-
-   dragStart={
-    x:e.clientX,
-    y:e.clientY,
-    start:viewStart
-   };
-  }
-
-  if(pointers.size===2){
-
-   const p=[
-    ...pointers.values()
-   ];
-
-   pinchStart={
-    distance:
-     Math.hypot(
-      p[0].x-p[1].x,
-      p[0].y-p[1].y
-     ),
-
-    count:viewCount
-   };
-
-   dragStart=null;
-  }
- });
-
-
-/* =========================================================
-   POINTER MOVE
-========================================================= */
-
-canvas.addEventListener(
- "pointermove",
- e=>{
-
-  if(!pointers.has(e.pointerId))
-   return;
-
-  pointers.set(
-   e.pointerId,
-   {
-    x:e.clientX,
-    y:e.clientY
-   }
-  );
-
-  const r=
-   canvas.getBoundingClientRect();
-
-  crosshair={
-   x:e.clientX-r.left,
-   y:e.clientY-r.top
-  };
-
-
-  if(
-   pointers.size===2&&
-   pinchStart
-  ){
-
-   const p=[
-    ...pointers.values()
-   ];
-
-   const distance=
-    Math.hypot(
-     p[0].x-p[1].x,
-     p[0].y-p[1].y
+  selectedIndex =
+    clamp(
+      Math.round(i),
+      0,
+      candles.length-1
     );
 
-   if(
-    Math.abs(
-     distance-
-     pinchStart.distance
-    )>3
-   ){
-
-    moved=true;
-
-    const factor=
-     pinchStart.distance/
-     distance;
-
-    viewCount=
-     clamp(
-      Math.round(
-       pinchStart.count*
-       factor
-      ),
-      8,
-      Math.max(
-       8,
-       getCandles().length
-      )
-     );
-
-    clampView();
-
-    drawChart();
-   }
-
-   return;
-  }
-
-
-  if(
-   pointers.size===1&&
-   dragStart
-  ){
-
-   const dx=
-    e.clientX-
-    dragStart.x;
-
-   if(Math.abs(dx)>5)
-    moved=true;
-
-   const r=
-    canvas.getBoundingClientRect();
-
-   const pxPerCandle=
-    (r.width-125)/
-    Math.max(
-     1,
-     viewCount
-    );
-
-   if(Math.abs(dx)>2){
-
-    viewStart=
-     dragStart.start-
-     Math.round(
-      dx/pxPerCandle
-     );
-
-    clampView();
-
-    drawChart();
-   }
-  }
- });
-
-
-/* =========================================================
-   POINTER END
-========================================================= */
-
-function pointerEnd(e){
-
- pointers.delete(
-  e.pointerId
- );
-
- if(pointers.size<2)
-  pinchStart=null;
-
- if(
-  pointers.size===0&&
-  !moved
- ){
-
-  const now=Date.now();
-
-  if(
-   now-lastTap<320
-  ){
-
-   zoomAt(
-    e.clientX,
-    .72
-   );
-
-   lastTap=0;
-
-  }else{
-
-   lastTap=now;
-
-   const index=
-    pointerIndex(
-     e.clientX
-    );
-
-   if(index>=0)
-    selectIndex(index);
-  }
-
-  dragStart=null;
- }
-}
-
-
-canvas.addEventListener(
- "pointerup",
- pointerEnd
-);
-
-canvas.addEventListener(
- "pointercancel",
- pointerEnd
-);
-
-canvas.addEventListener(
- "pointerleave",
- ()=>{
-  crosshair=null;
+  renderSelectedFootprint();
   drawChart();
- });
-
-
-/* =========================================================
-   WHEEL
-========================================================= */
-
-canvas.addEventListener(
- "wheel",
- e=>{
-
-  e.preventDefault();
-
-  zoomAt(
-   e.clientX,
-   e.deltaY>0
-    ?1.15
-    :.86
-  );
-
- },
- {
-  passive:false
- });
-
+}
 
 /* =========================================================
-   CARDS
+   CHART POINTER
 ========================================================= */
 
-function updateCards(){
+function indexFromX(x){
 
- if(!data)
-  return;
+  const rect =
+    chartCanvas.getBoundingClientRect();
 
- const ticker=
-  data.ticker||
-  data.data?.ticker||
-  {};
+  const width =
+    rect.width;
 
- const flow=
-  data.currentFlow||
-  data.flow||
-  data.data?.currentFlow||
-  {};
+  const count =
+    Math.max(1,viewEnd-viewStart);
 
- const wall=
-  data.wall||
-  data.data?.wall||
-  {};
+  const idx =
+    viewStart +
+    (x/width)*count;
 
- const absorption=
-  data.absorption||
-  data.data?.absorption||
-  {};
+  return Math.floor(idx);
+}
 
- const score=
-  num(
-   data.score ??
-   data.data?.score
-  );
+chartCanvas.addEventListener(
+  "pointerdown",
+  e=>{
 
+    chartCanvas.setPointerCapture?.(
+      e.pointerId
+    );
 
- const priceEl=
-  document.getElementById(
-   "price"
-  );
+    dragging = true;
 
- const buyEl=
-  document.getElementById(
-   "buy"
-  );
+    dragStartX =
+      e.clientX;
 
- const sellEl=
-  document.getElementById(
-   "sell"
-  );
-
- const deltaEl=
-  document.getElementById(
-   "delta"
-  );
-
- const bidBookEl=
-  document.getElementById(
-   "bidBook"
-  );
-
- const askBookEl=
-  document.getElementById(
-   "askBook"
-  );
-
- const absorptionEl=
-  document.getElementById(
-   "absorption"
-  );
-
- const signalEl=
-  document.getElementById(
-   "signal"
-  );
-
-
- if(priceEl)
-  priceEl.textContent=
-   priceFmt(
-    ticker.lastPrice||
-    data.price||
-    data.data?.price
-   );
-
-
- if(buyEl)
-  buyEl.textContent=
-   fmt(
-    flow.buyVolume ??
-    flow.askVolume,
-    2
-   );
-
-
- if(sellEl)
-  sellEl.textContent=
-   fmt(
-    flow.sellVolume ??
-    flow.bidVolume,
-    2
-   );
-
-
- const flowDelta=
-  num(
-   flow.delta ??
-   num(flow.buyVolume)-
-   num(flow.sellVolume)
-  );
-
-
- if(deltaEl){
-
-  deltaEl.textContent=
-   signed(flowDelta);
-
-  deltaEl.className=
-   flowDelta>=0
-    ?"green"
-    :"red";
- }
-
-
- if(bidBookEl)
-  bidBookEl.textContent=
-   fmt(
-    wall.buyLiquidity ??
-    wall.bidLiquidity,
-    0
-   );
-
-
- if(askBookEl)
-  askBookEl.textContent=
-   fmt(
-    wall.sellLiquidity ??
-    wall.askLiquidity,
-    0
-   );
-
-
- if(absorptionEl){
-
-  if(absorption.detected){
-
-   absorptionEl.textContent=
-    `${absorption.type||"Absorption"} ${
-     absorption.side||""
-    }`;
-
-   absorptionEl.className=
-    absorption.side==="BUY"
-     ?"green"
-     :"red";
-
-  }else{
-
-   absorptionEl.textContent=
-    "NONE";
-
-   absorptionEl.className=
-    "yellow";
+    dragStartView =
+      viewStart;
   }
- }
+);
 
+chartCanvas.addEventListener(
+  "pointermove",
+  e=>{
 
- if(signalEl){
+    const rect =
+      chartCanvas.getBoundingClientRect();
 
-  const signal=
-   data.signal||
-   data.data?.signal||
-   "WAIT";
+    const x =
+      e.clientX-rect.left;
 
-  signalEl.textContent=
-   `${score} / ${signal}`;
+    const y =
+      e.clientY-rect.top;
 
-  signalEl.className=
-   signal==="BUY"
-    ?"green"
-    :signal==="SELL"
-     ?"red"
-     :"yellow";
- }
-}
+    crosshair = {x,y};
 
+    if(dragging){
+
+      const dx =
+        e.clientX-dragStartX;
+
+      const width =
+        rect.width;
+
+      const count =
+        Math.max(1,viewEnd-viewStart);
+
+      const shift =
+        dx/width*count;
+
+      const maxStart =
+        Math.max(
+          0,
+          candles.length-
+          (viewEnd-viewStart)
+        );
+
+      viewStart =
+        clamp(
+          dragStartView-shift,
+          0,
+          maxStart
+        );
+
+      viewEnd =
+        viewStart+
+        (viewEnd-
+         dragStartView);
+
+      drawChart();
+    }else{
+      drawChart();
+    }
+  }
+);
+
+chartCanvas.addEventListener(
+  "pointerup",
+  e=>{
+
+    if(!dragging) return;
+
+    const dx =
+      Math.abs(
+        e.clientX-dragStartX
+      );
+
+    dragging = false;
+
+    /*
+      اگر حرکت خیلی کم بود،
+      لمس به‌عنوان انتخاب کندل محسوب می‌شود.
+    */
+    if(dx < 8){
+
+      const rect =
+        chartCanvas.getBoundingClientRect();
+
+      const x =
+        e.clientX-rect.left;
+
+      const index =
+        indexFromX(x);
+
+      selectIndex(index);
+    }
+  }
+);
+
+chartCanvas.addEventListener(
+  "pointercancel",
+  ()=>{
+    dragging = false;
+  }
+);
 
 /* =========================================================
-   TRADES
+   WHEEL ZOOM CHART
 ========================================================= */
 
-function renderTrades(){
+chartCanvas.addEventListener(
+  "wheel",
+  e=>{
 
- const body=
-  document.getElementById(
-   "tradeBody"
-  );
+    e.preventDefault();
 
- if(!body)
-  return;
+    if(!candles.length) return;
 
- body.innerHTML="";
+    const rect =
+      chartCanvas.getBoundingClientRect();
 
- const trades=
-  getTrades();
+    const x =
+      e.clientX-rect.left;
 
- for(
-  const t of
-  trades
-   .slice(-100)
-   .reverse()
- ){
+    const ratio =
+      clamp(
+        x/rect.width,
+        0,
+        1
+      );
 
-  const tr=
-   document.createElement(
-    "tr"
-   );
+    const oldRange =
+      Math.max(
+        2,
+        viewEnd-viewStart
+      );
 
-  const buy=
-   t.side==="BUY";
+    const factor =
+      e.deltaY < 0
+        ? .82
+        : 1.22;
 
-  tr.innerHTML=`
+    const newRange =
+      clamp(
+        Math.round(
+          oldRange*factor
+        ),
+        8,
+        candles.length
+      );
 
-   <td>
-    ${timeText(t.time)}
-   </td>
+    const center =
+      viewStart+
+      ratio*oldRange;
 
-   <td>
-    ${priceFmt(t.price)}
-   </td>
+    viewStart =
+      center -
+      ratio*newRange;
 
-   <td>
-    ${fmt(t.size,4)}
-   </td>
+    viewEnd =
+      viewStart+
+      newRange;
 
-   <td>
-    ${fmt(t.value,2)}
-   </td>
+    if(viewStart < 0){
+      viewEnd -= viewStart;
+      viewStart = 0;
+    }
 
-   <td class="${
-    buy
-     ?"green"
-     :"red"
-   }">
-    ${buy?"BUY":"SELL"}
-   </td>
-  `;
+    if(viewEnd > candles.length){
+      viewStart -=
+        viewEnd-candles.length;
 
-  body.appendChild(tr);
- }
+      viewEnd =
+        candles.length;
+    }
+
+    viewStart =
+      Math.max(
+        0,
+        viewStart
+      );
+
+    drawChart();
+
+  },
+  {passive:false}
+);
+
+/* =========================================================
+   DOUBLE TAP ZOOM
+========================================================= */
+
+chartCanvas.addEventListener(
+  "dblclick",
+  e=>{
+
+    if(!candles.length) return;
+
+    const rect =
+      chartCanvas.getBoundingClientRect();
+
+    const x =
+      e.clientX-rect.left;
+
+    const ratio =
+      clamp(
+        x/rect.width,
+        0,
+        1
+      );
+
+    const current =
+      Math.max(
+        2,
+        viewEnd-viewStart
+      );
+
+    const target =
+      current > 30
+        ? Math.max(
+            12,
+            Math.floor(current*.55)
+          )
+        : Math.min(
+            candles.length,
+            Math.floor(current*1.8)
+          );
+
+    const center =
+      viewStart+
+      ratio*current;
+
+    viewStart =
+      center-ratio*target;
+
+    viewEnd =
+      viewStart+target;
+
+    if(viewStart<0){
+      viewEnd-=viewStart;
+      viewStart=0;
+    }
+
+    if(viewEnd>candles.length){
+      viewStart-=
+        viewEnd-candles.length;
+      viewEnd=
+        candles.length;
+    }
+
+    viewStart =
+      Math.max(0,viewStart);
+
+    drawChart();
+  }
+);
+
+/* =========================================================
+   TOUCH PINCH CHART
+========================================================= */
+
+chartCanvas.addEventListener(
+  "touchstart",
+  e=>{
+
+    if(e.touches.length !== 2) return;
+
+    const dx =
+      e.touches[0].clientX-
+      e.touches[1].clientX;
+
+    const dy =
+      e.touches[0].clientY-
+      e.touches[1].clientY;
+
+    pinchStartDistance =
+      Math.hypot(dx,dy);
+
+    pinchStartRange =
+      Math.max(
+        2,
+        viewEnd-viewStart
+      );
+  },
+  {passive:true}
+);
+
+chartCanvas.addEventListener(
+  "touchmove",
+  e=>{
+
+    if(e.touches.length !== 2) return;
+
+    e.preventDefault();
+
+    const dx =
+      e.touches[0].clientX-
+      e.touches[1].clientX;
+
+    const dy =
+      e.touches[0].clientY-
+      e.touches[1].clientY;
+
+    const distance =
+      Math.hypot(dx,dy);
+
+    if(!pinchStartDistance) return;
+
+    const ratio =
+      distance/
+      pinchStartDistance;
+
+    const target =
+      clamp(
+        Math.round(
+          pinchStartRange/
+          ratio
+        ),
+        8,
+        candles.length
+      );
+
+    const center =
+      (viewStart+viewEnd)/2;
+
+    viewStart =
+      center-target/2;
+
+    viewEnd =
+      center+target/2;
+
+    if(viewStart<0){
+      viewEnd-=viewStart;
+      viewStart=0;
+    }
+
+    if(viewEnd>candles.length){
+      viewStart-=
+        viewEnd-candles.length;
+
+      viewEnd=
+        candles.length;
+    }
+
+    viewStart =
+      Math.max(
+        0,
+        viewStart
+      );
+
+    drawChart();
+
+  },
+  {passive:false}
+);
+
+/* =========================================================
+   UI LAYERS
+========================================================= */
+
+function toggleLayer(name){
+
+  layers[name] =
+    !layers[name];
+
+  document
+    .querySelectorAll(
+      `[data-layer="${name}"]`
+    )
+    .forEach(btn=>{
+      btn.classList.toggle(
+        "active",
+        layers[name]
+      );
+    });
+
+  drawChart();
 }
 
+document
+  .querySelectorAll(
+    "[data-layer]"
+  )
+  .forEach(btn=>{
+
+    btn.addEventListener(
+      "click",
+      ()=>{
+        toggleLayer(
+          btn.dataset.layer
+        );
+      }
+    );
+
+  });
+
+/* =========================================================
+   TF
+========================================================= */
+
+document
+  .querySelectorAll(".tf")
+  .forEach(btn=>{
+
+    btn.addEventListener(
+      "click",
+      async ()=>{
+
+        TF =
+          btn.dataset.tf ||
+          "1";
+
+        document
+          .querySelectorAll(".tf")
+          .forEach(x=>{
+            x.classList.toggle(
+              "active",
+              x===btn
+            );
+          });
+
+        selectedIndex = -1;
+
+        await loadAnalysis();
+      }
+    );
+
+  });
+
+/* =========================================================
+   API
+========================================================= */
+
+async function api(path){
+
+  const res =
+    await fetch(
+      `${API_BASE}${path}`,
+      {
+        cache:"no-store"
+      }
+    );
+
+  if(!res.ok){
+    throw new Error(
+      `HTTP ${res.status}`
+    );
+  }
+
+  return await res.json();
+}
+
+/* =========================================================
+   MERGE DATA
+========================================================= */
+
+function mergeResult(result){
+
+  if(!result) return;
+
+  data = result;
+
+  const newCandles =
+    getCandles();
+
+  if(newCandles.length){
+    candles = newCandles;
+
+    viewEnd =
+      candles.length;
+
+    viewStart =
+      Math.max(
+        0,
+        candles.length-100
+      );
+
+    if(selectedIndex < 0){
+      selectedIndex =
+        candles.length-1;
+    }
+
+    if(
+      selectedIndex >= candles.length
+    ){
+      selectedIndex =
+        candles.length-1;
+    }
+  }
+
+  trades =
+    getTrades();
+
+  updateCards();
+  renderTrades();
+  renderSelectedFootprint();
+  drawChart();
+}
 
 /* =========================================================
    ANALYSIS
@@ -4460,143 +3781,38 @@ function renderTrades(){
 
 async function loadAnalysis(){
 
- stopLive();
+  const symbol =
+    $("symbol")?.value
+      ?.trim()
+      ?.toUpperCase() ||
+    "BTCUSDT";
 
- const symbolInput=
-  document.getElementById(
-   "symbol"
+  setStatus(
+    "🟡 در حال دریافت داده..."
   );
 
- symbol=
-  symbolInput
-   ?symbolInput.value
-    .trim()
-    .toUpperCase()
-    .replace(
-     /[^A-Z0-9]/g,
-     ""
-    )
-   :"BTCUSDT";
+  try{
 
- if(!symbol)
-  symbol="BTCUSDT";
+    const result =
+      await api(
+        `/api/analyze?symbol=${encodeURIComponent(symbol)}&category=${encodeURIComponent($("category")?.value || "linear")}&interval=${encodeURIComponent(TF)}`
+      );
 
+    mergeResult(result);
 
- const status=
-  document.getElementById(
-   "status"
-  );
-
- if(status)
-  status.textContent=
-   "🟡 در حال دریافت داده...";
-
-
- try{
-
-  const oldCandles=
-   getCandles();
-
-  const oldTime=
-   oldCandles[
-    selectedIndex
-   ]?.time;
-
-
-  const r=
-   await fetch(
-    `${API}/api/analyze?symbol=${
-     encodeURIComponent(symbol)
-    }&interval=${interval}`,
-    {
-     cache:"no-store"
-    }
-   );
-
-
-  const result=
-   await r.json();
-
-
-  if(!result.ok)
-   throw new Error(
-    result.error||
-    "خطا در دریافت داده"
-   );
-
-
-  data=result;
-
-
-  const candles=
-   getCandles();
-
-
-  if(oldTime){
-
-   const found=
-    candles.findIndex(
-     c=>
-      Math.abs(
-       normalizeTime(c.time)-
-       normalizeTime(oldTime)
-      )<1000
+    setStatus(
+      "🟢 اتصال برقرار است — Bybit"
     );
 
-   selectedIndex=
-    found>=0
-     ?found
-     :candles.length-1;
+  }catch(err){
 
-  }else{
+    console.error(err);
 
-   selectedIndex=
-    candles.length-1;
+    setStatus(
+      "🔴 خطا در دریافت داده"
+    );
   }
-
-
-  viewCount=
-   Math.min(
-    70,
-    Math.max(
-     8,
-     candles.length
-    )
-   );
-
-
-  viewStart=
-   Math.max(
-    0,
-    candles.length-viewCount
-   );
-
-
-  clampView();
-
-  updateCards();
-  renderTrades();
-  renderSelectedFootprint();
-  drawChart();
-
-
-  if(status)
-   status.textContent=
-    `🟢 ${symbol} · ${interval}m · Bybit`;
-
-
- }catch(e){
-
-  if(status)
-   status.textContent=
-    "🔴 "+
-    (
-     e?.message||
-     "خطای نامشخص"
-    );
- }
 }
-
 
 /* =========================================================
    LIVE
@@ -4604,106 +3820,201 @@ async function loadAnalysis(){
 
 async function loadLive(){
 
- if(!symbol)
-  return;
+  const symbol =
+    $("symbol")?.value
+      ?.trim()
+      ?.toUpperCase() ||
+    "BTCUSDT";
 
- try{
+  try{
 
-  const oldCandles=
-   getCandles();
+    const result =
+      await api(
+        `/api/live?symbol=${encodeURIComponent(symbol)}&category=${encodeURIComponent($("category")?.value || "linear")}&interval=${encodeURIComponent(TF)}`
+      );
 
-  const oldTime=
-   oldCandles[
-    selectedIndex
-   ]?.time;
+    mergeResult(result);
 
+  }catch(err){
 
-  const r=
-   await fetch(
-    `${API}/api/live?symbol=${
-     encodeURIComponent(symbol)
-    }&interval=${interval}`,
-    {
-     cache:"no-store"
-    }
-   );
-
-
-  const result=
-   await r.json();
-
-
-  if(!result.ok)
-   return;
-
-
-  data=result;
-
-
-  const candles=
-   getCandles();
-
-
-  if(oldTime){
-
-   const same=
-    candles.findIndex(
-     c=>
-      Math.abs(
-       normalizeTime(c.time)-
-       normalizeTime(oldTime)
-      )<1000
+    console.error(
+      "LIVE:",
+      err
     );
-
-   selectedIndex=
-    same>=0
-     ?same
-     :candles.length-1;
-
-  }else{
-
-   selectedIndex=
-    candles.length-1;
   }
-
-
-  clampView();
-
-  updateCards();
-  renderTrades();
-  renderSelectedFootprint();
-  drawChart();
-
- }catch{}
 }
-
 
 function startLive(){
 
- stopLive();
+  stopLive();
 
- loadLive();
+  loadLive();
 
- liveTimer=
-  setInterval(
-   loadLive,
-   3000
-  );
+  liveTimer =
+    setInterval(
+      loadLive,
+      3000
+    );
 }
-
 
 function stopLive(){
 
- if(liveTimer){
-
-  clearInterval(
-   liveTimer
-  );
-
-  liveTimer=null;
- }
+  if(liveTimer){
+    clearInterval(liveTimer);
+    liveTimer = null;
+  }
 }
 
+/* =========================================================
+   STATUS
+========================================================= */
+
+function setStatus(text){
+
+  if($("status")){
+    $("status").textContent =
+      text;
+  }
+}
+
+/* =========================================================
+   UPDATE CARDS
+========================================================= */
+
+function updateCards(){
+
+  const fp =
+    selectedIndex >= 0
+      ? getFootprint(selectedIndex)
+      : null;
+
+  const candle =
+    selectedIndex >= 0
+      ? candles[selectedIndex]
+      : candles[candles.length-1];
+
+  if(candle){
+    $("price").textContent =
+      priceFmt(candle.close);
+  }
+
+  if(fp){
+
+    $("buy").textContent =
+      fmt(fp.ask,2);
+
+    $("sell").textContent =
+      fmt(fp.bid,2);
+
+    $("delta").textContent =
+      signed(fp.delta,2);
+
+    $("delta").className =
+      `card-value ${
+        fp.delta>=0
+          ? "buy"
+          : "sell"
+      }`;
+  }
+
+  const book =
+    data?.orderbook ??
+    data?.orderBook ??
+    data?.data?.orderbook ??
+    {};
+
+  const bid =
+    num(
+      book.buyLiquidity ??
+      book.bidLiquidity ??
+      book.totalBid
+    );
+
+  const ask =
+    num(
+      book.sellLiquidity ??
+      book.askLiquidity ??
+      book.totalAsk
+    );
+
+  if(bid){
+    $("bidBook").textContent =
+      fmt(bid,2);
+  }
+
+  if(ask){
+    $("askBook").textContent =
+      fmt(ask,2);
+  }
+
+  const absorption =
+    data?.absorption ??
+    data?.data?.absorption;
+
+  if(absorption){
+    $("absorption").textContent =
+      typeof absorption === "string"
+        ? absorption
+        : absorption.signal ??
+          absorption.type ??
+          "Detected";
+  }
+
+  const signal =
+    data?.signal ??
+    data?.data?.signal;
+
+  if(signal){
+    $("signal").textContent =
+      typeof signal === "string"
+        ? signal
+        : signal.type ??
+          signal.direction ??
+          signal.signal ??
+          "—";
+  }
+}
+
+/* =========================================================
+   TRADES
+========================================================= */
+
+function renderTrades(){
+
+  const body =
+    $("tradeBody");
+
+  if(!body) return;
+
+  body.innerHTML = "";
+
+  trades
+    .slice()
+    .sort((a,b)=>b.time-a.time)
+    .slice(0,100)
+    .forEach(t=>{
+
+      const tr =
+        document.createElement("tr");
+
+      const sideClass =
+        t.side === "BUY"
+          ? "trade-buy"
+          : "trade-sell";
+
+      tr.innerHTML = `
+        <td>${timeText(t.time)}</td>
+        <td>${priceFmt(t.price)}</td>
+        <td>${fmt(t.size,4)}</td>
+        <td>${fmt(t.value,2)}</td>
+        <td class="${sideClass}">
+          ${t.side}
+        </td>
+      `;
+
+      body.appendChild(tr);
+    });
+}
 
 /* =========================================================
    SCAN
@@ -4711,406 +4022,211 @@ function stopLive(){
 
 async function scanOnce(){
 
- try{
-
-  const r=
-   await fetch(
-    `${API}/api/scan?offset=${
-     scanOffset
-    }`,
-    {
-     cache:"no-store"
-    }
-   );
-
-
-  const x=
-   await r.json();
-
-
-  if(!x.ok)
-   return;
-
-
-  scanOffset=
-   x.nextOffset||0;
-
-
-  const box=
-   document.getElementById(
-    "results"
-   );
-
-  if(!box)
-   return;
-
-
-  box.innerHTML="";
-
-
-  for(
-   const item of
-   x.results||[]
-  ){
-
-   const div=
-    document.createElement(
-     "div"
-    );
-
-   div.className="result";
-
-
-   div.innerHTML=`
-
-    <b>
-     ${item.symbol}
-    </b>
-
-    <div>
-     Score:
-     <strong>
-      ${item.score}
-     </strong>
-    </div>
-
-    <div class="${
-     item.signal==="BUY"
-      ?"green"
-      :item.signal==="SELL"
-       ?"red"
-       :"yellow"
-    }">
-     ${item.signal}
-    </div>
-
-    <div>
-     Δ:
-     ${signed(item.delta)}
-    </div>
-
-    <div>
-     ${fmt(item.deltaPercent,1)}%
-    </div>
-   `;
-
-
-   div.onclick=()=>{
-
-    const input=
-     document.getElementById(
-      "symbol"
-     );
-
-    if(input)
-     input.value=
-      item.symbol;
-
-    loadAnalysis();
-   };
-
-
-   box.appendChild(div);
+  if($("scanState")){
+    $("scanState").textContent =
+      "🟢 در حال اسکن بازار...";
   }
 
- }catch{}
+  try{
+
+    const result =
+      await api(
+        `/api/scan?offset=0`
+      );
+
+    const items =
+      Array.isArray(result)
+        ? result
+        : result?.results ??
+          result?.data ??
+          [];
+
+    renderScanResults(items);
+
+    if($("scanState")){
+      $("scanState").textContent =
+        `🟢 اسکن فعال · ${items.length} نتیجه`;
+    }
+
+  }catch(err){
+
+    console.error(err);
+
+    if($("scanState")){
+      $("scanState").textContent =
+        "🔴 خطا در اسکن";
+    }
+  }
 }
 
+function renderScanResults(items){
+
+  const box =
+    $("results");
+
+  if(!box) return;
+
+  box.innerHTML = "";
+
+  items
+    .slice(0,50)
+    .forEach(item=>{
+
+      const div =
+        document.createElement("div");
+
+      div.className =
+        "result";
+
+      const symbol =
+        item.symbol ??
+        item.s ??
+        "—";
+
+      const score =
+        item.score ??
+        item.signalScore ??
+        "—";
+
+      const signal =
+        item.signal ??
+        item.direction ??
+        item.type ??
+        "—";
+
+      div.innerHTML = `
+        <div class="result-main">
+          <div class="result-symbol">
+            ${symbol}
+          </div>
+
+          <div class="result-score">
+            ${signal} · ${score}
+          </div>
+        </div>
+
+        <div class="result-sub">
+          Delta: ${fmt(item.delta ?? 0,2)}
+          · Volume: ${fmt(item.volume ?? 0,2)}
+        </div>
+      `;
+
+      box.appendChild(div);
+    });
+}
 
 function startScan(){
 
- stopScan();
+  stopScan();
 
- scanOffset=0;
+  scanOnce();
 
- const state=
-  document.getElementById(
-   "scanState"
-  );
-
- if(state)
-  state.textContent=
-   "🟢 در حال اسکن";
-
- scanOnce();
-
- scanTimer=
-  setInterval(
-   scanOnce,
-   8000
-  );
+  scanTimer =
+    setInterval(
+      scanOnce,
+      10000
+    );
 }
-
 
 function stopScan(){
 
- if(scanTimer){
+  if(scanTimer){
 
-  clearInterval(
-   scanTimer
-  );
+    clearInterval(
+      scanTimer
+    );
 
-  scanTimer=null;
- }
-
- const state=
-  document.getElementById(
-   "scanState"
-  );
-
- if(state)
-  state.textContent=
-   "متوقف";
-}
-
-
-/* =========================================================
-   TIMEFRAME
-========================================================= */
-
-document
- .querySelectorAll(".tf")
- .forEach(
-  btn=>{
-
-   btn.onclick=
-    async()=>{
-
-     document
-      .querySelectorAll(".tf")
-      .forEach(
-       x=>
-        x.classList.remove(
-         "active"
-        )
-      );
-
-
-     btn.classList.add(
-      "active"
-     );
-
-
-     interval=
-      btn.dataset.tf;
-
-
-     selectedIndex=-1;
-
-
-     renderSelectedFootprint();
-
-
-     await loadAnalysis();
-
-
-     startLive();
-    };
+    scanTimer = null;
   }
-);
 
+  if($("scanState")){
+    $("scanState").textContent =
+      "⏹ اسکن متوقف است";
+  }
+}
 
 /* =========================================================
    BUTTONS
 ========================================================= */
 
-const analyzeBtn=
- document.getElementById(
-  "analyzeBtn"
- );
-
-if(analyzeBtn){
-
- analyzeBtn.onclick=
-  async()=>{
-
-   await loadAnalysis();
-
-   startLive();
-  };
-}
-
-
-const liveBtn=
- document.getElementById(
-  "liveBtn"
- );
-
-if(liveBtn){
-
- liveBtn.onclick=()=>{
-  startLive();
- };
-}
-
-
-const stopBtn=
- document.getElementById(
-  "stopBtn"
- );
-
-if(stopBtn){
-
- stopBtn.onclick=()=>{
-  stopLive();
- };
-}
-
-
-const scanStart=
- document.getElementById(
-  "scanStart"
- );
-
-if(scanStart)
- scanStart.onclick=
-  startScan;
-
-
-const scanStop=
- document.getElementById(
-  "scanStop"
- );
-
-if(scanStop)
- scanStop.onclick=
-  stopScan;
-
-
-/* =========================================================
-   ENTER
-========================================================= */
-
-const symbolInput=
- document.getElementById(
-  "symbol"
- );
-
-if(symbolInput){
-
- symbolInput.addEventListener(
-  "keydown",
-  e=>{
-
-   if(e.key==="Enter"){
-
-    document
-     .getElementById(
-      "analyzeBtn"
-     )
-     ?.click();
-   }
-  }
- );
-}
-
-
-/* =========================================================
-   LAYERS
-========================================================= */
-
-document
- .querySelectorAll(
-  "[data-layer]"
- )
- .forEach(
-  btn=>{
-
-   btn.onclick=()=>{
-
-    const key=
-     btn.dataset.layer;
-
-    layers[key]=
-     !layers[key];
-
-    btn.classList.toggle(
-     "active",
-     layers[key]
-    );
-
-    drawChart();
-   };
-  }
+$("analyze")?.addEventListener(
+  "click",
+  loadAnalysis
 );
 
+$("live")?.addEventListener(
+  "click",
+  startLive
+);
+
+$("stop")?.addEventListener(
+  "click",
+  stopLive
+);
+
+$("scanStart")?.addEventListener(
+  "click",
+  startScan
+);
+
+$("scanStop")?.addEventListener(
+  "click",
+  stopScan
+);
+
+$("symbol")?.addEventListener(
+  "keydown",
+  e=>{
+    if(e.key === "Enter"){
+      loadAnalysis();
+    }
+  }
+);
 
 /* =========================================================
    FULLSCREEN
 ========================================================= */
 
-const fullBtn=
- document.getElementById(
-  "fullBtn"
- );
+$("fullscreenBtn")?.addEventListener(
+  "click",
+  async ()=>{
 
-if(fullBtn){
+    try{
 
- fullBtn.onclick=
-  async()=>{
+      if(!document.fullscreenElement){
 
-   const wrap=
-    document.getElementById(
-     "chartWrap"
-    );
+        await chartWrap.requestFullscreen?.();
 
-   try{
+      }else{
 
-    if(!document.fullscreenElement){
+        await document.exitFullscreen?.();
 
-     if(
-      wrap.requestFullscreen
-     )
-      await wrap.requestFullscreen();
+      }
 
-    }else{
-
-     if(
-      document.exitFullscreen
-     )
-      await document.exitFullscreen();
+    }catch(err){
+      console.error(err);
     }
 
-   }catch{}
-  };
-}
-
-
-document.addEventListener(
- "fullscreenchange",
- ()=>{
-  setTimeout(
-   resizeCanvas,
-   100
-  );
- });
-
-
-/* =========================================================
-   RESIZE
-========================================================= */
-
-window.addEventListener(
- "resize",
- resizeCanvas
+  }
 );
 
-
 /* =========================================================
-   START
+   INITIAL
 ========================================================= */
 
-(async()=>{
+async function init(){
 
- resizeCanvas();
+  resizeCanvas();
 
- renderSelectedFootprint();
+  setStatus(
+    "🟡 در حال اتصال به Worker..."
+  );
 
- await loadAnalysis();
+  await loadAnalysis();
 
- startLive();
+}
 
-})();
+init();
 
 </script>
 
