@@ -104,8 +104,8 @@ button.active{
 .chart-wrap{
  position:relative;
  width:100%;
- height:min(65vh,650px);
- min-height:360px;
+ height:min(72vh,720px);
+ min-height:420px;
  background:#050b10;
  border-radius:10px;
  overflow:hidden;
@@ -142,239 +142,13 @@ canvas{
 .help{
  font-size:11px;
  color:#728698;
- margin-top:7px
-}
-
-.footprint{
- margin-top:10px;
- background:#071019;
- border:1px solid #1b2a36;
- border-radius:10px;
- padding:10px
-}
-
-.fp-title{
- display:flex;
- justify-content:space-between;
- gap:8px;
- flex-wrap:wrap;
- align-items:center
-}
-
-.fp-title b{
- font-size:13px
-}
-
-.fp-title span{
- color:#8fa3b4;
- font-size:11px
-}
-
-.fp-grid{
- display:grid;
- grid-template-columns:minmax(0,1fr) 260px minmax(0,1fr);
- gap:8px;
- align-items:center;
- margin-top:10px
-}
-
-.fp-side{
- min-height:240px;
- max-height:390px;
- overflow:auto;
- background:#050c12;
- border:1px solid #162531;
- border-radius:8px
-}
-
-.fp-side::-webkit-scrollbar{
- width:5px
-}
-
-.fp-side::-webkit-scrollbar-thumb{
- background:#263a48;
- border-radius:5px
-}
-
-.fp-head{
- display:grid;
- grid-template-columns:1fr 80px 80px 70px;
- gap:4px;
- padding:6px;
- position:sticky;
- top:0;
- z-index:2;
- background:#0d1721;
- border-bottom:1px solid #1c2c38;
- color:#718697;
- font-size:9px;
- text-align:center
-}
-
-.level{
- display:grid;
- grid-template-columns:1fr 80px 80px 70px;
- gap:4px;
- font-size:10px;
- padding:4px 6px;
- border-bottom:1px solid #111d27;
- text-align:center;
- align-items:center
-}
-
-.level-price{
- text-align:right;
- color:#d8e4ed;
- direction:ltr
-}
-
-.level-bid{
- color:#ff6675
-}
-
-.level-ask{
- color:#35e58a
-}
-
-.level-delta{
- font-weight:bold
-}
-
-.level.buy-heavy{
- background:rgba(53,229,138,.06)
-}
-
-.level.sell-heavy{
- background:rgba(255,102,117,.06)
-}
-
-.candlebox{
- height:240px;
- position:relative;
- background:#04090d;
- border-radius:8px;
- border:1px solid #162531;
- overflow:hidden
-}
-
-.candlebox-title{
- position:absolute;
- top:7px;
- left:0;
- right:0;
- text-align:center;
- font-size:9px;
- color:#718697;
- z-index:3
-}
-
-.fp-axis{
- position:absolute;
- left:0;
- right:0;
- border-top:1px dashed #243743;
- opacity:.7
-}
-
-.fp-price-label{
- position:absolute;
- right:5px;
- font-size:8px;
- color:#8398a8
-}
-
-.fp-wick{
- position:absolute;
- left:50%;
- transform:translateX(-50%);
- width:2px;
- background:#b5c2cb;
- z-index:1
-}
-
-.fp-body{
- position:absolute;
- left:50%;
- transform:translateX(-50%);
- width:28px;
- border-radius:2px;
- z-index:2
-}
-
-.fp-open-mark,
-.fp-close-mark{
- position:absolute;
- width:42px;
- height:1px;
- background:#cbd6de;
- z-index:3
-}
-
-.fp-open-mark{
- right:calc(50% + 14px)
-}
-
-.fp-close-mark{
- left:calc(50% + 14px)
-}
-
-.no-data{
- display:flex;
- align-items:center;
- justify-content:center;
- min-height:220px;
- padding:15px;
- color:#718697;
- text-align:center;
- font-size:11px;
+ margin-top:7px;
  line-height:1.8
 }
 
-.fp-source{
- margin-top:7px;
- color:#6f8393;
- font-size:10px;
- text-align:center
-}
-
-.totals{
- display:grid;
- grid-template-columns:repeat(5,1fr);
- gap:6px;
- margin-top:8px
-}
-
-.total{
- background:#0d1822;
- padding:8px;
- border-radius:8px;
- text-align:center;
- font-size:10px;
- border:1px solid #172834
-}
-
-.total span{
- display:block;
- color:#8295a6
-}
-
-.total b{
- display:block;
- font-size:14px;
- margin-top:4px
-}
-
-.green{
- color:#35e58a!important
-}
-
-.red{
- color:#ff6675!important
-}
-
-.yellow{
- color:#ffd166!important
-}
+/* =========================================================
+   CARDS
+========================================================= */
 
 .cards{
  display:grid;
@@ -399,6 +173,22 @@ canvas{
  font-size:17px;
  margin-top:8px
 }
+
+.green{
+ color:#35e58a!important
+}
+
+.red{
+ color:#ff6675!important
+}
+
+.yellow{
+ color:#ffd166!important
+}
+
+/* =========================================================
+   SCAN
+========================================================= */
 
 .scan-panel{
  padding:10px;
@@ -430,6 +220,10 @@ canvas{
  border-color:#365062
 }
 
+/* =========================================================
+   TRADES
+========================================================= */
+
 .trades{
  overflow:auto;
  max-height:360px
@@ -455,17 +249,60 @@ th{
  z-index:2
 }
 
-@media(max-width:1000px){
+/* =========================================================
+   SELECTED CANDLE FOOTPRINT LEGEND
+========================================================= */
+
+.fp-legend{
+ display:flex;
+ flex-wrap:wrap;
+ gap:8px;
+ align-items:center;
+ margin-top:8px;
+ color:#708596;
+ font-size:10px
+}
+
+.fp-legend span{
+ display:inline-flex;
+ align-items:center;
+ gap:4px
+}
+
+.fp-dot{
+ width:8px;
+ height:8px;
+ border-radius:50%
+}
+
+.fp-dot.bid{
+ background:#ff6675
+}
+
+.fp-dot.ask{
+ background:#35e58a
+}
+
+.fp-dot.delta{
+ background:#ffd166
+}
+
+.fp-dot.vol{
+ background:#6fa8ff
+}
+
+/* =========================================================
+   MOBILE
+========================================================= */
+
+@media(max-width:1100px){
  .cards{
   grid-template-columns:repeat(4,1fr)
- }
-
- .fp-grid{
-  grid-template-columns:minmax(0,1fr) 220px minmax(0,1fr)
  }
 }
 
 @media(max-width:650px){
+
  .app{
   padding:6px
  }
@@ -479,26 +316,8 @@ th{
  }
 
  .chart-wrap{
-  height:55vh;
-  min-height:320px
- }
-
- .fp-grid{
-  grid-template-columns:1fr
- }
-
- .candlebox{
-  height:220px;
-  order:-1
- }
-
- .fp-side{
-  min-height:180px;
-  max-height:300px
- }
-
- .totals{
-  grid-template-columns:repeat(2,1fr)
+  height:62vh;
+  min-height:380px
  }
 
  .cards{
@@ -507,6 +326,11 @@ th{
 
  input{
   width:110px
+ }
+
+ .layerbar button{
+  font-size:9px;
+  padding:5px 6px
  }
 }
 </style>
@@ -518,14 +342,20 @@ th{
 
 <header>
 <h1>📊 اسکنر شخصی Bybit — Smart Money Order Flow</h1>
+
 <div class="sub">
 تحلیل واقعی بازار بر پایه معاملات، Order Book، Delta، Absorption، Sweep، Blocks و Footprint
 </div>
 </header>
 
+
 <div class="toolbar">
 
-<input id="symbol" value="BTCUSDT" autocomplete="off">
+<input
+ id="symbol"
+ value="BTCUSDT"
+ autocomplete="off"
+>
 
 <button id="analyzeBtn">🔎 تحلیل</button>
 <button id="liveBtn">🟢 Live</button>
@@ -540,90 +370,102 @@ th{
 
 </div>
 
+
 <div class="panel">
 
-<div class="chart-wrap" id="chartWrap">
+<div
+ class="chart-wrap"
+ id="chartWrap"
+>
 
-<button class="full" id="fullBtn">⛶</button>
+<button
+ class="full"
+ id="fullBtn"
+>
+⛶
+</button>
 
 <canvas id="chart"></canvas>
 
 </div>
 
+
 <div class="layerbar">
 
-<button data-layer="candles" class="active">🕯 کندل</button>
-<button data-layer="heatmap" class="active">🔥 Heatmap</button>
-<button data-layer="walls" class="active">🧱 Walls</button>
-<button data-layer="liquidity" class="active">💧 Liquidity</button>
-<button data-layer="absorption" class="active">🟡 Absorption</button>
-<button data-layer="sweep" class="active">🎯 Sweep</button>
-<button data-layer="blocks" class="active">🐋 Blocks</button>
-<button data-layer="delta" class="active">Δ Delta</button>
-<button data-layer="bidask" class="active">Bid/Ask</button>
+<button data-layer="candles" class="active">
+🕯 کندل
+</button>
+
+<button data-layer="heatmap" class="active">
+🔥 Heatmap
+</button>
+
+<button data-layer="walls" class="active">
+🧱 Walls
+</button>
+
+<button data-layer="liquidity" class="active">
+💧 Liquidity
+</button>
+
+<button data-layer="absorption" class="active">
+🟡 Absorption
+</button>
+
+<button data-layer="sweep" class="active">
+🎯 Sweep
+</button>
+
+<button data-layer="blocks" class="active">
+🐋 Blocks
+</button>
+
+<button data-layer="delta" class="active">
+Δ Delta
+</button>
+
+<button data-layer="bidask" class="active">
+Bid/Ask
+</button>
 
 </div>
+
 
 <div class="help">
-لمس و کشیدن = جابه‌جایی · دو انگشت = زوم · چرخ ماوس = زوم · دابل‌تپ = زوم · لمس کندل = Footprint
+لمس کندل = Footprint داخل همان کندل · لمس و کشیدن = جابه‌جایی · دو انگشت = زوم · چرخ ماوس = زوم · دابل‌تپ = زوم
 </div>
 
-<div class="footprint">
 
-<div class="fp-title">
+<div class="fp-legend">
 
-<b>📊 Footprint کندل انتخابی</b>
+<span>
+<i class="fp-dot bid"></i>
+Bid / Sell
+</span>
 
-<span id="fpTime">—</span>
+<span>
+<i class="fp-dot ask"></i>
+Ask / Buy
+</span>
 
-</div>
+<span>
+<i class="fp-dot delta"></i>
+Delta
+</span>
 
-<div class="fp-grid">
+<span>
+<i class="fp-dot vol"></i>
+Volume Histogram — Fixed Range
+</span>
 
-<div class="fp-side" id="fpBid"></div>
-
-<div class="candlebox" id="fpCandle"></div>
-
-<div class="fp-side" id="fpAsk"></div>
-
-</div>
-
-<div class="fp-source" id="fpSource">
-—
-</div>
-
-<div class="totals">
-
-<div class="total">
-<span>Volume</span>
-<b id="fpVolume">0</b>
-</div>
-
-<div class="total">
-<span>Ask / Buy</span>
-<b id="fpBuy" class="green">0</b>
-</div>
-
-<div class="total">
-<span>Bid / Sell</span>
-<b id="fpSell" class="red">0</b>
-</div>
-
-<div class="total">
-<span>Delta</span>
-<b id="fpDelta">0</b>
-</div>
-
-<div class="total">
-<span>Levels</span>
-<b id="fpLevels">0</b>
-</div>
+<span id="fpStatus">
+هیچ کندلی انتخاب نشده
+</span>
 
 </div>
 
 </div>
 
-</div>
 
 <div class="cards">
 
@@ -669,23 +511,34 @@ th{
 
 </div>
 
+
 <div class="scan-panel">
 
 <div class="scan-row">
 
 <b>🔎 اسکن بازار</b>
 
-<button id="scanStart">▶ شروع اسکن</button>
+<button id="scanStart">
+▶ شروع اسکن
+</button>
 
-<button id="scanStop">⏹ توقف اسکن</button>
+<button id="scanStop">
+⏹ توقف اسکن
+</button>
 
-<span id="scanState">متوقف</span>
+<span id="scanState">
+متوقف
+</span>
 
 </div>
 
-<div class="results" id="results"></div>
+<div
+ class="results"
+ id="results"
+></div>
 
 </div>
+
 
 <div class="panel">
 
@@ -717,8 +570,14 @@ th{
 
 </div>
 
+
 <script>
 "use strict";
+
+
+/* =========================================================
+   GLOBAL
+========================================================= */
 
 const API=location.origin;
 
@@ -759,7 +618,7 @@ let crosshair=null;
 
 
 /* =========================================================
-   BASIC HELPERS
+   HELPERS
 ========================================================= */
 
 function num(v){
@@ -767,11 +626,14 @@ function num(v){
  return Number.isFinite(x)?x:0;
 }
 
+
 function clamp(v,min,max){
  return Math.max(min,Math.min(max,v));
 }
 
+
 function fmt(v,d=2){
+
  v=num(v);
 
  if(Math.abs(v)>=1000000000)
@@ -786,46 +648,74 @@ function fmt(v,d=2){
  return v.toFixed(d);
 }
 
+
 function priceFmt(v){
+
  v=num(v);
 
- if(v>=1000)return v.toFixed(2);
- if(v>=1)return v.toFixed(4);
- if(v>=.01)return v.toFixed(5);
- if(v>=.0001)return v.toFixed(7);
+ if(v>=1000)
+  return v.toFixed(2);
+
+ if(v>=1)
+  return v.toFixed(4);
+
+ if(v>=.01)
+  return v.toFixed(5);
+
+ if(v>=.0001)
+  return v.toFixed(7);
 
  return v.toFixed(10);
 }
 
+
 function signed(v){
- return num(v)>=0
+
+ v=num(v);
+
+ return v>=0
   ?"+"+fmt(v)
   :fmt(v);
 }
 
-function timeText(t){
- if(!t)return "—";
 
- return new Date(num(t)).toLocaleTimeString("fa-IR",{
-  hour:"2-digit",
-  minute:"2-digit",
-  second:"2-digit"
- });
+function timeText(t){
+
+ if(!t)
+  return "—";
+
+ return new Date(num(t)).toLocaleTimeString(
+  "fa-IR",
+  {
+   hour:"2-digit",
+   minute:"2-digit",
+   second:"2-digit"
+  }
+ );
 }
+
 
 function normalizeTime(t){
+
  const n=num(t);
 
- if(!n)return 0;
+ if(!n)
+  return 0;
 
- return n<1000000000000?n*1000:n;
+ return n<1000000000000
+  ?n*1000
+  :n;
 }
 
+
 function intervalMilliseconds(){
+
  return Number(interval)*60*1000;
 }
 
+
 function candleStart(time){
+
  const t=normalizeTime(time);
  const ms=intervalMilliseconds();
 
@@ -839,7 +729,8 @@ function candleStart(time){
 
 function getCandles(){
 
- if(!data)return [];
+ if(!data)
+  return [];
 
  if(Array.isArray(data.selectedCandles))
   return data.selectedCandles;
@@ -858,6 +749,26 @@ function getCandles(){
    return data.candles[interval];
  }
 
+ if(data.chart){
+
+  if(Array.isArray(data.chart.candles))
+   return data.chart.candles;
+
+  if(data.chart.candles&&
+     Array.isArray(data.chart.candles["tf"+interval]))
+   return data.chart.candles["tf"+interval];
+ }
+
+ if(data.data){
+
+  if(Array.isArray(data.data.candles))
+   return data.data.candles;
+
+  if(data.data.chart&&
+     Array.isArray(data.data.chart.candles))
+   return data.data.chart.candles;
+ }
+
  return [];
 }
 
@@ -868,7 +779,8 @@ function getCandles(){
 
 function normalizeTrade(t){
 
- if(!t)return null;
+ if(!t)
+  return null;
 
  const time=normalizeTime(
   t.time ??
@@ -898,8 +810,11 @@ function normalizeTrade(t){
   ""
  ).toUpperCase();
 
- if(side==="B")side="BUY";
- if(side==="S")side="SELL";
+ if(side==="B")
+  side="BUY";
+
+ if(side==="S")
+  side="SELL";
 
  if(side!=="BUY"&&side!=="SELL")
   return null;
@@ -916,12 +831,14 @@ function normalizeTrade(t){
  };
 }
 
+
 function getTrades(){
 
  const source=
   data?.trades ??
   data?.recentTrades ??
   data?.tradeList ??
+  data?.data?.trades ??
   [];
 
  if(!Array.isArray(source))
@@ -937,15 +854,33 @@ function getTrades(){
    PRICE STEP
 ========================================================= */
 
-function detectPriceStep(){
+function decimalPlaces(v){
 
- const candidates=[];
+ const s=String(v);
+
+ if(s.includes("e-")){
+
+  const p=s.split("e-")[1];
+
+  return Number(p)||0;
+ }
+
+ const x=s.split(".")[1];
+
+ return x
+  ?x.length
+  :0;
+}
+
+
+function detectPriceStep(){
 
  const info=
   data?.instrument ??
   data?.instrumentInfo ??
   data?.symbolInfo ??
-  data?.meta;
+  data?.meta ??
+  data?.data?.instrument;
 
  if(info){
 
@@ -955,43 +890,76 @@ function detectPriceStep(){
    info.price_filter?.tickSize;
 
   if(Number(x)>0)
-   candidates.push(Number(x));
+   return Number(x);
  }
 
  const trades=getTrades();
 
- const prices=[...new Set(
-  trades
-   .map(x=>x.price)
-   .filter(x=>x>0)
- )].sort((a,b)=>a-b);
+ const prices=[
+  ...new Set(
+   trades
+    .map(x=>x.price)
+    .filter(x=>x>0)
+  )
+ ].sort((a,b)=>a-b);
+
+ const diffs=[];
 
  for(let i=1;i<prices.length;i++){
 
   const d=prices[i]-prices[i-1];
 
   if(d>0&&Number.isFinite(d))
-   candidates.push(d);
+   diffs.push(d);
  }
 
- const positive=candidates
-  .filter(x=>x>0)
-  .sort((a,b)=>a-b);
+ if(diffs.length){
 
- if(positive.length)
-  return positive[0];
+  diffs.sort((a,b)=>a-b);
+
+  const candidate=diffs[0];
+
+  if(candidate>0)
+   return candidate;
+ }
+
+ const candles=getCandles();
+
+ const cp=[];
+
+ for(const c of candles.slice(-20)){
+
+  const values=[
+   num(c.open),
+   num(c.high),
+   num(c.low),
+   num(c.close)
+  ].filter(x=>x>0);
+
+  cp.push(...values);
+ }
 
  const maxPrice=Math.max(
+  ...cp,
   ...trades.map(x=>x.price),
   1
  );
 
- if(maxPrice>=1000)return .01;
- if(maxPrice>=1)return .0001;
- if(maxPrice>=.01)return .000001;
+ if(maxPrice>=1000)
+  return .01;
 
- return .00000001;
+ if(maxPrice>=1)
+  return .0001;
+
+ if(maxPrice>=.01)
+  return .000001;
+
+ if(maxPrice>=.0001)
+  return .00000001;
+
+ return .000000001;
 }
+
 
 function roundPrice(price,step){
 
@@ -1001,12 +969,14 @@ function roundPrice(price,step){
  if(!step)
   return price;
 
- return Math.round(price/step)*step;
+ return Math.round(
+  price/step
+ )*step;
 }
 
 
 /* =========================================================
-   BUILD FOOTPRINT FROM REAL TRADES
+   BUILD REAL FOOTPRINT
 ========================================================= */
 
 function buildFootprintFromTrades(candle){
@@ -1014,14 +984,13 @@ function buildFootprintFromTrades(candle){
  if(!candle)
   return null;
 
- const candleTime=candleStart(candle.time);
-
- const start=candleTime;
+ const start=candleStart(candle.time);
  const end=start+intervalMilliseconds();
 
- const trades=getTrades().filter(t=>{
-  return t.time>=start&&t.time<end;
- });
+ const trades=getTrades().filter(t=>
+  t.time>=start&&
+  t.time<end
+ );
 
  if(!trades.length)
   return null;
@@ -1033,25 +1002,32 @@ function buildFootprintFromTrades(candle){
  let buy=0;
  let sell=0;
  let volume=0;
+ let buyTrades=0;
+ let sellTrades=0;
 
  for(const t of trades){
 
-  const price=roundPrice(t.price,step);
+  const price=roundPrice(
+   t.price,
+   step
+  );
 
   const key=String(price);
 
   if(!map.has(key)){
 
-   map.set(key,{
-    price,
-    bidVolume:0,
-    askVolume:0,
-    delta:0,
-    trades:0,
-    buyTrades:0,
-    sellTrades:0
-   });
-
+   map.set(
+    key,
+    {
+     price,
+     bidVolume:0,
+     askVolume:0,
+     delta:0,
+     trades:0,
+     buyTrades:0,
+     sellTrades:0
+    }
+   );
   }
 
   const level=map.get(key);
@@ -1062,6 +1038,7 @@ function buildFootprintFromTrades(candle){
    level.buyTrades++;
 
    buy+=t.size;
+   buyTrades++;
 
   }else{
 
@@ -1069,36 +1046,98 @@ function buildFootprintFromTrades(candle){
    level.sellTrades++;
 
    sell+=t.size;
-
+   sellTrades++;
   }
 
   level.delta=
-   level.askVolume-level.bidVolume;
+   level.askVolume-
+   level.bidVolume;
 
   level.trades++;
+
   volume+=t.size;
  }
 
- const levels=[...map.values()]
-  .sort((a,b)=>b.price-a.price);
+ const levels=[
+  ...map.values()
+ ]
+ .sort((a,b)=>
+  b.price-a.price
+ );
 
  return {
   ...candle,
+
   time:candle.time,
+
   levels,
+
   buyVolume:buy,
   sellVolume:sell,
+
+  askVolume:buy,
+  bidVolume:sell,
+
   flowVolume:volume,
   volume,
+
   delta:buy-sell,
+
+  buyTrades,
+  sellTrades,
+
   source:"REAL TRADES"
  };
 }
 
 
 /* =========================================================
-   EXTRACT SERVER FOOTPRINT
+   SERVER FOOTPRINT
 ========================================================= */
+
+function normalizeServerLevel(x){
+
+ if(!x)
+  return null;
+
+ const bid=num(
+  x.bidVolume ??
+  x.bid ??
+  x.sellVolume ??
+  x.sell ??
+  x.Bid ??
+  x.BID
+ );
+
+ const ask=num(
+  x.askVolume ??
+  x.ask ??
+  x.buyVolume ??
+  x.buy ??
+  x.Ask ??
+  x.ASK
+ );
+
+ const price=num(
+  x.price ??
+  x.p ??
+  x.priceLevel
+ );
+
+ if(!price)
+  return null;
+
+ return {
+  price,
+  bidVolume:bid,
+  askVolume:ask,
+  delta:num(
+   x.delta ??
+   ask-bid
+  )
+ };
+}
+
 
 function serverFootprint(candle,index){
 
@@ -1113,10 +1152,19 @@ function serverFootprint(candle,index){
  else if(Array.isArray(candle.levels))
   levels=candle.levels;
 
+ else if(candle.footprint&&
+         Array.isArray(candle.footprint.levels))
+  levels=candle.footprint.levels;
+
  else if(Array.isArray(data?.footprints)){
 
   const found=data.footprints.find(x=>
-   String(x.time)===String(candle.time)
+   String(
+    normalizeTime(x.time)
+   )===
+   String(
+    normalizeTime(candle.time)
+   )
   );
 
   if(found){
@@ -1126,34 +1174,64 @@ function serverFootprint(candle,index){
 
    else if(Array.isArray(found.footprint))
     levels=found.footprint;
+
+   else if(found.footprint&&
+           Array.isArray(found.footprint.levels))
+    levels=found.footprint.levels;
   }
  }
 
  if(!levels.length)
   return null;
 
+ const normalized=levels
+  .map(normalizeServerLevel)
+  .filter(Boolean)
+  .sort((a,b)=>
+   b.price-a.price
+  );
+
+ if(!normalized.length)
+  return null;
+
+ let buy=0;
+ let sell=0;
+
+ for(const x of normalized){
+
+  buy+=x.askVolume;
+  sell+=x.bidVolume;
+ }
+
  return {
   ...candle,
-  levels:levels.map(x=>({
-   price:num(x.price),
-   bidVolume:num(
-    x.bidVolume ??
-    x.bid ??
-    x.sellVolume
-   ),
-   askVolume:num(
-    x.askVolume ??
-    x.ask ??
-    x.buyVolume
-   ),
-   delta:num(
-    x.delta ??
-    (
-     num(x.askVolume??x.ask??x.buyVolume)-
-     num(x.bidVolume??x.bid??x.sellVolume)
-    )
-   )
-  })),
+
+  levels:normalized,
+
+  buyVolume:
+   num(candle.buyVolume)||
+   buy,
+
+  sellVolume:
+   num(candle.sellVolume)||
+   sell,
+
+  askVolume:buy,
+  bidVolume:sell,
+
+  flowVolume:
+   num(candle.flowVolume)||
+   num(candle.volume)||
+   buy+sell,
+
+  volume:
+   num(candle.volume)||
+   buy+sell,
+
+  delta:
+   num(candle.delta)||
+   buy-sell,
+
   source:"WORKER FOOTPRINT"
  };
 }
@@ -1167,27 +1245,38 @@ function getFootprint(index){
 
  const candles=getCandles();
 
- const candle=candles[index];
-
- if(!candle)
+ if(index<0||index>=candles.length)
   return null;
 
- const server=serverFootprint(candle,index);
+ const candle=candles[index];
 
- if(server&&server.levels.length)
+ const server=
+  serverFootprint(
+   candle,
+   index
+  );
+
+ if(
+  server&&
+  server.levels&&
+  server.levels.length
+ )
   return server;
 
- return buildFootprintFromTrades(candle);
+ return buildFootprintFromTrades(
+  candle
+ );
 }
 
 
 /* =========================================================
-   CANVAS
+   CANVAS RESIZE
 ========================================================= */
 
 function resizeCanvas(){
 
- const r=canvas.getBoundingClientRect();
+ const r=
+  canvas.getBoundingClientRect();
 
  const dpr=Math.min(
   window.devicePixelRatio||1,
@@ -1216,6 +1305,7 @@ function resizeCanvas(){
  drawChart();
 }
 
+
 function clampView(){
 
  const candles=getCandles();
@@ -1227,18 +1317,25 @@ function clampView(){
  }
 
  viewCount=Math.max(
-  10,
-  Math.min(viewCount,candles.length)
+  8,
+  Math.min(
+   viewCount,
+   candles.length
+  )
  );
 
  viewStart=Math.max(
   0,
   Math.min(
    viewStart,
-   Math.max(0,candles.length-viewCount)
+   Math.max(
+    0,
+    candles.length-viewCount
+   )
   )
  );
 }
+
 
 function visibleCandles(){
 
@@ -1251,6 +1348,11 @@ function visibleCandles(){
   viewStart+viewCount
  );
 }
+
+
+/* =========================================================
+   PRICE RANGE
+========================================================= */
 
 function priceRange(candles){
 
@@ -1268,13 +1370,21 @@ function priceRange(candles){
   ...candles.map(x=>num(x.high))
  );
 
- const pad=(high-low||1)*.08;
+ if(!Number.isFinite(low))
+  low=0;
+
+ if(!Number.isFinite(high))
+  high=1;
+
+ const pad=
+  (high-low||1)*.08;
 
  return {
   low:low-pad,
   high:high+pad
  };
 }
+
 
 function yPrice(
  price,
@@ -1289,6 +1399,7 @@ function yPrice(
   (range.high-range.low)*
   (h-top-bottom);
 }
+
 
 function xCandle(
  i,
@@ -1361,8 +1472,7 @@ function drawHeatmap(
  left,
  right,
  top,
- bottom,
- range
+ bottom
 ){
 
  if(!layers.heatmap)
@@ -1374,20 +1484,25 @@ function drawHeatmap(
 
   max=Math.max(
    max,
-   Math.abs(num(c.deltaPercent))
+   Math.abs(
+    num(c.deltaPercent)
+   )
   );
  }
 
  max=Math.max(max,1);
 
  const cw=
-  (w-left-right)/candles.length;
+  (w-left-right)/
+  candles.length;
 
  candles.forEach((c,i)=>{
 
   const strength=Math.min(
    1,
-   Math.abs(num(c.deltaPercent))/max
+   Math.abs(
+    num(c.deltaPercent)
+   )/max
   );
 
   if(!strength)
@@ -1425,11 +1540,19 @@ function drawOrderBook(
  if(!layers.bidask)
   return;
 
- if(!data?.orderbook)
+ const orderbook=
+  data?.orderbook ??
+  data?.book ??
+  data?.data?.orderbook;
+
+ if(!orderbook)
   return;
 
- const bids=data.orderbook.bids||[];
- const asks=data.orderbook.asks||[];
+ const bids=
+  orderbook.bids||[];
+
+ const asks=
+  orderbook.asks||[];
 
  const all=[
   ...bids,
@@ -1439,15 +1562,34 @@ function drawOrderBook(
  if(!all.length)
   return;
 
+ const values=all.map(x=>
+  num(
+   x.value ??
+   x.size ??
+   x.qty
+  )
+ );
+
  const max=Math.max(
-  ...all.map(x=>num(x.value)),
+  ...values,
   1
  );
 
- for(const x of bids){
+ for(const raw of bids){
+
+  const price=num(
+   raw.price ??
+   raw.p
+  );
+
+  const value=num(
+   raw.value ??
+   raw.size ??
+   raw.qty
+  );
 
   const y=yPrice(
-   x.price,
+   price,
    range,
    h,
    top,
@@ -1458,7 +1600,7 @@ function drawOrderBook(
    continue;
 
   const len=
-   x.value/max*
+   value/max*
    Math.min(
     110,
     (w-left-right)*.18
@@ -1475,10 +1617,21 @@ function drawOrderBook(
   );
  }
 
- for(const x of asks){
+ for(const raw of asks){
+
+  const price=num(
+   raw.price ??
+   raw.p
+  );
+
+  const value=num(
+   raw.value ??
+   raw.size ??
+   raw.qty
+  );
 
   const y=yPrice(
-   x.price,
+   price,
    range,
    h,
    top,
@@ -1489,7 +1642,7 @@ function drawOrderBook(
    continue;
 
   const len=
-   x.value/max*
+   value/max*
    Math.min(
     110,
     (w-left-right)*.18
@@ -1525,21 +1678,30 @@ function drawWalls(
  if(!layers.walls)
   return;
 
- if(!data?.wall)
+ const wall=
+  data?.wall;
+
+ if(!wall)
   return;
 
  const walls=[
-  [data.wall.nearBuyWall,"#ff4f62"],
-  [data.wall.nearSellWall,"#35e58a"]
+  [
+   wall.nearBuyWall,
+   "#ff4f62"
+  ],
+  [
+   wall.nearSellWall,
+   "#35e58a"
+  ]
  ];
 
- for(const [wall,color] of walls){
+ for(const [x,color] of walls){
 
-  if(!wall?.price)
+  if(!x?.price)
    continue;
 
   const y=yPrice(
-   wall.price,
+   x.price,
    range,
    h,
    top,
@@ -1566,7 +1728,7 @@ function drawWalls(
   ctx.font="10px Tahoma";
 
   ctx.fillText(
-   `${priceFmt(wall.price)}  ${fmt(wall.value)}`,
+   `${priceFmt(x.price)}  ${fmt(x.value)}`,
    left+5,
    y-4
   );
@@ -1592,12 +1754,25 @@ function drawLiquidity(
   return;
 
  const zones=
-  data?.liquidityZones||[];
+  data?.liquidityZones||
+  data?.liquidity||
+  [];
+
+ if(!Array.isArray(zones))
+  return;
 
  for(const z of zones.slice(0,30)){
 
+  const price=num(
+   z.price ??
+   z.level
+  );
+
+  if(!price)
+   continue;
+
   const y=yPrice(
-   z.price,
+   price,
    range,
    h,
    top,
@@ -1642,10 +1817,21 @@ function drawBlocks(
  const blocks=
   data?.blocks||[];
 
+ if(!Array.isArray(blocks))
+  return;
+
  for(const b of blocks.slice(-20)){
 
+  const price=num(
+   b.price ??
+   b.level
+  );
+
+  if(!price)
+   continue;
+
   const y=yPrice(
-   b.price,
+   price,
    range,
    h,
    top,
@@ -1676,13 +1862,12 @@ function drawBlocks(
 
 
 /* =========================================================
-   CANDLE STATS
+   NORMAL CANDLE STATS
 ========================================================= */
 
 function drawCandleStats(
  c,
  x,
- w,
  range,
  h,
  top,
@@ -1692,8 +1877,8 @@ function drawCandleStats(
  if(!layers.bidask)
   return;
 
- const y=yPrice(
-  c.high,
+ const high=yPrice(
+  num(c.high),
   range,
   h,
   top,
@@ -1701,15 +1886,23 @@ function drawCandleStats(
  );
 
  const low=yPrice(
-  c.low,
+  num(c.low),
   range,
   h,
   top,
   bottom
  );
 
- const ask=num(c.buyVolume);
- const bid=num(c.sellVolume);
+ const ask=num(
+  c.buyVolume ??
+  c.askVolume
+ );
+
+ const bid=num(
+  c.sellVolume ??
+  c.bidVolume
+ );
+
  const delta=num(c.delta);
 
  ctx.font="8px Tahoma";
@@ -1722,7 +1915,7 @@ function drawCandleStats(
   x,
   Math.max(
    top+9,
-   y-4
+   high-4
   )
  );
 
@@ -1741,11 +1934,6 @@ function drawCandleStats(
 
   ctx.fillStyle=
    delta>=0
-    ?" #35e58a"
-    :"#ff6675";
-
-  ctx.fillStyle=
-   delta>=0
     ?" #35e58a".trim()
     :"#ff6675";
 
@@ -1758,7 +1946,11 @@ function drawCandleStats(
   ctx.fillStyle="#90a4b5";
 
   ctx.fillText(
-   `V ${fmt(c.flowVolume??c.volume,1)}`,
+   `V ${fmt(
+    c.flowVolume ??
+    c.volume,
+    1
+   )}`,
    x,
    h-bottom+22
   );
@@ -1769,12 +1961,636 @@ function drawCandleStats(
 
 
 /* =========================================================
+   FIXED RANGE VOLUME
+========================================================= */
+
+function footprintVolumeMax(levels){
+
+ if(!levels.length)
+  return 1;
+
+ let max=0;
+
+ for(const l of levels){
+
+  const v=
+   num(l.bidVolume)+
+   num(l.askVolume);
+
+  max=Math.max(
+   max,
+   v
+  );
+ }
+
+ return Math.max(
+  max,
+  1
+ );
+}
+
+
+/* =========================================================
+   FOOTPRINT OVERLAY
+========================================================= */
+
+function drawSelectedFootprint(
+ fp,
+ x,
+ candleHighY,
+ candleLowY,
+ candleOpenY,
+ candleCloseY,
+ chartW,
+ chartH,
+ left,
+ right,
+ top,
+ bottom
+){
+
+ if(!fp||
+    !Array.isArray(fp.levels)||
+    !fp.levels.length)
+  return;
+
+ const levels=[
+  ...fp.levels
+ ].sort((a,b)=>
+  num(b.price)-num(a.price)
+ );
+
+ /*
+  فقط تعداد محدودی از سطوح را برای خوانایی
+  داخل خود کندل نمایش می‌دهیم، ولی مجموع
+  محاسبات از تمام سطوح انجام شده است.
+ */
+ const maxVisible=
+  chartW<650
+   ?10
+   :14;
+
+ let visible=levels;
+
+ if(levels.length>maxVisible){
+
+  const centerPrice=
+   (
+    num(fp.high)+
+    num(fp.low)
+   )/2;
+
+  visible=[
+   ...levels
+  ]
+  .sort((a,b)=>
+   Math.abs(a.price-centerPrice)-
+   Math.abs(b.price-centerPrice)
+  )
+  .slice(0,maxVisible)
+  .sort((a,b)=>
+   b.price-a.price
+  );
+ }
+
+ /*
+  Footprint در خود ناحیه کندل قرار می‌گیرد.
+ */
+ const availableCandleHeight=
+  Math.max(
+   70,
+   Math.abs(
+    candleLowY-candleHighY
+   )
+  );
+
+ const rowH=clamp(
+  availableCandleHeight/
+  visible.length,
+  12,
+  24
+ );
+
+ const totalH=
+  rowH*visible.length;
+
+ /*
+  عرض متناسب با فاصله کندل‌ها
+ */
+ const usableW=
+  chartW-left-right;
+
+ const candles=getCandles();
+
+ const candleSlot=
+  usableW/
+  Math.max(
+   1,
+   Math.min(
+    viewCount,
+    candles.length
+   )
+  );
+
+ const overlayW=clamp(
+  candleSlot*3.7,
+  135,
+  chartW<650?230:330
+ );
+
+ /*
+  در صورتی که نزدیک لبه باشد، Footprint
+  به سمت داخل نمودار منتقل می‌شود.
+ */
+ let boxX=
+  x-overlayW/2;
+
+ boxX=clamp(
+  boxX,
+  left+3,
+  chartW-right-overlayW-3
+ );
+
+ let boxY=
+  (
+   candleHighY+
+   candleLowY
+  )/2-
+  totalH/2;
+
+ boxY=clamp(
+  boxY,
+  top+18,
+  chartH-bottom-totalH-8
+ );
+
+ /*
+  اگر ارتفاع کندل خیلی کم باشد،
+  Footprint در اطراف همان کندل باز می‌شود.
+ */
+ const pad=5;
+
+ ctx.save();
+
+ /*
+  پس‌زمینه اصلی
+ */
+ ctx.fillStyle="rgba(4,9,13,.94)";
+
+ ctx.strokeStyle="#ffd166";
+
+ ctx.lineWidth=1.5;
+
+ roundRect(
+  ctx,
+  boxX,
+  boxY,
+  overlayW,
+  totalH+34,
+  7
+ );
+
+ ctx.fill();
+ ctx.stroke();
+
+
+ /* -------------------------------------------------------
+    HEADER
+ ------------------------------------------------------- */
+
+ ctx.fillStyle="#dce8f0";
+ ctx.font="bold 9px Tahoma";
+ ctx.textAlign="center";
+
+ ctx.fillText(
+  `FOOTPRINT · ${timeText(fp.time)} · ${interval}m`,
+  boxX+overlayW/2,
+  boxY+11
+ );
+
+ /*
+  عنوان ستون‌ها
+ */
+ const innerY=
+  boxY+25;
+
+ const priceW=
+  overlayW*.25;
+
+ const bidW=
+  overlayW*.18;
+
+ const askW=
+  overlayW*.18;
+
+ const deltaW=
+  overlayW*.17;
+
+ const volW=
+  overlayW-
+  priceW-
+  bidW-
+  askW-
+  deltaW;
+
+ ctx.font="7px Tahoma";
+
+ ctx.fillStyle="#ff6675";
+
+ ctx.fillText(
+  "Bid",
+  boxX+
+  priceW+
+  bidW/2,
+  innerY
+ );
+
+ ctx.fillStyle="#35e58a";
+
+ ctx.fillText(
+  "Ask",
+  boxX+
+  priceW+
+  bidW+
+  askW/2,
+  innerY
+ );
+
+ ctx.fillStyle="#ffd166";
+
+ ctx.fillText(
+  "Δ",
+  boxX+
+  priceW+
+  bidW+
+  askW+
+  deltaW/2,
+  innerY
+ );
+
+ ctx.fillStyle="#6fa8ff";
+
+ ctx.fillText(
+  "VOL",
+  boxX+
+  priceW+
+  bidW+
+  askW+
+  deltaW+
+  volW/2,
+  innerY
+ );
+
+
+ /* -------------------------------------------------------
+    FIXED RANGE
+ ------------------------------------------------------- */
+
+ const maxVol=
+  footprintVolumeMax(
+   levels
+  );
+
+ const baseY=
+  boxY+31;
+
+ for(let i=0;i<visible.length;i++){
+
+  const l=visible[i];
+
+  const y=
+   baseY+
+   i*rowH;
+
+  const bid=num(
+   l.bidVolume
+  );
+
+  const ask=num(
+   l.askVolume
+  );
+
+  const delta=num(
+   l.delta ??
+   ask-bid
+  );
+
+  const volume=
+   bid+ask;
+
+  const volumeRatio=
+   clamp(
+    volume/maxVol,
+    0,
+    1
+   );
+
+  /*
+   خط سطح
+  */
+  ctx.strokeStyle=
+   "rgba(80,105,120,.18)";
+
+  ctx.lineWidth=1;
+
+  ctx.beginPath();
+
+  ctx.moveTo(
+   boxX+3,
+   y+rowH
+  );
+
+  ctx.lineTo(
+   boxX+overlayW-3,
+   y+rowH
+  );
+
+  ctx.stroke();
+
+
+  /*
+   Volume Histogram — Fixed Range
+  */
+  const histMax=
+   Math.max(
+    5,
+    volW-8
+   );
+
+  const histW=
+   volumeRatio*
+   histMax;
+
+  ctx.fillStyle=
+   delta>=0
+    ?"rgba(53,229,138,.24)"
+    :"rgba(255,102,117,.24)";
+
+  ctx.fillRect(
+   boxX+
+   priceW+
+   bidW+
+   askW+
+   deltaW+
+   4,
+   y+2,
+   histW,
+   Math.max(
+    4,
+    rowH-4
+   )
+  );
+
+
+  /*
+   Price
+  */
+  ctx.fillStyle="#d8e4ed";
+
+  ctx.font="7px Tahoma";
+
+  ctx.textAlign="center";
+
+  ctx.fillText(
+   priceFmt(l.price),
+   boxX+
+   priceW/2,
+   y+
+   rowH*.68
+  );
+
+
+  /*
+   Bid
+  */
+  ctx.fillStyle="#ff6675";
+
+  ctx.fillText(
+   fmt(bid,1),
+   boxX+
+   priceW+
+   bidW/2,
+   y+
+   rowH*.68
+  );
+
+
+  /*
+   Ask
+  */
+  ctx.fillStyle="#35e58a";
+
+  ctx.fillText(
+   fmt(ask,1),
+   boxX+
+   priceW+
+   bidW+
+   askW/2,
+   y+
+   rowH*.68
+  );
+
+
+  /*
+   Delta
+  */
+  ctx.fillStyle=
+   delta>=0
+    ?" #35e58a".trim()
+    :"#ff6675";
+
+  ctx.fillText(
+   signed(delta),
+   boxX+
+   priceW+
+   bidW+
+   askW+
+   deltaW/2,
+   y+
+   rowH*.68
+  );
+ }
+
+
+ /* -------------------------------------------------------
+    TOTALS
+ ------------------------------------------------------- */
+
+ const totalY=
+  baseY+
+  visible.length*rowH+
+  10;
+
+ const buy=num(
+  fp.buyVolume ??
+  fp.askVolume
+ );
+
+ const sell=num(
+  fp.sellVolume ??
+  fp.bidVolume
+ );
+
+ const delta=num(
+  fp.delta ??
+  buy-sell
+ );
+
+ ctx.font="bold 7px Tahoma";
+ ctx.textAlign="center";
+
+ ctx.fillStyle="#35e58a";
+
+ ctx.fillText(
+  `A ${fmt(buy,1)}`,
+  boxX+overlayW*.18,
+  totalY
+ );
+
+ ctx.fillStyle="#ff6675";
+
+ ctx.fillText(
+  `B ${fmt(sell,1)}`,
+  boxX+overlayW*.38,
+  totalY
+ );
+
+ ctx.fillStyle=
+  delta>=0
+   ?" #35e58a".trim()
+   :"#ff6675";
+
+ ctx.fillText(
+  `Δ ${signed(delta)}`,
+  boxX+overlayW*.60,
+  totalY
+ );
+
+ ctx.fillStyle="#6fa8ff";
+
+ ctx.fillText(
+  `V ${fmt(
+   fp.flowVolume ??
+   fp.volume ??
+   buy+sell,
+   1
+  )}`,
+  boxX+overlayW*.82,
+  totalY
+ );
+
+
+ /*
+  خط اتصال Footprint به کندل
+ */
+ ctx.strokeStyle="rgba(255,209,102,.65)";
+ ctx.lineWidth=1;
+
+ ctx.setLineDash([3,3]);
+
+ ctx.beginPath();
+
+ ctx.moveTo(
+  x,
+  (
+   candleHighY+
+   candleLowY
+  )/2
+ );
+
+ const connectorX=
+  x<boxX
+   ?boxX
+   :boxX+overlayW;
+
+ ctx.lineTo(
+  connectorX,
+  (
+   candleHighY+
+   candleLowY
+  )/2
+ );
+
+ ctx.stroke();
+
+ ctx.setLineDash([]);
+
+ ctx.restore();
+
+ ctx.textAlign="left";
+}
+
+
+/* =========================================================
+   CANVAS ROUND RECT
+========================================================= */
+
+function roundRect(
+ context,
+ x,
+ y,
+ width,
+ height,
+ radius
+){
+
+ const r=Math.min(
+  radius,
+  width/2,
+  height/2
+ );
+
+ context.beginPath();
+
+ context.moveTo(
+  x+r,
+  y
+ );
+
+ context.arcTo(
+  x+width,
+  y,
+  x+width,
+  y+height,
+  r
+ );
+
+ context.arcTo(
+  x+width,
+  y+height,
+  x,
+  y+height,
+  r
+ );
+
+ context.arcTo(
+  x,
+  y+height,
+  x,
+  y,
+  r
+ );
+
+ context.arcTo(
+  x,
+  y,
+  x+width,
+  y,
+  r
+ );
+
+ context.closePath();
+}
+
+
+/* =========================================================
    MAIN CHART
 ========================================================= */
 
 function drawChart(){
 
- const r=canvas.getBoundingClientRect();
+ const r=
+  canvas.getBoundingClientRect();
 
  const w=r.width;
  const h=r.height;
@@ -1786,7 +2602,8 @@ function drawChart(){
   h
  );
 
- const candles=visibleCandles();
+ const candles=
+  visibleCandles();
 
  if(!candles.length){
 
@@ -1807,46 +2624,88 @@ function drawChart(){
  const top=25;
  const bottom=55;
 
- const range=priceRange(candles);
+ const range=
+  priceRange(candles);
+
+
+ /* -------------------------------------------------------
+    BACKGROUND GRID
+ ------------------------------------------------------- */
 
  drawGrid(
-  w,h,
-  left,right,
-  top,bottom,
+  w,
+  h,
+  left,
+  right,
+  top,
+  bottom,
   range
  );
+
+
+ /* -------------------------------------------------------
+    HEATMAP
+ ------------------------------------------------------- */
 
  drawHeatmap(
   candles,
-  w,h,
-  left,right,
-  top,bottom,
-  range
+  w,
+  h,
+  left,
+  right,
+  top,
+  bottom
  );
+
+
+ /* -------------------------------------------------------
+    ORDER BOOK
+ ------------------------------------------------------- */
 
  drawOrderBook(
-  w,h,
-  left,right,
-  top,bottom,
+  w,
+  h,
+  left,
+  right,
+  top,
+  bottom,
   range
  );
+
+
+ /* -------------------------------------------------------
+    LIQUIDITY
+ ------------------------------------------------------- */
 
  drawLiquidity(
-  w,h,
-  left,right,
-  top,bottom,
+  w,
+  h,
+  left,
+  right,
+  top,
+  bottom,
   range
  );
+
+
+ /* -------------------------------------------------------
+    WALLS
+ ------------------------------------------------------- */
 
  drawWalls(
-  w,h,
-  left,right,
-  top,bottom,
+  w,
+  h,
+  left,
+  right,
+  top,
+  bottom,
   range
  );
 
+
  const usable=
-  (w-left-right)/candles.length;
+  (w-left-right)/
+  candles.length;
 
  const bodyW=Math.max(
   2,
@@ -1855,6 +2714,11 @@ function drawChart(){
    usable*.62
   )
  );
+
+
+ /* -------------------------------------------------------
+    CANDLES
+ ------------------------------------------------------- */
 
  candles.forEach((c,i)=>{
 
@@ -1867,7 +2731,7 @@ function drawChart(){
   );
 
   const high=yPrice(
-   c.high,
+   num(c.high),
    range,
    h,
    top,
@@ -1875,7 +2739,7 @@ function drawChart(){
   );
 
   const low=yPrice(
-   c.low,
+   num(c.low),
    range,
    h,
    top,
@@ -1883,7 +2747,7 @@ function drawChart(){
   );
 
   const open=yPrice(
-   c.open,
+   num(c.open),
    range,
    h,
    top,
@@ -1891,17 +2755,22 @@ function drawChart(){
   );
 
   const close=yPrice(
-   c.close,
+   num(c.close),
    range,
    h,
    top,
    bottom
   );
 
+
+  /*
+   Candle
+  */
+
   if(layers.candles){
 
    ctx.strokeStyle=
-    c.close>=c.open
+    num(c.close)>=num(c.open)
      ?"rgba(53,229,138,.9)"
      :"rgba(255,102,117,.9)";
 
@@ -1909,8 +2778,15 @@ function drawChart(){
 
    ctx.beginPath();
 
-   ctx.moveTo(x,high);
-   ctx.lineTo(x,low);
+   ctx.moveTo(
+    x,
+    high
+   );
+
+   ctx.lineTo(
+    x,
+    low
+   );
 
    ctx.stroke();
 
@@ -1921,11 +2797,13 @@ function drawChart(){
 
    const bh=Math.max(
     1,
-    Math.abs(close-open)
+    Math.abs(
+     close-open
+    )
    );
 
    ctx.fillStyle=
-    c.close>=c.open
+    num(c.close)>=num(c.open)
      ?"rgba(53,229,138,.85)"
      :"rgba(255,102,117,.85)";
 
@@ -1937,32 +2815,59 @@ function drawChart(){
    );
   }
 
-  drawCandleStats(
-   c,
-   x,
-   usable,
-   range,
-   h,
-   top,
-   bottom
-  );
+
+  /*
+   آمار کندل‌های معمولی
+   برای کندل انتخاب‌شده بعداً Footprint
+   روی آن قرار می‌گیرد.
+  */
+
+  if(
+   selectedIndex!==
+   viewStart+i
+  ){
+
+   drawCandleStats(
+    c,
+    x,
+    range,
+    h,
+    top,
+    bottom
+   );
+  }
+
 
   const absoluteIndex=
    viewStart+i;
 
+
+  /*
+   Selected candle
+  */
+
   if(
-   absoluteIndex===selectedIndex
+   absoluteIndex===
+   selectedIndex
   ){
+
+   /*
+    محدوده انتخاب
+   */
 
    ctx.strokeStyle="#ffd166";
    ctx.lineWidth=2;
 
    ctx.strokeRect(
-    x-bodyW*.9,
-    high-7,
-    bodyW*1.8,
-    low-high+14
+    x-bodyW*.95,
+    high-8,
+    bodyW*1.9,
+    low-high+16
    );
+
+   /*
+    نقطه انتخاب
+   */
 
    ctx.fillStyle="#ffd166";
 
@@ -1979,10 +2884,16 @@ function drawChart(){
    ctx.fill();
   }
 
+
+  /*
+   Absorption
+  */
+
   if(
    layers.absorption&&
    data?.absorption?.detected&&
-   absoluteIndex===candles.length-1
+   absoluteIndex===
+   candles.length-1
   ){
 
    ctx.fillStyle="#ffd166";
@@ -2001,38 +2912,70 @@ function drawChart(){
   }
  });
 
+
+ /* -------------------------------------------------------
+    BLOCKS
+ ------------------------------------------------------- */
+
  drawBlocks(
-  w,h,
-  left,right,
-  top,bottom,
+  w,
+  h,
+  left,
+  right,
+  top,
+  bottom,
   range
  );
+
+
+ /* -------------------------------------------------------
+    SWEEP
+ ------------------------------------------------------- */
 
  if(
   layers.sweep&&
   data?.sweep?.detected
  ){
 
-  const y=yPrice(
-   data.sweep.price,
-   range,
-   h,
-   top,
-   bottom
+  const sweepPrice=num(
+   data.sweep.price
   );
 
-  ctx.strokeStyle="#ffd166";
-  ctx.setLineDash([3,3]);
+  if(sweepPrice){
 
-  ctx.beginPath();
+   const y=yPrice(
+    sweepPrice,
+    range,
+    h,
+    top,
+    bottom
+   );
 
-  ctx.moveTo(left,y);
-  ctx.lineTo(w-right,y);
+   ctx.strokeStyle="#ffd166";
+   ctx.setLineDash([3,3]);
 
-  ctx.stroke();
+   ctx.beginPath();
 
-  ctx.setLineDash([]);
+   ctx.moveTo(
+    left,
+    y
+   );
+
+   ctx.lineTo(
+    w-right,
+    y
+   );
+
+   ctx.stroke();
+
+   ctx.setLineDash([]);
+  }
  }
+
+
+ /* -------------------------------------------------------
+    TIME LABELS
+ ------------------------------------------------------- */
 
  ctx.fillStyle="#708494";
  ctx.font="9px Tahoma";
@@ -2043,7 +2986,9 @@ function drawChart(){
    i%
    Math.max(
     1,
-    Math.floor(candles.length/7)
+    Math.floor(
+     candles.length/7
+    )
    )!==0
   )
    return;
@@ -2063,6 +3008,97 @@ function drawChart(){
   );
  });
 
+
+ /* -------------------------------------------------------
+    SELECTED FOOTPRINT
+ ------------------------------------------------------- */
+
+ if(selectedIndex>=0){
+
+  const relative=
+   selectedIndex-
+   viewStart;
+
+  if(
+   relative>=0&&
+   relative<candles.length
+  ){
+
+   const c=
+    candles[relative];
+
+   const fp=
+    getFootprint(
+     selectedIndex
+    );
+
+   if(fp&&
+      Array.isArray(fp.levels)&&
+      fp.levels.length){
+
+    const x=xCandle(
+     relative,
+     candles.length,
+     w,
+     left,
+     right
+    );
+
+    const high=yPrice(
+     num(c.high),
+     range,
+     h,
+     top,
+     bottom
+    );
+
+    const low=yPrice(
+     num(c.low),
+     range,
+     h,
+     top,
+     bottom
+    );
+
+    const open=yPrice(
+     num(c.open),
+     range,
+     h,
+     top,
+     bottom
+    );
+
+    const close=yPrice(
+     num(c.close),
+     range,
+     h,
+     top,
+     bottom
+    );
+
+    drawSelectedFootprint(
+     fp,
+     x,
+     high,
+     low,
+     open,
+     close,
+     w,
+     h,
+     left,
+     right,
+     top,
+     bottom
+    );
+   }
+  }
+ }
+
+
+ /* -------------------------------------------------------
+    CROSSHAIR
+ ------------------------------------------------------- */
+
  if(crosshair){
 
   const x=crosshair.x;
@@ -2075,15 +3111,29 @@ function drawChart(){
 
   ctx.beginPath();
 
-  ctx.moveTo(x,top);
-  ctx.lineTo(x,h-bottom);
+  ctx.moveTo(
+   x,
+   top
+  );
+
+  ctx.lineTo(
+   x,
+   h-bottom
+  );
 
   ctx.stroke();
 
   ctx.beginPath();
 
-  ctx.moveTo(left,y);
-  ctx.lineTo(w-right,y);
+  ctx.moveTo(
+   left,
+   y
+  );
+
+  ctx.lineTo(
+   w-right,
+   y
+  );
 
   ctx.stroke();
 
@@ -2093,12 +3143,13 @@ function drawChart(){
 
 
 /* =========================================================
-   POINTER
+   POINTER INDEX
 ========================================================= */
 
 function pointerIndex(clientX){
 
- const r=canvas.getBoundingClientRect();
+ const r=
+  canvas.getBoundingClientRect();
 
  const left=55;
  const right=70;
@@ -2111,6 +3162,9 @@ function pointerIndex(clientX){
  const usable=
   r.width-left-right;
 
+ if(usable<=0)
+  return -1;
+
  let i=Math.floor(
   (clientX-r.left-left)/
   usable*
@@ -2120,7 +3174,10 @@ function pointerIndex(clientX){
  i=clamp(
   i,
   0,
-  Math.max(0,viewCount-1)
+  Math.max(
+   0,
+   viewCount-1
+  )
  );
 
  return clamp(
@@ -2129,6 +3186,11 @@ function pointerIndex(clientX){
   candles.length-1
  );
 }
+
+
+/* =========================================================
+   SELECT
+========================================================= */
 
 function selectIndex(i){
 
@@ -2143,10 +3205,65 @@ function selectIndex(i){
   candles.length-1
  );
 
- renderSelectedFootprint();
+ updateFootprintStatus();
 
  drawChart();
 }
+
+
+function updateFootprintStatus(){
+
+ const el=
+  document.getElementById(
+   "fpStatus"
+  );
+
+ if(selectedIndex<0){
+
+  el.textContent=
+   "هیچ کندلی انتخاب نشده";
+
+  return;
+ }
+
+ const candles=
+  getCandles();
+
+ const c=
+  candles[selectedIndex];
+
+ if(!c){
+
+  el.textContent=
+   "هیچ کندلی انتخاب نشده";
+
+  return;
+ }
+
+ const fp=
+  getFootprint(
+   selectedIndex
+  );
+
+ if(!fp){
+
+  el.textContent=
+   `${timeText(c.time)} · ${interval}m · داده Footprint موجود نیست`;
+
+  return;
+ }
+
+ const levels=
+  fp.levels?.length||0;
+
+ el.textContent=
+  `${timeText(c.time)} · ${interval}m · ${levels} Levels · ${fp.source}`;
+}
+
+
+/* =========================================================
+   ZOOM
+========================================================= */
 
 function zoomAt(
  clientX,
@@ -2158,7 +3275,8 @@ function zoomAt(
  if(!candles.length)
   return;
 
- const r=canvas.getBoundingClientRect();
+ const r=
+  canvas.getBoundingClientRect();
 
  const left=55;
  const right=70;
@@ -2175,8 +3293,10 @@ function zoomAt(
   ratio*viewCount;
 
  const next=clamp(
-  Math.round(viewCount*factor),
-  12,
+  Math.round(
+   viewCount*factor
+  ),
+  8,
   candles.length
  );
 
@@ -2194,7 +3314,7 @@ function zoomAt(
 
 
 /* =========================================================
-   TOUCH / MOUSE
+   POINTER DOWN
 ========================================================= */
 
 canvas.addEventListener(
@@ -2243,6 +3363,11 @@ canvas.addEventListener(
  }
 );
 
+
+/* =========================================================
+   POINTER MOVE
+========================================================= */
+
 canvas.addEventListener(
  "pointermove",
  e=>{
@@ -2265,6 +3390,7 @@ canvas.addEventListener(
    x:e.clientX-r.left,
    y:e.clientY-r.top
   };
+
 
   if(
    pointers.size===2&&
@@ -2295,11 +3421,12 @@ canvas.addEventListener(
 
     viewCount=clamp(
      Math.round(
-      pinchStart.count*factor
+      pinchStart.count*
+      factor
      ),
-     12,
+     8,
      Math.max(
-      12,
+      8,
       getCandles().length
      )
     );
@@ -2311,6 +3438,7 @@ canvas.addEventListener(
 
    return;
   }
+
 
   if(
    pointers.size===1&&
@@ -2329,7 +3457,10 @@ canvas.addEventListener(
 
    const pxPerCandle=
     (r.width-125)/
-    Math.max(1,viewCount);
+    Math.max(
+     1,
+     viewCount
+    );
 
    if(Math.abs(dx)>2){
 
@@ -2347,10 +3478,17 @@ canvas.addEventListener(
  }
 );
 
+
+/* =========================================================
+   POINTER END
+========================================================= */
+
 function pointerEnd(e){
 
  const start=
-  pointers.get(e.pointerId);
+  pointers.get(
+   e.pointerId
+  );
 
  pointers.delete(
   e.pointerId
@@ -2359,6 +3497,7 @@ function pointerEnd(e){
  if(pointers.size<2)
   pinchStart=null;
 
+
  if(
   start&&
   pointers.size===0&&
@@ -2366,6 +3505,10 @@ function pointerEnd(e){
  ){
 
   const now=Date.now();
+
+  /*
+   Double tap
+  */
 
   if(
    now-lastTap<320
@@ -2395,15 +3538,18 @@ function pointerEnd(e){
  dragStart=null;
 }
 
+
 canvas.addEventListener(
  "pointerup",
  pointerEnd
 );
 
+
 canvas.addEventListener(
  "pointercancel",
  pointerEnd
 );
+
 
 canvas.addEventListener(
  "pointerleave",
@@ -2414,6 +3560,11 @@ canvas.addEventListener(
   drawChart();
  }
 );
+
+
+/* =========================================================
+   WHEEL
+========================================================= */
 
 canvas.addEventListener(
  "wheel",
@@ -2435,416 +3586,6 @@ canvas.addEventListener(
 
 
 /* =========================================================
-   FOOTPRINT RENDER
-========================================================= */
-
-function renderSelectedFootprint(){
-
- const fp=
-  getFootprint(
-   selectedIndex
-  );
-
- const bid=
-  document.getElementById(
-   "fpBid"
-  );
-
- const ask=
-  document.getElementById(
-   "fpAsk"
-  );
-
- bid.innerHTML="";
- ask.innerHTML="";
-
- if(!fp){
-
-  document.getElementById(
-   "fpTime"
-  ).textContent="—";
-
-  document.getElementById(
-   "fpVolume"
-  ).textContent="0";
-
-  document.getElementById(
-   "fpBuy"
-  ).textContent="0";
-
-  document.getElementById(
-   "fpSell"
-  ).textContent="0";
-
-  document.getElementById(
-   "fpDelta"
-  ).textContent="0";
-
-  document.getElementById(
-   "fpLevels"
-  ).textContent="0";
-
-  document.getElementById(
-   "fpSource"
-  ).textContent=
-   "اطلاعات معاملاتی برای این کندل موجود نیست";
-
-  document.getElementById(
-   "fpCandle"
-  ).innerHTML=
-   `<div class="no-data">
-    اطلاعات Footprint برای این کندل موجود نیست
-   </div>`;
-
-  return;
- }
-
- document.getElementById(
-  "fpTime"
- ).textContent=
-  `${timeText(fp.time)} · ${interval}m`;
-
- const buy=num(
-  fp.buyVolume ??
-  fp.askVolume
- );
-
- const sell=num(
-  fp.sellVolume ??
-  fp.bidVolume
- );
-
- const volume=num(
-  fp.flowVolume ??
-  fp.volume ??
-  buy+sell
- );
-
- const delta=
-  num(
-   fp.delta ??
-   buy-sell
-  );
-
- document.getElementById(
-  "fpVolume"
- ).textContent=
-  fmt(volume,2);
-
- document.getElementById(
-  "fpBuy"
- ).textContent=
-  fmt(buy,2);
-
- document.getElementById(
-  "fpSell"
- ).textContent=
-  fmt(sell,2);
-
- const deltaEl=
-  document.getElementById(
-   "fpDelta"
-  );
-
- deltaEl.textContent=
-  signed(delta);
-
- deltaEl.className=
-  delta>=0
-   ?"green"
-   :"red";
-
- const levels=
-  Array.isArray(fp.levels)
-   ?fp.levels
-   :[];
-
- document.getElementById(
-  "fpLevels"
- ).textContent=
-  levels.length;
-
- document.getElementById(
-  "fpSource"
- ).textContent=
-  fp.source==="REAL TRADES"
-   ?"🟢 ساخته‌شده از معاملات واقعی Bybit همین کندل"
-   :"🔵 Footprint دریافت‌شده از Worker";
-
- if(!levels.length){
-
-  bid.innerHTML=
-   `<div class="no-data">
-    برای این کندل سطح قیمتی Footprint پیدا نشد
-   </div>`;
-
-  ask.innerHTML=
-   `<div class="no-data">
-    برای این کندل سطح قیمتی Footprint پیدا نشد
-   </div>`;
-
- }else{
-
-  const sorted=
-   [...levels]
-   .sort(
-    (a,b)=>
-     num(b.price)-
-     num(a.price)
-   );
-
-  const head=`
-   <div class="fp-head">
-    <span>Price</span>
-    <span>Bid / Sell</span>
-    <span>Ask / Buy</span>
-    <span>Delta</span>
-   </div>
-  `;
-
-  bid.innerHTML=head;
-  ask.innerHTML=head;
-
-  for(const l of sorted){
-
-   const price=num(l.price);
-
-   const bv=num(
-    l.bidVolume
-   );
-
-   const av=num(
-    l.askVolume
-   );
-
-   const d=num(
-    l.delta ??
-    av-bv
-   );
-
-   const row=
-    document.createElement(
-     "div"
-    );
-
-   row.className=
-    "level "+
-    (
-     d>0
-      ?"buy-heavy"
-      :d<0
-       ?"sell-heavy"
-       :""
-    );
-
-   row.innerHTML=`
-    <span class="level-price">
-     ${priceFmt(price)}
-    </span>
-
-    <span class="level-bid">
-     ${fmt(bv,2)}
-    </span>
-
-    <span class="level-ask">
-     ${fmt(av,2)}
-    </span>
-
-    <span class="level-delta ${
-     d>=0?"green":"red"
-    }">
-     ${signed(d)}
-    </span>
-   `;
-
-   bid.appendChild(
-    row.cloneNode(true)
-   );
-
-   ask.appendChild(
-    row
-   );
-  }
- }
-
- renderFootprintCandle(fp);
-}
-
-
-/* =========================================================
-   FOOTPRINT CANDLE
-========================================================= */
-
-function renderFootprintCandle(fp){
-
- const box=
-  document.getElementById(
-   "fpCandle"
-  );
-
- box.innerHTML="";
-
- if(
-  fp.open==null||
-  fp.close==null||
-  fp.high==null||
-  fp.low==null
- ){
-
-  box.innerHTML=
-   `<div class="no-data">
-    OHLC این کندل موجود نیست
-   </div>`;
-
-  return;
- }
-
- const high=num(fp.high);
- const low=num(fp.low);
- const open=num(fp.open);
- const close=num(fp.close);
-
- const range=
-  high-low||1;
-
- const top=30;
- const height=185;
-
- function py(price){
-
-  return top+
-   (high-price)/
-   range*
-   height;
- }
-
- for(let i=0;i<=4;i++){
-
-  const price=
-   high-
-   range*i/4;
-
-  const line=
-   document.createElement(
-    "div"
-   );
-
-  line.className=
-   "fp-axis";
-
-  line.style.top=
-   py(price)+"px";
-
-  box.appendChild(line);
-
-  const label=
-   document.createElement(
-    "div"
-   );
-
-  label.className=
-   "fp-price-label";
-
-  label.style.top=
-   (py(price)-4)+"px";
-
-  label.textContent=
-   priceFmt(price);
-
-  box.appendChild(label);
- }
-
- const title=
-  document.createElement(
-   "div"
-  );
-
- title.className=
-  "candlebox-title";
-
- title.textContent=
-  "OHLC / Footprint";
-
- box.appendChild(title);
-
- const wick=
-  document.createElement(
-   "div"
-  );
-
- wick.className=
-  "fp-wick";
-
- wick.style.top=
-  py(high)+"px";
-
- wick.style.height=
-  Math.max(
-   2,
-   py(low)-py(high)
-  )+"px";
-
- box.appendChild(wick);
-
- const body=
-  document.createElement(
-   "div"
-  );
-
- body.className=
-  "fp-body";
-
- body.style.top=
-  Math.min(
-   py(open),
-   py(close)
-  )+"px";
-
- body.style.height=
-  Math.max(
-   4,
-   Math.abs(
-    py(open)-
-    py(close)
-   )
-  )+"px";
-
- body.style.background=
-  close>=open
-   ?"rgba(53,229,138,.85)"
-   :"rgba(255,102,117,.85)";
-
- box.appendChild(body);
-
- const openMark=
-  document.createElement(
-   "div"
-  );
-
- openMark.className=
-  "fp-open-mark";
-
- openMark.style.top=
-  py(open)+"px";
-
- box.appendChild(openMark);
-
- const closeMark=
-  document.createElement(
-   "div"
-  );
-
- closeMark.className=
-  "fp-close-mark";
-
- closeMark.style.top=
-  py(close)+"px";
-
- box.appendChild(closeMark);
-}
-
-
-/* =========================================================
    CARDS
 ========================================================= */
 
@@ -2854,21 +3595,29 @@ function updateCards(){
   return;
 
  const ticker=
-  data.ticker||{};
+  data.ticker||
+  data.data?.ticker||
+  {};
 
  const flow=
   data.currentFlow||
   data.flow||
+  data.data?.currentFlow||
   {};
 
  const wall=
-  data.wall||{};
+  data.wall||
+  data.data?.wall||
+  {};
 
  const absorption=
-  data.absorption||{};
+  data.absorption||
+  data.data?.absorption||
+  {};
 
  const score=num(
-  data.score
+  data.score ??
+  data.data?.score
  );
 
  document.getElementById(
@@ -2876,24 +3625,36 @@ function updateCards(){
  ).textContent=
   priceFmt(
    ticker.lastPrice||
-   data.price
+   data.price||
+   data.data?.price
   );
+
 
  document.getElementById(
   "buy"
  ).textContent=
   fmt(
-   flow.buyVolume,
+   flow.buyVolume ??
+   flow.askVolume,
    2
   );
+
 
  document.getElementById(
   "sell"
  ).textContent=
   fmt(
-   flow.sellVolume,
+   flow.sellVolume ??
+   flow.bidVolume,
    2
   );
+
+
+ const flowDelta=num(
+  flow.delta ??
+  num(flow.buyVolume)-
+  num(flow.sellVolume)
+ );
 
  const d=
   document.getElementById(
@@ -2901,28 +3662,33 @@ function updateCards(){
   );
 
  d.textContent=
-  signed(flow.delta);
+  signed(flowDelta);
 
  d.className=
-  flow.delta>=0
+  flowDelta>=0
    ?"green"
    :"red";
+
 
  document.getElementById(
   "bidBook"
  ).textContent=
   fmt(
-   wall.buyLiquidity,
+   wall.buyLiquidity ??
+   wall.bidLiquidity,
    0
   );
+
 
  document.getElementById(
   "askBook"
  ).textContent=
   fmt(
-   wall.sellLiquidity,
+   wall.sellLiquidity ??
+   wall.askLiquidity,
    0
   );
+
 
  const a=
   document.getElementById(
@@ -2947,20 +3713,24 @@ function updateCards(){
   a.className="yellow";
  }
 
+
  const s=
   document.getElementById(
    "signal"
   );
 
+ const signal=
+  data.signal||
+  data.data?.signal||
+  "WAIT";
+
  s.textContent=
-  `${score} / ${
-   data.signal||"WAIT"
-  }`;
+  `${score} / ${signal}`;
 
  s.className=
-  data.signal==="BUY"
+  signal==="BUY"
    ?"green"
-   :data.signal==="SELL"
+   :signal==="SELL"
     ?"red"
     :"yellow";
 }
@@ -2999,13 +3769,9 @@ function renderTrades(){
 
   tr.innerHTML=`
    <td>${timeText(t.time)}</td>
-
    <td>${priceFmt(t.price)}</td>
-
    <td>${fmt(t.size,4)}</td>
-
    <td>${fmt(t.value,2)}</td>
-
    <td class="${
     buy?"green":"red"
    }">
@@ -3019,7 +3785,7 @@ function renderTrades(){
 
 
 /* =========================================================
-   MERGE
+   MERGE RESULT
 ========================================================= */
 
 function mergeResult(result){
@@ -3044,7 +3810,7 @@ function mergeResult(result){
 
  renderTrades();
 
- renderSelectedFootprint();
+ updateFootprintStatus();
 
  drawChart();
 }
@@ -3078,6 +3844,7 @@ async function loadAnalysis(){
  ).textContent=
   "🟡 در حال دریافت داده...";
 
+
  try{
 
   const r=
@@ -3099,18 +3866,50 @@ async function loadAnalysis(){
     "خطا در دریافت داده"
    );
 
-  mergeResult(result);
+  /*
+   قبل از جایگزینی داده، زمان کندل انتخاب‌شده
+   را نگه می‌داریم.
+  */
+
+  const oldCandles=
+   getCandles();
+
+  const oldTime=
+   oldCandles[
+    selectedIndex
+   ]?.time;
+
+  data=result;
 
   const candles=
    getCandles();
 
-  selectedIndex=
-   candles.length-1;
+  if(oldTime){
+
+   const found=
+    candles.findIndex(c=>
+     String(c.time)===
+     String(oldTime)
+    );
+
+   selectedIndex=
+    found>=0
+     ?found
+     :candles.length-1;
+
+  }else{
+
+   selectedIndex=
+    candles.length-1;
+  }
 
   viewCount=
    Math.min(
     70,
-    candles.length
+    Math.max(
+     8,
+     candles.length
+    )
    );
 
   viewStart=
@@ -3119,9 +3918,16 @@ async function loadAnalysis(){
     candles.length-viewCount
    );
 
-  renderSelectedFootprint();
+  clampView();
+
+  updateCards();
+
+  renderTrades();
+
+  updateFootprintStatus();
 
   drawChart();
+
 
   document.getElementById(
    "status"
@@ -3165,47 +3971,64 @@ async function loadLive(){
   const result=
    await r.json();
 
-  if(result.ok){
+  if(!result.ok)
+   return;
 
-   const oldSelected=
-    selectedIndex;
 
-   const oldTime=
-    getCandles()[
-     oldSelected
-    ]?.time;
+  /*
+   زمان کندل انتخاب‌شده را نگه می‌داریم
+  */
 
-   mergeResult(result);
+  const oldCandles=
+   getCandles();
 
-   const candles=
-    getCandles();
+  const oldTime=
+   oldCandles[
+    selectedIndex
+   ]?.time;
 
-   if(oldTime){
 
-    const same=
-     candles.findIndex(
-      c=>String(c.time)===
-         String(oldTime)
+  data=result;
+
+
+  const candles=
+   getCandles();
+
+
+  if(oldTime){
+
+   const same=
+    candles.findIndex(
+     c=>
+      String(c.time)===
+      String(oldTime)
     );
 
-    selectedIndex=
-     same>=0
-      ?same
-      :candles.length-1;
+   selectedIndex=
+    same>=0
+     ?same
+     :candles.length-1;
 
-   }else{
+  }else{
 
-    selectedIndex=
-     candles.length-1;
-   }
-
-   renderSelectedFootprint();
-
-   drawChart();
+   selectedIndex=
+    candles.length-1;
   }
+
+
+  clampView();
+
+  updateCards();
+
+  renderTrades();
+
+  updateFootprintStatus();
+
+  drawChart();
 
  }catch{}
 }
+
 
 function startLive(){
 
@@ -3219,6 +4042,7 @@ function startLive(){
    3000
   );
 }
+
 
 function stopLive(){
 
@@ -3267,6 +4091,7 @@ async function scanOnce(){
 
   box.innerHTML="";
 
+
   for(
    const item of
    x.results||[]
@@ -3277,8 +4102,7 @@ async function scanOnce(){
      "div"
     );
 
-   div.className=
-    "result";
+   div.className="result";
 
    div.innerHTML=`
     <b>${item.symbol}</b>
@@ -3310,6 +4134,7 @@ async function scanOnce(){
     </div>
    `;
 
+
    div.onclick=()=>{
 
     document.getElementById(
@@ -3320,11 +4145,13 @@ async function scanOnce(){
     loadAnalysis();
    };
 
+
    box.appendChild(div);
   }
 
  }catch{}
 }
+
 
 function startScan(){
 
@@ -3345,6 +4172,7 @@ function startScan(){
    8000
   );
 }
+
 
 function stopScan(){
 
@@ -3391,6 +4219,8 @@ document
 
    selectedIndex=-1;
 
+   updateFootprintStatus();
+
    await loadAnalysis();
 
    startLive();
@@ -3411,12 +4241,14 @@ document.getElementById(
  startLive();
 };
 
+
 document.getElementById(
  "liveBtn"
 ).onclick=()=>{
 
  startLive();
 };
+
 
 document.getElementById(
  "stopBtn"
@@ -3425,10 +4257,12 @@ document.getElementById(
  stopLive();
 };
 
+
 document.getElementById(
  "scanStart"
 ).onclick=
  startScan;
+
 
 document.getElementById(
  "scanStop"
@@ -3524,6 +4358,7 @@ document.getElementById(
   );
  }
 };
+
 
 document.addEventListener(
  "fullscreenchange",
