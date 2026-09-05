@@ -1,6 +1,6 @@
 const BYBIT = "https://api.bybit.com";
-const VERSION = "ABSORPTION-ZONE-SCANNER-V4-FIX";
 
+const VERSION = "ABSORPTION-ZONE-SCANNER-V5";
 const DEFAULT_SYMBOL = "BTCUSDT";
 const DEFAULT_CATEGORY = "linear";
 const DEFAULT_INTERVAL = "1";
@@ -9,42 +9,34 @@ const KLINE_LIMIT = 200;
 const TRADE_LIMIT = 1000;
 const ORDERBOOK_LIMIT = 50;
 
-function json(data, status = 200) {
+const JSON_HEADERS = {
+  "content-type": "application/json; charset=utf-8",
+  "cache-control": "no-store, no-cache, must-revalidate, max-age=0",
+  "pragma": "no-cache",
+  "x-scanner-version": VERSION
+};
+
+function json(data, status = 200, extra = {}) {
   return new Response(JSON.stringify(data), {
     status,
     headers: {
-      "content-type": "application/json; charset=UTF-8",
-      "cache-control": "no-store, no-cache, must-revalidate, max-age=0",
-      "pragma": "no-cache",
-      "expires": "0",
-      "x-scanner-version": VERSION
+      ...JSON_HEADERS,
+      ...extra
     }
   });
 }
 
-function err(message, status = 500) {
-  return json({
-    ok: false,
-    error: String(message || "Unknown error"),
-    version: VERSION
-  }, status);
-}
-
 function normalizeSymbol(value) {
-  let s = String(value || "")
+  let s = String(value || DEFAULT_SYMBOL)
     .trim()
     .toUpperCase()
     .replace(/[^A-Z0-9]/g, "");
 
-  if (!s || s === "USDT" || s === "BUSDT") {
-    return "BTCUSDT";
+  if (!s || s === "BUSDT" || s === "USDT") {
+    s = DEFAULT_SYMBOL;
   }
 
-  if (s === "BTC") {
-    return "BTCUSDT";
-  }
-
-  if (!s.endsWith("USDT")) {
+  if (!s.endsWith("USDT") && /^[A-Z0-9]+$/.test(s)) {
     s += "USDT";
   }
 
@@ -52,40 +44,50 @@ function normalizeSymbol(value) {
 }
 
 function normalizeCategory(value) {
-  const s = String(value || "").toLowerCase();
+  const v = String(value || DEFAULT_CATEGORY).toLowerCase();
 
-  if (s === "spot") {
-    return "spot";
+  if (v === "spot") return "spot";
+  if (v === "linear" || v === "futures" || v === "future") {
+    return "linear";
   }
 
-  return "linear";
+  return DEFAULT_CATEGORY;
 }
 
 function normalizeInterval(value) {
-  const allowed = [
-    "1",
-    "3",
-    "5",
-    "15",
-    "30",
-    "60"
-  ];
+  const allowed = ["1", "3", "5", "15", "30", "60", "120", "240", "360", "720", "D"];
 
-  const s = String(value || "1");
+  const v = String(value || DEFAULT_INTERVAL);
 
-  return allowed.includes(s)
-    ? s
-    : "1";
+  return allowed.includes(v) ? v : DEFAULT_INTERVAL;
 }
 
-function num(v, fallback = 0) {
-  const n = Number(v);
-  return Number.isFinite(n) ? n : fallback;
+function n(value, fallback = 0) {
+  const x = Number(value);
+  return Number.isFinite(x) ? x : fallback;
+}
+
+function median(values) {
+  const a = values
+    .map(Number)
+    .filter(Number.isFinite)
+    .sort((x, y) => x - y);
+
+  if (!a.length) return 0;
+
+  const m = Math.floor(a.length / 2);
+
+  return a.length % 2
+    ? a[m]
+    : (a[m - 1] + a[m]) / 2;
+}
+
+function sum(values) {
+  return values.reduce((a, b) => a + n(b), 0);
 }
 
 async function bybit(path, params = {}) {
-
-  const u = new URL(BYBIT + path);
+  const qs = new URLSearchParams();
 
   for (const [key, value] of Object.entries(params)) {
     if (
@@ -93,44 +95,42 @@ async function bybit(path, params = {}) {
       value !== null &&
       value !== ""
     ) {
-      u.searchParams.set(key, String(value));
+      qs.set(key, String(value));
     }
   }
+
+  const url = `${BYBIT}${path}?${qs.toString()}`;
 
   let response;
 
   try {
-    response = await fetch(u.toString(), {
+    response = await fetch(url, {
       method: "GET",
       headers: {
-        "Accept": "application/json"
+        accept: "application/json"
       },
-      signal: AbortSignal.timeout(15000)
+      cf: {
+        cacheTtl: 0,
+        cacheEverything: false
+      }
     });
   } catch (e) {
-    throw new Error(
-      "اتصال به Bybit برقرار نشد: " +
-      (e?.message || "network error")
-    );
+    throw new Error(`Bybit connection failed: ${e.message}`);
   }
 
   const text = await response.text();
 
   if (!text || !text.trim()) {
-    throw new Error(
-      "Bybit پاسخ خالی برگرداند. HTTP " +
-      response.status
-    );
+    throw new Error(`Bybit returned an empty response (${response.status})`);
   }
 
   let data;
 
   try {
     data = JSON.parse(text);
-  } catch (e) {
+  } catch {
     throw new Error(
-      "Bybit پاسخ JSON معتبر برنگرداند. HTTP " +
-      response.status
+      `Bybit returned invalid JSON (${response.status})`
     );
   }
 
@@ -141,962 +141,884 @@ async function bybit(path, params = {}) {
     );
   }
 
-  if (data.retCode !== 0) {
+  if (n(data.retCode, -1) !== 0) {
     throw new Error(
-      data.retMsg ||
-      `Bybit error ${data.retCode}`
+      data?.retMsg ||
+      `Bybit error ${data?.retCode}`
     );
   }
 
   return data;
 }
 
-async function getKlines(
-  category,
-  symbol,
-  interval
-) {
+async function getKlines(category, symbol, interval, limit = KLINE_LIMIT) {
+  const data = await bybit("/v5/market/kline", {
+    category,
+    symbol,
+    interval,
+    limit
+  });
 
-  const data = await bybit(
-    "/v5/market/kline",
-    {
-      category,
-      symbol,
-      interval,
-      limit: KLINE_LIMIT
-    }
-  );
-
-  const rows =
-    data?.result?.list || [];
+  const rows = Array.isArray(data?.result?.list)
+    ? data.result.list
+    : [];
 
   return rows
-    .map(x => ({
-      time: num(x[0]),
-      open: num(x[1]),
-      high: num(x[2]),
-      low: num(x[3]),
-      close: num(x[4]),
-      volume: num(x[5]),
-      turnover: num(x[6])
+    .map(row => ({
+      time: n(row[0]),
+      open: n(row[1]),
+      high: n(row[2]),
+      low: n(row[3]),
+      close: n(row[4]),
+      volume: n(row[5]),
+      turnover: n(row[6])
     }))
-    .filter(x =>
-      x.time &&
-      x.open > 0 &&
-      x.high > 0 &&
-      x.low > 0 &&
-      x.close > 0
-    )
-    .sort(
-      (a, b) =>
-        a.time - b.time
-    );
+    .filter(x => x.time > 0 && x.close > 0)
+    .sort((a, b) => a.time - b.time);
 }
 
-async function getTrades(
-  category,
-  symbol
-) {
+async function getTrades(category, symbol, limit = TRADE_LIMIT) {
+  const data = await bybit("/v5/market/recent-trade", {
+    category,
+    symbol,
+    limit
+  });
 
-  const data = await bybit(
-    "/v5/market/recent-trade",
-    {
-      category,
-      symbol,
-      limit: TRADE_LIMIT
-    }
-  );
-
-  const rows =
-    data?.result?.list || [];
+  const rows = Array.isArray(data?.result?.list)
+    ? data.result.list
+    : [];
 
   return rows
-    .map((x, i) => {
-
-      const price =
-        num(x.price);
-
-      const qty =
-        num(x.size);
-
-      const side =
-        String(x.side || "")
-          .toLowerCase() === "buy"
-          ? "buy"
-          : "sell";
+    .map(t => {
+      const side = String(t.side || "").toLowerCase();
+      const price = n(t.price);
+      const size = n(t.size);
+      const time = n(t.time);
 
       return {
-        id:
-          x.execId ||
-          `${x.time}-${i}`,
-        time:
-          num(x.time, Date.now()),
+        id: String(t.execId || t.id || `${time}-${price}-${size}`),
+        time,
         price,
-        qty,
-        side,
-        value:
-          price * qty
+        size,
+        value: price * size,
+        side: side === "buy" ? "buy" : "sell"
       };
     })
-    .filter(x =>
-      x.time &&
-      x.price > 0 &&
-      x.qty > 0
-    );
+    .filter(t => t.price > 0 && t.size > 0)
+    .sort((a, b) => a.time - b.time);
 }
 
-async function getOrderbook(
-  category,
-  symbol
-) {
+async function getOrderbook(category, symbol, limit = ORDERBOOK_LIMIT) {
+  const data = await bybit("/v5/market/orderbook", {
+    category,
+    symbol,
+    limit
+  });
 
-  const data = await bybit(
-    "/v5/market/orderbook",
-    {
-      category,
-      symbol,
-      limit: ORDERBOOK_LIMIT
-    }
-  );
+  const result = data?.result || {};
 
-  const r =
-    data?.result || {};
+  const bids = Array.isArray(result.b)
+    ? result.b
+      .map(x => [n(x?.[0]), n(x?.[1])])
+      .filter(x => x[0] > 0 && x[1] > 0)
+  : [];
 
-  const bids =
-    (r.b || [])
-      .map(x => ({
-        price: num(x[0]),
-        qty: num(x[1])
-      }))
-      .filter(x =>
-        x.price > 0 &&
-        x.qty > 0
-      );
-
-  const asks =
-    (r.a || [])
-      .map(x => ({
-        price: num(x[0]),
-        qty: num(x[1])
-      }))
-      .filter(x =>
-        x.price > 0 &&
-        x.qty > 0
-      );
+  const asks = Array.isArray(result.a)
+    ? result.a
+      .map(x => [n(x?.[0]), n(x?.[1])])
+      .filter(x => x[0] > 0 && x[1] > 0)
+  : [];
 
   return {
-    timestamp:
-      num(r.ts, Date.now()),
-
     bids,
-
     asks,
-
-    bestBid:
-      bids[0]?.price || 0,
-
-    bestAsk:
-      asks[0]?.price || 0
+    ts: n(result.ts || Date.now()),
+    updateId: result.u ?? null,
+    seq: result.seq ?? null
   };
 }
 
-async function getTicker(
-  category,
-  symbol
-) {
-
-  const data = await bybit(
-    "/v5/market/tickers",
-    {
+async function getTicker(category, symbol) {
+  try {
+    const data = await bybit("/v5/market/tickers", {
       category,
       symbol
-    }
-  );
+    });
 
-  return (
-    data?.result?.list?.[0] ||
-    {}
-  );
-}
+    const item = data?.result?.list?.[0];
 
-function median(values) {
+    if (!item) return null;
 
-  const a =
-    values
-      .filter(Number.isFinite)
-      .sort((x, y) => x - y);
-
-  if (!a.length) {
-    return 0;
+    return {
+      symbol,
+      lastPrice: n(item.lastPrice),
+      prevPrice24h: n(item.prevPrice24h),
+      price24hPcnt: n(item.price24hPcnt),
+      high24h: n(item.highPrice24h),
+      low24h: n(item.lowPrice24h),
+      volume24h: n(item.volume24h),
+      turnover24h: n(item.turnover24h),
+      fundingRate: n(item.fundingRate),
+      openInterest: n(item.openInterest)
+    };
+  } catch {
+    return null;
   }
-
-  const m =
-    Math.floor(a.length / 2);
-
-  return a.length % 2
-    ? a[m]
-    : (a[m - 1] + a[m]) / 2;
 }
 
 function tradeStats(trades) {
+  const buy = trades.filter(t => t.side === "buy");
+  const sell = trades.filter(t => t.side === "sell");
 
-  let buyVolume = 0;
-  let sellVolume = 0;
+  const buyVolume = sum(buy.map(t => t.size));
+  const sellVolume = sum(sell.map(t => t.size));
 
-  let buyValue = 0;
-  let sellValue = 0;
+  const buyNotional = sum(buy.map(t => t.value));
+  const sellNotional = sum(sell.map(t => t.value));
 
-  let buyTrades = 0;
-  let sellTrades = 0;
+  const totalVolume = buyVolume + sellVolume;
+  const totalNotional = buyNotional + sellNotional;
 
-  const values =
-    trades
-      .map(x => x.value)
-      .filter(x => x > 0)
-      .sort((a, b) => a - b);
+  const delta = buyVolume - sellVolume;
+  const deltaNotional = buyNotional - sellNotional;
 
-  const average =
-    values.length
-      ? values.reduce(
-          (a, b) => a + b,
-          0
-        ) / values.length
-      : 0;
+  const deltaPercent = totalVolume
+    ? (delta / totalVolume) * 100
+    : 0;
 
-  const p95 =
-    values.length
-      ? values[
-          Math.floor(
-            (values.length - 1) *
-            0.95
-          )
-        ]
-      : 0;
+  const values = trades.map(t => t.value);
+  const avgNotional = values.length
+    ? sum(values) / values.length
+    : 0;
 
-  const largeThreshold =
-    Math.max(
-      average * 5,
-      p95
-    );
+  const p95Index = Math.max(
+    0,
+    Math.floor(values.length * 0.95)
+  );
 
-  let largeBuyVolume = 0;
-  let largeSellVolume = 0;
+  const sortedValues = [...values].sort((a, b) => a - b);
 
-  for (const t of trades) {
+  const p95 = sortedValues.length
+    ? sortedValues[p95Index]
+    : 0;
 
-    if (t.side === "buy") {
+  const largeThreshold = Math.max(
+    avgNotional * 5,
+    p95,
+    0
+  );
 
-      buyVolume += t.qty;
-      buyValue += t.value;
-      buyTrades++;
+  const largeBuy = buy.filter(
+    t => t.value >= largeThreshold
+  );
 
-      if (
-        t.value >=
-        largeThreshold &&
-        largeThreshold > 0
-      ) {
-        largeBuyVolume += t.qty;
-      }
+  const largeSell = sell.filter(
+    t => t.value >= largeThreshold
+  );
 
-    } else {
-
-      sellVolume += t.qty;
-      sellValue += t.value;
-      sellTrades++;
-
-      if (
-        t.value >=
-        largeThreshold &&
-        largeThreshold > 0
-      ) {
-        largeSellVolume += t.qty;
-      }
-    }
-  }
-
-  const totalVolume =
-    buyVolume + sellVolume;
-
-  const delta =
-    buyVolume - sellVolume;
-
-  const deltaPercent =
-    totalVolume > 0
-      ? delta /
-        totalVolume *
-        100
-      : 0;
-
-  let pressure =
-    "NEUTRAL";
-
-  if (deltaPercent >= 10) {
-    pressure =
-      "BUY_PRESSURE";
-  } else if (deltaPercent <= -10) {
-    pressure =
-      "SELL_PRESSURE";
-  }
+  const pressure =
+    deltaPercent >= 10
+      ? "BUY_PRESSURE"
+      : deltaPercent <= -10
+        ? "SELL_PRESSURE"
+        : "BALANCED";
 
   return {
+    trades: trades.length,
+
     buyVolume,
     sellVolume,
     totalVolume,
 
-    buyValue,
-    sellValue,
+    buyNotional,
+    sellNotional,
+    totalNotional,
 
     delta,
-
+    deltaNotional,
     deltaPercent,
 
-    buyTrades,
-    sellTrades,
+    buyTrades: buy.length,
+    sellTrades: sell.length,
 
-    largeBuyVolume,
-    largeSellVolume,
-
+    averageNotional: avgNotional,
+    p95Notional: p95,
     largeThreshold,
+
+    largeBuyVolume: sum(
+      largeBuy.map(t => t.size)
+    ),
+
+    largeSellVolume: sum(
+      largeSell.map(t => t.size)
+    ),
+
+    largeBuyNotional: sum(
+      largeBuy.map(t => t.value)
+    ),
+
+    largeSellNotional: sum(
+      largeSell.map(t => t.value)
+    ),
+
+    largeBuyTrades: largeBuy.length,
+    largeSellTrades: largeSell.length,
 
     pressure
   };
 }
 
 function orderbookStats(book) {
+  const bids = book.bids || [];
+  const asks = book.asks || [];
 
-  const bids =
-    book.bids || [];
+  const buyLiquidity = sum(
+    bids.map(([price, size]) => price * size)
+  );
 
-  const asks =
-    book.asks || [];
+  const sellLiquidity = sum(
+    asks.map(([price, size]) => price * size)
+  );
 
-  const buyLiquidity =
-    bids.reduce(
-      (s, x) =>
-        s + x.qty,
-      0
-    );
+  const totalLiquidity =
+    buyLiquidity + sellLiquidity;
 
-  const sellLiquidity =
-    asks.reduce(
-      (s, x) =>
-        s + x.qty,
-      0
-    );
+  const buyShare = totalLiquidity
+    ? buyLiquidity / totalLiquidity * 100
+    : 0;
 
-  const total =
-    buyLiquidity +
-    sellLiquidity;
+  const sellShare = totalLiquidity
+    ? sellLiquidity / totalLiquidity * 100
+    : 0;
 
-  const buyShare =
-    total
-      ? buyLiquidity /
-        total *
-        100
+  const bestBid = bids.length
+    ? Math.max(...bids.map(x => x[0]))
+    : 0;
+
+  const bestAsk = asks.length
+    ? Math.min(...asks.map(x => x[0]))
+    : 0;
+
+  const spread =
+    bestAsk > 0 && bestBid > 0
+      ? bestAsk - bestBid
       : 0;
 
-  const sellShare =
-    total
-      ? sellLiquidity /
-        total *
-        100
+  const spreadPercent =
+    bestBid > 0
+      ? spread / bestBid * 100
       : 0;
 
-  let pressure =
-    "NEUTRAL";
+  const bidMedian = median(
+    bids.map(x => x[1])
+  );
 
-  if (
-    buyShare >
-    sellShare + 8
-  ) {
-    pressure =
-      "BUY_PRESSURE";
-  }
+  const askMedian = median(
+    asks.map(x => x[1])
+  );
 
-  if (
-    sellShare >
-    buyShare + 8
-  ) {
-    pressure =
-      "SELL_PRESSURE";
-  }
+  const buyWallThreshold = bidMedian * 4;
+  const sellWallThreshold = askMedian * 4;
 
-  const bidMedian =
-    median(
-      bids.map(x => x.qty)
-    );
+  const buyWalls = bids
+    .filter(([price, size]) =>
+      size >= buyWallThreshold &&
+      buyWallThreshold > 0
+    )
+    .map(([price, size]) => ({
+      price,
+      size,
+      value: price * size
+    }))
+    .sort((a, b) => b.value - a.value);
 
-  const askMedian =
-    median(
-      asks.map(x => x.qty)
-    );
+  const sellWalls = asks
+    .filter(([price, size]) =>
+      size >= sellWallThreshold &&
+      sellWallThreshold > 0
+    )
+    .map(([price, size]) => ({
+      price,
+      size,
+      value: price * size
+    }))
+    .sort((a, b) => b.value - a.value);
 
-  const bidWalls =
-    bids.filter(x =>
-      bidMedian > 0 &&
-      x.qty >=
-      bidMedian * 4
-    );
-
-  const askWalls =
-    asks.filter(x =>
-      askMedian > 0 &&
-      x.qty >=
-      askMedian * 4
-    );
+  const pressure =
+    buyShare > sellShare + 8
+      ? "BUY_PRESSURE"
+      : sellShare > buyShare + 8
+        ? "SELL_PRESSURE"
+        : "BALANCED";
 
   return {
+    bids,
+    asks,
+
     buyLiquidity,
     sellLiquidity,
-    totalLiquidity: total,
+    totalLiquidity,
 
     buyShare,
     sellShare,
 
-    pressure,
+    bestBid,
+    bestAsk,
 
-    bidWalls,
-    askWalls,
+    spread,
+    spreadPercent,
 
-    bestBid:
-      book.bestBid,
+    buyWalls,
+    sellWalls,
 
-    bestAsk:
-      book.bestAsk,
-
-    spread:
-      book.bestAsk &&
-      book.bestBid
-        ? book.bestAsk -
-          book.bestBid
-        : 0
+    pressure
   };
 }
 
-function footprint(
-  candles,
-  trades
-) {
+function makeFootprint(trades, candles) {
+  const levels = new Map();
 
-  return candles.map(
-    (candle, index) => {
+  for (const trade of trades) {
+    const key = trade.price.toFixed(8);
 
-      const next =
-        candles[index + 1];
-
-      const end =
-        next
-          ? next.time
-          : Date.now();
-
-      const inside =
-        trades.filter(t =>
-          t.time >= candle.time &&
-          t.time < end
-        );
-
-      const levels =
-        new Map();
-
-      for (const t of inside) {
-
-        const key =
-          String(t.price);
-
-        if (!levels.has(key)) {
-
-          levels.set(
-            key,
-            {
-              price: t.price,
-              buyVolume: 0,
-              sellVolume: 0,
-              delta: 0,
-              trades: 0
-            }
-          );
-        }
-
-        const level =
-          levels.get(key);
-
-        if (t.side === "buy") {
-          level.buyVolume += t.qty;
-        } else {
-          level.sellVolume += t.qty;
-        }
-
-        level.delta =
-          level.buyVolume -
-          level.sellVolume;
-
-        level.trades++;
-      }
-
-      const stats =
-        tradeStats(inside);
-
-      return {
-        time: candle.time,
-        open: candle.open,
-        high: candle.high,
-        low: candle.low,
-        close: candle.close,
-
-        buyVolume:
-          stats.buyVolume,
-
-        sellVolume:
-          stats.sellVolume,
-
-        delta:
-          stats.delta,
-
-        deltaPercent:
-          stats.deltaPercent,
-
-        pressure:
-          stats.pressure,
-
-        levels:
-          Array.from(
-            levels.values()
-          ).sort(
-            (a, b) =>
-              b.price - a.price
-          )
-      };
+    if (!levels.has(key)) {
+      levels.set(key, {
+        price: trade.price,
+        buyVolume: 0,
+        sellVolume: 0,
+        buyValue: 0,
+        sellValue: 0,
+        buyTrades: 0,
+        sellTrades: 0
+      });
     }
+
+    const level = levels.get(key);
+
+    if (trade.side === "buy") {
+      level.buyVolume += trade.size;
+      level.buyValue += trade.value;
+      level.buyTrades++;
+    } else {
+      level.sellVolume += trade.size;
+      level.sellValue += trade.value;
+      level.sellTrades++;
+    }
+  }
+
+  const rows = [...levels.values()]
+    .map(x => ({
+      ...x,
+      delta: x.buyVolume - x.sellVolume,
+      deltaValue: x.buyValue - x.sellValue,
+      totalVolume: x.buyVolume + x.sellVolume,
+      totalValue: x.buyValue + x.sellValue
+    }))
+    .sort((a, b) => b.price - a.price);
+
+  const totalBuy = sum(
+    rows.map(x => x.buyVolume)
   );
+
+  const totalSell = sum(
+    rows.map(x => x.sellVolume)
+  );
+
+  const totalDelta = totalBuy - totalSell;
+
+  return {
+    levels: rows,
+    totalBuy,
+    totalSell,
+    totalVolume: totalBuy + totalSell,
+    totalDelta,
+    candle: candles?.length
+      ? candles[candles.length - 1]
+      : null
+  };
 }
 
 function makeCVD(trades) {
-
   let cvd = 0;
 
-  return trades
-    .slice()
-    .sort(
-      (a, b) =>
-        a.time - b.time
-    )
-    .map(t => {
+  const points = [];
 
-      const delta =
-        t.side === "buy"
-          ? t.qty
-          : -t.qty;
+  for (const trade of trades) {
+    cvd += trade.side === "buy"
+      ? trade.size
+      : -trade.size;
 
-      cvd += delta;
-
-      return {
-        time: t.time,
-        delta,
-        cvd
-      };
+    points.push({
+      time: trade.time,
+      value: cvd
     });
-}
-
-function absorption(
-  stats,
-  book
-) {
-
-  const strongestBid =
-    Math.max(
-      0,
-      ...(book.bids || [])
-        .map(x => x.qty)
-    );
-
-  const strongestAsk =
-    Math.max(
-      0,
-      ...(book.asks || [])
-        .map(x => x.qty)
-    );
-
-  const buy =
-    stats.largeBuyVolume;
-
-  const sell =
-    stats.largeSellVolume;
-
-  let signal =
-    "NONE";
-
-  if (
-    sell > buy &&
-    strongestBid > 0
-  ) {
-    signal =
-      "BUY_ABSORPTION";
-  }
-
-  if (
-    buy > sell &&
-    strongestAsk > 0
-  ) {
-    signal =
-      "SELL_ABSORPTION";
   }
 
   return {
-    signal,
-
-    buyAbsorption:
-      signal ===
-      "BUY_ABSORPTION",
-
-    sellAbsorption:
-      signal ===
-      "SELL_ABSORPTION",
-
-    largeBuyVolume: buy,
-    largeSellVolume: sell,
-
-    strongestBidWall:
-      strongestBid,
-
-    strongestAskWall:
-      strongestAsk
+    value: cvd,
+    points
   };
 }
 
-async function market(
+function detectAbsorption(trades, book) {
+  const stats = tradeStats(trades);
+  const ob = orderbookStats(book);
+
+  const result = [];
+
+  if (
+    stats.sellVolume > stats.buyVolume &&
+    ob.buyShare > 55 &&
+    ob.buyWalls.length
+  ) {
+    result.push({
+      type: "BUY_ABSORPTION",
+      strength: Math.min(
+        100,
+        Math.round(
+          50 +
+          Math.abs(stats.deltaPercent) * 1.5 +
+          (ob.buyShare - 50)
+        )
+      ),
+      message: "فروشندگان فعال هستند اما نقدینگی خرید در حال جذب فروش است."
+    });
+  }
+
+  if (
+    stats.buyVolume > stats.sellVolume &&
+    ob.sellShare > 55 &&
+    ob.sellWalls.length
+  ) {
+    result.push({
+      type: "SELL_ABSORPTION",
+      strength: Math.min(
+        100,
+        Math.round(
+          50 +
+          Math.abs(stats.deltaPercent) * 1.5 +
+          (ob.sellShare - 50)
+        )
+      ),
+      message: "خریداران فعال هستند اما نقدینگی فروش در حال جذب خرید است."
+    });
+  }
+
+  if (!result.length) {
+    result.push({
+      type: "NONE",
+      strength: 0,
+      message: "جذب معناداری در داده فعلی شناسایی نشد."
+    });
+  }
+
+  return result;
+}
+
+function candleStats(candles) {
+  if (!candles.length) {
+    return {
+      last: null,
+      previous: null,
+      trend: "UNKNOWN"
+    };
+  }
+
+  const last = candles[candles.length - 1];
+  const previous =
+    candles.length > 1
+      ? candles[candles.length - 2]
+      : null;
+
+  const trend =
+    !previous
+      ? "UNKNOWN"
+      : last.close > previous.close
+        ? "UP"
+        : last.close < previous.close
+          ? "DOWN"
+          : "FLAT";
+
+  return {
+    last,
+    previous,
+    trend
+  };
+}
+
+async function buildMarket({
   category,
   symbol,
   interval
-) {
+}) {
+  const [candles, trades, book, ticker] =
+    await Promise.all([
+      getKlines(
+        category,
+        symbol,
+        interval,
+        KLINE_LIMIT
+      ),
+      getTrades(
+        category,
+        symbol,
+        TRADE_LIMIT
+      ),
+      getOrderbook(
+        category,
+        symbol,
+        ORDERBOOK_LIMIT
+      ),
+      getTicker(
+        category,
+        symbol
+      )
+    ]);
 
-  const [
-    candles,
-    trades,
-    orderbook,
-    ticker
-  ] = await Promise.all([
-    getKlines(
-      category,
-      symbol,
-      interval
-    ),
-
-    getTrades(
-      category,
-      symbol
-    ),
-
-    getOrderbook(
-      category,
-      symbol
-    ),
-
-    getTicker(
-      category,
-      symbol
-    )
-  ]);
-
-  const stats =
-    tradeStats(trades);
-
-  const bookStats =
-    orderbookStats(
-      orderbook
-    );
+  const tradesInfo = tradeStats(trades);
+  const orderbookInfo = orderbookStats(book);
+  const footprintInfo =
+    makeFootprint(trades, candles);
+  const cvdInfo =
+    makeCVD(trades);
+  const absorptionInfo =
+    detectAbsorption(trades, book);
+  const candleInfo =
+    candleStats(candles);
 
   return {
     ok: true,
-
     version: VERSION,
 
-    timestamp:
-      Date.now(),
+    market: {
+      category,
+      symbol,
+      interval
+    },
 
-    category,
-    symbol,
-    interval,
+    timestamp: Date.now(),
 
     candles,
-
     trades,
 
-    orderbook,
+    orderbook: orderbookInfo,
+
+    footprint: footprintInfo,
+
+    cvd: cvdInfo,
+
+    absorption: absorptionInfo,
+
+    tradeStats: tradesInfo,
+
+    candleStats: candleInfo,
 
     ticker,
 
-    tradeStats:
-      stats,
+    summary: {
+      pressure: tradesInfo.pressure,
+      orderbookPressure:
+        orderbookInfo.pressure,
 
-    orderbookStats:
-      bookStats,
+      delta:
+        tradesInfo.delta,
 
-    absorption:
-      absorption(
-        stats,
-        orderbook
-      ),
+      deltaPercent:
+        tradesInfo.deltaPercent,
 
-    footprint:
-      footprint(
-        candles,
-        trades
-      ),
+      cvd:
+        cvdInfo.value,
 
-    cvd:
-      makeCVD(trades)
+      buyLiquidity:
+        orderbookInfo.buyLiquidity,
+
+      sellLiquidity:
+        orderbookInfo.sellLiquidity
+    }
   };
 }
 
-async function assets(
-  request,
-  env
-) {
+async function storeTrades(env, category, symbol, trades) {
+  if (!env.CollectorDO || !trades?.length) {
+    return;
+  }
 
-  if (!env?.ASSETS) {
+  try {
+    const id =
+      env.CollectorDO.idFromName(
+        `${category}:${symbol}`
+      );
 
+    const stub =
+      env.CollectorDO.get(id);
+
+    await stub.fetch(
+      "https://collector/add",
+      {
+        method: "POST",
+        headers: {
+          "content-type": "application/json"
+        },
+        body: JSON.stringify(trades)
+      }
+    );
+  } catch {
+    // Collection must never break market API.
+  }
+}
+
+async function serveAssets(request, env) {
+  if (!env.ASSETS) {
     return new Response(
-      "ASSETS binding not found",
+      "Assets binding is not configured.",
       {
         status: 500,
         headers: {
-          "content-type":
-            "text/plain; charset=UTF-8"
+          "content-type": "text/plain; charset=utf-8"
         }
       }
     );
   }
 
-  const url =
+  const incoming =
     new URL(request.url);
 
+  let pathname =
+    incoming.pathname;
+
   if (
-    url.pathname === "/" ||
-    url.pathname === "/index.html"
+    pathname === "/" ||
+    pathname === ""
   ) {
-    url.pathname =
-      "/index.html";
+    pathname = "/index.html";
   }
 
-  const assetRequest =
-    new Request(
-      url.toString(),
+  if (
+    pathname === "/index.html"
+  ) {
+    const assetUrl =
+      new URL(request.url);
+
+    assetUrl.pathname =
+      "/index.html";
+
+    const assetRequest =
+      new Request(
+        assetUrl.toString(),
+        {
+          method: "GET",
+          headers: request.headers
+        }
+      );
+
+    const response =
+      await env.ASSETS.fetch(
+        assetRequest
+      );
+
+    const headers =
+      new Headers(response.headers);
+
+    headers.set(
+      "cache-control",
+      "no-store, no-cache, must-revalidate, max-age=0"
+    );
+
+    headers.set(
+      "pragma",
+      "no-cache"
+    );
+
+    headers.set(
+      "expires",
+      "0"
+    );
+
+    headers.set(
+      "x-scanner-version",
+      VERSION
+    );
+
+    return new Response(
+      response.body,
       {
-        method: "GET",
-        headers: request.headers
+        status: response.status,
+        statusText: response.statusText,
+        headers
       }
     );
+  }
+
+  const assetUrl =
+    new URL(request.url);
+
+  assetUrl.pathname =
+    pathname;
 
   const response =
     await env.ASSETS.fetch(
-      assetRequest
+      new Request(
+        assetUrl.toString(),
+        request
+      )
     );
 
   const headers =
-    new Headers(
-      response.headers
-    );
-
-  headers.set(
-    "cache-control",
-    "no-store, no-cache, must-revalidate, max-age=0"
-  );
-
-  headers.set(
-    "pragma",
-    "no-cache"
-  );
-
-  headers.set(
-    "expires",
-    "0"
-  );
+    new Headers(response.headers);
 
   headers.set(
     "x-scanner-version",
     VERSION
   );
 
+  if (
+    pathname.endsWith(".html") ||
+    pathname.endsWith(".js") ||
+    pathname.endsWith(".css")
+  ) {
+    headers.set(
+      "cache-control",
+      "no-store, no-cache, must-revalidate, max-age=0"
+    );
+  }
+
   return new Response(
     response.body,
     {
-      status:
-        response.status,
-      statusText:
-        response.statusText,
+      status: response.status,
+      statusText: response.statusText,
       headers
     }
   );
 }
 
 export class CollectorDO {
-
-  constructor(state, env) {
+  constructor(state) {
     this.state = state;
-    this.env = env;
+    this.storage = state.storage;
   }
 
   async fetch(request) {
-
     const url =
       new URL(request.url);
 
-    try {
+    if (
+      request.method === "POST" &&
+      url.pathname === "/add"
+    ) {
+      let incoming;
 
-      if (
-        request.method === "POST" &&
-        url.pathname === "/add"
-      ) {
+      try {
+        incoming =
+          await request.json();
+      } catch {
+        return json({
+          ok: false,
+          error: "Invalid JSON"
+        }, 400);
+      }
 
-        const text =
-          await request.text();
+      if (!Array.isArray(incoming)) {
+        return json({
+          ok: false,
+          error: "Expected trade array"
+        }, 400);
+      }
 
-        if (!text.trim()) {
-          return json({
-            ok: true,
-            added: 0
-          });
-        }
+      const current =
+        await this.storage.get("trades") ||
+        [];
 
-        let incoming;
+      const map =
+        new Map();
 
-        try {
-          incoming =
-            JSON.parse(text);
-        } catch {
-          return err(
-            "Collector JSON invalid",
-            400
+      for (const t of [
+        ...current,
+        ...incoming
+      ]) {
+        const id =
+          String(
+            t.id ||
+            `${t.time}-${t.price}-${t.size}-${t.side}`
           );
-        }
 
-        if (
-          !Array.isArray(incoming)
-        ) {
-          return err(
-            "Trades array required",
-            400
-          );
-        }
+        map.set(id, t);
+      }
 
-        const old =
-          (await this.state.storage.get(
-            "trades"
-          )) || [];
-
-        const map =
-          new Map();
-
-        for (const t of old) {
-          if (t?.id) {
-            map.set(
-              String(t.id),
-              t
-            );
-          }
-        }
-
-        for (const t of incoming) {
-          if (t?.id) {
-            map.set(
-              String(t.id),
-              t
-            );
-          }
-        }
-
-        const cutoff =
-          Date.now() -
-          24 * 60 * 60 * 1000;
-
-        const result =
-          Array.from(
-            map.values()
-          )
-          .filter(
-            t =>
-              num(t.time) >=
-              cutoff
-          )
+      const trades =
+        [...map.values()]
           .sort(
             (a, b) =>
-              num(a.time) -
-              num(b.time)
+              n(a.time) - n(b.time)
           )
           .slice(-20000);
 
-        await this.state.storage.put(
-          "trades",
-          result
-        );
-
-        return json({
-          ok: true,
-          stored:
-            result.length
-        });
-      }
-
-      if (
-        request.method === "GET" &&
-        url.pathname === "/trades"
-      ) {
-
-        const trades =
-          (await this.state.storage.get(
-            "trades"
-          )) || [];
-
-        return json({
-          ok: true,
-          trades
-        });
-      }
-
-      return err(
-        "Collector route not found",
-        404
+      await this.storage.put(
+        "trades",
+        trades
       );
 
-    } catch (e) {
-
-      return err(
-        e?.message ||
-        "Collector error"
-      );
+      return json({
+        ok: true,
+        count: trades.length
+      });
     }
+
+    if (
+      request.method === "GET" &&
+      url.pathname === "/trades"
+    ) {
+      const trades =
+        await this.storage.get("trades") ||
+        [];
+
+      return json({
+        ok: true,
+        trades
+      });
+    }
+
+    if (
+      request.method === "DELETE"
+    ) {
+      await this.storage.deleteAll();
+
+      return json({
+        ok: true
+      });
+    }
+
+    return json({
+      ok: false,
+      error: "Not found"
+    }, 404);
   }
 }
 
 export default {
-
   async fetch(request, env) {
-
     const url =
       new URL(request.url);
 
+    const path =
+      url.pathname;
+
     try {
-
       if (
-        url.pathname ===
-        "/api/health"
+        path === "/api/health"
       ) {
-
         return json({
           ok: true,
+          online: true,
           version: VERSION,
-          service:
-            "Absorption Zone Scanner",
-          timestamp:
-            Date.now()
+          worker: "absorption-zone-scanner",
+          time: Date.now()
         });
       }
 
       if (
-        url.pathname ===
-        "/api/market"
+        path === "/api/market"
       ) {
-
         const category =
           normalizeCategory(
             url.searchParams.get(
@@ -1118,20 +1040,26 @@ export default {
             )
           );
 
-        return json(
-          await market(
+        const market =
+          await buildMarket({
             category,
             symbol,
             interval
-          )
+          });
+
+        await storeTrades(
+          env,
+          category,
+          symbol,
+          market.trades
         );
+
+        return json(market);
       }
 
       if (
-        url.pathname ===
-        "/api/trades"
+        path === "/api/trades"
       ) {
-
         const category =
           normalizeCategory(
             url.searchParams.get(
@@ -1149,25 +1077,29 @@ export default {
         const trades =
           await getTrades(
             category,
-            symbol
+            symbol,
+            TRADE_LIMIT
           );
+
+        await storeTrades(
+          env,
+          category,
+          symbol,
+          trades
+        );
 
         return json({
           ok: true,
           version: VERSION,
           category,
           symbol,
-          trades,
-          stats:
-            tradeStats(trades)
+          trades
         });
       }
 
       if (
-        url.pathname ===
-        "/api/orderbook"
+        path === "/api/orderbook"
       ) {
-
         const category =
           normalizeCategory(
             url.searchParams.get(
@@ -1185,7 +1117,8 @@ export default {
         const book =
           await getOrderbook(
             category,
-            symbol
+            symbol,
+            ORDERBOOK_LIMIT
           );
 
         return json({
@@ -1193,17 +1126,13 @@ export default {
           version: VERSION,
           category,
           symbol,
-          orderbook: book,
-          analysis:
-            orderbookStats(book)
+          ...orderbookStats(book)
         });
       }
 
       if (
-        url.pathname ===
-        "/api/footprint"
+        path === "/api/footprint"
       ) {
-
         const category =
           normalizeCategory(
             url.searchParams.get(
@@ -1232,12 +1161,13 @@ export default {
           getKlines(
             category,
             symbol,
-            interval
+            interval,
+            KLINE_LIMIT
           ),
-
           getTrades(
             category,
-            symbol
+            symbol,
+            TRADE_LIMIT
           )
         ]);
 
@@ -1247,21 +1177,16 @@ export default {
           category,
           symbol,
           interval,
-          footprint:
-            footprint(
-              candles,
-              trades
-            ),
-          stats:
-            tradeStats(trades)
+          ...makeFootprint(
+            trades,
+            candles
+          )
         });
       }
 
       if (
-        url.pathname ===
-        "/api/analyze"
+        path === "/api/analyze"
       ) {
-
         const category =
           normalizeCategory(
             url.searchParams.get(
@@ -1283,59 +1208,36 @@ export default {
             )
           );
 
-        const data =
-          await market(
+        const market =
+          await buildMarket({
             category,
             symbol,
             interval
-          );
+          });
 
-        const cvd =
-          data.cvd.length
-            ? data.cvd[
-                data.cvd.length - 1
-              ].cvd
-            : 0;
-
-        return json({
-          ok: true,
-          version: VERSION,
-          symbol,
+        await storeTrades(
+          env,
           category,
-          interval,
-          analysis: {
-            delta:
-              data.tradeStats.delta,
+          symbol,
+          market.trades
+        );
 
-            deltaPercent:
-              data.tradeStats
-                .deltaPercent,
-
-            tradePressure:
-              data.tradeStats.pressure,
-
-            orderbookPressure:
-              data.orderbookStats.pressure,
-
-            absorption:
-              data.absorption,
-
-            cvd
-          }
-        });
+        return json(market);
       }
 
-      return assets(
+      return await serveAssets(
         request,
         env
       );
 
-    } catch (e) {
-
-      return err(
-        e?.message ||
-        "Worker error"
-      );
+    } catch (error) {
+      return json({
+        ok: false,
+        version: VERSION,
+        error:
+          error?.message ||
+          "Unknown server error"
+      }, 500);
     }
   }
 };
