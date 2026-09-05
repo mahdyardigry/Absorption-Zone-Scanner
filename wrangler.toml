@@ -16,5 +16,9 @@ class_name = "TradeCollector"
 type = "durable-object"
 storage = "sqlite"
 
+[exports.CollectorDO]
+type = "durable-object"
+state = "deleted"
+
 [triggers]
 crons = ["*/5 * * * *"]
