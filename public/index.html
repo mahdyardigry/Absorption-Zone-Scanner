@@ -786,189 +786,128 @@ th{
 
 <div class="footprint-panel">
 
-<div class="fp-head">
+  <div class="fp-head">
+    <strong>🧱 Footprint — کندل انتخاب‌شده</strong>
+    <span id="fpStatus">یک کندل را انتخاب کنید</span>
+  </div>
 
-<div class="fp-title">
-📊 Footprint — کندل انتخاب‌شده
-</div>
+  <div class="fp-box">
 
-<div id="fpStatus">
-هیچ کندلی انتخاب نشده
-</div>
+    <div class="fp-inner">
 
-</div>
+      <div class="fp-main-head">
 
-<div class="fp-box">
+        <div class="bid-title">
+          BID / SELL
+        </div>
 
-<div class="fp-inner">
+        <div class="bid-title">
+          VOLUME
+        </div>
 
-<div class="fp-columns">
+        <div>
+          PRICE / CANDLE
+        </div>
 
-<div class="fp-column-title">
-Price
-</div>
+        <div class="delta-title">
+          DELTA
+        </div>
 
-<div class="fp-column-title bid">
-Bid / Sell
-</div>
+        <div class="ask-title">
+          VOLUME
+        </div>
 
-<div class="fp-column-title ask">
-Ask / Buy
-</div>
+        <div class="ask-title">
+          ASK / BUY
+        </div>
 
-<div class="fp-column-title delta">
-Delta
-</div>
+      </div>
 
-<div class="fp-column-title vol">
-Volume Histogram — Fixed Range
-</div>
+      <div id="fpLevels">
 
-</div>
+        <div class="fp-empty">
+          برای مشاهده Footprint یک کندل را انتخاب کنید
+        </div>
 
-<div id="fpLevels">
+      </div>
 
-<div class="fp-empty">
-یک کندل از چارت را لمس کنید
-</div>
+      <div class="fp-totals">
 
-</div>
+        <div class="fp-total fp-total-bid">
+          <div class="fp-total-label">
+            TOTAL BID / SELL
+          </div>
 
-<div class="fp-totals">
+          <div
+            id="fpTotalBid"
+            class="fp-total-value"
+          >
+            —
+          </div>
+        </div>
 
-<div class="fp-total volume">
-<span>Total Volume</span>
-<b id="fpTotalVolume">—</b>
-</div>
+        <div class="fp-total fp-total-ask">
+          <div class="fp-total-label">
+            TOTAL ASK / BUY
+          </div>
 
-<div class="fp-total ask">
-<span>Total Ask / Buy</span>
-<b id="fpTotalAsk">—</b>
-</div>
+          <div
+            id="fpTotalAsk"
+            class="fp-total-value"
+          >
+            —
+          </div>
+        </div>
 
-<div class="fp-total bid">
-<span>Total Bid / Sell</span>
-<b id="fpTotalBid">—</b>
-</div>
+        <div class="fp-total fp-total-delta">
+          <div class="fp-total-label">
+            TOTAL DELTA
+          </div>
 
-<div class="fp-total delta">
-<span>Total Delta</span>
-<b id="fpTotalDelta">—</b>
-</div>
+          <div
+            id="fpTotalDelta"
+            class="fp-total-value"
+          >
+            —
+          </div>
+        </div>
 
-<div class="fp-total">
-<span>Levels</span>
-<b id="fpTotalLevels">—</b>
-</div>
+        <div class="fp-total">
+          <div class="fp-total-label">
+            TOTAL VOLUME
+          </div>
 
-</div>
+          <div
+            id="fpTotalVolume"
+            class="fp-total-value"
+          >
+            —
+          </div>
+        </div>
 
-</div>
+        <div class="fp-total">
+          <div class="fp-total-label">
+            PRICE LEVELS
+          </div>
 
-</div>
+          <div
+            id="fpTotalLevels"
+            class="fp-total-value"
+          >
+            —
+          </div>
+        </div>
 
-</div>
+      </div>
 
-</div>
+    </div>
 
-<div class="cards">
-
-<div class="card">
-<span>Price</span>
-<b id="price">—</b>
-</div>
-
-<div class="card">
-<span>Buy / Ask Aggressor</span>
-<b class="green" id="buy">—</b>
-</div>
-
-<div class="card">
-<span>Sell / Bid Aggressor</span>
-<b class="red" id="sell">—</b>
-</div>
-
-<div class="card">
-<span>Delta</span>
-<b id="delta">—</b>
-</div>
-
-<div class="card">
-<span>Bid Book</span>
-<b class="red" id="bidBook">—</b>
-</div>
-
-<div class="card">
-<span>Ask Book</span>
-<b class="green" id="askBook">—</b>
-</div>
-
-<div class="card">
-<span>Absorption</span>
-<b id="absorption">—</b>
-</div>
-
-<div class="card">
-<span>Score / Signal</span>
-<b id="signal">—</b>
-</div>
+  </div>
 
 </div>
 
-<div class="scan-panel">
 
-<div class="scan-row">
 
-<b>🔎 اسکن بازار</b>
-
-<button id="scanStart">
-▶ شروع اسکن
-</button>
-
-<button id="scanStop">
-⏹ توقف اسکن
-</button>
-
-<span id="scanState">
-متوقف
-</span>
-
-</div>
-
-<div class="results" id="results"></div>
-
-</div>
-
-<div class="panel">
-
-<b>📈 معاملات واقعی Bybit</b>
-
-<div class="trades">
-
-<table>
-
-<thead>
-<tr>
-<th>زمان</th>
-<th>قیمت</th>
-<th>حجم</th>
-<th>ارزش</th>
-<th>سمت</th>
-</tr>
-</thead>
-
-<tbody id="tradeBody"></tbody>
-
-</table>
-
-</div>
-
-</div>
-
-</div>
-
-<script>
-"use strict";
 
 /* =========================================================
    GLOBAL
