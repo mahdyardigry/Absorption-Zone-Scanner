@@ -2,19 +2,17 @@
 <html lang="fa" dir="rtl">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport"
-      content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <title>Absorption Zone Scanner</title>
 
 <style>
 *{box-sizing:border-box}
 html,body{
   margin:0;
-  padding:0;
   width:100%;
   min-height:100%;
   background:#071018;
-  color:#e7edf3;
+  color:#e8eef2;
   font-family:Tahoma,Arial,sans-serif;
   overscroll-behavior:none;
 }
@@ -25,126 +23,122 @@ button,input,select{font:inherit}
   width:100%;
   max-width:1500px;
   margin:auto;
-  padding:12px;
+  padding:10px;
 }
 
 .header{
-  border:1px solid #1d3442;
   background:#0b1720;
-  border-radius:16px;
-  padding:15px;
-  margin-bottom:10px;
+  border:1px solid #1c3543;
+  border-radius:15px;
+  padding:14px;
+  margin-bottom:9px;
 }
 .title{
   font-size:21px;
   font-weight:800;
 }
 .sub{
-  margin-top:6px;
-  color:#8fa5b5;
-  font-size:12px;
+  color:#8097a6;
+  font-size:11px;
+  margin-top:5px;
 }
 
 .controls{
   display:grid;
-  grid-template-columns:1fr 1fr 1fr 1fr auto;
-  gap:8px;
-  margin-bottom:10px;
+  grid-template-columns:1.1fr 1fr 1fr 1fr auto;
+  gap:7px;
+  margin-bottom:9px;
 }
 .control{
   background:#0b1720;
-  border:1px solid #1d3442;
-  border-radius:12px;
-  padding:8px;
+  border:1px solid #1c3543;
+  border-radius:11px;
+  padding:7px;
 }
 .control label{
   display:block;
-  color:#7f96a7;
-  font-size:10px;
-  margin-bottom:5px;
+  color:#718895;
+  font-size:9px;
+  margin-bottom:4px;
 }
 input,select,button{
   width:100%;
-  min-height:38px;
-  border-radius:9px;
+  height:37px;
   border:1px solid #294554;
+  border-radius:8px;
   background:#101f29;
-  color:#e8f0f5;
-  padding:7px 9px;
-  outline:none;
+  color:#e8eef2;
+  padding:5px 8px;
 }
-button{
-  cursor:pointer;
-  font-weight:700;
-}
-button:hover{background:#172b37}
+button{font-weight:700}
 
 .status{
   background:#0b1720;
-  border:1px solid #1d3442;
-  border-radius:12px;
-  padding:9px 12px;
-  margin-bottom:10px;
-  font-size:12px;
+  border:1px solid #1c3543;
+  border-radius:11px;
+  padding:8px 11px;
+  margin-bottom:9px;
+  font-size:11px;
 }
 
 .stats{
   display:grid;
   grid-template-columns:repeat(6,1fr);
   gap:7px;
-  margin-bottom:10px;
+  margin-bottom:9px;
 }
 .stat{
   background:#0b1720;
-  border:1px solid #1d3442;
-  border-radius:11px;
-  padding:9px;
-  min-width:0;
+  border:1px solid #1c3543;
+  border-radius:10px;
+  padding:8px;
 }
 .stat .k{
-  color:#718898;
-  font-size:10px;
+  color:#718895;
+  font-size:9px;
 }
 .stat .v{
-  margin-top:5px;
-  font-size:13px;
+  margin-top:4px;
+  font-size:12px;
   font-weight:800;
+  white-space:nowrap;
   overflow:hidden;
   text-overflow:ellipsis;
-  white-space:nowrap;
 }
 
 .panel{
   background:#0b1720;
-  border:1px solid #1d3442;
-  border-radius:15px;
+  border:1px solid #1c3543;
+  border-radius:14px;
   overflow:hidden;
-  margin-bottom:10px;
+  margin-bottom:9px;
 }
+
 .panelHead{
   display:flex;
-  align-items:center;
   justify-content:space-between;
-  gap:8px;
-  padding:10px 12px;
-  border-bottom:1px solid #1d3442;
+  align-items:center;
+  padding:9px 11px;
+  border-bottom:1px solid #1c3543;
 }
 .panelTitle{
-  font-size:13px;
+  font-size:12px;
   font-weight:800;
 }
 .panelInfo{
-  color:#7890a0;
-  font-size:10px;
+  color:#718895;
+  font-size:9px;
 }
 
 .chartWrap{
   position:relative;
   width:100%;
   height:430px;
-  background:#071018;
   overflow:hidden;
+  background:#071018;
   touch-action:none;
+  user-select:none;
+  -webkit-user-select:none;
 }
 #chart{
   position:absolute;
@@ -153,217 +147,252 @@ button:hover{background:#172b37}
   height:100%;
   touch-action:none;
 }
+
 .chartHint{
   position:absolute;
-  left:10px;
-  top:9px;
-  z-index:3;
+  top:8px;
+  left:8px;
   pointer-events:none;
   background:rgba(7,16,24,.82);
-  border:1px solid #203744;
-  border-radius:8px;
+  border:1px solid #243b48;
+  border-radius:7px;
   padding:5px 8px;
-  color:#708999;
-  font-size:9px;
+  color:#718895;
+  font-size:8px;
 }
 
 .tabs{
   display:flex;
-  overflow-x:auto;
   gap:5px;
-  padding:7px;
-  border-bottom:1px solid #1d3442;
+  overflow-x:auto;
+  padding:6px;
   scrollbar-width:none;
 }
 .tabs::-webkit-scrollbar{display:none}
 .tab{
   flex:0 0 auto;
   width:auto;
-  min-height:32px;
-  font-size:10px;
-  padding:5px 11px;
-  background:#0d1b24;
+  height:32px;
+  padding:4px 11px;
+  font-size:9px;
 }
 .tab.active{
-  background:#163241;
-  border-color:#34718d;
+  border-color:#43829d;
+  background:#163342;
 }
 
-.footHead{
-  padding:10px;
-  background:#09151d;
-  border-bottom:1px solid #1d3442;
+.selectedHead{
+  border-top:1px solid #1c3543;
+  border-bottom:1px solid #1c3543;
+  padding:9px;
+  background:#08141c;
 }
-.selectedInfo{
+
+.selectedGrid{
   display:grid;
-  grid-template-columns:auto 1fr;
-  gap:12px;
+  grid-template-columns:75px 1fr;
+  gap:10px;
   align-items:center;
 }
 
-.miniCandle{
-  width:70px;
-  height:80px;
-  border:1px solid #243b48;
-  border-radius:9px;
+.mini{
+  width:75px;
+  height:82px;
+  border:1px solid #253c48;
+  border-radius:8px;
   background:#071018;
-  display:flex;
-  align-items:center;
-  justify-content:center;
 }
 #miniCanvas{
-  width:70px;
-  height:80px;
+  width:75px;
+  height:82px;
 }
 
-.selectedText{
-  min-width:0;
-}
 .selectedTitle{
-  font-size:12px;
+  font-size:11px;
   font-weight:800;
-  margin-bottom:7px;
+  margin-bottom:6px;
 }
 .ohlc{
-  display:grid;
-  grid-template-columns:repeat(5,auto);
-  gap:8px;
-  font-size:10px;
-  color:#8fa5b5;
+  display:flex;
+  flex-wrap:wrap;
+  gap:10px;
+  font-size:9px;
+  color:#738b99;
 }
-.ohlc b{color:#e5edf2}
+.ohlc b{color:#e8eef2}
 
-.fpArea{
-  padding:8px;
+.fpScroll{
+  width:100%;
   overflow:auto;
-  max-height:650px;
   -webkit-overflow-scrolling:touch;
+  max-height:650px;
+}
+
+.fp{
+  min-width:760px;
+}
+
+.fpHeader,
+.fpRow{
+  display:grid;
+  grid-template-columns:
+    115px
+    90px
+    90px
+    95px
+    90px
+    115px
+    115px;
+  gap:4px;
+  align-items:center;
 }
 
 .fpHeader{
-  display:grid;
-  grid-template-columns:74px minmax(90px,1fr) 88px 74px 88px minmax(90px,1fr) 74px;
-  min-width:650px;
-  align-items:center;
-  gap:4px;
-  padding:7px 5px;
-  color:#718b9b;
-  font-size:9px;
-  border-bottom:1px solid #1c303b;
+  min-height:31px;
+  padding:4px 7px;
+  border-bottom:1px solid #1c3543;
+  color:#718895;
+  font-size:8px;
   text-align:center;
-}
-
-.fpRows{
-  min-width:650px;
+  position:sticky;
+  top:0;
+  background:#0b1720;
+  z-index:3;
 }
 
 .fpRow{
-  display:grid;
-  grid-template-columns:74px minmax(90px,1fr) 88px 74px 88px minmax(90px,1fr) 74px;
-  align-items:center;
-  gap:4px;
-  min-height:31px;
-  padding:3px 5px;
-  border-bottom:1px solid rgba(38,58,68,.45);
-  font-size:10px;
+  min-height:32px;
+  padding:3px 7px;
+  border-bottom:1px solid rgba(38,59,70,.45);
+  font-size:9px;
   text-align:center;
 }
 
-.price{
+.levelPrice{
   font-weight:800;
-  color:#d9e5eb;
-}
-
-.bid,.ask,.delta{
-  position:relative;
-  height:25px;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  overflow:hidden;
-  border-radius:5px;
-}
-.bid{
-  background:rgba(0,180,120,.10);
-  color:#42d59c;
-}
-.ask{
-  background:rgba(235,72,82,.10);
-  color:#ff6972;
-}
-.delta.pos{
-  background:rgba(0,180,120,.12);
-  color:#42d59c;
-}
-.delta.neg{
-  background:rgba(235,72,82,.12);
-  color:#ff6972;
-}
-
-.barCell{
-  height:25px;
-  position:relative;
-  overflow:hidden;
-  border-radius:5px;
-  background:#0b1820;
-}
-.bar{
-  position:absolute;
-  top:3px;
-  bottom:3px;
-  border-radius:4px;
-}
-.bar.volume{
-  left:0;
-  background:#36738c;
-}
-.bar.deltaPos{
-  left:0;
-  background:#18a978;
-}
-.bar.deltaNeg{
-  right:0;
-  background:#c94b57;
-}
-.barValue{
-  position:relative;
-  z-index:2;
-  line-height:25px;
-  font-size:9px;
   color:#dce6eb;
 }
 
+.num{
+  height:26px;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  border-radius:5px;
+}
+
+.bid{
+  background:rgba(21,180,125,.11);
+  color:#42d79f;
+}
+
+.ask{
+  background:rgba(232,70,81,.11);
+  color:#ff6972;
+}
+
+.deltaPos{
+  color:#42d79f;
+  background:rgba(21,180,125,.13);
+}
+
+.deltaNeg{
+  color:#ff6972;
+  background:rgba(232,70,81,.13);
+}
+
+.hist{
+  height:26px;
+  position:relative;
+  border-radius:5px;
+  overflow:hidden;
+  background:#09151c;
+}
+
+.histFill{
+  position:absolute;
+  top:4px;
+  bottom:4px;
+  left:0;
+  border-radius:4px;
+}
+
+.volumeFill{
+  background:#397d98;
+}
+
+.deltaPositiveFill{
+  background:#18a879;
+}
+
+.deltaNegativeFill{
+  background:#c94b57;
+  left:auto;
+  right:0;
+}
+
+.histText{
+  position:relative;
+  z-index:2;
+  line-height:26px;
+  color:#d9e4e9;
+  font-size:8px;
+}
+
 .empty{
-  padding:30px 15px;
+  padding:28px;
   text-align:center;
-  color:#718898;
-  font-size:11px;
+  color:#718895;
+  font-size:10px;
 }
 
-.bottomInfo{
-  padding:9px 12px;
-  color:#6f8796;
-  font-size:9px;
-  border-top:1px solid #1d3442;
+.bottomNote{
+  padding:8px 10px;
+  border-top:1px solid #1c3543;
+  color:#627987;
+  font-size:8px;
 }
 
-/* mobile */
+/* نمایش شماتیک دقیق ساختار Footprint */
+.fpCenter{
+  position:relative;
+}
+.fpCenterLine{
+  position:absolute;
+  left:50%;
+  top:0;
+  bottom:0;
+  width:1px;
+  background:#253b46;
+}
+
 @media(max-width:850px){
-  .controls{grid-template-columns:1fr 1fr}
-  .stats{grid-template-columns:repeat(3,1fr)}
-  .chartWrap{height:390px}
+  .controls{
+    grid-template-columns:1fr 1fr;
+  }
+  .stats{
+    grid-template-columns:repeat(3,1fr);
+  }
+  .chartWrap{
+    height:390px;
+  }
 }
+
 @media(max-width:520px){
-  .app{padding:7px}
+  .app{padding:6px}
   .title{font-size:18px}
-  .stats{grid-template-columns:repeat(2,1fr)}
-  .chartWrap{height:350px}
-  .ohlc{grid-template-columns:repeat(3,auto)}
+  .stats{
+    grid-template-columns:repeat(2,1fr);
+  }
+  .chartWrap{
+    height:360px;
+  }
 }
 </style>
 </head>
 
 <body>
+
 <div class="app">
 
   <div class="header">
@@ -390,7 +419,7 @@ button:hover{background:#172b37}
     <div class="control">
       <label>Timeframe</label>
       <select id="interval">
-        <option value="1">1m</option>
+        <option value="1" selected>1m</option>
         <option value="3">3m</option>
         <option value="5">5m</option>
         <option value="15">15m</option>
@@ -418,116 +447,208 @@ button:hover{background:#172b37}
 
   </div>
 
-  <div id="status" class="status">⏳ در حال اتصال...</div>
+  <div id="status" class="status">
+    ⏳ در حال اتصال...
+  </div>
 
   <div class="stats">
     <div class="stat">
       <div class="k">قیمت</div>
       <div class="v" id="sPrice">—</div>
     </div>
+
     <div class="stat">
       <div class="k">24h</div>
       <div class="v" id="s24">—</div>
     </div>
+
     <div class="stat">
       <div class="k">Delta</div>
       <div class="v" id="sDelta">—</div>
     </div>
+
     <div class="stat">
       <div class="k">Buy</div>
       <div class="v" id="sBuy">—</div>
     </div>
+
     <div class="stat">
       <div class="k">Sell</div>
       <div class="v" id="sSell">—</div>
     </div>
+
     <div class="stat">
       <div class="k">Absorption</div>
       <div class="v" id="sAbs">—</div>
     </div>
   </div>
 
+
+  <!-- MAIN CHART -->
+
   <div class="panel">
 
     <div class="panelHead">
-      <div class="panelTitle">📈 Price / Order Flow</div>
-      <div class="panelInfo" id="chartInfo">—</div>
+      <div class="panelTitle">
+        📈 Price / Order Flow
+      </div>
+
+      <div class="panelInfo" id="chartInfo">
+        —
+      </div>
     </div>
 
     <div class="chartWrap" id="chartWrap">
+
       <canvas id="chart"></canvas>
+
       <div class="chartHint">
-        یک انگشت: حرکت · دو انگشت: زوم · لمس کندل: انتخاب
+        ☝️ یک انگشت: حرکت · 🤏 دو انگشت: زوم · 👆 لمس: انتخاب کندل
       </div>
+
     </div>
 
   </div>
 
+
+  <!-- LOWER FOOTPRINT -->
+
   <div class="panel">
 
     <div class="tabs">
-      <button class="tab active" data-tab="footprint">Footprint</button>
-      <button class="tab" data-tab="heatmap">Heatmap</button>
-      <button class="tab" data-tab="liquidity">Liquidity</button>
-      <button class="tab" data-tab="absorption">Absorption</button>
-      <button class="tab" data-tab="book">Order Book</button>
-      <button class="tab" data-tab="cvd">Delta/CVD</button>
-      <button class="tab" data-tab="large">Large Trades</button>
+
+      <button class="tab active" data-tab="footprint">
+        Footprint
+      </button>
+
+      <button class="tab" data-tab="heatmap">
+        Heatmap
+      </button>
+
+      <button class="tab" data-tab="liquidity">
+        Liquidity
+      </button>
+
+      <button class="tab" data-tab="absorption">
+        Absorption
+      </button>
+
+      <button class="tab" data-tab="book">
+        Order Book
+      </button>
+
+      <button class="tab" data-tab="cvd">
+        Delta/CVD
+      </button>
+
+      <button class="tab" data-tab="large">
+        Large Trades
+      </button>
+
     </div>
 
-    <div id="tabContent">
 
-      <div class="footHead">
-        <div class="selectedInfo">
+    <div class="selectedHead">
 
-          <div class="miniCandle">
-            <canvas id="miniCanvas"></canvas>
+      <div class="selectedGrid">
+
+        <div class="mini">
+          <canvas id="miniCanvas"></canvas>
+        </div>
+
+        <div>
+
+          <div class="selectedTitle" id="selectedTitle">
+            کندل انتخابی
           </div>
 
-          <div class="selectedText">
-            <div class="selectedTitle" id="selectedTitle">
-              کندل انتخابی
-            </div>
+          <div class="ohlc">
 
-            <div class="ohlc">
-              <span>O <b id="o">—</b></span>
-              <span>H <b id="h">—</b></span>
-              <span>L <b id="l">—</b></span>
-              <span>C <b id="c">—</b></span>
-              <span>Δ <b id="cd">—</b></span>
-            </div>
+            <span>
+              O <b id="o">—</b>
+            </span>
+
+            <span>
+              H <b id="h">—</b>
+            </span>
+
+            <span>
+              L <b id="l">—</b>
+            </span>
+
+            <span>
+              C <b id="c">—</b>
+            </span>
+
+            <span>
+              Δ <b id="cd">—</b>
+            </span>
+
           </div>
 
         </div>
+
       </div>
 
-      <div class="fpArea" id="fpArea">
+    </div>
+
+
+    <div class="fpScroll">
+
+      <div class="fp">
+
         <div class="fpHeader">
-          <div>Volume</div>
-          <div>Bid</div>
-          <div>Price</div>
-          <div>Delta</div>
-          <div>Ask</div>
-          <div>Delta Histogram</div>
-          <div>Volume</div>
+
+          <div>
+            Volume Fixed Range
+          </div>
+
+          <div>
+            Bid
+          </div>
+
+          <div>
+            Price
+          </div>
+
+          <div>
+            Delta
+          </div>
+
+          <div>
+            Ask
+          </div>
+
+          <div>
+            Delta Histogram
+          </div>
+
+          <div>
+            Volume
+          </div>
+
         </div>
 
-        <div id="fpRows" class="fpRows">
+        <div id="fpRows">
+
           <div class="empty">
             برای مشاهده Footprint یک کندل را لمس کنید.
           </div>
+
         </div>
+
       </div>
 
-      <div class="bottomInfo">
-        Fixed Range — هر ردیف مربوط به یک سطح قیمت همان کندل انتخاب‌شده است.
-      </div>
+    </div>
 
+    <div class="bottomNote">
+      Fixed Range بر اساس معاملات واقعی همان کندل · هر ردیف = یک سطح قیمت
     </div>
 
   </div>
 
 </div>
+
 
 <script>
 "use strict";
@@ -537,432 +658,268 @@ button:hover{background:#172b37}
 ============================================================ */
 
 const state = {
+
   candles: [],
+  trades: [],
+
   selected: -1,
 
   zoom: 1,
+
+  /*
+    مقدار pan بر حسب تعداد کندل.
+    0 = انتهای جدیدترین داده
+  */
   pan: 0,
 
   minZoom: 0.55,
-  maxZoom: 5,
+  maxZoom: 7,
 
   pointers: new Map(),
+
   drag: null,
+
   pinch: null,
 
-  dpr: Math.max(1, Math.min(3, window.devicePixelRatio || 1))
+  intervalMs: 60 * 1000,
+
+  dpr: Math.max(
+    1,
+    Math.min(3,window.devicePixelRatio || 1)
+  )
 };
 
-const $ = id => document.getElementById(id);
+const $ = id =>
+  document.getElementById(id);
 
-const chart = $("chart");
-const chartWrap = $("chartWrap");
-const ctx = chart.getContext("2d");
+const chart =
+  $("chart");
 
-const miniCanvas = $("miniCanvas");
-const miniCtx = miniCanvas.getContext("2d");
+const chartWrap =
+  $("chartWrap");
 
-let raf = 0;
+const ctx =
+  chart.getContext("2d");
+
+const miniCanvas =
+  $("miniCanvas");
+
+const miniCtx =
+  miniCanvas.getContext("2d");
+
+let drawRAF=0;
 
 
 /* ============================================================
    HELPERS
 ============================================================ */
 
-function n(v, fallback=0){
-  const x = Number(v);
-  return Number.isFinite(x) ? x : fallback;
-}
+function num(v,fallback=0){
 
-function fmt(v, digits=4){
-  const x = n(v);
-  if (!Number.isFinite(x)) return "—";
+  const x=Number(v);
 
-  if (Math.abs(x) >= 1000000000)
-    return (x/1000000000).toFixed(2)+"B";
-
-  if (Math.abs(x) >= 1000000)
-    return (x/1000000).toFixed(2)+"M";
-
-  if (Math.abs(x) >= 1000)
-    return (x/1000).toFixed(2)+"K";
-
-  return x.toLocaleString("en-US",{
-    maximumFractionDigits:digits
-  });
-}
-
-function priceFmt(v){
-  const x=n(v);
-  if(x>=1000) return x.toFixed(2);
-  if(x>=1) return x.toFixed(4);
-  if(x>=.01) return x.toFixed(6);
-  return x.toPrecision(6);
-}
-
-function timeFmt(v){
-  const x=n(v);
-  if(!x) return "—";
-
-  const d=new Date(x < 1e12 ? x*1000 : x);
-
-  return d.toLocaleString("fa-IR",{
-    month:"2-digit",
-    day:"2-digit",
-    hour:"2-digit",
-    minute:"2-digit",
-    second:"2-digit"
-  });
+  return Number.isFinite(x)
+    ? x
+    : fallback;
 }
 
 function clamp(v,a,b){
-  return Math.max(a,Math.min(b,v));
+
+  return Math.max(
+    a,
+    Math.min(b,v)
+  );
 }
 
-function first(obj, keys, fallback=null){
-  if(!obj || typeof obj!=="object") return fallback;
+function fmt(v,d=2){
 
-  for(const k of keys){
-    if(obj[k] !== undefined && obj[k] !== null)
-      return obj[k];
-  }
+  const x=num(v);
 
-  return fallback;
-}
+  if(Math.abs(x)>=1e9)
+    return (x/1e9).toFixed(2)+"B";
 
-function getArray(obj, keys){
-  for(const k of keys){
-    if(Array.isArray(obj?.[k]))
-      return obj[k];
-  }
-  return [];
-}
+  if(Math.abs(x)>=1e6)
+    return (x/1e6).toFixed(2)+"M";
 
+  if(Math.abs(x)>=1e3)
+    return (x/1e3).toFixed(2)+"K";
 
-/* ============================================================
-   CANDLE NORMALIZATION
-============================================================ */
-
-function normalizeCandle(raw){
-  if(Array.isArray(raw)){
-    return {
-      time:n(raw[0]),
-      open:n(raw[1]),
-      high:n(raw[2]),
-      low:n(raw[3]),
-      close:n(raw[4]),
-      volume:n(raw[5]),
-      turnover:n(raw[6])
-    };
-  }
-
-  return {
-    ...raw,
-
-    time:n(first(raw,[
-      "time","timestamp","ts","startTime","start",
-      "openTime","t"
-    ],0)),
-
-    open:n(first(raw,[
-      "open","o"
-    ],0)),
-
-    high:n(first(raw,[
-      "high","h"
-    ],0)),
-
-    low:n(first(raw,[
-      "low","l"
-    ],0)),
-
-    close:n(first(raw,[
-      "close","c"
-    ],0)),
-
-    volume:n(first(raw,[
-      "volume","v","vol"
-    ],0)),
-
-    turnover:n(first(raw,[
-      "turnover","quoteVolume","value","notional"
-    ],0)),
-
-    delta:n(first(raw,[
-      "delta","Delta","netDelta",
-      "candleDelta"
-    ],0)),
-
-    buy:n(first(raw,[
-      "buy","buyVolume","buyVol",
-      "bidVolume"
-    ],0)),
-
-    sell:n(first(raw,[
-      "sell","sellVolume","sellVol",
-      "askVolume"
-    ],0)),
-
-    footprint:getArray(raw,[
-      "footprint",
-      "levels",
-      "priceLevels",
-      "orderflow",
-      "orderFlow",
-      "tradesByPrice",
-      "byPrice"
-    ])
-  };
-}
-
-
-/* ============================================================
-   FOOTPRINT NORMALIZATION
-============================================================ */
-
-function normalizeLevel(raw){
-
-  if(Array.isArray(raw)){
-
-    /*
-      Common possibilities:
-      [price,bid,ask]
-      [price,bid,ask,delta]
-      [price,bid,ask,volume,delta]
-    */
-
-    const price=n(raw[0]);
-    const bid=n(raw[1]);
-    const ask=n(raw[2]);
-
-    return {
-      price,
-      bid,
-      ask,
-      volume:n(raw[3],bid+ask),
-      delta:n(raw[4],ask-bid)
-    };
-  }
-
-  const price=n(first(raw,[
-    "price","p","level","priceLevel"
-  ],0));
-
-  let bid=n(first(raw,[
-    "bid","Bid","buy","buyVolume",
-    "bidVolume","b"
-  ],0));
-
-  let ask=n(first(raw,[
-    "ask","Ask","sell","sellVolume",
-    "askVolume","a"
-  ],0));
-
-  let delta=first(raw,[
-    "delta","Delta","d"
-  ],null);
-
-  let volume=first(raw,[
-    "volume","vol","total","totalVolume","v"
-  ],null);
-
-  if(delta===null)
-    delta=ask-bid;
-
-  if(volume===null)
-    volume=bid+ask;
-
-  return {
-    ...raw,
-    price,
-    bid:n(bid),
-    ask:n(ask),
-    volume:n(volume),
-    delta:n(delta)
-  };
-}
-
-
-/* ============================================================
-   EXTRACT RESPONSE
-============================================================ */
-
-function extractData(data){
-
-  let root=data;
-
-  if(data?.data && typeof data.data==="object")
-    root=data.data;
-
-  let candles=[];
-
-  const candleCandidates=[
-    root?.candles,
-    root?.klines,
-    root?.kline,
-    root?.result?.list,
-    root?.result?.candles,
-    root?.market?.candles,
-    root?.analysis?.candles,
-    data?.candles,
-    data?.klines
-  ];
-
-  for(const x of candleCandidates){
-    if(Array.isArray(x) && x.length){
-      candles=x;
-      break;
+  return x.toLocaleString(
+    "en-US",
+    {
+      maximumFractionDigits:d
     }
-  }
+  );
+}
 
-  /*
-    Bybit native result.list
-  */
-  if(!candles.length &&
-     Array.isArray(data?.result?.list)){
-    candles=data.result.list;
-  }
+function priceFmt(v){
 
-  const normalized=candles
-    .map(normalizeCandle)
-    .filter(x=>x.open || x.high || x.low || x.close);
+  const x=num(v);
 
-  return {
-    root,
-    candles:normalized
-  };
+  if(x>=1000)
+    return x.toFixed(2);
+
+  if(x>=1)
+    return x.toFixed(4);
+
+  if(x>=.01)
+    return x.toFixed(6);
+
+  if(x>0)
+    return x.toPrecision(6);
+
+  return "—";
+}
+
+function timeFmt(ms){
+
+  if(!ms)
+    return "—";
+
+  return new Date(ms)
+    .toLocaleString(
+      "fa-IR",
+      {
+        month:"2-digit",
+        day:"2-digit",
+        hour:"2-digit",
+        minute:"2-digit",
+        second:"2-digit"
+      }
+    );
+}
+
+function intervalToMs(v){
+
+  const n=String(v);
+
+  if(n==="D") return 86400000;
+  if(n==="W") return 604800000;
+  if(n==="M") return 2592000000;
+
+  return num(n,1)*60000;
 }
 
 
 /* ============================================================
-   LOAD
+   LOAD ONLY REAL WORKER API
 ============================================================ */
 
 async function load(){
 
-  const symbol=$("symbol").value.trim().toUpperCase();
-  const category=$("category").value;
-  const interval=$("interval").value;
-  const limit=$("limit").value;
+  const symbol=
+    $("symbol").value
+      .trim()
+      .toUpperCase();
+
+  const category=
+    $("category").value;
+
+  const interval=
+    $("interval").value;
 
   if(!symbol){
-    $("status").textContent="⚠️ نماد وارد نشده است";
+    $("status").textContent=
+      "⚠️ نماد وارد نشده است";
     return;
   }
 
-  $("status").textContent="⏳ دریافت داده واقعی Bybit...";
+  $("status").textContent=
+    "⏳ دریافت داده واقعی Bybit...";
 
   try{
 
     /*
-      Try the scanner API first.
+      این دقیقاً endpoint موجود در Worker است.
     */
-    const urls=[
-      `/api/analyze?symbol=${encodeURIComponent(symbol)}&category=${encodeURIComponent(category)}&interval=${encodeURIComponent(interval)}&limit=${encodeURIComponent(limit)}`,
-      `/api/market?symbol=${encodeURIComponent(symbol)}&category=${encodeURIComponent(category)}&interval=${encodeURIComponent(interval)}&limit=${encodeURIComponent(limit)}`,
-      `/api/scan?symbol=${encodeURIComponent(symbol)}&category=${encodeURIComponent(category)}&interval=${encodeURIComponent(interval)}&limit=${encodeURIComponent(limit)}`
-    ];
+    const url=
+      `/api/market`+
+      `?symbol=${encodeURIComponent(symbol)}`+
+      `&category=${encodeURIComponent(category)}`+
+      `&interval=${encodeURIComponent(interval)}`;
 
-    let response=null;
-    let data=null;
-
-    for(const url of urls){
-
-      try{
-        const r=await fetch(url,{
+    const response=
+      await fetch(
+        url,
+        {
           cache:"no-store",
           headers:{
             "Accept":"application/json"
           }
-        });
-
-        if(!r.ok) continue;
-
-        const text=await r.text();
-
-        if(!text) continue;
-
-        try{
-          data=JSON.parse(text);
-          response=r;
-          break;
-        }catch(e){
-          continue;
-        }
-
-      }catch(e){}
-    }
-
-    /*
-      If scanner endpoint didn't return candles,
-      request the Worker market endpoint directly.
-    */
-    if(!data){
-
-      const r=await fetch(
-        `/api/kline?symbol=${encodeURIComponent(symbol)}&category=${encodeURIComponent(category)}&interval=${encodeURIComponent(interval)}&limit=${encodeURIComponent(limit)}`,
-        {
-          cache:"no-store",
-          headers:{Accept:"application/json"}
         }
       );
 
-      if(r.ok){
-        data=await r.json();
-        response=r;
-      }
+    const data=
+      await response.json();
+
+    if(!response.ok ||
+       data.ok===false){
+
+      throw new Error(
+        data.error ||
+        `HTTP ${response.status}`
+      );
     }
-
-    if(!data){
-      throw new Error("API response not found");
-    }
-
-    const extracted=extractData(data);
-
-    let candles=extracted.candles;
 
     /*
-      Handle Bybit native kline response if Worker forwards it.
+      Worker دقیقاً این ساختار را می‌دهد:
+      data.candles
+      data.trades
+      data.stats
+      data.footprint
+      data.orderbook
+      data.absorption
+      data.ticker
     */
-    if(!candles.length &&
-       data?.result?.list?.length){
 
-      candles=data.result.list
-        .map(normalizeCandle)
-        .reverse();
+    state.candles=
+      Array.isArray(data.candles)
+        ? data.candles
+        : [];
+
+    state.trades=
+      Array.isArray(data.trades)
+        ? data.trades
+        : [];
+
+    state.intervalMs=
+      intervalToMs(interval);
+
+    if(!state.candles.length){
+
+      throw new Error(
+        "Worker کندل برنگردانده است"
+      );
     }
 
-    if(!candles.length){
-      throw new Error("کندل در پاسخ Worker پیدا نشد");
-    }
-
-    state.candles=candles;
-
     /*
-      Keep selection on the latest candle initially.
+      مهم:
+      کندل‌ها در Worker از قدیمی به جدید هستند.
     */
-    state.selected=candles.length-1;
 
-    /*
-      Keep chart centered on latest candles.
-    */
+    state.selected=
+      state.candles.length-1;
+
     state.zoom=1;
     state.pan=0;
 
     updateStats(data);
+
     updateSelected();
+
     resizeCanvas();
-    requestDraw();
+
+    draw();
 
     $("status").textContent=
-      `🟢 اتصال برقرار است — Bybit · ${symbol}`;
+      `🟢 اتصال برقرار است — Bybit · ${data.symbol}`;
 
-  }catch(err){
+  }catch(error){
 
-    console.error(err);
+    console.error(error);
 
     $("status").textContent=
-      "🔴 خطا در دریافت داده: "+err.message;
+      "🔴 خطا: "+error.message;
   }
 }
 
@@ -973,166 +930,224 @@ async function load(){
 
 function updateStats(data){
 
-  const root=data?.data || data || {};
+  const ticker=
+    data.ticker || {};
 
-  const ticker=root.ticker || data.ticker || {};
-
-  const last=
-    first(ticker,[
-      "lastPrice","last","price"
-    ],null);
-
-  const c=state.candles[state.candles.length-1];
+  const stats=
+    data.stats || {};
 
   $("sPrice").textContent=
-    priceFmt(last ?? c?.close);
+    priceFmt(
+      ticker.lastPrice
+    );
 
   $("s24").textContent=
-    fmt(first(ticker,[
-      "price24hPcnt",
-      "change24h",
-      "changePercent"
-    ],0)*(
-      String(first(ticker,["price24hPcnt"],"")).includes("%")
-      ? 1
-      : 100
-    ),2)+"%";
+    num(
+      ticker.price24hPcnt
+    ).toFixed(2)+"%";
 
-  const delta=first(root,[
-    "delta",
-    "netDelta",
-    "totalDelta"
-  ],c?.delta ?? 0);
+  $("sDelta").textContent=
+    fmt(stats.delta);
 
-  const buy=first(root,[
-    "buy",
-    "buyVolume",
-    "totalBuy",
-    "buyNotional"
-  ],c?.buy ?? 0);
+  $("sBuy").textContent=
+    fmt(stats.buyVolume);
 
-  const sell=first(root,[
-    "sell",
-    "sellVolume",
-    "totalSell",
-    "sellNotional"
-  ],c?.sell ?? 0);
-
-  $("sDelta").textContent=fmt(delta);
-  $("sBuy").textContent=fmt(buy);
-  $("sSell").textContent=fmt(sell);
+  $("sSell").textContent=
+    fmt(stats.sellVolume);
 
   $("sAbs").textContent=
-    first(root,[
-      "absorption",
-      "absorptionSignal",
-      "absorptionType"
-    ],"NONE");
+    data.absorption?.detected
+      ? `${data.absorption.side} · ${data.absorption.score}`
+      : "NONE";
 }
 
 
 /* ============================================================
-   CANVAS SIZE
+   CANVAS
 ============================================================ */
 
 function resizeCanvas(){
 
-  const rect=chartWrap.getBoundingClientRect();
+  const rect=
+    chartWrap.getBoundingClientRect();
 
-  const w=Math.max(1,Math.floor(rect.width));
-  const h=Math.max(1,Math.floor(rect.height));
+  const w=
+    Math.max(
+      1,
+      Math.floor(rect.width)
+    );
 
-  chart.width=Math.floor(w*state.dpr);
-  chart.height=Math.floor(h*state.dpr);
+  const h=
+    Math.max(
+      1,
+      Math.floor(rect.height)
+    );
 
-  chart.style.width=w+"px";
-  chart.style.height=h+"px";
+  chart.width=
+    Math.floor(
+      w*state.dpr
+    );
+
+  chart.height=
+    Math.floor(
+      h*state.dpr
+    );
+
+  chart.style.width=
+    w+"px";
+
+  chart.style.height=
+    h+"px";
 
   ctx.setTransform(
-    state.dpr,0,0,state.dpr,0,0
+    state.dpr,
+    0,
+    0,
+    state.dpr,
+    0,
+    0
   );
 
-  miniCanvas.width=Math.floor(70*state.dpr);
-  miniCanvas.height=Math.floor(80*state.dpr);
+  miniCanvas.width=
+    75*state.dpr;
+
+  miniCanvas.height=
+    82*state.dpr;
 
   miniCtx.setTransform(
-    state.dpr,0,0,state.dpr,0,0
+    state.dpr,
+    0,
+    0,
+    state.dpr,
+    0,
+    0
   );
 
-  requestDraw();
+  draw();
 }
 
-window.addEventListener("resize",resizeCanvas);
+window.addEventListener(
+  "resize",
+  resizeCanvas
+);
 
 
 /* ============================================================
-   CHART GEOMETRY
+   GEOMETRY
 ============================================================ */
 
 function geometry(){
 
-  const W=chart.clientWidth;
-  const H=chart.clientHeight;
+  if(!state.candles.length)
+    return null;
 
-  const candles=state.candles;
+  const W=
+    chart.clientWidth;
 
-  if(!candles.length) return null;
+  const H=
+    chart.clientHeight;
 
-  const visibleBase=70;
-  const visibleCount=clamp(
-    Math.round(visibleBase/state.zoom),
-    8,
-    candles.length
-  );
+  const baseVisible=70;
+
+  const visibleCount=
+    clamp(
+      Math.round(
+        baseVisible/state.zoom
+      ),
+      8,
+      state.candles.length
+    );
+
+  const maxStart=
+    Math.max(
+      0,
+      state.candles.length-visibleCount
+    );
 
   /*
-    pan is a candle-index offset.
-    Positive pan moves the visible window toward newer candles.
+    انتهای نمودار = جدیدترین کندل.
   */
-  const maxStart=Math.max(0,candles.length-visibleCount);
+  let start=
+    maxStart-state.pan;
 
-  let centerStart=
-    candles.length-visibleCount-state.pan;
-
-  centerStart=clamp(
-    centerStart,
+  start=clamp(
+    start,
     0,
     maxStart
   );
 
-  const start=Math.round(centerStart);
-  const end=Math.min(
-    candles.length,
-    start+visibleCount
-  );
+  start=Math.round(start);
 
-  const visible=candles.slice(start,end);
+  const end=
+    Math.min(
+      state.candles.length,
+      start+visibleCount
+    );
+
+  const visible=
+    state.candles.slice(
+      start,
+      end
+    );
 
   let min=Infinity;
   let max=-Infinity;
 
   for(const c of visible){
-    min=Math.min(min,c.low);
-    max=Math.max(max,c.high);
+
+    min=Math.min(
+      min,
+      c.low
+    );
+
+    max=Math.max(
+      max,
+      c.high
+    );
   }
 
-  if(!Number.isFinite(min) || !Number.isFinite(max))
+  if(!Number.isFinite(min) ||
+     !Number.isFinite(max))
     return null;
 
-  const range=max-min || Math.max(1,Math.abs(max)*.001);
+  let range=
+    max-min;
+
+  if(range<=0)
+    range=
+      Math.max(
+        Math.abs(max)*.001,
+        .00000001
+      );
 
   min-=range*.08;
   max+=range*.08;
 
+  range=max-min;
+
   const left=52;
-  const right=20;
+  const right=18;
   const top=24;
   const bottom=38;
 
-  const plotW=Math.max(1,W-left-right);
-  const plotH=Math.max(1,H-top-bottom);
+  const plotW=
+    Math.max(
+      1,
+      W-left-right
+    );
 
-  const step=plotW/Math.max(1,visible.length);
+  const plotH=
+    Math.max(
+      1,
+      H-top-bottom
+    );
+
+  const step=
+    plotW/
+    Math.max(
+      1,
+      visible.length
+    );
 
   return {
     W,H,
@@ -1141,61 +1156,99 @@ function geometry(){
     visible,
     min,
     max,
-    range:max-min,
-    left,right,top,bottom,
-    plotW,plotH,
+    range,
+    left,
+    right,
+    top,
+    bottom,
+    plotW,
+    plotH,
     step
   };
 }
 
 function yPrice(g,p){
+
   return g.top+
-    (g.max-p)/g.range*g.plotH;
+    (
+      g.max-p
+    )/
+    g.range*
+    g.plotH;
 }
 
 
 /* ============================================================
-   DRAW MAIN CHART
+   DRAW
 ============================================================ */
 
-function requestDraw(){
+function draw(){
 
-  if(raf) return;
+  if(drawRAF)
+    cancelAnimationFrame(drawRAF);
 
-  raf=requestAnimationFrame(()=>{
-    raf=0;
-    drawChart();
-  });
+  drawRAF=
+    requestAnimationFrame(()=>{
+
+      drawRAF=0;
+
+      drawNow();
+
+    });
 }
 
-function drawChart(){
+function drawNow(){
 
-  const W=chart.clientWidth;
-  const H=chart.clientHeight;
+  const W=
+    chart.clientWidth;
 
-  ctx.clearRect(0,0,W,H);
+  const H=
+    chart.clientHeight;
+
+  ctx.clearRect(
+    0,
+    0,
+    W,
+    H
+  );
 
   ctx.fillStyle="#071018";
-  ctx.fillRect(0,0,W,H);
 
-  const g=geometry();
+  ctx.fillRect(
+    0,
+    0,
+    W,
+    H
+  );
+
+  const g=
+    geometry();
 
   if(!g){
-    ctx.fillStyle="#728996";
+
+    ctx.fillStyle="#718895";
     ctx.font="12px Tahoma";
     ctx.textAlign="center";
+
     ctx.fillText(
-      "داده‌ای برای نمایش وجود ندارد",
+      "داده‌ای وجود ندارد",
       W/2,
       H/2
     );
+
     return;
   }
 
   drawGrid(g);
+
   drawCandles(g);
-  drawSelectedGuide(g);
+
+  drawSelection(g);
+
   drawAxis(g);
+
+  $("chartInfo").textContent=
+    `${state.candles.length} candles · ${$("interval").value}m`;
 }
 
 
@@ -1207,32 +1260,42 @@ function drawGrid(g){
 
   ctx.save();
 
-  ctx.strokeStyle="rgba(65,88,100,.28)";
+  ctx.strokeStyle=
+    "rgba(75,100,112,.24)";
+
   ctx.lineWidth=1;
 
-  const rows=7;
-
-  for(let i=0;i<=rows;i++){
+  for(let i=0;i<=7;i++){
 
     const y=
       g.top+
-      i*g.plotH/rows;
+      i*g.plotH/7;
 
     ctx.beginPath();
-    ctx.moveTo(g.left,y);
-    ctx.lineTo(g.left+g.plotW,y);
+
+    ctx.moveTo(
+      g.left,
+      y
+    );
+
+    ctx.lineTo(
+      g.left+g.plotW,
+      y
+    );
+
     ctx.stroke();
 
     const p=
       g.max-
-      i*g.range/rows;
+      i*g.range/7;
 
-    ctx.fillStyle="#657b89";
+    ctx.fillStyle="#657c89";
     ctx.font="9px Tahoma";
     ctx.textAlign="left";
+
     ctx.fillText(
       priceFmt(p),
-      5,
+      4,
       y+3
     );
   }
@@ -1248,74 +1311,107 @@ function drawGrid(g){
 function drawCandles(g){
 
   const bodyW=
-    clamp(g.step*.58,2,32);
+    clamp(
+      g.step*.62,
+      2,
+      30
+    );
 
   g.visible.forEach((c,i)=>{
 
-    const globalIndex=g.start+i;
+    const index=
+      g.start+i;
 
     const x=
       g.left+
       i*g.step+
       g.step/2;
 
-    const yo=yPrice(g,c.open);
-    const yh=yPrice(g,c.high);
-    const yl=yPrice(g,c.low);
-    const yc=yPrice(g,c.close);
+    const yo=
+      yPrice(g,c.open);
 
-    const up=c.close>=c.open;
+    const yh=
+      yPrice(g,c.high);
+
+    const yl=
+      yPrice(g,c.low);
+
+    const yc=
+      yPrice(g,c.close);
+
+    const up=
+      c.close>=c.open;
 
     const selected=
-      globalIndex===state.selected;
+      index===state.selected;
 
     /*
-      Selection background
+      Selected candle background
     */
+
     if(selected){
 
-      ctx.fillStyle="rgba(75,160,195,.10)";
+      ctx.fillStyle=
+        "rgba(244,211,94,.10)";
+
       ctx.fillRect(
         x-g.step/2,
         g.top,
         g.step,
         g.plotH
       );
-
-      ctx.strokeStyle="rgba(92,183,219,.45)";
-      ctx.lineWidth=1;
-
-      ctx.beginPath();
-      ctx.moveTo(x,g.top);
-      ctx.lineTo(x,g.top+g.plotH);
-      ctx.stroke();
     }
 
     /*
       Wick
     */
+
     ctx.strokeStyle=
-      up ? "#35c994" : "#f05b67";
+      up
+        ? "#35cf98"
+        : "#ef5965";
 
     ctx.lineWidth=
-      selected ? 2 : 1;
+      selected
+        ? 2
+        : 1;
 
     ctx.beginPath();
-    ctx.moveTo(x,yh);
-    ctx.lineTo(x,yl);
+
+    ctx.moveTo(
+      x,
+      yh
+    );
+
+    ctx.lineTo(
+      x,
+      yl
+    );
+
     ctx.stroke();
 
     /*
       Body
     */
-    const bodyTop=Math.min(yo,yc);
-    const bodyHeight=Math.max(
-      1,
-      Math.abs(yc-yo)
-    );
+
+    const bodyTop=
+      Math.min(
+        yo,
+        yc
+      );
+
+    const bodyHeight=
+      Math.max(
+        1,
+        Math.abs(
+          yc-yo
+        )
+      );
 
     ctx.fillStyle=
-      up ? "#19ad78" : "#d74e5a";
+      up
+        ? "#18ac78"
+        : "#d84d59";
 
     ctx.fillRect(
       x-bodyW/2,
@@ -1325,8 +1421,9 @@ function drawCandles(g){
     );
 
     /*
-      Selected outline
+      Selection outline
     */
+
     if(selected){
 
       ctx.strokeStyle="#f4d35e";
@@ -1344,30 +1441,49 @@ function drawCandles(g){
 
 
 /* ============================================================
-   SELECTED GUIDE
+   SELECTION
 ============================================================ */
 
-function drawSelectedGuide(g){
+function drawSelection(g){
 
-  if(state.selected<g.start || state.selected>=g.end)
+  if(
+    state.selected<g.start ||
+    state.selected>=g.end
+  )
     return;
 
-  const i=state.selected-g.start;
+  const local=
+    state.selected-g.start;
 
   const x=
     g.left+
-    i*g.step+
+    local*g.step+
     g.step/2;
 
   ctx.save();
 
-  ctx.strokeStyle="rgba(244,211,94,.65)";
-  ctx.setLineDash([4,4]);
+  ctx.strokeStyle=
+    "rgba(244,211,94,.70)";
+
   ctx.lineWidth=1;
 
+  ctx.setLineDash([
+    4,
+    4
+  ]);
+
   ctx.beginPath();
-  ctx.moveTo(x,g.top);
-  ctx.lineTo(x,g.top+g.plotH);
+
+  ctx.moveTo(
+    x,
+    g.top
+  );
+
+  ctx.lineTo(
+    x,
+    g.top+g.plotH
+  );
+
   ctx.stroke();
 
   ctx.restore();
@@ -1383,17 +1499,23 @@ function drawAxis(g){
   ctx.save();
 
   ctx.fillStyle="#617987";
-  ctx.font="9px Tahoma";
+
+  ctx.font="8px Tahoma";
+
   ctx.textAlign="center";
 
-  const every=Math.max(
-    1,
-    Math.ceil(g.visible.length/7)
-  );
+  const every=
+    Math.max(
+      1,
+      Math.ceil(
+        g.visible.length/7
+      )
+    );
 
   g.visible.forEach((c,i)=>{
 
-    if(i%every!==0) return;
+    if(i%every!==0)
+      return;
 
     const x=
       g.left+
@@ -1403,7 +1525,7 @@ function drawAxis(g){
     ctx.fillText(
       timeFmt(c.time),
       x,
-      g.H-13
+      g.H-12
     );
   });
 
@@ -1412,16 +1534,27 @@ function drawAxis(g){
 
 
 /* ============================================================
-   SELECT CANDLE FROM POINTER
+   CANDLE HIT TEST
 ============================================================ */
 
-function candleAt(x){
+function candleAt(clientX){
 
-  const g=geometry();
+  const g=
+    geometry();
 
-  if(!g) return -1;
+  if(!g)
+    return -1;
 
-  if(x<g.left || x>g.left+g.plotW)
+  const rect=
+    chart.getBoundingClientRect();
+
+  const x=
+    clientX-rect.left;
+
+  if(
+    x<g.left ||
+    x>g.left+g.plotW
+  )
     return -1;
 
   const local=
@@ -1432,7 +1565,10 @@ function candleAt(x){
   const index=
     g.start+local;
 
-  if(index<0 || index>=state.candles.length)
+  if(
+    index<0 ||
+    index>=state.candles.length
+  )
     return -1;
 
   return index;
@@ -1440,318 +1576,469 @@ function candleAt(x){
 
 
 /* ============================================================
-   POINTER EVENTS
-   1 FINGER = PAN
-   2 FINGER = PINCH ZOOM
+   TOUCH / POINTER
 ============================================================ */
 
-chart.addEventListener("pointerdown",e=>{
+chart.addEventListener(
+  "pointerdown",
+  e=>{
 
-  e.preventDefault();
+    e.preventDefault();
 
-  try{
-    chart.setPointerCapture(e.pointerId);
-  }catch(_){}
+    try{
+      chart.setPointerCapture(
+        e.pointerId
+      );
+    }catch(_){}
 
-  state.pointers.set(
-    e.pointerId,
-    {
-      x:e.clientX,
-      y:e.clientY
+    state.pointers.set(
+      e.pointerId,
+      {
+        x:e.clientX,
+        y:e.clientY
+      }
+    );
+
+    if(state.pointers.size===1){
+
+      state.drag={
+        id:e.pointerId,
+
+        startX:e.clientX,
+        startY:e.clientY,
+
+        lastX:e.clientX,
+        lastY:e.clientY,
+
+        moved:false
+      };
+
+      state.pinch=null;
     }
-  );
 
-  if(state.pointers.size===1){
+    /*
+      شروع pinch دو انگشتی
+    */
 
-    state.drag={
-      id:e.pointerId,
-      startX:e.clientX,
-      startY:e.clientY,
-      lastX:e.clientX,
-      lastY:e.clientY,
-      moved:false
-    };
+    if(state.pointers.size===2){
 
-    state.pinch=null;
-  }
+      const pts=
+        [...state.pointers.values()];
 
-  if(state.pointers.size===2){
+      const dx=
+        pts[0].x-pts[1].x;
 
-    const pts=[...state.pointers.values()];
+      const dy=
+        pts[0].y-pts[1].y;
 
-    const dx=pts[0].x-pts[1].x;
-    const dy=pts[0].y-pts[1].y;
-
-    state.pinch={
-      distance:Math.hypot(dx,dy),
-      zoom:state.zoom
-    };
-
-    state.drag=null;
-  }
-});
-
-
-chart.addEventListener("pointermove",e=>{
-
-  e.preventDefault();
-
-  if(!state.pointers.has(e.pointerId))
-    return;
-
-  state.pointers.set(
-    e.pointerId,
-    {
-      x:e.clientX,
-      y:e.clientY
-    }
-  );
-
-  /*
-    TWO FINGER PINCH
-  */
-  if(state.pointers.size>=2){
-
-    const pts=[...state.pointers.values()];
-
-    const dx=pts[0].x-pts[1].x;
-    const dy=pts[0].y-pts[1].y;
-
-    const distance=Math.hypot(dx,dy);
-
-    if(state.pinch){
-
-      const ratio=
-        distance/
-        Math.max(1,state.pinch.distance);
+      const distance=
+        Math.hypot(
+          dx,
+          dy
+        );
 
       /*
-        Pinch apart = zoom in
-        Pinch together = zoom out
+        مرکز دو انگشت
       */
-      state.zoom=clamp(
-        state.pinch.zoom*ratio,
+
+      const rect=
+        chart.getBoundingClientRect();
+
+      const centerX=
+        (
+          pts[0].x+
+          pts[1].x
+        )/2-
+        rect.left;
+
+      state.pinch={
+        distance,
+        zoom:state.zoom,
+        centerX
+      };
+
+      state.drag=null;
+    }
+  },
+  {passive:false}
+);
+
+
+chart.addEventListener(
+  "pointermove",
+  e=>{
+
+    e.preventDefault();
+
+    if(!state.pointers.has(
+      e.pointerId
+    ))
+      return;
+
+    state.pointers.set(
+      e.pointerId,
+      {
+        x:e.clientX,
+        y:e.clientY
+      }
+    );
+
+    /*
+      ==============================
+      TWO FINGER ZOOM
+      ==============================
+    */
+
+    if(state.pointers.size>=2){
+
+      const pts=
+        [...state.pointers.values()];
+
+      const dx=
+        pts[0].x-pts[1].x;
+
+      const dy=
+        pts[0].y-pts[1].y;
+
+      const distance=
+        Math.hypot(
+          dx,
+          dy
+        );
+
+      if(state.pinch){
+
+        const ratio=
+          distance/
+          Math.max(
+            1,
+            state.pinch.distance
+          );
+
+        const oldZoom=
+          state.zoom;
+
+        state.zoom=
+          clamp(
+            state.pinch.zoom*ratio,
+            state.minZoom,
+            state.maxZoom
+          );
+
+        /*
+          مرکز زوم همان جایی می‌ماند که
+          دو انگشت قرار گرفته‌اند.
+        */
+
+        const gBefore=
+          geometry();
+
+        if(
+          gBefore &&
+          oldZoom!==state.zoom
+        ){
+
+          const center=
+            state.pinch.centerX;
+
+          const localRatio=
+            clamp(
+              (
+                center-
+                gBefore.left
+              )/
+              Math.max(
+                1,
+                gBefore.plotW
+              ),
+              0,
+              1
+            );
+
+          const oldCount=
+            gBefore.visible.length;
+
+          const gAfter=
+            geometry();
+
+          const newCount=
+            gAfter.visible.length;
+
+          /*
+            حفظ نقطه زیر انگشت
+          */
+
+          state.pan+=
+            (
+              oldCount-
+              newCount
+            )*
+            localRatio;
+        }
+
+        draw();
+      }
+
+      return;
+    }
+
+
+    /*
+      ==============================
+      ONE FINGER PAN
+      ==============================
+    */
+
+    if(
+      state.drag &&
+      state.drag.id===e.pointerId
+    ){
+
+      const dx=
+        e.clientX-
+        state.drag.lastX;
+
+      const dy=
+        e.clientY-
+        state.drag.lastY;
+
+      if(
+        Math.abs(
+          e.clientX-
+          state.drag.startX
+        )>5 ||
+        Math.abs(
+          e.clientY-
+          state.drag.startY
+        )>5
+      ){
+
+        state.drag.moved=true;
+      }
+
+      const g=
+        geometry();
+
+      if(g){
+
+        /*
+          حرکت طبیعی چارت:
+          انگشت به راست → محتوای چارت به راست
+          انگشت به چپ → محتوای چارت به چپ
+
+          بنابراین dx مستقیماً روی pan
+          اعمال می‌شود.
+        */
+
+        state.pan+=
+          dx/
+          Math.max(
+            1,
+            g.step
+          );
+
+        const maxPan=
+          Math.max(
+            0,
+            state.candles.length-
+            g.visible.length
+          );
+
+        state.pan=
+          clamp(
+            state.pan,
+            -g.visible.length*.5,
+            maxPan+
+            g.visible.length*.5
+          );
+      }
+
+      state.drag.lastX=
+        e.clientX;
+
+      state.drag.lastY=
+        e.clientY;
+
+      draw();
+    }
+
+  },
+  {passive:false}
+);
+
+
+chart.addEventListener(
+  "pointerup",
+  e=>{
+
+    e.preventDefault();
+
+    const drag=
+      state.drag;
+
+    /*
+      اگر حرکت نکرده باشد = لمس انتخاب کندل
+    */
+
+    if(
+      state.pointers.size===1 &&
+      drag &&
+      drag.id===e.pointerId &&
+      !drag.moved
+    ){
+
+      const index=
+        candleAt(e.clientX);
+
+      if(index>=0){
+
+        state.selected=
+          index;
+
+        updateSelected();
+
+        draw();
+      }
+    }
+
+    state.pointers.delete(
+      e.pointerId
+    );
+
+    /*
+      اگر یک انگشت باقی ماند
+      دوباره pan را ادامه بده
+    */
+
+    if(state.pointers.size===1){
+
+      const entry=
+        [...state.pointers.entries()][0];
+
+      const id=
+        entry[0];
+
+      const p=
+        entry[1];
+
+      state.drag={
+        id,
+
+        startX:p.x,
+        startY:p.y,
+
+        lastX:p.x,
+        lastY:p.y,
+
+        moved:true
+      };
+
+      state.pinch=null;
+    }
+
+    if(state.pointers.size===0){
+
+      state.drag=null;
+      state.pinch=null;
+    }
+  },
+  {passive:false}
+);
+
+
+chart.addEventListener(
+  "pointercancel",
+  e=>{
+
+    state.pointers.delete(
+      e.pointerId
+    );
+
+    if(state.pointers.size===0){
+
+      state.drag=null;
+      state.pinch=null;
+    }
+  }
+);
+
+
+/* ============================================================
+   WHEEL ZOOM
+============================================================ */
+
+chart.addEventListener(
+  "wheel",
+  e=>{
+
+    e.preventDefault();
+
+    const oldZoom=
+      state.zoom;
+
+    const factor=
+      e.deltaY<0
+        ? 1.15
+        : .87;
+
+    state.zoom=
+      clamp(
+        state.zoom*factor,
         state.minZoom,
         state.maxZoom
       );
 
-      requestDraw();
-    }
-
-    return;
-  }
-
-  /*
-    ONE FINGER PAN
-  */
-  if(state.drag &&
-     state.drag.id===e.pointerId){
-
-    const dx=
-      e.clientX-state.drag.lastX;
-
-    const dy=
-      e.clientY-state.drag.lastY;
+    const g=
+      geometry();
 
     if(
-      Math.abs(e.clientX-state.drag.startX)>5 ||
-      Math.abs(e.clientY-state.drag.startY)>5
+      g &&
+      oldZoom!==state.zoom
     ){
-      state.drag.moved=true;
-    }
 
-    /*
-      IMPORTANT:
-      Finger right -> chart content right.
-      Therefore positive dx adds to pan correction
-      rather than reversing the gesture.
-    */
-    const g=geometry();
+      const rect=
+        chart.getBoundingClientRect();
 
-    if(g){
-
-      const candleMove=
-        dx/
-        Math.max(1,g.step);
-
-      /*
-        Reverse the old wrong direction:
-        moving finger right reveals older candles.
-      */
-      state.pan-=candleMove;
-
-      const visibleCount=g.visible.length;
-
-      const maxPan=
-        Math.max(
-          0,
-          state.candles.length-visibleCount
-        );
-
-      state.pan=clamp(
-        state.pan,
-        -visibleCount*.35,
-        maxPan+visibleCount*.35
-      );
-    }
-
-    state.drag.lastX=e.clientX;
-    state.drag.lastY=e.clientY;
-
-    requestDraw();
-  }
-});
-
-
-chart.addEventListener("pointerup",e=>{
-
-  e.preventDefault();
-
-  const drag=state.drag;
-
-  if(
-    state.pointers.size===1 &&
-    drag &&
-    drag.id===e.pointerId &&
-    !drag.moved
-  ){
-
-    const rect=chart.getBoundingClientRect();
-
-    const x=e.clientX-rect.left;
-
-    const index=candleAt(x);
-
-    if(index>=0){
-
-      state.selected=index;
-
-      updateSelected();
-      requestDraw();
-    }
-  }
-
-  state.pointers.delete(e.pointerId);
-
-  if(state.pointers.size===1){
-
-    const [id,p]=[...state.pointers.entries()][0];
-
-    state.drag={
-      id,
-      startX:p.x,
-      startY:p.y,
-      lastX:p.x,
-      lastY:p.y,
-      moved:true
-    };
-
-    state.pinch=null;
-  }
-
-  if(state.pointers.size===0){
-
-    state.drag=null;
-    state.pinch=null;
-  }
-});
-
-
-chart.addEventListener("pointercancel",e=>{
-
-  state.pointers.delete(e.pointerId);
-
-  if(state.pointers.size===0){
-    state.drag=null;
-    state.pinch=null;
-  }
-});
-
-
-/* ============================================================
-   MOUSE WHEEL ZOOM
-============================================================ */
-
-chart.addEventListener("wheel",e=>{
-
-  e.preventDefault();
-
-  const oldZoom=state.zoom;
-
-  state.zoom=clamp(
-    state.zoom*
-    (e.deltaY<0 ? 1.12 : .89),
-    state.minZoom,
-    state.maxZoom
-  );
-
-  /*
-    Keep the candle under cursor approximately fixed.
-  */
-  const ratio=
-    state.zoom/Math.max(.0001,oldZoom);
-
-  if(ratio!==1){
-
-    const g=geometry();
-
-    if(g){
-
-      const rect=chart.getBoundingClientRect();
-      const x=e.clientX-rect.left;
+      const x=
+        e.clientX-
+        rect.left;
 
       const local=
         clamp(
-          (x-g.left)/
-          Math.max(1,g.plotW),
+          (
+            x-
+            g.left
+          )/
+          Math.max(
+            1,
+            g.plotW
+          ),
           0,
           1
         );
 
-      const shift=
-        (g.visible.length-
-         geometry().visible.length)*local;
+      const oldCount=
+        g.visible.length;
 
-      state.pan+=shift;
+      const after=
+        geometry();
+
+      const newCount=
+        after.visible.length;
+
+      state.pan+=
+        (
+          oldCount-
+          newCount
+        )*
+        local;
     }
-  }
 
-  requestDraw();
+    draw();
 
-},{
-  passive:false
-});
-
-
-/* ============================================================
-   SELECTED CANDLE
-============================================================ */
-
-function updateSelected(){
-
-  const c=state.candles[state.selected];
-
-  if(!c) return;
-
-  $("selectedTitle").textContent=
-    `کندل انتخابی · ${timeFmt(c.time)}`;
-
-  $("o").textContent=priceFmt(c.open);
-  $("h").textContent=priceFmt(c.high);
-  $("l").textContent=priceFmt(c.low);
-  $("c").textContent=priceFmt(c.close);
-
-  const delta=
-    n(c.delta,
-      n(c.buy)-n(c.sell)
-    );
-
-  $("cd").textContent=fmt(delta);
-
-  drawMiniCandle(c);
-
-  renderFootprint(c);
-}
+  },
+  {passive:false}
+);
 
 
 /* ============================================================
@@ -1760,382 +2047,680 @@ function updateSelected(){
 
 function drawMiniCandle(c){
 
-  const W=70;
-  const H=80;
+  const W=75;
+  const H=82;
 
-  miniCtx.clearRect(0,0,W,H);
+  miniCtx.clearRect(
+    0,
+    0,
+    W,
+    H
+  );
 
   miniCtx.fillStyle="#071018";
-  miniCtx.fillRect(0,0,W,H);
 
-  const max=c.high;
-  const min=c.low;
+  miniCtx.fillRect(
+    0,
+    0,
+    W,
+    H
+  );
 
-  const range=max-min || 1;
+  const range=
+    Math.max(
+      c.high-c.low,
+      Number.EPSILON
+    );
 
   const y=p=>
     8+
-    (max-p)/range*64;
+    (
+      c.high-p
+    )/
+    range*
+    66;
 
-  const x=35;
+  const x=37.5;
 
-  const up=c.close>=c.open;
+  const up=
+    c.close>=c.open;
 
   miniCtx.strokeStyle=
-    up ? "#35c994" : "#f05b67";
+    up
+      ? "#35cf98"
+      : "#ef5965";
 
   miniCtx.lineWidth=2;
 
   miniCtx.beginPath();
-  miniCtx.moveTo(x,y(c.high));
-  miniCtx.lineTo(x,y(c.low));
+
+  miniCtx.moveTo(
+    x,
+    y(c.high)
+  );
+
+  miniCtx.lineTo(
+    x,
+    y(c.low)
+  );
+
   miniCtx.stroke();
 
+  const top=
+    Math.min(
+      y(c.open),
+      y(c.close)
+    );
+
+  const height=
+    Math.max(
+      2,
+      Math.abs(
+        y(c.close)-
+        y(c.open)
+      )
+    );
+
   miniCtx.fillStyle=
-    up ? "#19ad78" : "#d74e5a";
-
-  const top=Math.min(
-    y(c.open),
-    y(c.close)
-  );
-
-  const height=Math.max(
-    2,
-    Math.abs(
-      y(c.close)-y(c.open)
-    )
-  );
+    up
+      ? "#18ac78"
+      : "#d84d59";
 
   miniCtx.fillRect(
     20,
     top,
-    30,
+    35,
     height
   );
 }
 
 
 /* ============================================================
-   GET FOOTPRINT FOR SELECTED CANDLE
+   SELECTED CANDLE
 ============================================================ */
 
-function getSelectedLevels(c){
+function updateSelected(){
+
+  const c=
+    state.candles[
+      state.selected
+    ];
+
+  if(!c)
+    return;
+
+  $("selectedTitle").textContent=
+    `کندل انتخابی · ${timeFmt(c.time)}`;
+
+  $("o").textContent=
+    priceFmt(c.open);
+
+  $("h").textContent=
+    priceFmt(c.high);
+
+  $("l").textContent=
+    priceFmt(c.low);
+
+  $("c").textContent=
+    priceFmt(c.close);
 
   /*
-    1. Direct per-candle footprint.
+    Delta این کندل را از معاملات همان
+    بازه محاسبه می‌کنیم.
   */
-  let rawLevels=getArray(c,[
-    "footprint",
-    "levels",
-    "priceLevels",
-    "orderflow",
-    "orderFlow",
-    "tradesByPrice",
-    "byPrice"
-  ]);
-
-  /*
-    2. Some Worker versions place it under data.
-  */
-  if(!rawLevels.length &&
-     c?.data &&
-     typeof c.data==="object"){
-
-    rawLevels=getArray(c.data,[
-      "footprint",
-      "levels",
-      "priceLevels",
-      "orderflow",
-      "orderFlow"
-    ]);
-  }
 
   const levels=
-    rawLevels
-      .map(normalizeLevel)
-      .filter(x=>x.price>0);
+    buildCandleFootprint(c);
 
-  /*
-    Aggregate duplicate price levels.
-  */
-  const map=new Map();
+  const candleDelta=
+    levels.reduce(
+      (s,x)=>s+x.delta,
+      0
+    );
 
-  for(const l of levels){
+  $("cd").textContent=
+    (
+      candleDelta>0
+        ? "+"
+        : ""
+    )+
+    fmt(candleDelta);
 
-    const key=l.price.toFixed(12);
+  drawMiniCandle(c);
 
-    if(!map.has(key)){
-      map.set(key,{
-        price:l.price,
-        bid:0,
-        ask:0,
-        volume:0,
-        delta:0
-      });
-    }
-
-    const x=map.get(key);
-
-    x.bid+=l.bid;
-    x.ask+=l.ask;
-    x.volume+=l.volume;
-    x.delta+=l.delta;
-  }
-
-  return [...map.values()]
-    .sort((a,b)=>b.price-a.price);
+  renderFootprint(
+    c,
+    levels
+  );
 }
 
 
 /* ============================================================
-   RENDER FOOTPRINT
+   EXACT SELECTED CANDLE TRADES
 ============================================================ */
 
-function renderFootprint(c){
+function getCandleTrades(c){
 
-  const rows=$("fpRows");
+  if(!c)
+    return [];
 
-  let levels=getSelectedLevels(c);
+  const start=
+    num(c.time);
+
+  const end=
+    start+
+    state.intervalMs;
 
   /*
-    If Worker gives candle-level bid/ask but no levels,
-    create a small candle-level representation.
-    This is NOT fake historical data; it only uses fields
-    actually returned for the candle.
+    معاملات واقعی Worker:
+    time / price / size / value / side
+
+    فقط معاملاتی که timestamp آنها
+    داخل همین کندل است انتخاب می‌شوند.
   */
-  if(!levels.length){
 
-    const bid=n(first(c,[
-      "bid",
-      "buy",
-      "buyVolume",
-      "bidVolume"
-    ],0));
+  return state.trades.filter(
+    t=>{
+      const tm=
+        num(t.time);
 
-    const ask=n(first(c,[
-      "ask",
-      "sell",
-      "sellVolume",
-      "askVolume"
-    ],0));
-
-    const volume=n(
-      first(c,[
-        "volume",
-        "vol"
-      ],bid+ask)
-    );
-
-    const delta=n(
-      first(c,[
-        "delta",
-        "netDelta"
-      ],ask-bid)
-    );
-
-    /*
-      Only render when actual per-candle flow fields exist.
-    */
-    const hasFlow=
-      bid!==0 ||
-      ask!==0 ||
-      delta!==0;
-
-    if(hasFlow){
-
-      levels=[{
-        price:c.close,
-        bid,
-        ask,
-        volume,
-        delta
-      }];
-
+      return (
+        tm>=start &&
+        tm<end
+      );
     }
+  );
+}
+
+
+/* ============================================================
+   AUTO PRICE TICK
+============================================================ */
+
+function detectTick(c,trades){
+
+  /*
+    اول از اختلاف قیمت معاملات استفاده می‌کنیم.
+  */
+
+  const prices=
+    trades
+      .map(t=>num(t.price))
+      .filter(x=>x>0)
+      .sort((a,b)=>a-b);
+
+  let minDiff=Infinity;
+
+  for(let i=1;i<prices.length;i++){
+
+    const d=
+      prices[i]-
+      prices[i-1];
+
+    if(
+      d>0 &&
+      d<minDiff
+    )
+      minDiff=d;
   }
 
+  if(
+    Number.isFinite(minDiff) &&
+    minDiff>0
+  )
+    return minDiff;
+
+  /*
+    fallback بر اساس range
+  */
+
+  const range=
+    num(c.high)-
+    num(c.low);
+
+  if(range>0)
+    return range/50;
+
+  return 0;
+}
+
+
+/* ============================================================
+   BUILD FOOTPRINT FOR THE SELECTED CANDLE
+============================================================ */
+
+function buildCandleFootprint(c){
+
+  const trades=
+    getCandleTrades(c);
+
+  /*
+    اگر معاملات واقعی برای کندل وجود نداشت،
+    چیزی از کندل دیگری نشان نمی‌دهیم.
+  */
+
+  if(!trades.length)
+    return [];
+
+  const tick=
+    detectTick(
+      c,
+      trades
+    );
+
+  const map=
+    new Map();
+
+  for(const t of trades){
+
+    let price=
+      num(t.price);
+
+    if(!price)
+      continue;
+
+    /*
+      قیمت را روی Fixed Price Level می‌نشانیم.
+    */
+
+    if(
+      tick>0 &&
+      Number.isFinite(tick)
+    ){
+
+      price=
+        Math.round(
+          price/tick
+        )*
+        tick;
+    }
+
+    /*
+      برای جلوگیری از خطای اعشار
+    */
+
+    const precision=
+      tick>=1
+        ? 0
+        : tick>0
+          ? Math.max(
+              0,
+              Math.ceil(
+                -Math.log10(tick)
+              )
+            )
+          : 8;
+
+    const key=
+      price.toFixed(
+        precision
+      );
+
+    if(!map.has(key)){
+
+      map.set(
+        key,
+        {
+          price,
+
+          bid:0,
+          ask:0,
+
+          bidValue:0,
+          askValue:0,
+
+          buyTrades:0,
+          sellTrades:0,
+
+          volume:0,
+          delta:0
+        }
+      );
+    }
+
+    const level=
+      map.get(key);
+
+    const size=
+      num(t.size);
+
+    const value=
+      num(
+        t.value,
+        price*size
+      );
+
+    /*
+      در Bybit:
+      trade side = buy یعنی aggressor buy
+      trade side = sell یعنی aggressor sell
+
+      برای Footprint:
+      Bid = فروشنده‌های market
+      Ask = خریدارهای market
+    */
+
+    if(
+      String(t.side)
+        .toLowerCase()==="buy"
+    ){
+
+      level.ask+=size;
+      level.askValue+=value;
+      level.buyTrades++;
+
+    }else{
+
+      level.bid+=size;
+      level.bidValue+=value;
+      level.sellTrades++;
+    }
+
+    level.volume+=size;
+  }
+
+  return [...map.values()]
+    .map(x=>({
+
+      ...x,
+
+      delta=
+        x.ask-
+        x.bid
+
+    }))
+    .sort(
+      (a,b)=>
+        b.price-a.price
+    );
+}
+
+
+/* ============================================================
+   FOOTPRINT RENDER
+============================================================ */
+
+function renderFootprint(
+  candle,
+  levels
+){
+
+  const container=
+    $("fpRows");
+
   if(!levels.length){
 
-    rows.innerHTML=`
+    container.innerHTML=`
       <div class="empty">
-        برای این کندل در پاسخ Worker داده‌ی
-        Footprint سطح‌قیمت وجود ندارد.
+        برای این کندل در بین معاملات واقعی دریافتی Worker
+        معامله‌ای در این بازه زمانی وجود ندارد.
+        <br><br>
+        کندل انتخابی:
+        ${timeFmt(candle.time)}
       </div>
     `;
 
     return;
   }
 
-  const maxVolume=Math.max(
-    1,
-    ...levels.map(x=>Math.abs(x.volume))
-  );
+  /*
+    Fixed Range:
+    بیشترین Volume بین Levelها
+  */
 
-  const maxDelta=Math.max(
-    1,
-    ...levels.map(x=>Math.abs(x.delta))
-  );
+  const maxVolume=
+    Math.max(
+      1,
+      ...levels.map(
+        x=>x.volume
+      )
+    );
 
-  rows.innerHTML=levels.map(l=>{
+  /*
+    بیشترین قدرمطلق Delta
+  */
 
-    const volumeWidth=
-      clamp(
-        Math.abs(l.volume)/maxVolume*100,
-        0,
-        100
-      );
+  const maxDelta=
+    Math.max(
+      1,
+      ...levels.map(
+        x=>Math.abs(x.delta)
+      )
+    );
 
-    const deltaWidth=
-      clamp(
-        Math.abs(l.delta)/maxDelta*100,
-        0,
-        100
-      );
+  container.innerHTML=
+    levels.map(
+      level=>{
 
-    const dClass=
-      l.delta>=0 ? "pos" : "neg";
+        const volumePct=
+          clamp(
+            level.volume/
+            maxVolume*
+            100,
+            0,
+            100
+          );
 
-    const dSign=
-      l.delta>0 ? "+" : "";
+        const deltaPct=
+          clamp(
+            Math.abs(level.delta)/
+            maxDelta*
+            100,
+            0,
+            100
+          );
 
-    return `
-      <div class="fpRow">
+        const deltaClass=
+          level.delta>=0
+            ? "deltaPos"
+            : "deltaNeg";
 
-        <!-- Volume Fixed Range -->
-        <div class="barCell">
-          <div
-            class="bar volume"
-            style="width:${volumeWidth}%"
-          ></div>
-          <div class="barValue">
-            ${fmt(l.volume)}
+        const deltaSign=
+          level.delta>0
+            ? "+"
+            : "";
+
+        return `
+
+          <div class="fpRow">
+
+            <!--
+              سمت چپ:
+              Volume Fixed Range
+            -->
+
+            <div class="hist">
+
+              <div
+                class="histFill volumeFill"
+                style="width:${volumePct}%"
+              ></div>
+
+              <div class="histText">
+                ${fmt(level.volume)}
+              </div>
+
+            </div>
+
+
+            <!-- Bid -->
+
+            <div class="num bid">
+              ${fmt(level.bid)}
+            </div>
+
+
+            <!-- Price -->
+
+            <div class="levelPrice">
+              ${priceFmt(level.price)}
+            </div>
+
+
+            <!-- Delta همان Level -->
+
+            <div class="num ${deltaClass}">
+              ${deltaSign}${fmt(level.delta)}
+            </div>
+
+
+            <!-- Ask -->
+
+            <div class="num ask">
+              ${fmt(level.ask)}
+            </div>
+
+
+            <!-- Delta Histogram -->
+
+            <div class="hist">
+
+              ${
+                level.delta>=0
+
+                ?
+
+                `<div
+                  class="histFill deltaPositiveFill"
+                  style="width:${deltaPct}%"
+                ></div>`
+
+                :
+
+                `<div
+                  class="histFill deltaNegativeFill"
+                  style="width:${deltaPct}%"
+                ></div>`
+              }
+
+              <div class="histText">
+                ${deltaSign}${fmt(level.delta)}
+              </div>
+
+            </div>
+
+
+            <!-- Volume -->
+
+            <div class="hist">
+
+              <div
+                class="histFill volumeFill"
+                style="width:${volumePct}%"
+              ></div>
+
+              <div class="histText">
+                ${fmt(level.volume)}
+              </div>
+
+            </div>
+
           </div>
-        </div>
-
-        <!-- Bid -->
-        <div class="bid">
-          ${fmt(l.bid)}
-        </div>
-
-        <!-- PRICE -->
-        <div class="price">
-          ${priceFmt(l.price)}
-        </div>
-
-        <!-- DELTA -->
-        <div class="delta ${dClass}">
-          ${dSign}${fmt(l.delta)}
-        </div>
-
-        <!-- Ask -->
-        <div class="ask">
-          ${fmt(l.ask)}
-        </div>
-
-        <!-- Delta Histogram -->
-        <div class="barCell">
-          ${
-            l.delta>=0
-            ?
-            `<div
-               class="bar deltaPos"
-               style="width:${deltaWidth}%"
-             ></div>`
-            :
-            `<div
-               class="bar deltaNeg"
-               style="width:${deltaWidth}%"
-             ></div>`
-          }
-          <div class="barValue">
-            ${dSign}${fmt(l.delta)}
-          </div>
-        </div>
-
-        <!-- Volume -->
-        <div class="barCell">
-          <div
-            class="bar volume"
-            style="width:${volumeWidth}%"
-          ></div>
-          <div class="barValue">
-            ${fmt(l.volume)}
-          </div>
-        </div>
-
-      </div>
-    `;
-
-  }).join("");
+        `;
+      }
+    ).join("");
 }
 
 
 /* ============================================================
-   OTHER TABS
+   TABS
 ============================================================ */
 
-document.querySelectorAll(".tab").forEach(tab=>{
+document
+  .querySelectorAll(".tab")
+  .forEach(
+    tab=>{
 
-  tab.addEventListener("click",()=>{
+      tab.addEventListener(
+        "click",
+        ()=>{
 
-    document.querySelectorAll(".tab")
-      .forEach(x=>x.classList.remove("active"));
+          document
+            .querySelectorAll(".tab")
+            .forEach(
+              x=>
+                x.classList.remove(
+                  "active"
+                )
+            );
 
-    tab.classList.add("active");
+          tab.classList.add(
+            "active"
+          );
 
-    const name=tab.dataset.tab;
+          /*
+            Footprint = اطلاعات واقعی کندل انتخابی
+          */
 
-    if(name==="footprint"){
-      updateSelected();
-      return;
+          if(
+            tab.dataset.tab===
+            "footprint"
+          ){
+
+            updateSelected();
+
+            return;
+          }
+
+          /*
+            فعلاً هنگام تغییر تب،
+            کندل انتخابی و داده‌اش دستکاری نمی‌شود.
+          */
+
+          $("fpRows").innerHTML=`
+            <div class="empty">
+              ${tab.textContent}
+              <br><br>
+              کندل انتخابی:
+              ${timeFmt(
+                state.candles[
+                  state.selected
+                ]?.time
+              )}
+            </div>
+          `;
+        }
+      );
     }
-
-    $("fpRows").innerHTML=`
-      <div class="empty">
-        بخش ${tab.textContent}
-        در حال استفاده از داده‌های واقعی Worker است.
-        <br><br>
-        کندل انتخابی همچنان:
-        <b>${timeFmt(
-          state.candles[state.selected]?.time
-        )}</b>
-      </div>
-    `;
-  });
-});
+  );
 
 
 /* ============================================================
-   BUTTONS
+   CONTROLS
 ============================================================ */
 
-$("analyzeBtn").addEventListener(
-  "click",
-  load
-);
+$("analyzeBtn")
+  .addEventListener(
+    "click",
+    load
+  );
 
-$("symbol").addEventListener(
-  "keydown",
-  e=>{
-    if(e.key==="Enter")
-      load();
-  }
-);
+$("symbol")
+  .addEventListener(
+    "keydown",
+    e=>{
+      if(e.key==="Enter")
+        load();
+    }
+  );
 
-$("interval").addEventListener(
-  "change",
-  load
-);
+$("category")
+  .addEventListener(
+    "change",
+    load
+  );
 
-$("category").addEventListener(
-  "change",
-  load
-);
+$("interval")
+  .addEventListener(
+    "change",
+    load
+  );
 
-$("limit").addEventListener(
-  "change",
-  load
-);
+$("limit")
+  .addEventListener(
+    "change",
+    load
+  );
 
 
 /* ============================================================
@@ -2147,5 +2732,6 @@ resizeCanvas();
 load();
 
 </script>
+
 </body>
 </html>
