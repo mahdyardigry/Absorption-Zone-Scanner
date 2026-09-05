@@ -2,2425 +2,2150 @@
 <html lang="fa" dir="rtl">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-
+<meta name="viewport"
+      content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <title>Absorption Zone Scanner</title>
 
 <style>
-*{
-  box-sizing:border-box;
-}
-
+*{box-sizing:border-box}
 html,body{
   margin:0;
   padding:0;
-  background:#070b12;
-  color:#e5e7eb;
-  font-family:
-    Tahoma,
-    Arial,
-    sans-serif;
+  width:100%;
+  min-height:100%;
+  background:#071018;
+  color:#e7edf3;
+  font-family:Tahoma,Arial,sans-serif;
+  overscroll-behavior:none;
 }
-
-body{
-  min-height:100vh;
-}
-
-button,
-input,
-select{
-  font:inherit;
-}
-
-button{
-  cursor:pointer;
-}
+body{overflow-x:hidden}
+button,input,select{font:inherit}
 
 .app{
-  width:min(1500px,100%);
+  width:100%;
+  max-width:1500px;
   margin:auto;
   padding:12px;
 }
 
 .header{
-  background:#0d1420;
-  border:1px solid #1e293b;
-  border-radius:18px;
-  padding:16px;
-  margin-bottom:12px;
+  border:1px solid #1d3442;
+  background:#0b1720;
+  border-radius:16px;
+  padding:15px;
+  margin-bottom:10px;
 }
-
 .title{
-  font-size:22px;
+  font-size:21px;
   font-weight:800;
 }
-
-.subtitle{
-  color:#94a3b8;
+.sub{
   margin-top:6px;
-  font-size:13px;
-}
-
-.status{
-  margin-top:12px;
-  padding:10px 12px;
-  border-radius:10px;
-  background:#111827;
-  border:1px solid #263244;
-  font-size:13px;
+  color:#8fa5b5;
+  font-size:12px;
 }
 
 .controls{
   display:grid;
-  grid-template-columns:
-    1.2fr
-    1fr
-    1fr
-    auto;
+  grid-template-columns:1fr 1fr 1fr 1fr auto;
   gap:8px;
-  margin-bottom:12px;
+  margin-bottom:10px;
 }
-
 .control{
-  background:#0d1420;
-  border:1px solid #1e293b;
-  border-radius:14px;
-  padding:10px;
+  background:#0b1720;
+  border:1px solid #1d3442;
+  border-radius:12px;
+  padding:8px;
 }
-
 .control label{
   display:block;
-  color:#94a3b8;
-  font-size:12px;
-  margin-bottom:6px;
+  color:#7f96a7;
+  font-size:10px;
+  margin-bottom:5px;
 }
-
-input,
-select{
+input,select,button{
   width:100%;
-  border:1px solid #334155;
-  background:#080d16;
-  color:#fff;
+  min-height:38px;
   border-radius:9px;
-  padding:10px;
+  border:1px solid #294554;
+  background:#101f29;
+  color:#e8f0f5;
+  padding:7px 9px;
   outline:none;
 }
-
 button{
-  border:1px solid #334155;
-  background:#172033;
-  color:#fff;
-  border-radius:10px;
-  padding:10px 15px;
+  cursor:pointer;
+  font-weight:700;
+}
+button:hover{background:#172b37}
+
+.status{
+  background:#0b1720;
+  border:1px solid #1d3442;
+  border-radius:12px;
+  padding:9px 12px;
+  margin-bottom:10px;
+  font-size:12px;
 }
 
-button:hover{
-  background:#202d44;
-}
-
-.refresh{
-  display:flex;
-  align-items:end;
-}
-
-.refresh button{
-  width:100%;
-  height:42px;
-}
-
-.market{
+.stats{
   display:grid;
-  grid-template-columns:
-    repeat(5,1fr);
-  gap:8px;
-  margin-bottom:12px;
+  grid-template-columns:repeat(6,1fr);
+  gap:7px;
+  margin-bottom:10px;
 }
-
-.metric{
-  background:#0d1420;
-  border:1px solid #1e293b;
-  border-radius:14px;
-  padding:12px;
+.stat{
+  background:#0b1720;
+  border:1px solid #1d3442;
+  border-radius:11px;
+  padding:9px;
+  min-width:0;
 }
-
-.metric-name{
-  font-size:11px;
-  color:#64748b;
+.stat .k{
+  color:#718898;
+  font-size:10px;
 }
-
-.metric-value{
-  margin-top:6px;
-  font-size:15px;
+.stat .v{
+  margin-top:5px;
+  font-size:13px;
   font-weight:800;
-}
-
-.main{
-  background:#0b111b;
-  border:1px solid #1e293b;
-  border-radius:18px;
   overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
 }
 
-.chart-head{
+.panel{
+  background:#0b1720;
+  border:1px solid #1d3442;
+  border-radius:15px;
+  overflow:hidden;
+  margin-bottom:10px;
+}
+.panelHead{
   display:flex;
   align-items:center;
   justify-content:space-between;
-  padding:12px 14px;
-  border-bottom:1px solid #1e293b;
+  gap:8px;
+  padding:10px 12px;
+  border-bottom:1px solid #1d3442;
 }
-
-.chart-title{
+.panelTitle{
+  font-size:13px;
   font-weight:800;
 }
-
-.chart-info{
-  color:#94a3b8;
-  font-size:12px;
+.panelInfo{
+  color:#7890a0;
+  font-size:10px;
 }
 
-.chart-wrap{
+.chartWrap{
   position:relative;
   width:100%;
-  height:520px;
-  background:#080d15;
+  height:430px;
+  background:#071018;
   overflow:hidden;
   touch-action:none;
 }
-
 #chart{
+  position:absolute;
+  inset:0;
   width:100%;
   height:100%;
-  display:block;
+  touch-action:none;
 }
-
-.chart-tip{
+.chartHint{
   position:absolute;
-  display:none;
+  left:10px;
+  top:9px;
+  z-index:3;
   pointer-events:none;
-  background:#020617;
-  border:1px solid #334155;
-  border-radius:10px;
-  padding:8px;
-  font-size:11px;
-  line-height:1.8;
-  z-index:10;
+  background:rgba(7,16,24,.82);
+  border:1px solid #203744;
+  border-radius:8px;
+  padding:5px 8px;
+  color:#708999;
+  font-size:9px;
 }
 
 .tabs{
   display:flex;
   overflow-x:auto;
-  gap:6px;
-  padding:10px;
-  background:#0b111b;
-  border-top:1px solid #1e293b;
+  gap:5px;
+  padding:7px;
+  border-bottom:1px solid #1d3442;
+  scrollbar-width:none;
 }
-
+.tabs::-webkit-scrollbar{display:none}
 .tab{
-  white-space:nowrap;
-  padding:9px 12px;
-  font-size:12px;
+  flex:0 0 auto;
+  width:auto;
+  min-height:32px;
+  font-size:10px;
+  padding:5px 11px;
+  background:#0d1b24;
 }
-
 .tab.active{
-  background:#26354d;
+  background:#163241;
+  border-color:#34718d;
 }
 
-.panel{
-  display:none;
-  padding:12px;
+.footHead{
+  padding:10px;
+  background:#09151d;
+  border-bottom:1px solid #1d3442;
 }
-
-.panel.active{
-  display:block;
-}
-
-.panel-grid{
+.selectedInfo{
   display:grid;
-  grid-template-columns:
-    repeat(4,1fr);
-  gap:8px;
+  grid-template-columns:auto 1fr;
+  gap:12px;
+  align-items:center;
 }
 
-.box{
-  background:#0d1420;
-  border:1px solid #1e293b;
-  border-radius:13px;
-  padding:12px;
+.miniCandle{
+  width:70px;
+  height:80px;
+  border:1px solid #243b48;
+  border-radius:9px;
+  background:#071018;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+#miniCanvas{
+  width:70px;
+  height:80px;
+}
+
+.selectedText{
   min-width:0;
 }
-
-.box-title{
-  font-size:13px;
+.selectedTitle{
+  font-size:12px;
   font-weight:800;
-  margin-bottom:10px;
+  margin-bottom:7px;
 }
-
-.big{
-  font-size:20px;
-  font-weight:900;
-}
-
-.green{
-  color:#22c55e;
-}
-
-.red{
-  color:#ef4444;
-}
-
-.yellow{
-  color:#eab308;
-}
-
-.gray{
-  color:#94a3b8;
-}
-
-.table-wrap{
-  width:100%;
-  overflow:auto;
-  max-height:420px;
-}
-
-table{
-  width:100%;
-  border-collapse:collapse;
-  font-size:11px;
-}
-
-th,
-td{
-  padding:7px 6px;
-  border-bottom:1px solid #1e293b;
-  text-align:center;
-  white-space:nowrap;
-}
-
-th{
-  color:#94a3b8;
-  position:sticky;
-  top:0;
-  background:#0d1420;
-}
-
-.bid{
-  color:#22c55e;
-}
-
-.ask{
-  color:#ef4444;
-}
-
-.foot-row{
+.ohlc{
   display:grid;
-  grid-template-columns:
-    1fr 1fr 1fr 1fr;
-  gap:5px;
+  grid-template-columns:repeat(5,auto);
+  gap:8px;
+  font-size:10px;
+  color:#8fa5b5;
+}
+.ohlc b{color:#e5edf2}
+
+.fpArea{
+  padding:8px;
+  overflow:auto;
+  max-height:650px;
+  -webkit-overflow-scrolling:touch;
+}
+
+.fpHeader{
+  display:grid;
+  grid-template-columns:74px minmax(90px,1fr) 88px 74px 88px minmax(90px,1fr) 74px;
+  min-width:650px;
   align-items:center;
-  padding:6px;
-  border-bottom:1px solid #172033;
-  font-size:11px;
+  gap:4px;
+  padding:7px 5px;
+  color:#718b9b;
+  font-size:9px;
+  border-bottom:1px solid #1c303b;
+  text-align:center;
 }
 
-.level-buy{
-  color:#22c55e;
+.fpRows{
+  min-width:650px;
 }
 
-.level-sell{
-  color:#ef4444;
+.fpRow{
+  display:grid;
+  grid-template-columns:74px minmax(90px,1fr) 88px 74px 88px minmax(90px,1fr) 74px;
+  align-items:center;
+  gap:4px;
+  min-height:31px;
+  padding:3px 5px;
+  border-bottom:1px solid rgba(38,58,68,.45);
+  font-size:10px;
+  text-align:center;
 }
 
-.level-delta-positive{
-  color:#22c55e;
+.price{
   font-weight:800;
+  color:#d9e5eb;
 }
 
-.level-delta-negative{
-  color:#ef4444;
-  font-weight:800;
-}
-
-.absorption-card{
-  border:1px solid #334155;
-  border-radius:14px;
-  padding:15px;
-  background:#0d1420;
-}
-
-.absorption-side{
-  font-size:25px;
-  font-weight:900;
-  margin-bottom:6px;
-}
-
-.progress{
-  height:9px;
-  background:#020617;
-  border-radius:20px;
+.bid,.ask,.delta{
+  position:relative;
+  height:25px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
   overflow:hidden;
-  margin:12px 0;
+  border-radius:5px;
+}
+.bid{
+  background:rgba(0,180,120,.10);
+  color:#42d59c;
+}
+.ask{
+  background:rgba(235,72,82,.10);
+  color:#ff6972;
+}
+.delta.pos{
+  background:rgba(0,180,120,.12);
+  color:#42d59c;
+}
+.delta.neg{
+  background:rgba(235,72,82,.12);
+  color:#ff6972;
 }
 
-.progress > div{
-  height:100%;
-  width:0%;
-  background:#22c55e;
+.barCell{
+  height:25px;
+  position:relative;
+  overflow:hidden;
+  border-radius:5px;
+  background:#0b1820;
+}
+.bar{
+  position:absolute;
+  top:3px;
+  bottom:3px;
+  border-radius:4px;
+}
+.bar.volume{
+  left:0;
+  background:#36738c;
+}
+.bar.deltaPos{
+  left:0;
+  background:#18a978;
+}
+.bar.deltaNeg{
+  right:0;
+  background:#c94b57;
+}
+.barValue{
+  position:relative;
+  z-index:2;
+  line-height:25px;
+  font-size:9px;
+  color:#dce6eb;
 }
 
 .empty{
-  padding:25px;
+  padding:30px 15px;
   text-align:center;
-  color:#64748b;
+  color:#718898;
+  font-size:11px;
 }
 
-.error{
-  color:#ef4444;
+.bottomInfo{
+  padding:9px 12px;
+  color:#6f8796;
+  font-size:9px;
+  border-top:1px solid #1d3442;
 }
 
-@media(max-width:900px){
-  .controls{
-    grid-template-columns:
-      1fr 1fr;
-  }
-
-  .market{
-    grid-template-columns:
-      repeat(2,1fr);
-  }
-
-  .panel-grid{
-    grid-template-columns:
-      repeat(2,1fr);
-  }
-
-  .chart-wrap{
-    height:430px;
-  }
+/* mobile */
+@media(max-width:850px){
+  .controls{grid-template-columns:1fr 1fr}
+  .stats{grid-template-columns:repeat(3,1fr)}
+  .chartWrap{height:390px}
 }
-
-@media(max-width:600px){
-  .app{
-    padding:7px;
-  }
-
-  .controls{
-    grid-template-columns:1fr;
-  }
-
-  .market{
-    grid-template-columns:
-      repeat(2,1fr);
-  }
-
-  .panel-grid{
-    grid-template-columns:1fr;
-  }
-
-  .chart-wrap{
-    height:390px;
-  }
-
-  .title{
-    font-size:18px;
-  }
+@media(max-width:520px){
+  .app{padding:7px}
+  .title{font-size:18px}
+  .stats{grid-template-columns:repeat(2,1fr)}
+  .chartWrap{height:350px}
+  .ohlc{grid-template-columns:repeat(3,auto)}
 }
 </style>
 </head>
 
 <body>
-
 <div class="app">
 
-  <section class="header">
+  <div class="header">
+    <div class="title">📊 Absorption Zone Scanner</div>
+    <div class="sub">تحلیل Order Flow واقعی بازار Bybit</div>
+  </div>
 
-    <div class="title">
-      📊 Absorption Zone Scanner
-    </div>
-
-    <div class="subtitle">
-      تحلیل Order Flow واقعی بازار Bybit
-    </div>
-
-    <div
-      id="status"
-      class="status"
-    >
-      🟡 در حال اتصال...
-    </div>
-
-  </section>
-
-  <section class="controls">
+  <div class="controls">
 
     <div class="control">
-      <label>بازار</label>
+      <label>Symbol</label>
+      <input id="symbol" value="HUSDT" autocomplete="off">
+    </div>
 
+    <div class="control">
+      <label>Market</label>
       <select id="category">
-        <option value="linear">
-          Futures
-        </option>
-
-        <option value="spot">
-          Spot
-        </option>
-
-        <option value="inverse">
-          Inverse
-        </option>
+        <option value="linear">Futures</option>
+        <option value="spot">Spot</option>
+        <option value="inverse">Inverse</option>
       </select>
     </div>
 
     <div class="control">
-      <label>ارز</label>
-
-      <input
-        id="symbol"
-        value="BTCUSDT"
-        autocomplete="off"
-      >
-    </div>
-
-    <div class="control">
-      <label>تایم‌فریم</label>
-
+      <label>Timeframe</label>
       <select id="interval">
-
-        <option value="1">
-          1m
-        </option>
-
-        <option value="3">
-          3m
-        </option>
-
-        <option value="5">
-          5m
-        </option>
-
-        <option value="15">
-          15m
-        </option>
-
-        <option value="30">
-          30m
-        </option>
-
-        <option value="60">
-          1h
-        </option>
-
-        <option value="240">
-          4h
-        </option>
-
+        <option value="1">1m</option>
+        <option value="3">3m</option>
+        <option value="5">5m</option>
+        <option value="15">15m</option>
+        <option value="30">30m</option>
+        <option value="60">1h</option>
+        <option value="240">4h</option>
       </select>
     </div>
 
-    <div class="refresh">
-      <button
-        id="refresh"
-      >
-        ↻ بروزرسانی
-      </button>
+    <div class="control">
+      <label>تعداد کندل</label>
+      <select id="limit">
+        <option value="60">60</option>
+        <option value="90" selected>90</option>
+        <option value="120">120</option>
+        <option value="180">180</option>
+        <option value="200">200</option>
+      </select>
     </div>
 
-  </section>
-
-  <section class="market">
-
-    <div class="metric">
-      <div class="metric-name">
-        قیمت
-      </div>
-      <div
-        id="price"
-        class="metric-value"
-      >
-        -
-      </div>
+    <div class="control">
+      <label>&nbsp;</label>
+      <button id="analyzeBtn">🔎 تحلیل</button>
     </div>
 
-    <div class="metric">
-      <div class="metric-name">
-        24h
-      </div>
-      <div
-        id="change"
-        class="metric-value"
-      >
-        -
-      </div>
+  </div>
+
+  <div id="status" class="status">⏳ در حال اتصال...</div>
+
+  <div class="stats">
+    <div class="stat">
+      <div class="k">قیمت</div>
+      <div class="v" id="sPrice">—</div>
+    </div>
+    <div class="stat">
+      <div class="k">24h</div>
+      <div class="v" id="s24">—</div>
+    </div>
+    <div class="stat">
+      <div class="k">Delta</div>
+      <div class="v" id="sDelta">—</div>
+    </div>
+    <div class="stat">
+      <div class="k">Buy</div>
+      <div class="v" id="sBuy">—</div>
+    </div>
+    <div class="stat">
+      <div class="k">Sell</div>
+      <div class="v" id="sSell">—</div>
+    </div>
+    <div class="stat">
+      <div class="k">Absorption</div>
+      <div class="v" id="sAbs">—</div>
+    </div>
+  </div>
+
+  <div class="panel">
+
+    <div class="panelHead">
+      <div class="panelTitle">📈 Price / Order Flow</div>
+      <div class="panelInfo" id="chartInfo">—</div>
     </div>
 
-    <div class="metric">
-      <div class="metric-name">
-        Delta
-      </div>
-      <div
-        id="delta"
-        class="metric-value"
-      >
-        -
-      </div>
-    </div>
-
-    <div class="metric">
-      <div class="metric-name">
-        Buy / Sell
-      </div>
-      <div
-        id="buySell"
-        class="metric-value"
-      >
-        -
-      </div>
-    </div>
-
-    <div class="metric">
-      <div class="metric-name">
-        Absorption
-      </div>
-      <div
-        id="absScore"
-        class="metric-value"
-      >
-        -
+    <div class="chartWrap" id="chartWrap">
+      <canvas id="chart"></canvas>
+      <div class="chartHint">
+        یک انگشت: حرکت · دو انگشت: زوم · لمس کندل: انتخاب
       </div>
     </div>
 
-  </section>
+  </div>
 
-  <section class="main">
-
-    <div class="chart-head">
-
-      <div class="chart-title">
-        🕯️ Price / Order Flow
-      </div>
-
-      <div
-        id="chartInfo"
-        class="chart-info"
-      >
-        کندل را لمس کنید
-      </div>
-
-    </div>
-
-    <div
-      id="chartWrap"
-      class="chart-wrap"
-    >
-
-      <canvas
-        id="chart"
-      ></canvas>
-
-      <div
-        id="chartTip"
-        class="chart-tip"
-      ></div>
-
-    </div>
+  <div class="panel">
 
     <div class="tabs">
-
-      <button
-        class="tab active"
-        data-panel="footprintPanel"
-      >
-        🧱 Footprint
-      </button>
-
-      <button
-        class="tab"
-        data-panel="heatmapPanel"
-      >
-        🔥 Heatmap
-      </button>
-
-      <button
-        class="tab"
-        data-panel="liquidityPanel"
-      >
-        💧 Liquidity
-      </button>
-
-      <button
-        class="tab"
-        data-panel="absorptionPanel"
-      >
-        🧲 Absorption
-      </button>
-
-      <button
-        class="tab"
-        data-panel="bookPanel"
-      >
-        📖 Order Book
-      </button>
-
-      <button
-        class="tab"
-        data-panel="deltaPanel"
-      >
-        Δ Delta / CVD
-      </button>
-
-      <button
-        class="tab"
-        data-panel="largePanel"
-      >
-        🐋 Large Trades
-      </button>
-
+      <button class="tab active" data-tab="footprint">Footprint</button>
+      <button class="tab" data-tab="heatmap">Heatmap</button>
+      <button class="tab" data-tab="liquidity">Liquidity</button>
+      <button class="tab" data-tab="absorption">Absorption</button>
+      <button class="tab" data-tab="book">Order Book</button>
+      <button class="tab" data-tab="cvd">Delta/CVD</button>
+      <button class="tab" data-tab="large">Large Trades</button>
     </div>
 
-    <div
-      id="footprintPanel"
-      class="panel active"
-    >
-      <div id="footprint"></div>
-    </div>
+    <div id="tabContent">
 
-    <div
-      id="heatmapPanel"
-      class="panel"
-    >
-      <div
-        class="box"
-      >
-        <div class="box-title">
-          🔥 Order Book Heatmap
+      <div class="footHead">
+        <div class="selectedInfo">
+
+          <div class="miniCandle">
+            <canvas id="miniCanvas"></canvas>
+          </div>
+
+          <div class="selectedText">
+            <div class="selectedTitle" id="selectedTitle">
+              کندل انتخابی
+            </div>
+
+            <div class="ohlc">
+              <span>O <b id="o">—</b></span>
+              <span>H <b id="h">—</b></span>
+              <span>L <b id="l">—</b></span>
+              <span>C <b id="c">—</b></span>
+              <span>Δ <b id="cd">—</b></span>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <div class="fpArea" id="fpArea">
+        <div class="fpHeader">
+          <div>Volume</div>
+          <div>Bid</div>
+          <div>Price</div>
+          <div>Delta</div>
+          <div>Ask</div>
+          <div>Delta Histogram</div>
+          <div>Volume</div>
         </div>
 
-        <div
-          id="heatmap"
-          class="table-wrap"
-        ></div>
+        <div id="fpRows" class="fpRows">
+          <div class="empty">
+            برای مشاهده Footprint یک کندل را لمس کنید.
+          </div>
+        </div>
       </div>
+
+      <div class="bottomInfo">
+        Fixed Range — هر ردیف مربوط به یک سطح قیمت همان کندل انتخاب‌شده است.
+      </div>
+
     </div>
 
-    <div
-      id="liquidityPanel"
-      class="panel"
-    >
-      <div
-        id="liquidity"
-        class="panel-grid"
-      ></div>
-    </div>
-
-    <div
-      id="absorptionPanel"
-      class="panel"
-    >
-      <div
-        id="absorption"
-      ></div>
-    </div>
-
-    <div
-      id="bookPanel"
-      class="panel"
-    >
-      <div
-        id="orderbook"
-        class="panel-grid"
-      ></div>
-    </div>
-
-    <div
-      id="deltaPanel"
-      class="panel"
-    >
-      <div
-        id="deltaPanelContent"
-        class="panel-grid"
-      ></div>
-    </div>
-
-    <div
-      id="largePanel"
-      class="panel"
-    >
-      <div
-        id="largeTrades"
-      ></div>
-    </div>
-
-  </section>
+  </div>
 
 </div>
 
 <script>
 "use strict";
 
+/* ============================================================
+   STATE
+============================================================ */
+
 const state = {
-  data: null,
-
-  zoom: 1,
-
-  offset: 0,
-
-  dragging: false,
-
-  dragStartX: 0,
-
-  startOffset: 0,
-
+  candles: [],
   selected: -1,
 
-  heatmapHistory: [],
+  zoom: 1,
+  pan: 0,
 
-  lastUpdate: 0
+  minZoom: 0.55,
+  maxZoom: 5,
+
+  pointers: new Map(),
+  drag: null,
+  pinch: null,
+
+  dpr: Math.max(1, Math.min(3, window.devicePixelRatio || 1))
 };
 
-const $ = id =>
-  document.getElementById(id);
+const $ = id => document.getElementById(id);
 
-const API = location.origin;
+const chart = $("chart");
+const chartWrap = $("chartWrap");
+const ctx = chart.getContext("2d");
 
-function formatNumber(
-  value,
-  digits = 2
-){
-  const n = Number(value);
+const miniCanvas = $("miniCanvas");
+const miniCtx = miniCanvas.getContext("2d");
 
-  if (!Number.isFinite(n)) {
-    return "-";
+let raf = 0;
+
+
+/* ============================================================
+   HELPERS
+============================================================ */
+
+function n(v, fallback=0){
+  const x = Number(v);
+  return Number.isFinite(x) ? x : fallback;
+}
+
+function fmt(v, digits=4){
+  const x = n(v);
+  if (!Number.isFinite(x)) return "—";
+
+  if (Math.abs(x) >= 1000000000)
+    return (x/1000000000).toFixed(2)+"B";
+
+  if (Math.abs(x) >= 1000000)
+    return (x/1000000).toFixed(2)+"M";
+
+  if (Math.abs(x) >= 1000)
+    return (x/1000).toFixed(2)+"K";
+
+  return x.toLocaleString("en-US",{
+    maximumFractionDigits:digits
+  });
+}
+
+function priceFmt(v){
+  const x=n(v);
+  if(x>=1000) return x.toFixed(2);
+  if(x>=1) return x.toFixed(4);
+  if(x>=.01) return x.toFixed(6);
+  return x.toPrecision(6);
+}
+
+function timeFmt(v){
+  const x=n(v);
+  if(!x) return "—";
+
+  const d=new Date(x < 1e12 ? x*1000 : x);
+
+  return d.toLocaleString("fa-IR",{
+    month:"2-digit",
+    day:"2-digit",
+    hour:"2-digit",
+    minute:"2-digit",
+    second:"2-digit"
+  });
+}
+
+function clamp(v,a,b){
+  return Math.max(a,Math.min(b,v));
+}
+
+function first(obj, keys, fallback=null){
+  if(!obj || typeof obj!=="object") return fallback;
+
+  for(const k of keys){
+    if(obj[k] !== undefined && obj[k] !== null)
+      return obj[k];
   }
 
-  return n.toLocaleString(
-    "en-US",
-    {
-      minimumFractionDigits: digits,
-      maximumFractionDigits: digits
+  return fallback;
+}
+
+function getArray(obj, keys){
+  for(const k of keys){
+    if(Array.isArray(obj?.[k]))
+      return obj[k];
+  }
+  return [];
+}
+
+
+/* ============================================================
+   CANDLE NORMALIZATION
+============================================================ */
+
+function normalizeCandle(raw){
+  if(Array.isArray(raw)){
+    return {
+      time:n(raw[0]),
+      open:n(raw[1]),
+      high:n(raw[2]),
+      low:n(raw[3]),
+      close:n(raw[4]),
+      volume:n(raw[5]),
+      turnover:n(raw[6])
+    };
+  }
+
+  return {
+    ...raw,
+
+    time:n(first(raw,[
+      "time","timestamp","ts","startTime","start",
+      "openTime","t"
+    ],0)),
+
+    open:n(first(raw,[
+      "open","o"
+    ],0)),
+
+    high:n(first(raw,[
+      "high","h"
+    ],0)),
+
+    low:n(first(raw,[
+      "low","l"
+    ],0)),
+
+    close:n(first(raw,[
+      "close","c"
+    ],0)),
+
+    volume:n(first(raw,[
+      "volume","v","vol"
+    ],0)),
+
+    turnover:n(first(raw,[
+      "turnover","quoteVolume","value","notional"
+    ],0)),
+
+    delta:n(first(raw,[
+      "delta","Delta","netDelta",
+      "candleDelta"
+    ],0)),
+
+    buy:n(first(raw,[
+      "buy","buyVolume","buyVol",
+      "bidVolume"
+    ],0)),
+
+    sell:n(first(raw,[
+      "sell","sellVolume","sellVol",
+      "askVolume"
+    ],0)),
+
+    footprint:getArray(raw,[
+      "footprint",
+      "levels",
+      "priceLevels",
+      "orderflow",
+      "orderFlow",
+      "tradesByPrice",
+      "byPrice"
+    ])
+  };
+}
+
+
+/* ============================================================
+   FOOTPRINT NORMALIZATION
+============================================================ */
+
+function normalizeLevel(raw){
+
+  if(Array.isArray(raw)){
+
+    /*
+      Common possibilities:
+      [price,bid,ask]
+      [price,bid,ask,delta]
+      [price,bid,ask,volume,delta]
+    */
+
+    const price=n(raw[0]);
+    const bid=n(raw[1]);
+    const ask=n(raw[2]);
+
+    return {
+      price,
+      bid,
+      ask,
+      volume:n(raw[3],bid+ask),
+      delta:n(raw[4],ask-bid)
+    };
+  }
+
+  const price=n(first(raw,[
+    "price","p","level","priceLevel"
+  ],0));
+
+  let bid=n(first(raw,[
+    "bid","Bid","buy","buyVolume",
+    "bidVolume","b"
+  ],0));
+
+  let ask=n(first(raw,[
+    "ask","Ask","sell","sellVolume",
+    "askVolume","a"
+  ],0));
+
+  let delta=first(raw,[
+    "delta","Delta","d"
+  ],null);
+
+  let volume=first(raw,[
+    "volume","vol","total","totalVolume","v"
+  ],null);
+
+  if(delta===null)
+    delta=ask-bid;
+
+  if(volume===null)
+    volume=bid+ask;
+
+  return {
+    ...raw,
+    price,
+    bid:n(bid),
+    ask:n(ask),
+    volume:n(volume),
+    delta:n(delta)
+  };
+}
+
+
+/* ============================================================
+   EXTRACT RESPONSE
+============================================================ */
+
+function extractData(data){
+
+  let root=data;
+
+  if(data?.data && typeof data.data==="object")
+    root=data.data;
+
+  let candles=[];
+
+  const candleCandidates=[
+    root?.candles,
+    root?.klines,
+    root?.kline,
+    root?.result?.list,
+    root?.result?.candles,
+    root?.market?.candles,
+    root?.analysis?.candles,
+    data?.candles,
+    data?.klines
+  ];
+
+  for(const x of candleCandidates){
+    if(Array.isArray(x) && x.length){
+      candles=x;
+      break;
     }
-  );
-}
-
-function formatCompact(value){
-  const n = Number(value);
-
-  if (!Number.isFinite(n)) {
-    return "-";
   }
 
-  const a = Math.abs(n);
-
-  if (a >= 1000000000)
-    return (n / 1000000000).toFixed(2) + "B";
-
-  if (a >= 1000000)
-    return (n / 1000000).toFixed(2) + "M";
-
-  if (a >= 1000)
-    return (n / 1000).toFixed(2) + "K";
-
-  return n.toFixed(2);
-}
-
-function priceDigits(price){
-  const p = Number(price);
-
-  if (p >= 1000) return 2;
-  if (p >= 1) return 4;
-  if (p >= 0.01) return 6;
-
-  return 8;
-}
-
-function escapeHtml(value){
-  return String(value)
-    .replaceAll("&","&amp;")
-    .replaceAll("<","&lt;")
-    .replaceAll(">","&gt;")
-    .replaceAll('"',"&quot;")
-    .replaceAll("'","&#039;");
-}
-
-async function api(path){
-
-  const url =
-    `${API}${path}${path.includes("?") ? "&" : "?"}_=${Date.now()}`;
-
-  const response =
-    await fetch(
-      url,
-      {
-        cache:"no-store"
-      }
-    );
-
-  const text =
-    await response.text();
-
-  if (!text) {
-    throw new Error(
-      `پاسخ خالی (${response.status})`
-    );
+  /*
+    Bybit native result.list
+  */
+  if(!candles.length &&
+     Array.isArray(data?.result?.list)){
+    candles=data.result.list;
   }
 
-  let data;
+  const normalized=candles
+    .map(normalizeCandle)
+    .filter(x=>x.open || x.high || x.low || x.close);
 
-  try {
-    data = JSON.parse(text);
-  } catch(e) {
-    throw new Error(
-      `JSON نامعتبر: ${text.slice(0,180)}`
-    );
-  }
-
-  if (!response.ok || data.ok === false) {
-    throw new Error(
-      data.error ||
-      `HTTP ${response.status}`
-    );
-  }
-
-  return data;
+  return {
+    root,
+    candles:normalized
+  };
 }
 
-function setStatus(
-  text,
-  type=""
-){
-  const el = $("status");
 
-  el.textContent = text;
-
-  el.className =
-    "status " + type;
-}
+/* ============================================================
+   LOAD
+============================================================ */
 
 async function load(){
 
-  const symbol =
-    $("symbol")
-      .value
-      .trim()
-      .toUpperCase();
+  const symbol=$("symbol").value.trim().toUpperCase();
+  const category=$("category").value;
+  const interval=$("interval").value;
+  const limit=$("limit").value;
 
-  const category =
-    $("category").value;
-
-  const interval =
-    $("interval").value;
-
-  if (!symbol) {
-    $("symbol").value =
-      "BTCUSDT";
-
-    return load();
+  if(!symbol){
+    $("status").textContent="⚠️ نماد وارد نشده است";
+    return;
   }
 
-  setStatus(
-    "🟡 دریافت داده واقعی Bybit..."
-  );
+  $("status").textContent="⏳ دریافت داده واقعی Bybit...";
 
-  try {
+  try{
 
-    const data =
-      await api(
-        `/api/market?symbol=${encodeURIComponent(symbol)}&category=${encodeURIComponent(category)}&interval=${encodeURIComponent(interval)}`
+    /*
+      Try the scanner API first.
+    */
+    const urls=[
+      `/api/analyze?symbol=${encodeURIComponent(symbol)}&category=${encodeURIComponent(category)}&interval=${encodeURIComponent(interval)}&limit=${encodeURIComponent(limit)}`,
+      `/api/market?symbol=${encodeURIComponent(symbol)}&category=${encodeURIComponent(category)}&interval=${encodeURIComponent(interval)}&limit=${encodeURIComponent(limit)}`,
+      `/api/scan?symbol=${encodeURIComponent(symbol)}&category=${encodeURIComponent(category)}&interval=${encodeURIComponent(interval)}&limit=${encodeURIComponent(limit)}`
+    ];
+
+    let response=null;
+    let data=null;
+
+    for(const url of urls){
+
+      try{
+        const r=await fetch(url,{
+          cache:"no-store",
+          headers:{
+            "Accept":"application/json"
+          }
+        });
+
+        if(!r.ok) continue;
+
+        const text=await r.text();
+
+        if(!text) continue;
+
+        try{
+          data=JSON.parse(text);
+          response=r;
+          break;
+        }catch(e){
+          continue;
+        }
+
+      }catch(e){}
+    }
+
+    /*
+      If scanner endpoint didn't return candles,
+      request the Worker market endpoint directly.
+    */
+    if(!data){
+
+      const r=await fetch(
+        `/api/kline?symbol=${encodeURIComponent(symbol)}&category=${encodeURIComponent(category)}&interval=${encodeURIComponent(interval)}&limit=${encodeURIComponent(limit)}`,
+        {
+          cache:"no-store",
+          headers:{Accept:"application/json"}
+        }
       );
 
-    state.data = data;
-    state.lastUpdate = Date.now();
+      if(r.ok){
+        data=await r.json();
+        response=r;
+      }
+    }
 
-    updateUI();
+    if(!data){
+      throw new Error("API response not found");
+    }
 
-    setStatus(
-      `🟢 اتصال برقرار است — Bybit · ${data.symbol}`
-    );
+    const extracted=extractData(data);
 
-  } catch(error) {
+    let candles=extracted.candles;
 
-    console.error(error);
+    /*
+      Handle Bybit native kline response if Worker forwards it.
+    */
+    if(!candles.length &&
+       data?.result?.list?.length){
 
-    setStatus(
-      "🔴 " + error.message,
-      "error"
-    );
+      candles=data.result.list
+        .map(normalizeCandle)
+        .reverse();
+    }
+
+    if(!candles.length){
+      throw new Error("کندل در پاسخ Worker پیدا نشد");
+    }
+
+    state.candles=candles;
+
+    /*
+      Keep selection on the latest candle initially.
+    */
+    state.selected=candles.length-1;
+
+    /*
+      Keep chart centered on latest candles.
+    */
+    state.zoom=1;
+    state.pan=0;
+
+    updateStats(data);
+    updateSelected();
+    resizeCanvas();
+    requestDraw();
+
+    $("status").textContent=
+      `🟢 اتصال برقرار است — Bybit · ${symbol}`;
+
+  }catch(err){
+
+    console.error(err);
+
+    $("status").textContent=
+      "🔴 خطا در دریافت داده: "+err.message;
   }
 }
 
-function updateUI(){
 
-  const d =
-    state.data;
+/* ============================================================
+   STATS
+============================================================ */
 
-  if (!d) return;
+function updateStats(data){
 
-  const price =
-    d.ticker?.lastPrice || 0;
+  const root=data?.data || data || {};
 
-  $("price").textContent =
-    formatNumber(
-      price,
-      priceDigits(price)
-    );
+  const ticker=root.ticker || data.ticker || {};
 
-  const change =
-    Number(
-      d.ticker?.price24hPcnt || 0
-    );
+  const last=
+    first(ticker,[
+      "lastPrice","last","price"
+    ],null);
 
-  $("change").textContent =
-    change.toFixed(2) + "%";
+  const c=state.candles[state.candles.length-1];
 
-  $("change").className =
-    "metric-value " +
-    (
-      change >= 0
-        ? "green"
-        : "red"
-    );
+  $("sPrice").textContent=
+    priceFmt(last ?? c?.close);
 
-  const stats =
-    d.stats || {};
+  $("s24").textContent=
+    fmt(first(ticker,[
+      "price24hPcnt",
+      "change24h",
+      "changePercent"
+    ],0)*(
+      String(first(ticker,["price24hPcnt"],"")).includes("%")
+      ? 1
+      : 100
+    ),2)+"%";
 
-  $("delta").textContent =
-    formatCompact(
-      stats.delta
-    );
+  const delta=first(root,[
+    "delta",
+    "netDelta",
+    "totalDelta"
+  ],c?.delta ?? 0);
 
-  $("delta").className =
-    "metric-value " +
-    (
-      stats.delta >= 0
-        ? "green"
-        : "red"
-    );
+  const buy=first(root,[
+    "buy",
+    "buyVolume",
+    "totalBuy",
+    "buyNotional"
+  ],c?.buy ?? 0);
 
-  $("buySell").textContent =
-    `${formatCompact(stats.buyVolume)} / ${formatCompact(stats.sellVolume)}`;
+  const sell=first(root,[
+    "sell",
+    "sellVolume",
+    "totalSell",
+    "sellNotional"
+  ],c?.sell ?? 0);
 
-  const abs =
-    d.absorption || {};
+  $("sDelta").textContent=fmt(delta);
+  $("sBuy").textContent=fmt(buy);
+  $("sSell").textContent=fmt(sell);
 
-  $("absScore").textContent =
-    abs.detected
-      ? `${abs.side} · ${abs.score}`
-      : "NONE";
-
-  $("absScore").className =
-    "metric-value " +
-    (
-      abs.side === "BUY"
-        ? "green"
-        : abs.side === "SELL"
-          ? "red"
-          : "gray"
-    );
-
-  drawChart();
-
-  renderFootprint();
-
-  renderHeatmap();
-
-  renderLiquidity();
-
-  renderAbsorption();
-
-  renderOrderbook();
-
-  renderDelta();
-
-  renderLargeTrades();
+  $("sAbs").textContent=
+    first(root,[
+      "absorption",
+      "absorptionSignal",
+      "absorptionType"
+    ],"NONE");
 }
+
+
+/* ============================================================
+   CANVAS SIZE
+============================================================ */
 
 function resizeCanvas(){
 
-  const canvas =
-    $("chart");
+  const rect=chartWrap.getBoundingClientRect();
 
-  const rect =
-    canvas.getBoundingClientRect();
+  const w=Math.max(1,Math.floor(rect.width));
+  const h=Math.max(1,Math.floor(rect.height));
 
-  const dpr =
-    window.devicePixelRatio || 1;
+  chart.width=Math.floor(w*state.dpr);
+  chart.height=Math.floor(h*state.dpr);
 
-  canvas.width =
-    Math.floor(
-      rect.width * dpr
-    );
-
-  canvas.height =
-    Math.floor(
-      rect.height * dpr
-    );
-
-  const ctx =
-    canvas.getContext("2d");
+  chart.style.width=w+"px";
+  chart.style.height=h+"px";
 
   ctx.setTransform(
-    dpr,
-    0,
-    0,
-    dpr,
-    0,
-    0
+    state.dpr,0,0,state.dpr,0,0
   );
+
+  miniCanvas.width=Math.floor(70*state.dpr);
+  miniCanvas.height=Math.floor(80*state.dpr);
+
+  miniCtx.setTransform(
+    state.dpr,0,0,state.dpr,0,0
+  );
+
+  requestDraw();
+}
+
+window.addEventListener("resize",resizeCanvas);
+
+
+/* ============================================================
+   CHART GEOMETRY
+============================================================ */
+
+function geometry(){
+
+  const W=chart.clientWidth;
+  const H=chart.clientHeight;
+
+  const candles=state.candles;
+
+  if(!candles.length) return null;
+
+  const visibleBase=70;
+  const visibleCount=clamp(
+    Math.round(visibleBase/state.zoom),
+    8,
+    candles.length
+  );
+
+  /*
+    pan is a candle-index offset.
+    Positive pan moves the visible window toward newer candles.
+  */
+  const maxStart=Math.max(0,candles.length-visibleCount);
+
+  let centerStart=
+    candles.length-visibleCount-state.pan;
+
+  centerStart=clamp(
+    centerStart,
+    0,
+    maxStart
+  );
+
+  const start=Math.round(centerStart);
+  const end=Math.min(
+    candles.length,
+    start+visibleCount
+  );
+
+  const visible=candles.slice(start,end);
+
+  let min=Infinity;
+  let max=-Infinity;
+
+  for(const c of visible){
+    min=Math.min(min,c.low);
+    max=Math.max(max,c.high);
+  }
+
+  if(!Number.isFinite(min) || !Number.isFinite(max))
+    return null;
+
+  const range=max-min || Math.max(1,Math.abs(max)*.001);
+
+  min-=range*.08;
+  max+=range*.08;
+
+  const left=52;
+  const right=20;
+  const top=24;
+  const bottom=38;
+
+  const plotW=Math.max(1,W-left-right);
+  const plotH=Math.max(1,H-top-bottom);
+
+  const step=plotW/Math.max(1,visible.length);
+
+  return {
+    W,H,
+    start,
+    end,
+    visible,
+    min,
+    max,
+    range:max-min,
+    left,right,top,bottom,
+    plotW,plotH,
+    step
+  };
+}
+
+function yPrice(g,p){
+  return g.top+
+    (g.max-p)/g.range*g.plotH;
+}
+
+
+/* ============================================================
+   DRAW MAIN CHART
+============================================================ */
+
+function requestDraw(){
+
+  if(raf) return;
+
+  raf=requestAnimationFrame(()=>{
+    raf=0;
+    drawChart();
+  });
 }
 
 function drawChart(){
 
-  const canvas =
-    $("chart");
+  const W=chart.clientWidth;
+  const H=chart.clientHeight;
 
-  const rect =
-    canvas.getBoundingClientRect();
+  ctx.clearRect(0,0,W,H);
 
-  const W =
-    rect.width;
+  ctx.fillStyle="#071018";
+  ctx.fillRect(0,0,W,H);
 
-  const H =
-    rect.height;
+  const g=geometry();
 
-  resizeCanvas();
-
-  const ctx =
-    canvas.getContext("2d");
-
-  ctx.clearRect(
-    0,
-    0,
-    W,
-    H
-  );
-
-  const candles =
-    state.data?.candles || [];
-
-  if (!candles.length){
+  if(!g){
+    ctx.fillStyle="#728996";
+    ctx.font="12px Tahoma";
+    ctx.textAlign="center";
+    ctx.fillText(
+      "داده‌ای برای نمایش وجود ندارد",
+      W/2,
+      H/2
+    );
     return;
   }
 
-  const visibleCount =
-    Math.max(
-      20,
-      Math.floor(
-        90 / state.zoom
-      )
-    );
+  drawGrid(g);
+  drawCandles(g);
+  drawSelectedGuide(g);
+  drawAxis(g);
+}
 
-  let end =
-    candles.length -
-    Math.round(
-      state.offset
-    );
 
-  end =
-    Math.max(
-      visibleCount,
-      Math.min(
-        candles.length,
-        end
-      )
-    );
+/* ============================================================
+   GRID
+============================================================ */
 
-  let start =
-    Math.max(
-      0,
-      end - visibleCount
-    );
+function drawGrid(g){
 
-  const visible =
-    candles.slice(
-      start,
-      end
-    );
+  ctx.save();
 
-  if (!visible.length) return;
+  ctx.strokeStyle="rgba(65,88,100,.28)";
+  ctx.lineWidth=1;
 
-  let min =
-    Infinity;
+  const rows=7;
 
-  let max =
-    -Infinity;
+  for(let i=0;i<=rows;i++){
 
-  for (const c of visible){
-
-    min =
-      Math.min(
-        min,
-        c.low
-      );
-
-    max =
-      Math.max(
-        max,
-        c.high
-      );
-  }
-
-  const range =
-    Math.max(
-      max - min,
-      Number.EPSILON
-    );
-
-  const left = 55;
-  const right = 15;
-  const top = 15;
-  const bottom = 35;
-
-  const chartW =
-    W - left - right;
-
-  const chartH =
-    H - top - bottom;
-
-  function y(price){
-    return (
-      top +
-      (
-        max - price
-      ) /
-      range *
-      chartH
-    );
-  }
-
-  const candleW =
-    chartW /
-    visible.length;
-
-  // Grid
-
-  ctx.font =
-    "10px Arial";
-
-  ctx.lineWidth = 1;
-
-  for (let i=0;i<=5;i++){
-
-    const yy =
-      top +
-      i *
-      chartH /
-      5;
-
-    ctx.strokeStyle =
-      "#182334";
+    const y=
+      g.top+
+      i*g.plotH/rows;
 
     ctx.beginPath();
-
-    ctx.moveTo(
-      left,
-      yy
-    );
-
-    ctx.lineTo(
-      W - right,
-      yy
-    );
-
+    ctx.moveTo(g.left,y);
+    ctx.lineTo(g.left+g.plotW,y);
     ctx.stroke();
 
-    const p =
-      max -
-      range *
-      i / 5;
+    const p=
+      g.max-
+      i*g.range/rows;
 
-    ctx.fillStyle =
-      "#64748b";
-
+    ctx.fillStyle="#657b89";
+    ctx.font="9px Tahoma";
+    ctx.textAlign="left";
     ctx.fillText(
-      formatNumber(
-        p,
-        priceDigits(p)
-      ),
+      priceFmt(p),
       5,
-      yy + 3
+      y+3
     );
   }
 
-  visible.forEach(
-    (c,i) => {
+  ctx.restore();
+}
 
-      const x =
-        left +
-        i * candleW +
-        candleW / 2;
 
-      const openY =
-        y(c.open);
+/* ============================================================
+   CANDLES
+============================================================ */
 
-      const closeY =
-        y(c.close);
+function drawCandles(g){
 
-      const highY =
-        y(c.high);
+  const bodyW=
+    clamp(g.step*.58,2,32);
 
-      const lowY =
-        y(c.low);
+  g.visible.forEach((c,i)=>{
 
-      const up =
-        c.close >= c.open;
+    const globalIndex=g.start+i;
 
-      ctx.strokeStyle =
-        up
-          ? "#22c55e"
-          : "#ef4444";
+    const x=
+      g.left+
+      i*g.step+
+      g.step/2;
 
-      ctx.fillStyle =
-        up
-          ? "#22c55e"
-          : "#ef4444";
+    const yo=yPrice(g,c.open);
+    const yh=yPrice(g,c.high);
+    const yl=yPrice(g,c.low);
+    const yc=yPrice(g,c.close);
 
-      // Wick
+    const up=c.close>=c.open;
+
+    const selected=
+      globalIndex===state.selected;
+
+    /*
+      Selection background
+    */
+    if(selected){
+
+      ctx.fillStyle="rgba(75,160,195,.10)";
+      ctx.fillRect(
+        x-g.step/2,
+        g.top,
+        g.step,
+        g.plotH
+      );
+
+      ctx.strokeStyle="rgba(92,183,219,.45)";
+      ctx.lineWidth=1;
 
       ctx.beginPath();
-
-      ctx.moveTo(
-        x,
-        highY
-      );
-
-      ctx.lineTo(
-        x,
-        lowY
-      );
-
+      ctx.moveTo(x,g.top);
+      ctx.lineTo(x,g.top+g.plotH);
       ctx.stroke();
-
-      // Body
-
-      const bodyTop =
-        Math.min(
-          openY,
-          closeY
-        );
-
-      const bodyHeight =
-        Math.max(
-          1,
-          Math.abs(
-            closeY - openY
-          )
-        );
-
-      ctx.fillRect(
-        x - candleW * 0.32,
-        bodyTop,
-        candleW * 0.64,
-        bodyHeight
-      );
-
-      // Selected
-
-      const originalIndex =
-        start + i;
-
-      if (
-        originalIndex ===
-        state.selected
-      ){
-
-        ctx.strokeStyle =
-          "#eab308";
-
-        ctx.lineWidth = 2;
-
-        ctx.strokeRect(
-          x - candleW * 0.42,
-          top,
-          candleW * 0.84,
-          chartH
-        );
-
-        ctx.lineWidth = 1;
-      }
-
-      // Volume
-
-      const volumeMax =
-        Math.max(
-          ...visible.map(
-            x => x.volume
-          )
-        );
-
-      const vh =
-        volumeMax > 0
-          ? c.volume /
-            volumeMax *
-            35
-          : 0;
-
-      ctx.globalAlpha =
-        0.22;
-
-      ctx.fillRect(
-        x - candleW * 0.32,
-        H - bottom - vh,
-        candleW * 0.64,
-        vh
-      );
-
-      ctx.globalAlpha =
-        1;
     }
-  );
 
-  // Last price
+    /*
+      Wick
+    */
+    ctx.strokeStyle=
+      up ? "#35c994" : "#f05b67";
 
-  const last =
-    candles[candles.length - 1];
+    ctx.lineWidth=
+      selected ? 2 : 1;
 
-  const lastY =
-    y(
-      Math.max(
-        min,
-        Math.min(
-          max,
-          last.close
-        )
-      )
+    ctx.beginPath();
+    ctx.moveTo(x,yh);
+    ctx.lineTo(x,yl);
+    ctx.stroke();
+
+    /*
+      Body
+    */
+    const bodyTop=Math.min(yo,yc);
+    const bodyHeight=Math.max(
+      1,
+      Math.abs(yc-yo)
     );
 
-  ctx.strokeStyle =
-    "#94a3b8";
+    ctx.fillStyle=
+      up ? "#19ad78" : "#d74e5a";
 
-  ctx.setLineDash(
-    [4,4]
-  );
+    ctx.fillRect(
+      x-bodyW/2,
+      bodyTop,
+      bodyW,
+      bodyHeight
+    );
+
+    /*
+      Selected outline
+    */
+    if(selected){
+
+      ctx.strokeStyle="#f4d35e";
+      ctx.lineWidth=2;
+
+      ctx.strokeRect(
+        x-bodyW/2-2,
+        bodyTop-2,
+        bodyW+4,
+        bodyHeight+4
+      );
+    }
+  });
+}
+
+
+/* ============================================================
+   SELECTED GUIDE
+============================================================ */
+
+function drawSelectedGuide(g){
+
+  if(state.selected<g.start || state.selected>=g.end)
+    return;
+
+  const i=state.selected-g.start;
+
+  const x=
+    g.left+
+    i*g.step+
+    g.step/2;
+
+  ctx.save();
+
+  ctx.strokeStyle="rgba(244,211,94,.65)";
+  ctx.setLineDash([4,4]);
+  ctx.lineWidth=1;
 
   ctx.beginPath();
-
-  ctx.moveTo(
-    left,
-    lastY
-  );
-
-  ctx.lineTo(
-    W-right,
-    lastY
-  );
-
+  ctx.moveTo(x,g.top);
+  ctx.lineTo(x,g.top+g.plotH);
   ctx.stroke();
 
-  ctx.setLineDash([]);
-
-  $("chartInfo").textContent =
-    `${state.data.symbol} · ${state.data.interval}m · ${visible.length} candles`;
+  ctx.restore();
 }
 
-function selectCandleFromPointer(e){
 
-  const canvas =
-    $("chart");
+/* ============================================================
+   AXIS
+============================================================ */
 
-  const rect =
-    canvas.getBoundingClientRect();
+function drawAxis(g){
 
-  const candles =
-    state.data?.candles || [];
+  ctx.save();
 
-  if (!candles.length) return;
+  ctx.fillStyle="#617987";
+  ctx.font="9px Tahoma";
+  ctx.textAlign="center";
 
-  const visibleCount =
-    Math.max(
-      20,
-      Math.floor(
-        90 / state.zoom
-      )
+  const every=Math.max(
+    1,
+    Math.ceil(g.visible.length/7)
+  );
+
+  g.visible.forEach((c,i)=>{
+
+    if(i%every!==0) return;
+
+    const x=
+      g.left+
+      i*g.step+
+      g.step/2;
+
+    ctx.fillText(
+      timeFmt(c.time),
+      x,
+      g.H-13
     );
+  });
 
-  let end =
-    candles.length -
-    Math.round(
-      state.offset
-    );
+  ctx.restore();
+}
 
-  end =
-    Math.max(
-      visibleCount,
-      Math.min(
-        candles.length,
-        end
-      )
-    );
 
-  const start =
-    Math.max(
-      0,
-      end - visibleCount
-    );
+/* ============================================================
+   SELECT CANDLE FROM POINTER
+============================================================ */
 
-  const x =
-    e.clientX -
-    rect.left;
+function candleAt(x){
 
-  const left = 55;
-  const right = 15;
+  const g=geometry();
 
-  const chartW =
-    rect.width -
-    left -
-    right;
+  if(!g) return -1;
 
-  const candleW =
-    chartW /
-    visibleCount;
+  if(x<g.left || x>g.left+g.plotW)
+    return -1;
 
-  let index =
+  const local=
     Math.floor(
-      (x-left) /
-      candleW
+      (x-g.left)/g.step
     );
 
-  index =
-    Math.max(
-      0,
-      Math.min(
-        visibleCount - 1,
-        index
-      )
-    );
+  const index=
+    g.start+local;
 
-  state.selected =
-    Math.min(
-      candles.length - 1,
-      start + index
-    );
+  if(index<0 || index>=state.candles.length)
+    return -1;
 
-  renderSelectedCandle();
-
-  drawChart();
+  return index;
 }
 
-function renderSelectedCandle(){
 
-  const index =
-    state.selected;
+/* ============================================================
+   POINTER EVENTS
+   1 FINGER = PAN
+   2 FINGER = PINCH ZOOM
+============================================================ */
 
-  if (
-    !state.data ||
-    index < 0
-  ) return;
+chart.addEventListener("pointerdown",e=>{
 
-  const c =
-    state.data.candles[index];
+  e.preventDefault();
 
-  if (!c) return;
+  try{
+    chart.setPointerCapture(e.pointerId);
+  }catch(_){}
 
-  $("chartInfo").textContent =
-    `${new Date(c.time).toLocaleString()} · O ${formatNumber(c.open,priceDigits(c.open))} · H ${formatNumber(c.high,priceDigits(c.high))} · L ${formatNumber(c.low,priceDigits(c.low))} · C ${formatNumber(c.close,priceDigits(c.close))} · V ${formatCompact(c.volume)}`;
-}
+  state.pointers.set(
+    e.pointerId,
+    {
+      x:e.clientX,
+      y:e.clientY
+    }
+  );
 
-function renderFootprint(){
+  if(state.pointers.size===1){
 
-  const box =
-    $("footprint");
+    state.drag={
+      id:e.pointerId,
+      startX:e.clientX,
+      startY:e.clientY,
+      lastX:e.clientX,
+      lastY:e.clientY,
+      moved:false
+    };
 
-  const levels =
-    state.data?.footprint || [];
+    state.pinch=null;
+  }
 
-  if (!levels.length){
+  if(state.pointers.size===2){
 
-    box.innerHTML =
-      `<div class="empty">
-        Footprint داده‌ای ندارد
-      </div>`;
+    const pts=[...state.pointers.values()];
+
+    const dx=pts[0].x-pts[1].x;
+    const dy=pts[0].y-pts[1].y;
+
+    state.pinch={
+      distance:Math.hypot(dx,dy),
+      zoom:state.zoom
+    };
+
+    state.drag=null;
+  }
+});
+
+
+chart.addEventListener("pointermove",e=>{
+
+  e.preventDefault();
+
+  if(!state.pointers.has(e.pointerId))
+    return;
+
+  state.pointers.set(
+    e.pointerId,
+    {
+      x:e.clientX,
+      y:e.clientY
+    }
+  );
+
+  /*
+    TWO FINGER PINCH
+  */
+  if(state.pointers.size>=2){
+
+    const pts=[...state.pointers.values()];
+
+    const dx=pts[0].x-pts[1].x;
+    const dy=pts[0].y-pts[1].y;
+
+    const distance=Math.hypot(dx,dy);
+
+    if(state.pinch){
+
+      const ratio=
+        distance/
+        Math.max(1,state.pinch.distance);
+
+      /*
+        Pinch apart = zoom in
+        Pinch together = zoom out
+      */
+      state.zoom=clamp(
+        state.pinch.zoom*ratio,
+        state.minZoom,
+        state.maxZoom
+      );
+
+      requestDraw();
+    }
 
     return;
   }
 
-  const sorted =
-    [...levels]
-      .sort(
-        (a,b) =>
-          b.price-a.price
-      );
-
-  let html =
-    `<div class="box">
-      <div class="box-title">
-        🧱 Footprint واقعی معاملات اخیر
-      </div>
-
-      <div class="foot-row">
-        <b>Price</b>
-        <b>Buy</b>
-        <b>Sell</b>
-        <b>Delta</b>
-      </div>`;
-
-  for (
-    const x of sorted.slice(0,120)
-  ){
-
-    const positive =
-      x.delta >= 0;
-
-    html +=
-      `<div class="foot-row">
-        <span>
-          ${formatNumber(
-            x.price,
-            priceDigits(x.price)
-          )}
-        </span>
-
-        <span class="level-buy">
-          ${formatCompact(
-            x.buyVolume
-          )}
-        </span>
-
-        <span class="level-sell">
-          ${formatCompact(
-            x.sellVolume
-          )}
-        </span>
-
-        <span class="${
-          positive
-            ? "level-delta-positive"
-            : "level-delta-negative"
-        }">
-          ${
-            positive ? "+" : ""
-          }${formatCompact(x.delta)}
-        </span>
-      </div>`;
-  }
-
-  html +=
-    `</div>`;
-
-  box.innerHTML =
-    html;
-}
-
-function renderHeatmap(){
-
-  const book =
-    state.data?.orderbook;
-
-  if (!book){
-
-    $("heatmap").innerHTML =
-      `<div class="empty">
-        داده Order Book موجود نیست
-      </div>`;
-
-    return;
-  }
-
-  const rows = [];
-
-  const asks =
-    book.asks || [];
-
-  const bids =
-    book.bids || [];
-
-  const combined = [
-    ...asks.slice(0,25).map(
-      x => ({
-        ...x,
-        side:"ask"
-      })
-    ),
-    ...bids.slice(0,25).map(
-      x => ({
-        ...x,
-        side:"bid"
-      })
-    )
-  ].sort(
-    (a,b) =>
-      b.value-a.value
-  );
-
-  let html =
-    `<table>
-      <thead>
-        <tr>
-          <th>Side</th>
-          <th>Price</th>
-          <th>Size</th>
-          <th>Value</th>
-          <th>Heat</th>
-        </tr>
-      </thead>
-      <tbody>`;
-
-  const max =
-    Math.max(
-      ...combined.map(
-        x => x.value
-      ),
-      1
-    );
-
-  for (
-    const x of combined
-  ){
-
-    const heat =
-      Math.round(
-        x.value /
-        max *
-        100
-      );
-
-    html +=
-      `<tr>
-        <td class="${
-          x.side === "bid"
-            ? "bid"
-            : "ask"
-        }">
-          ${
-            x.side === "bid"
-              ? "BID"
-              : "ASK"
-          }
-        </td>
-
-        <td>
-          ${formatNumber(
-            x.price,
-            priceDigits(x.price)
-          )}
-        </td>
-
-        <td>
-          ${formatCompact(
-            x.size
-          )}
-        </td>
-
-        <td>
-          ${formatCompact(
-            x.value
-          )}
-        </td>
-
-        <td>
-          ${heat}%
-        </td>
-      </tr>`;
-  }
-
-  html +=
-    `</tbody></table>`;
-
-  $("heatmap").innerHTML =
-    html;
-}
-
-function renderLiquidity(){
-
-  const b =
-    state.data?.orderbook;
-
-  if (!b) return;
-
-  const items = [
-    [
-      "Bid Liquidity",
-      b.buyLiquidity,
-      "green"
-    ],
-    [
-      "Ask Liquidity",
-      b.sellLiquidity,
-      "red"
-    ],
-    [
-      "Bid Share",
-      b.buyShare,
-      "green"
-    ],
-    [
-      "Ask Share",
-      b.sellShare,
-      "red"
-    ],
-    [
-      "Best Bid",
-      b.bestBid,
-      "green"
-    ],
-    [
-      "Best Ask",
-      b.bestAsk,
-      "red"
-    ],
-    [
-      "Spread",
-      b.spread,
-      "yellow"
-    ],
-    [
-      "Pressure",
-      b.pressure,
-      "gray"
-    ]
-  ];
-
-  $("liquidity").innerHTML =
-    items.map(
-      x =>
-        `<div class="box">
-          <div class="box-title">
-            ${x[0]}
-          </div>
-
-          <div class="big ${x[2]}">
-            ${
-              typeof x[1] === "number"
-                ? formatCompact(x[1])
-                : escapeHtml(x[1])
-            }
-          </div>
-        </div>`
-    ).join("");
-}
-
-function renderAbsorption(){
-
-  const a =
-    state.data?.absorption;
-
-  if (!a){
-
-    $("absorption").innerHTML =
-      `<div class="empty">
-        داده کافی نیست
-      </div>`;
-
-    return;
-  }
-
-  const side =
-    a.side || "NONE";
-
-  const cls =
-    side === "BUY"
-      ? "green"
-      : side === "SELL"
-        ? "red"
-        : "gray";
-
-  $("absorption").innerHTML =
-    `<div class="absorption-card">
-
-      <div class="box-title">
-        🧲 Absorption Detection
-      </div>
-
-      <div class="absorption-side ${cls}">
-        ${
-          a.detected
-            ? side
-            : "NO ABSORPTION"
-        }
-      </div>
-
-      <div>
-        Score:
-        <b>
-          ${a.score}/100
-        </b>
-      </div>
-
-      <div class="progress">
-        <div
-          style="width:${a.score}%"
-        ></div>
-      </div>
-
-      <div class="gray">
-        ${escapeHtml(
-          a.reason || ""
-        )}
-      </div>
-
-    </div>`;
-}
-
-function renderOrderbook(){
-
-  const b =
-    state.data?.orderbook;
-
-  if (!b) return;
-
-  const topBids =
-    b.bids.slice(
-      0,
-      15
-    );
-
-  const topAsks =
-    b.asks.slice(
-      0,
-      15
-    );
-
-  $("orderbook").innerHTML =
-
-    `<div class="box">
-      <div class="box-title green">
-        BID
-      </div>
-
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Price</th>
-              <th>Size</th>
-              <th>Value</th>
-            </tr>
-          </thead>
-
-          <tbody>
-            ${
-              topBids.map(
-                x =>
-                  `<tr>
-                    <td class="bid">
-                      ${formatNumber(
-                        x.price,
-                        priceDigits(x.price)
-                      )}
-                    </td>
-                    <td>
-                      ${formatCompact(
-                        x.size
-                      )}
-                    </td>
-                    <td>
-                      ${formatCompact(
-                        x.value
-                      )}
-                    </td>
-                  </tr>`
-              ).join("")
-            }
-          </tbody>
-        </table>
-      </div>
-    </div>
-
-    <div class="box">
-      <div class="box-title red">
-        ASK
-      </div>
-
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Price</th>
-              <th>Size</th>
-              <th>Value</th>
-            </tr>
-          </thead>
-
-          <tbody>
-            ${
-              topAsks.map(
-                x =>
-                  `<tr>
-                    <td class="ask">
-                      ${formatNumber(
-                        x.price,
-                        priceDigits(x.price)
-                      )}
-                    </td>
-                    <td>
-                      ${formatCompact(
-                        x.size
-                      )}
-                    </td>
-                    <td>
-                      ${formatCompact(
-                        x.value
-                      )}
-                    </td>
-                  </tr>`
-              ).join("")
-            }
-          </tbody>
-        </table>
-      </div>
-    </div>`;
-}
-
-function renderDelta(){
-
-  const s =
-    state.data?.stats;
-
-  if (!s) return;
-
-  const positive =
-    s.delta >= 0;
-
-  const buyPct =
-    s.totalVolume > 0
-      ? s.buyVolume /
-        s.totalVolume *
-        100
-      : 0;
-
-  const sellPct =
-    100 - buyPct;
-
-  $("deltaPanelContent").innerHTML =
-
-    `<div class="box">
-      <div class="box-title">
-        Delta
-      </div>
-
-      <div class="big ${
-        positive
-          ? "green"
-          : "red"
-      }">
-        ${
-          positive ? "+" : ""
-        }${formatCompact(
-          s.delta
-        )}
-      </div>
-    </div>
-
-    <div class="box">
-      <div class="box-title">
-        Delta %
-      </div>
-
-      <div class="big">
-        ${
-          s.deltaPercent.toFixed(2)
-        }%
-      </div>
-    </div>
-
-    <div class="box">
-      <div class="box-title">
-        Buy
-      </div>
-
-      <div class="big green">
-        ${formatCompact(
-          s.buyVolume
-        )}
-      </div>
-
-      <div class="gray">
-        ${buyPct.toFixed(1)}%
-      </div>
-    </div>
-
-    <div class="box">
-      <div class="box-title">
-        Sell
-      </div>
-
-      <div class="big red">
-        ${formatCompact(
-          s.sellVolume
-        )}
-      </div>
-
-      <div class="gray">
-        ${sellPct.toFixed(1)}%
-      </div>
-    </div>
-
-    <div class="box">
-      <div class="box-title">
-        Pressure
-      </div>
-
-      <div class="big">
-        ${escapeHtml(
-          s.pressure
-        )}
-      </div>
-    </div>
-
-    <div class="box">
-      <div class="box-title">
-        Trades
-      </div>
-
-      <div class="big">
-        ${formatNumber(
-          s.trades,
-          0
-        )}
-      </div>
-    </div>`;
-}
-
-function renderLargeTrades(){
-
-  const trades =
-    state.data?.trades || [];
-
-  const s =
-    state.data?.stats || {};
-
-  const threshold =
-    Number(
-      s.largeThreshold || 0
-    );
-
-  const large =
-    trades
-      .filter(
-        t =>
-          t.value >=
-          threshold
-      )
-      .sort(
-        (a,b) =>
-          b.value-a.value
-      )
-      .slice(
-        0,
-        100
-      );
-
-  if (!large.length){
-
-    $("largeTrades").innerHTML =
-      `<div class="empty">
-        معامله بزرگ در داده فعلی پیدا نشد
-      </div>`;
-
-    return;
-  }
-
-  let html =
-    `<div class="box">
-
-      <div class="box-title">
-        🐋 Large Trades · Threshold
-        ${formatCompact(threshold)}
-      </div>
-
-      <div class="table-wrap">
-
-      <table>
-        <thead>
-          <tr>
-            <th>Time</th>
-            <th>Side</th>
-            <th>Price</th>
-            <th>Size</th>
-            <th>Value</th>
-          </tr>
-        </thead>
-
-        <tbody>`;
-
-  for (
-    const t of large
-  ){
-
-    const buy =
-      t.side === "buy";
-
-    html +=
-      `<tr>
-
-        <td>
-          ${new Date(
-            t.time
-          ).toLocaleTimeString()}
-        </td>
-
-        <td class="${
-          buy
-            ? "green"
-            : "red"
-        }">
-          ${
-            buy
-              ? "BUY"
-              : "SELL"
-          }
-        </td>
-
-        <td>
-          ${formatNumber(
-            t.price,
-            priceDigits(t.price)
-          )}
-        </td>
-
-        <td>
-          ${formatCompact(
-            t.size
-          )}
-        </td>
-
-        <td>
-          ${formatCompact(
-            t.value
-          )}
-        </td>
-
-      </tr>`;
-  }
-
-  html +=
-    `</tbody>
-      </table>
-      </div>
-    </div>`;
-
-  $("largeTrades").innerHTML =
-    html;
-}
-
-// Tabs
-
-document
-  .querySelectorAll(".tab")
-  .forEach(
-    tab => {
-
-      tab.addEventListener(
-        "click",
-        () => {
-
-          document
-            .querySelectorAll(".tab")
-            .forEach(
-              x =>
-                x.classList.remove(
-                  "active"
-                )
-            );
-
-          document
-            .querySelectorAll(".panel")
-            .forEach(
-              x =>
-                x.classList.remove(
-                  "active"
-                )
-            );
-
-          tab.classList.add(
-            "active"
-          );
-
-          const panel =
-            $(tab.dataset.panel);
-
-          if (panel){
-            panel.classList.add(
-              "active"
-            );
-          }
-        }
-      );
-    }
-  );
-
-// Refresh
-
-$("refresh")
-  .addEventListener(
-    "click",
-    load
-  );
-
-// Enter symbol
-
-$("symbol")
-  .addEventListener(
-    "keydown",
-    e => {
-
-      if (
-        e.key === "Enter"
-      ){
-        load();
-      }
-    }
-  );
-
-// Chart pointer
-
-const chart =
-  $("chart");
-
-chart.addEventListener(
-  "pointerdown",
-  e => {
-
-    state.dragging = true;
-
-    state.dragStartX =
-      e.clientX;
-
-    state.startOffset =
-      state.offset;
-
-    chart.setPointerCapture(
-      e.pointerId
-    );
-  }
-);
-
-chart.addEventListener(
-  "pointermove",
-  e => {
-
-    if (!state.dragging)
-      return;
-
-    const rect =
-      chart.getBoundingClientRect();
-
-    const visibleCount =
-      Math.max(
-        20,
-        Math.floor(
-          90 / state.zoom
-        )
-      );
-
-    const dx =
-      e.clientX -
-      state.dragStartX;
-
-    const candleWidth =
-      (
-        rect.width - 70
-      ) /
-      visibleCount;
-
-    state.offset =
-      state.startOffset -
-      dx /
-      candleWidth;
-
-    const maxOffset =
-      Math.max(
-        0,
-        (state.data?.candles?.length || 0)
-        - visibleCount
-      );
-
-    state.offset =
-      Math.max(
-        0,
-        Math.min(
-          maxOffset,
-          state.offset
-        )
-      );
-
-    drawChart();
-  }
-);
-
-chart.addEventListener(
-  "pointerup",
-  e => {
-
-    state.dragging = false;
-
-    try {
-      chart.releasePointerCapture(
-        e.pointerId
-      );
-    } catch {}
-  }
-);
-
-chart.addEventListener(
-  "pointercancel",
-  () => {
-    state.dragging = false;
-  }
-);
-
-chart.addEventListener(
-  "click",
-  e => {
-    if (!state.dragging){
-      selectCandleFromPointer(e);
-    }
-  }
-);
-
-chart.addEventListener(
-  "wheel",
-  e => {
-
-    e.preventDefault();
-
-    const old =
-      state.zoom;
-
-    if (e.deltaY < 0){
-      state.zoom =
-        Math.min(
-          5,
-          state.zoom * 1.15
-        );
-    } else {
-      state.zoom =
-        Math.max(
-          0.5,
-          state.zoom / 1.15
-        );
-    }
-
-    if (
-      old !== state.zoom
+  /*
+    ONE FINGER PAN
+  */
+  if(state.drag &&
+     state.drag.id===e.pointerId){
+
+    const dx=
+      e.clientX-state.drag.lastX;
+
+    const dy=
+      e.clientY-state.drag.lastY;
+
+    if(
+      Math.abs(e.clientX-state.drag.startX)>5 ||
+      Math.abs(e.clientY-state.drag.startY)>5
     ){
-      drawChart();
+      state.drag.moved=true;
     }
-  },
-  {
-    passive:false
+
+    /*
+      IMPORTANT:
+      Finger right -> chart content right.
+      Therefore positive dx adds to pan correction
+      rather than reversing the gesture.
+    */
+    const g=geometry();
+
+    if(g){
+
+      const candleMove=
+        dx/
+        Math.max(1,g.step);
+
+      /*
+        Reverse the old wrong direction:
+        moving finger right reveals older candles.
+      */
+      state.pan-=candleMove;
+
+      const visibleCount=g.visible.length;
+
+      const maxPan=
+        Math.max(
+          0,
+          state.candles.length-visibleCount
+        );
+
+      state.pan=clamp(
+        state.pan,
+        -visibleCount*.35,
+        maxPan+visibleCount*.35
+      );
+    }
+
+    state.drag.lastX=e.clientX;
+    state.drag.lastY=e.clientY;
+
+    requestDraw();
+  }
+});
+
+
+chart.addEventListener("pointerup",e=>{
+
+  e.preventDefault();
+
+  const drag=state.drag;
+
+  if(
+    state.pointers.size===1 &&
+    drag &&
+    drag.id===e.pointerId &&
+    !drag.moved
+  ){
+
+    const rect=chart.getBoundingClientRect();
+
+    const x=e.clientX-rect.left;
+
+    const index=candleAt(x);
+
+    if(index>=0){
+
+      state.selected=index;
+
+      updateSelected();
+      requestDraw();
+    }
+  }
+
+  state.pointers.delete(e.pointerId);
+
+  if(state.pointers.size===1){
+
+    const [id,p]=[...state.pointers.entries()][0];
+
+    state.drag={
+      id,
+      startX:p.x,
+      startY:p.y,
+      lastX:p.x,
+      lastY:p.y,
+      moved:true
+    };
+
+    state.pinch=null;
+  }
+
+  if(state.pointers.size===0){
+
+    state.drag=null;
+    state.pinch=null;
+  }
+});
+
+
+chart.addEventListener("pointercancel",e=>{
+
+  state.pointers.delete(e.pointerId);
+
+  if(state.pointers.size===0){
+    state.drag=null;
+    state.pinch=null;
+  }
+});
+
+
+/* ============================================================
+   MOUSE WHEEL ZOOM
+============================================================ */
+
+chart.addEventListener("wheel",e=>{
+
+  e.preventDefault();
+
+  const oldZoom=state.zoom;
+
+  state.zoom=clamp(
+    state.zoom*
+    (e.deltaY<0 ? 1.12 : .89),
+    state.minZoom,
+    state.maxZoom
+  );
+
+  /*
+    Keep the candle under cursor approximately fixed.
+  */
+  const ratio=
+    state.zoom/Math.max(.0001,oldZoom);
+
+  if(ratio!==1){
+
+    const g=geometry();
+
+    if(g){
+
+      const rect=chart.getBoundingClientRect();
+      const x=e.clientX-rect.left;
+
+      const local=
+        clamp(
+          (x-g.left)/
+          Math.max(1,g.plotW),
+          0,
+          1
+        );
+
+      const shift=
+        (g.visible.length-
+         geometry().visible.length)*local;
+
+      state.pan+=shift;
+    }
+  }
+
+  requestDraw();
+
+},{
+  passive:false
+});
+
+
+/* ============================================================
+   SELECTED CANDLE
+============================================================ */
+
+function updateSelected(){
+
+  const c=state.candles[state.selected];
+
+  if(!c) return;
+
+  $("selectedTitle").textContent=
+    `کندل انتخابی · ${timeFmt(c.time)}`;
+
+  $("o").textContent=priceFmt(c.open);
+  $("h").textContent=priceFmt(c.high);
+  $("l").textContent=priceFmt(c.low);
+  $("c").textContent=priceFmt(c.close);
+
+  const delta=
+    n(c.delta,
+      n(c.buy)-n(c.sell)
+    );
+
+  $("cd").textContent=fmt(delta);
+
+  drawMiniCandle(c);
+
+  renderFootprint(c);
+}
+
+
+/* ============================================================
+   MINI CANDLE
+============================================================ */
+
+function drawMiniCandle(c){
+
+  const W=70;
+  const H=80;
+
+  miniCtx.clearRect(0,0,W,H);
+
+  miniCtx.fillStyle="#071018";
+  miniCtx.fillRect(0,0,W,H);
+
+  const max=c.high;
+  const min=c.low;
+
+  const range=max-min || 1;
+
+  const y=p=>
+    8+
+    (max-p)/range*64;
+
+  const x=35;
+
+  const up=c.close>=c.open;
+
+  miniCtx.strokeStyle=
+    up ? "#35c994" : "#f05b67";
+
+  miniCtx.lineWidth=2;
+
+  miniCtx.beginPath();
+  miniCtx.moveTo(x,y(c.high));
+  miniCtx.lineTo(x,y(c.low));
+  miniCtx.stroke();
+
+  miniCtx.fillStyle=
+    up ? "#19ad78" : "#d74e5a";
+
+  const top=Math.min(
+    y(c.open),
+    y(c.close)
+  );
+
+  const height=Math.max(
+    2,
+    Math.abs(
+      y(c.close)-y(c.open)
+    )
+  );
+
+  miniCtx.fillRect(
+    20,
+    top,
+    30,
+    height
+  );
+}
+
+
+/* ============================================================
+   GET FOOTPRINT FOR SELECTED CANDLE
+============================================================ */
+
+function getSelectedLevels(c){
+
+  /*
+    1. Direct per-candle footprint.
+  */
+  let rawLevels=getArray(c,[
+    "footprint",
+    "levels",
+    "priceLevels",
+    "orderflow",
+    "orderFlow",
+    "tradesByPrice",
+    "byPrice"
+  ]);
+
+  /*
+    2. Some Worker versions place it under data.
+  */
+  if(!rawLevels.length &&
+     c?.data &&
+     typeof c.data==="object"){
+
+    rawLevels=getArray(c.data,[
+      "footprint",
+      "levels",
+      "priceLevels",
+      "orderflow",
+      "orderFlow"
+    ]);
+  }
+
+  const levels=
+    rawLevels
+      .map(normalizeLevel)
+      .filter(x=>x.price>0);
+
+  /*
+    Aggregate duplicate price levels.
+  */
+  const map=new Map();
+
+  for(const l of levels){
+
+    const key=l.price.toFixed(12);
+
+    if(!map.has(key)){
+      map.set(key,{
+        price:l.price,
+        bid:0,
+        ask:0,
+        volume:0,
+        delta:0
+      });
+    }
+
+    const x=map.get(key);
+
+    x.bid+=l.bid;
+    x.ask+=l.ask;
+    x.volume+=l.volume;
+    x.delta+=l.delta;
+  }
+
+  return [...map.values()]
+    .sort((a,b)=>b.price-a.price);
+}
+
+
+/* ============================================================
+   RENDER FOOTPRINT
+============================================================ */
+
+function renderFootprint(c){
+
+  const rows=$("fpRows");
+
+  let levels=getSelectedLevels(c);
+
+  /*
+    If Worker gives candle-level bid/ask but no levels,
+    create a small candle-level representation.
+    This is NOT fake historical data; it only uses fields
+    actually returned for the candle.
+  */
+  if(!levels.length){
+
+    const bid=n(first(c,[
+      "bid",
+      "buy",
+      "buyVolume",
+      "bidVolume"
+    ],0));
+
+    const ask=n(first(c,[
+      "ask",
+      "sell",
+      "sellVolume",
+      "askVolume"
+    ],0));
+
+    const volume=n(
+      first(c,[
+        "volume",
+        "vol"
+      ],bid+ask)
+    );
+
+    const delta=n(
+      first(c,[
+        "delta",
+        "netDelta"
+      ],ask-bid)
+    );
+
+    /*
+      Only render when actual per-candle flow fields exist.
+    */
+    const hasFlow=
+      bid!==0 ||
+      ask!==0 ||
+      delta!==0;
+
+    if(hasFlow){
+
+      levels=[{
+        price:c.close,
+        bid,
+        ask,
+        volume,
+        delta
+      }];
+
+    }
+  }
+
+  if(!levels.length){
+
+    rows.innerHTML=`
+      <div class="empty">
+        برای این کندل در پاسخ Worker داده‌ی
+        Footprint سطح‌قیمت وجود ندارد.
+      </div>
+    `;
+
+    return;
+  }
+
+  const maxVolume=Math.max(
+    1,
+    ...levels.map(x=>Math.abs(x.volume))
+  );
+
+  const maxDelta=Math.max(
+    1,
+    ...levels.map(x=>Math.abs(x.delta))
+  );
+
+  rows.innerHTML=levels.map(l=>{
+
+    const volumeWidth=
+      clamp(
+        Math.abs(l.volume)/maxVolume*100,
+        0,
+        100
+      );
+
+    const deltaWidth=
+      clamp(
+        Math.abs(l.delta)/maxDelta*100,
+        0,
+        100
+      );
+
+    const dClass=
+      l.delta>=0 ? "pos" : "neg";
+
+    const dSign=
+      l.delta>0 ? "+" : "";
+
+    return `
+      <div class="fpRow">
+
+        <!-- Volume Fixed Range -->
+        <div class="barCell">
+          <div
+            class="bar volume"
+            style="width:${volumeWidth}%"
+          ></div>
+          <div class="barValue">
+            ${fmt(l.volume)}
+          </div>
+        </div>
+
+        <!-- Bid -->
+        <div class="bid">
+          ${fmt(l.bid)}
+        </div>
+
+        <!-- PRICE -->
+        <div class="price">
+          ${priceFmt(l.price)}
+        </div>
+
+        <!-- DELTA -->
+        <div class="delta ${dClass}">
+          ${dSign}${fmt(l.delta)}
+        </div>
+
+        <!-- Ask -->
+        <div class="ask">
+          ${fmt(l.ask)}
+        </div>
+
+        <!-- Delta Histogram -->
+        <div class="barCell">
+          ${
+            l.delta>=0
+            ?
+            `<div
+               class="bar deltaPos"
+               style="width:${deltaWidth}%"
+             ></div>`
+            :
+            `<div
+               class="bar deltaNeg"
+               style="width:${deltaWidth}%"
+             ></div>`
+          }
+          <div class="barValue">
+            ${dSign}${fmt(l.delta)}
+          </div>
+        </div>
+
+        <!-- Volume -->
+        <div class="barCell">
+          <div
+            class="bar volume"
+            style="width:${volumeWidth}%"
+          ></div>
+          <div class="barValue">
+            ${fmt(l.volume)}
+          </div>
+        </div>
+
+      </div>
+    `;
+
+  }).join("");
+}
+
+
+/* ============================================================
+   OTHER TABS
+============================================================ */
+
+document.querySelectorAll(".tab").forEach(tab=>{
+
+  tab.addEventListener("click",()=>{
+
+    document.querySelectorAll(".tab")
+      .forEach(x=>x.classList.remove("active"));
+
+    tab.classList.add("active");
+
+    const name=tab.dataset.tab;
+
+    if(name==="footprint"){
+      updateSelected();
+      return;
+    }
+
+    $("fpRows").innerHTML=`
+      <div class="empty">
+        بخش ${tab.textContent}
+        در حال استفاده از داده‌های واقعی Worker است.
+        <br><br>
+        کندل انتخابی همچنان:
+        <b>${timeFmt(
+          state.candles[state.selected]?.time
+        )}</b>
+      </div>
+    `;
+  });
+});
+
+
+/* ============================================================
+   BUTTONS
+============================================================ */
+
+$("analyzeBtn").addEventListener(
+  "click",
+  load
+);
+
+$("symbol").addEventListener(
+  "keydown",
+  e=>{
+    if(e.key==="Enter")
+      load();
   }
 );
 
-window.addEventListener(
-  "resize",
-  () => {
-
-    if (state.data){
-      drawChart();
-    }
-  }
+$("interval").addEventListener(
+  "change",
+  load
 );
 
-// Live update
-
-setInterval(
-  load,
-  5000
+$("category").addEventListener(
+  "change",
+  load
 );
 
-// Start
+$("limit").addEventListener(
+  "change",
+  load
+);
+
+
+/* ============================================================
+   START
+============================================================ */
+
+resizeCanvas();
 
 load();
 
 </script>
-
 </body>
 </html>
