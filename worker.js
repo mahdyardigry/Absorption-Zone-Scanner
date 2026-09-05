@@ -1,14 +1,14 @@
-const VERSION = "ABSORPTION-ZONE-V1";
+const VERSION = "ABSORPTION-ZONE-V2";
 
 const BYBIT = "https://api.bybit.com";
 
 const DEFAULT_SYMBOL = "BTCUSDT";
-const DEFAULT_CATEGORY = "linear";
 const DEFAULT_INTERVAL = "1";
 
 const KLINE_LIMIT = 200;
 const TRADE_LIMIT = 1000;
 const ORDERBOOK_LIMIT = 50;
+const SYMBOL_LIMIT = 1000;
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -35,22 +35,17 @@ function normalizeSymbol(value) {
 
   if (!s) return DEFAULT_SYMBOL;
 
-  if (s === "BTC" || s === "BTCUSDT" || s === "BUSDT") {
+  if (
+    s === "BTC" ||
+    s === "BTCUSDT" ||
+    s === "BUSDT"
+  ) {
     return "BTCUSDT";
   }
 
   if (s.endsWith("USDT")) return s;
 
   return s + "USDT";
-}
-
-function normalizeCategory(value) {
-  const v = String(value || DEFAULT_CATEGORY).toLowerCase();
-
-  if (v === "spot") return "spot";
-  if (v === "inverse") return "inverse";
-
-  return "linear";
 }
 
 function normalizeInterval(value) {
@@ -88,12 +83,13 @@ async function bybit(path, params = {}) {
     }
   }
 
-  const url = `${BYBIT}${path}?${query.toString()}`;
+  const url =
+    `${BYBIT}${path}?${query.toString()}`;
 
   const response = await fetch(url, {
     method: "GET",
     headers: {
-      "Accept": "application/json"
+      Accept: "application/json"
     }
   });
 
@@ -116,14 +112,13 @@ async function bybit(path, params = {}) {
   }
 
   if (!response.ok) {
-    throw new Error(
-      `HTTP ${response.status}`
-    );
+    throw new Error(`HTTP ${response.status}`);
   }
 
   if (data.retCode !== 0) {
     throw new Error(
-      data.retMsg || `Bybit error ${data.retCode}`
+      data.retMsg ||
+      `Bybit error ${data.retCode}`
     );
   }
 
@@ -163,8 +158,15 @@ function parseTrades(rows) {
       const size = Number(t.size);
 
       return {
-        id: t.execId || t.tradeId || `${t.time}-${price}-${size}`,
-        time: Number(t.time || Date.now()),
+        id:
+          t.execId ||
+          t.tradeId ||
+          t.i ||
+          `${t.time}-${price}-${size}`,
+
+        time:
+          Number(t.time || t.T || Date.now()),
+
         price,
         size,
         value: price * size,
@@ -173,19 +175,15 @@ function parseTrades(rows) {
     })
     .filter(t =>
       Number.isFinite(t.price) &&
-      Number.isFinite(t.size)
+      Number.isFinite(t.size) &&
+      Number.isFinite(t.time)
     );
-}
-
-function number(x) {
-  return Number.isFinite(Number(x))
-    ? Number(x)
-    : 0;
 }
 
 function tradeStats(trades) {
   let buyVolume = 0;
   let sellVolume = 0;
+
   let buyValue = 0;
   let sellValue = 0;
 
@@ -195,7 +193,9 @@ function tradeStats(trades) {
   const notionals = [];
 
   for (const t of trades) {
-    const value = t.price * t.size;
+    const value =
+      Number(t.price) *
+      Number(t.size);
 
     notionals.push(value);
 
@@ -227,11 +227,18 @@ function tradeStats(trades) {
       ? delta / totalVolume * 100
       : 0;
 
-  const sorted = [...notionals].sort((a, b) => a - b);
+  const sorted =
+    [...notionals].sort(
+      (a, b) => a - b
+    );
 
   const p95 =
     sorted.length
-      ? sorted[Math.floor((sorted.length - 1) * 0.95)]
+      ? sorted[
+          Math.floor(
+            (sorted.length - 1) * 0.95
+          )
+        ]
       : 0;
 
   const average =
@@ -252,7 +259,8 @@ function tradeStats(trades) {
   let largeSellValue = 0;
 
   for (const t of trades) {
-    const value = t.price * t.size;
+    const value =
+      t.price * t.size;
 
     if (value >= largeThreshold) {
       if (t.side === "buy") {
@@ -301,7 +309,10 @@ function tradeStats(trades) {
   };
 }
 
-function aggregateFootprint(trades, tickSize = 0) {
+function aggregateFootprint(
+  trades,
+  tickSize = 0
+) {
   const levels = new Map();
 
   for (const t of trades) {
@@ -313,7 +324,7 @@ function aggregateFootprint(trades, tickSize = 0) {
         tickSize;
     }
 
-    const key = price.toFixed(
+    const decimals =
       tickSize >= 1
         ? 0
         : tickSize > 0
@@ -323,8 +334,10 @@ function aggregateFootprint(trades, tickSize = 0) {
                 -Math.log10(tickSize)
               )
             )
-          : 8
-    );
+          : 8;
+
+    const key =
+      price.toFixed(decimals);
 
     if (!levels.has(key)) {
       levels.set(key, {
@@ -338,7 +351,8 @@ function aggregateFootprint(trades, tickSize = 0) {
       });
     }
 
-    const level = levels.get(key);
+    const level =
+      levels.get(key);
 
     if (t.side === "buy") {
       level.buyVolume += t.size;
@@ -354,6 +368,7 @@ function aggregateFootprint(trades, tickSize = 0) {
   return [...levels.values()]
     .map(x => ({
       ...x,
+
       delta:
         x.buyVolume -
         x.sellVolume,
@@ -368,52 +383,58 @@ function aggregateFootprint(trades, tickSize = 0) {
 
       imbalance:
         x.sellVolume > 0
-          ? x.buyVolume / x.sellVolume
+          ? x.buyVolume /
+            x.sellVolume
           : x.buyVolume > 0
             ? 999
             : 0
     }))
-    .sort((a, b) =>
-      b.price - a.price
+    .sort(
+      (a, b) =>
+        b.price - a.price
     );
 }
 
 function orderbookStats(data) {
-  const bids = (data.b || [])
-    .map(x => ({
-      price: Number(x[0]),
-      size: Number(x[1]),
-      value:
-        Number(x[0]) *
-        Number(x[1])
-    }))
-    .filter(x =>
-      Number.isFinite(x.price) &&
-      Number.isFinite(x.size)
-    );
+  const bids =
+    (data.b || [])
+      .map(x => ({
+        price: Number(x[0]),
+        size: Number(x[1]),
+        value:
+          Number(x[0]) *
+          Number(x[1])
+      }))
+      .filter(x =>
+        Number.isFinite(x.price) &&
+        Number.isFinite(x.size)
+      );
 
-  const asks = (data.a || [])
-    .map(x => ({
-      price: Number(x[0]),
-      size: Number(x[1]),
-      value:
-        Number(x[0]) *
-        Number(x[1])
-    }))
-    .filter(x =>
-      Number.isFinite(x.price) &&
-      Number.isFinite(x.size)
-    );
+  const asks =
+    (data.a || [])
+      .map(x => ({
+        price: Number(x[0]),
+        size: Number(x[1]),
+        value:
+          Number(x[0]) *
+          Number(x[1])
+      }))
+      .filter(x =>
+        Number.isFinite(x.price) &&
+        Number.isFinite(x.size)
+      );
 
   const buyLiquidity =
     bids.reduce(
-      (sum, x) => sum + x.value,
+      (sum, x) =>
+        sum + x.value,
       0
     );
 
   const sellLiquidity =
     asks.reduce(
-      (sum, x) => sum + x.value,
+      (sum, x) =>
+        sum + x.value,
       0
     );
 
@@ -446,7 +467,8 @@ function orderbookStats(data) {
       : 0;
 
   const spread =
-    bestAsk > 0 && bestBid > 0
+    bestAsk > 0 &&
+    bestBid > 0
       ? bestAsk - bestBid
       : 0;
 
@@ -456,6 +478,7 @@ function orderbookStats(data) {
 
     buyLiquidity,
     sellLiquidity,
+
     totalLiquidity,
 
     buyShare,
@@ -466,9 +489,11 @@ function orderbookStats(data) {
     spread,
 
     pressure:
-      buyShare > sellShare + 8
+      buyShare >
+      sellShare + 8
         ? "BUY_PRESSURE"
-        : sellShare > buyShare + 8
+        : sellShare >
+          buyShare + 8
           ? "SELL_PRESSURE"
           : "BALANCED"
   };
@@ -479,7 +504,10 @@ function detectAbsorption(
   candles,
   book
 ) {
-  if (!trades.length || !candles.length) {
+  if (
+    !trades.length ||
+    !candles.length
+  ) {
     return {
       detected: false,
       side: "NONE",
@@ -524,6 +552,7 @@ function detectAbsorption(
 
   let score = 0;
   let side = "NONE";
+
   const reasons = [];
 
   if (
@@ -532,6 +561,7 @@ function detectAbsorption(
   ) {
     score += 35;
     side = "BUY";
+
     reasons.push(
       "فشار فروش در کف جذب شده"
     );
@@ -543,6 +573,7 @@ function detectAbsorption(
   ) {
     score += 35;
     side = "SELL";
+
     reasons.push(
       "فشار خرید در سقف جذب شده"
     );
@@ -550,19 +581,23 @@ function detectAbsorption(
 
   if (bodyRatio < 0.35) {
     score += 20;
+
     reasons.push(
       "بدنه کندل کوچک نسبت به محدوده"
     );
   }
 
   const bookPressure =
-    book?.pressure || "BALANCED";
+    book?.pressure ||
+    "BALANCED";
 
   if (
     side === "BUY" &&
-    bookPressure === "BUY_PRESSURE"
+    bookPressure ===
+      "BUY_PRESSURE"
   ) {
     score += 20;
+
     reasons.push(
       "حمایت سمت Bid در Order Book"
     );
@@ -570,9 +605,11 @@ function detectAbsorption(
 
   if (
     side === "SELL" &&
-    bookPressure === "SELL_PRESSURE"
+    bookPressure ===
+      "SELL_PRESSURE"
   ) {
     score += 20;
+
     reasons.push(
       "حمایت سمت Ask در Order Book"
     );
@@ -581,7 +618,11 @@ function detectAbsorption(
   return {
     detected: score >= 50,
     side,
-    score: Math.min(score, 100),
+    score: Math.min(
+      score,
+      100
+    ),
+
     reason:
       reasons.length
         ? reasons.join(" · ")
@@ -591,47 +632,50 @@ function detectAbsorption(
 
 async function getMarket(
   symbol,
-  category,
   interval
 ) {
-  const [kline, ticker, book, trades] =
-    await Promise.all([
-      bybit(
-        "/v5/market/kline",
-        {
-          category,
-          symbol,
-          interval,
-          limit: KLINE_LIMIT
-        }
-      ),
+  const [
+    kline,
+    ticker,
+    book,
+    trades
+  ] = await Promise.all([
+    bybit(
+      "/v5/market/kline",
+      {
+        category: "linear",
+        symbol,
+        interval,
+        limit: KLINE_LIMIT
+      }
+    ),
 
-      bybit(
-        "/v5/market/tickers",
-        {
-          category,
-          symbol
-        }
-      ),
+    bybit(
+      "/v5/market/tickers",
+      {
+        category: "linear",
+        symbol
+      }
+    ),
 
-      bybit(
-        "/v5/market/orderbook",
-        {
-          category,
-          symbol,
-          limit: ORDERBOOK_LIMIT
-        }
-      ),
+    bybit(
+      "/v5/market/orderbook",
+      {
+        category: "linear",
+        symbol,
+        limit: ORDERBOOK_LIMIT
+      }
+    ),
 
-      bybit(
-        "/v5/market/recent-trade",
-        {
-          category,
-          symbol,
-          limit: TRADE_LIMIT
-        }
-      )
-    ]);
+    bybit(
+      "/v5/market/recent-trade",
+      {
+        category: "linear",
+        symbol,
+        limit: TRADE_LIMIT
+      }
+    )
+  ]);
 
   const candles =
     parseKlines(
@@ -666,30 +710,40 @@ async function getMarket(
     );
 
   const tickerData =
-    ticker.result?.list?.[0] || {};
+    ticker.result?.list?.[0] ||
+    {};
 
   return {
     version: VERSION,
 
     symbol,
-    category,
+
+    category: "linear",
+
     interval,
 
     serverTime: Date.now(),
 
     ticker: {
       lastPrice:
-        Number(tickerData.lastPrice || 0),
+        Number(
+          tickerData.lastPrice || 0
+        ),
 
       markPrice:
-        Number(tickerData.markPrice || 0),
+        Number(
+          tickerData.markPrice || 0
+        ),
 
       indexPrice:
-        Number(tickerData.indexPrice || 0),
+        Number(
+          tickerData.indexPrice || 0
+        ),
 
       price24hPcnt:
         Number(
-          tickerData.price24hPcnt || 0
+          tickerData.price24hPcnt ||
+          0
         ) * 100,
 
       volume24h:
@@ -717,21 +771,135 @@ async function getMarket(
   };
 }
 
+async function getSymbols() {
+  const all = [];
+
+  let cursor = "";
+
+  for (let page = 0; page < 10; page++) {
+    const params = {
+      category: "linear",
+      status: "Trading",
+      limit: SYMBOL_LIMIT
+    };
+
+    if (cursor) {
+      params.cursor = cursor;
+    }
+
+    const result =
+      await bybit(
+        "/v5/market/instruments-info",
+        params
+      );
+
+    const list =
+      result.result?.list || [];
+
+    for (const item of list) {
+      const symbol =
+        String(
+          item.symbol || ""
+        ).toUpperCase();
+
+      if (!symbol) continue;
+
+      if (
+        item.status !== "Trading"
+      ) {
+        continue;
+      }
+
+      if (
+        item.quoteCoin &&
+        item.quoteCoin !== "USDT"
+      ) {
+        continue;
+      }
+
+      if (
+        item.settleCoin &&
+        item.settleCoin !== "USDT"
+      ) {
+        continue;
+      }
+
+      if (
+        item.contractType &&
+        !String(
+          item.contractType
+        ).toLowerCase()
+        .includes("perpetual")
+      ) {
+        continue;
+      }
+
+      all.push({
+        symbol,
+        baseCoin:
+          item.baseCoin || "",
+        quoteCoin:
+          item.quoteCoin || "USDT",
+        settleCoin:
+          item.settleCoin || "USDT",
+        contractType:
+          item.contractType ||
+          "LinearPerpetual",
+        status:
+          item.status || "Trading",
+        tickSize:
+          item.priceFilter?.tickSize ||
+          "0",
+        minOrderQty:
+          item.lotSizeFilter?.minOrderQty ||
+          "0"
+      });
+    }
+
+    const next =
+      result.result?.nextPageCursor ||
+      "";
+
+    if (!next || !list.length) {
+      break;
+    }
+
+    cursor = next;
+  }
+
+  all.sort((a, b) =>
+    a.symbol.localeCompare(
+      b.symbol
+    )
+  );
+
+  return all;
+}
+
 async function route(request) {
   const url =
     new URL(request.url);
 
-  if (url.pathname === "/api/health") {
+  if (
+    url.pathname ===
+    "/api/health"
+  ) {
     return json({
       ok: true,
       version: VERSION,
-      time: new Date().toISOString()
+      category: "linear",
+      time:
+        new Date().toISOString()
     });
   }
 
-  if (url.pathname === "/api/test") {
+  if (
+    url.pathname ===
+    "/api/test"
+  ) {
     return new Response(
-      "API TEST OK - " + VERSION,
+      "API TEST OK - " +
+      VERSION,
       {
         headers: {
           ...CORS,
@@ -743,28 +911,56 @@ async function route(request) {
   }
 
   if (
-    url.pathname === "/api/market"
+    url.pathname ===
+    "/api/symbols"
+  ) {
+    try {
+      const symbols =
+        await getSymbols();
+
+      return json({
+        ok: true,
+        version: VERSION,
+        category: "linear",
+        count: symbols.length,
+        symbols
+      });
+    } catch (error) {
+      return json(
+        {
+          ok: false,
+          error:
+            error?.message ||
+            "خطای دریافت لیست Futures",
+          version: VERSION
+        },
+        502
+      );
+    }
+  }
+
+  if (
+    url.pathname ===
+    "/api/market"
   ) {
     const symbol =
       normalizeSymbol(
-        url.searchParams.get("symbol")
-      );
-
-    const category =
-      normalizeCategory(
-        url.searchParams.get("category")
+        url.searchParams.get(
+          "symbol"
+        )
       );
 
     const interval =
       normalizeInterval(
-        url.searchParams.get("interval")
+        url.searchParams.get(
+          "interval"
+        )
       );
 
     try {
       const result =
         await getMarket(
           symbol,
-          category,
           interval
         );
 
@@ -787,16 +983,14 @@ async function route(request) {
   }
 
   if (
-    url.pathname === "/api/footprint"
+    url.pathname ===
+    "/api/footprint"
   ) {
     const symbol =
       normalizeSymbol(
-        url.searchParams.get("symbol")
-      );
-
-    const category =
-      normalizeCategory(
-        url.searchParams.get("category")
+        url.searchParams.get(
+          "symbol"
+        )
       );
 
     try {
@@ -804,7 +998,7 @@ async function route(request) {
         await bybit(
           "/v5/market/recent-trade",
           {
-            category,
+            category: "linear",
             symbol,
             limit: TRADE_LIMIT
           }
@@ -817,13 +1011,20 @@ async function route(request) {
 
       return json({
         ok: true,
+
         symbol,
-        category,
+
+        category: "linear",
+
         trades,
+
         stats:
           tradeStats(trades),
+
         footprint:
-          aggregateFootprint(trades)
+          aggregateFootprint(
+            trades
+          )
       });
     } catch (error) {
       return json(
@@ -839,16 +1040,14 @@ async function route(request) {
   }
 
   if (
-    url.pathname === "/api/orderbook"
+    url.pathname ===
+    "/api/orderbook"
   ) {
     const symbol =
       normalizeSymbol(
-        url.searchParams.get("symbol")
-      );
-
-    const category =
-      normalizeCategory(
-        url.searchParams.get("category")
+        url.searchParams.get(
+          "symbol"
+        )
       );
 
     try {
@@ -856,7 +1055,7 @@ async function route(request) {
         await bybit(
           "/v5/market/orderbook",
           {
-            category,
+            category: "linear",
             symbol,
             limit: ORDERBOOK_LIMIT
           }
@@ -864,8 +1063,11 @@ async function route(request) {
 
       return json({
         ok: true,
+
         symbol,
-        category,
+
+        category: "linear",
+
         ...orderbookStats(
           result.result?.list || {}
         )
@@ -884,21 +1086,21 @@ async function route(request) {
   }
 
   if (
-    url.pathname === "/api/candles"
+    url.pathname ===
+    "/api/candles"
   ) {
     const symbol =
       normalizeSymbol(
-        url.searchParams.get("symbol")
-      );
-
-    const category =
-      normalizeCategory(
-        url.searchParams.get("category")
+        url.searchParams.get(
+          "symbol"
+        )
       );
 
     const interval =
       normalizeInterval(
-        url.searchParams.get("interval")
+        url.searchParams.get(
+          "interval"
+        )
       );
 
     try {
@@ -906,7 +1108,7 @@ async function route(request) {
         await bybit(
           "/v5/market/kline",
           {
-            category,
+            category: "linear",
             symbol,
             interval,
             limit: KLINE_LIMIT
@@ -915,9 +1117,13 @@ async function route(request) {
 
       return json({
         ok: true,
+
         symbol,
-        category,
+
+        category: "linear",
+
         interval,
+
         candles:
           parseKlines(
             result.result?.list
@@ -936,42 +1142,50 @@ async function route(request) {
     }
   }
 
-  if (envHasAssets(request)) {
-    return null;
-  }
-
   return json({
     ok: true,
-    service: "Absorption Zone Scanner",
-    version: VERSION
+    service:
+      "Absorption Zone Scanner",
+    version: VERSION,
+    category: "linear"
   });
 }
 
-function envHasAssets(request) {
-  return false;
-}
-
 export default {
-  async fetch(request, env, ctx) {
-    if (request.method === "OPTIONS") {
-      return new Response(null, {
-        status: 204,
-        headers: CORS
-      });
+  async fetch(
+    request,
+    env,
+    ctx
+  ) {
+    if (
+      request.method ===
+      "OPTIONS"
+    ) {
+      return new Response(
+        null,
+        {
+          status: 204,
+          headers: CORS
+        }
+      );
     }
 
     const url =
       new URL(request.url);
 
     if (
-      url.pathname.startsWith("/api/")
+      url.pathname.startsWith(
+        "/api/"
+      )
     ) {
       return route(request);
     }
 
     if (env.ASSETS) {
       const response =
-        await env.ASSETS.fetch(request);
+        await env.ASSETS.fetch(
+          request
+        );
 
       const headers =
         new Headers(
@@ -986,7 +1200,8 @@ export default {
       return new Response(
         response.body,
         {
-          status: response.status,
+          status:
+            response.status,
           statusText:
             response.statusText,
           headers
