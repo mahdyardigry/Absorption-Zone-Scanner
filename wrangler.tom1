@@ -7,11 +7,3 @@ workers_dev = true
 [assets]
 directory = "./public"
 binding = "ASSETS"
-
-[[durable_objects.bindings]]
-name = "CollectorDO"
-class_name = "CollectorDO"
-
-[[migrations]]
-tag = "v1"
-new_classes = ["CollectorDO"]
