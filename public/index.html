@@ -2,36 +2,15 @@
 <html lang="fa" dir="rtl">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport"
-      content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <title>Absorption Zone Scanner</title>
 
 <style>
-*{
-  box-sizing:border-box;
-  -webkit-tap-highlight-color:transparent;
-}
-
-html,body{
-  margin:0;
-  padding:0;
-  width:100%;
-  min-height:100%;
-  background:#071019;
-  color:#e8f1f7;
-  font-family:Tahoma,Arial,sans-serif;
-}
-
-body{
-  overflow-x:hidden;
-}
-
-button,
-input,
-select{
-  font:inherit;
-}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;background:#071019;color:#e8f0f7;font-family:Tahoma,Arial,sans-serif}
+body{min-height:100vh}
+button,input,select{font:inherit}
+button{cursor:pointer}
 
 .app{
   width:100%;
@@ -41,484 +20,299 @@ select{
 }
 
 .header{
-  background:linear-gradient(145deg,#0d1a26,#09131d);
-  border:1px solid #1c3445;
+  background:linear-gradient(180deg,#101d29,#0b151e);
+  border:1px solid #243746;
   border-radius:16px;
-  padding:16px;
-  margin-bottom:12px;
+  padding:14px;
+  margin-bottom:10px;
 }
 
 .title{
-  font-size:23px;
+  font-size:22px;
   font-weight:800;
   margin-bottom:5px;
 }
 
 .subtitle{
-  color:#8ea8b9;
+  color:#91a6b8;
   font-size:13px;
 }
 
 .controls{
   display:grid;
-  grid-template-columns:
-    minmax(120px,1.3fr)
-    minmax(120px,1fr)
-    minmax(110px,1fr)
-    minmax(100px,1fr)
-    auto;
-  gap:9px;
-  margin-top:15px;
+  grid-template-columns:1.2fr 1fr 1fr .8fr auto;
+  gap:8px;
+  margin-top:12px;
 }
 
 .control{
-  display:flex;
-  flex-direction:column;
-  gap:5px;
+  background:#0a141d;
+  border:1px solid #263b4b;
+  border-radius:10px;
+  padding:8px;
 }
 
 .control label{
-  color:#91a8b7;
+  display:block;
   font-size:11px;
+  color:#7f96a8;
+  margin-bottom:4px;
 }
 
-input,
-select{
+.control input,
+.control select{
   width:100%;
-  min-height:42px;
-  border:1px solid #284456;
-  border-radius:10px;
-  background:#091722;
-  color:#e9f4fa;
-  padding:8px 10px;
+  background:#0d1b26;
+  color:#eaf3fa;
+  border:1px solid #304858;
+  border-radius:7px;
+  padding:8px;
   outline:none;
 }
 
-input:focus,
-select:focus{
-  border-color:#3e9ccc;
-}
-
-.analyze{
-  align-self:end;
-  min-height:42px;
+.btn{
   border:0;
   border-radius:10px;
-  background:#1386bd;
+  padding:10px 18px;
+  background:#16a765;
   color:#fff;
-  padding:0 18px;
-  cursor:pointer;
   font-weight:800;
+  align-self:end;
+  min-height:44px;
 }
 
-.analyze:active{
-  transform:scale(.98);
-}
+.btn:active{transform:scale(.98)}
 
 .status{
-  margin-top:12px;
-  padding:10px 12px;
-  border-radius:10px;
-  background:#08141d;
-  border:1px solid #1a3342;
-  color:#9fb4c1;
+  margin-top:10px;
+  padding:9px 11px;
+  border-radius:9px;
+  background:#0b1822;
+  border:1px solid #233947;
+  color:#8ea6b8;
   font-size:12px;
-}
-
-.status.ok{
-  color:#50e39a;
-  border-color:#185a43;
-}
-
-.status.err{
-  color:#ff6f75;
-  border-color:#69333a;
 }
 
 .stats{
   display:grid;
   grid-template-columns:repeat(6,1fr);
-  gap:8px;
-  margin:12px 0;
+  gap:7px;
+  margin:10px 0;
 }
 
 .stat{
+  background:#0c1720;
+  border:1px solid #223746;
+  border-radius:10px;
+  padding:9px;
   min-width:0;
-  background:#0b1721;
-  border:1px solid #1b3445;
-  border-radius:12px;
-  padding:10px;
 }
 
-.stat-title{
+.stat small{
+  display:block;
+  color:#708798;
   font-size:10px;
-  color:#7892a2;
-  margin-bottom:5px;
+  margin-bottom:4px;
 }
 
-.stat-value{
-  font-size:14px;
-  font-weight:800;
-  white-space:nowrap;
+.stat b{
+  font-size:13px;
   overflow:hidden;
   text-overflow:ellipsis;
+  white-space:nowrap;
 }
 
-.green{
-  color:#39dc8c!important;
-}
+.green{color:#35e39a!important}
+.red{color:#ff6474!important}
+.yellow{color:#f5c95b!important}
+.blue{color:#55b8ff!important}
 
-.red{
-  color:#ff5964!important;
-}
-
-.yellow{
-  color:#f1c75b!important;
-}
-
-.main-card{
-  background:#08131c;
-  border:1px solid #1b3445;
-  border-radius:16px;
+.panel{
+  background:#09131c;
+  border:1px solid #223746;
+  border-radius:15px;
   overflow:hidden;
+  margin-bottom:10px;
 }
 
-.card-head{
+.panel-head{
   display:flex;
-  align-items:center;
   justify-content:space-between;
-  gap:10px;
-  padding:12px 14px;
-  border-bottom:1px solid #18303f;
+  align-items:center;
+  padding:11px 13px;
+  border-bottom:1px solid #203340;
+  background:#0c1822;
 }
 
-.card-title{
-  font-size:15px;
+.panel-title{
+  font-size:14px;
   font-weight:800;
 }
 
-.chart-hint{
-  color:#718b9a;
+.panel-hint{
+  color:#718899;
   font-size:10px;
-  text-align:left;
 }
 
 .chart-wrap{
   position:relative;
   width:100%;
-  height:440px;
-  background:#061019;
+  height:470px;
+  background:#071018;
   overflow:hidden;
   touch-action:none;
 }
 
-#chart{
-  display:block;
+#chartCanvas{
   width:100%;
   height:100%;
+  display:block;
   touch-action:none;
-}
-
-.no-data{
-  position:absolute;
-  inset:0;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  color:#607988;
-  pointer-events:none;
-  font-size:13px;
 }
 
 .tabs{
   display:flex;
-  gap:6px;
+  gap:5px;
   overflow-x:auto;
-  padding:9px;
-  border-top:1px solid #18303f;
-  border-bottom:1px solid #18303f;
+  padding:8px;
+  background:#09141d;
   scrollbar-width:none;
 }
 
-.tabs::-webkit-scrollbar{
-  display:none;
-}
+.tabs::-webkit-scrollbar{display:none}
 
 .tab{
-  flex:0 0 auto;
-  border:1px solid #234254;
-  background:#0a1721;
-  color:#88a0ae;
-  padding:8px 12px;
-  border-radius:9px;
+  white-space:nowrap;
+  border:1px solid #263d4d;
+  background:#0c1822;
+  color:#8ea4b4;
+  border-radius:8px;
+  padding:7px 11px;
   font-size:11px;
 }
 
 .tab.active{
+  background:#173244;
   color:#fff;
-  background:#123246;
-  border-color:#287aa3;
-}
-
-.selected{
-  margin-top:12px;
-  background:#08131c;
-  border:1px solid #1b3445;
-  border-radius:16px;
-  overflow:hidden;
+  border-color:#39718f;
 }
 
 .selected-head{
-  padding:12px 14px;
-  border-bottom:1px solid #18303f;
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
+  padding:11px 13px;
+  border-bottom:1px solid #203340;
+  background:#0c1822;
 }
 
 .selected-title{
+  font-size:14px;
   font-weight:800;
 }
 
-.selected-time{
-  color:#718a99;
-  font-size:10px;
-}
-
-.selected-summary{
-  display:grid;
-  grid-template-columns:repeat(6,1fr);
-  gap:7px;
-  padding:10px;
-  border-bottom:1px solid #18303f;
-}
-
-.ohlc{
-  background:#0a1721;
-  border:1px solid #183242;
-  border-radius:9px;
-  padding:8px;
-  min-width:0;
-}
-
-.ohlc span{
-  display:block;
-  color:#718b9a;
-  font-size:9px;
-  margin-bottom:3px;
-}
-
-.ohlc b{
-  font-size:12px;
-  white-space:nowrap;
-  overflow:hidden;
-  text-overflow:ellipsis;
-}
-
-.footprint-wrap{
-  overflow-x:auto;
-  overflow-y:hidden;
-  -webkit-overflow-scrolling:touch;
-}
-
-.footprint{
-  min-width:720px;
-}
-
-.fp-head,
-.fp-row{
-  display:grid;
-  grid-template-columns:
-    92px
-    82px
-    100px
-    82px
-    82px
-    110px
-    100px;
-  align-items:center;
-}
-
-.fp-head{
-  min-height:38px;
-  background:#0c1b26;
-  color:#7893a2;
-  font-size:10px;
-  border-bottom:1px solid #18303f;
-  direction:ltr;
-}
-
-.fp-row{
-  min-height:42px;
-  border-bottom:1px solid #102631;
+.selected-info{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  margin-top:6px;
+  color:#91a5b4;
   font-size:11px;
-  direction:ltr;
 }
 
-.fp-row:last-child{
-  border-bottom:0;
+.fp-tools{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:8px;
+  padding:7px 9px;
+  border-bottom:1px solid #1d303d;
+  background:#08121a;
 }
 
-.fp-cell{
-  min-width:0;
-  padding:5px 7px;
-  text-align:center;
+.fp-tools span{
+  color:#718a9c;
+  font-size:10px;
+}
+
+.fp-reset{
+  border:1px solid #2a4657;
+  background:#0e1d28;
+  color:#bdd0dd;
+  border-radius:7px;
+  padding:5px 9px;
+  font-size:10px;
+}
+
+.fp-wrap{
   position:relative;
+  width:100%;
+  height:520px;
+  overflow:hidden;
+  background:
+    linear-gradient(rgba(255,255,255,.018) 1px,transparent 1px),
+    #071018;
+  background-size:100% 32px;
+  touch-action:none;
 }
 
-.price{
-  color:#dbe9ef;
-  font-weight:800;
+#footprintCanvas{
+  width:100%;
+  height:100%;
+  display:block;
+  touch-action:none;
 }
 
-.bid{
-  color:#ff646c;
-}
-
-.ask{
-  color:#36df91;
-}
-
-.delta-pos{
-  color:#38df91;
-}
-
-.delta-neg{
-  color:#ff5e67;
-}
-
-.bar{
+.fp-message{
   position:absolute;
-  top:7px;
-  bottom:7px;
-  left:5px;
-  right:5px;
-  opacity:.16;
-  border-radius:4px;
+  inset:0;
+  display:none;
+  align-items:center;
+  justify-content:center;
+  text-align:center;
+  color:#7f95a5;
+  font-size:12px;
+  padding:20px;
   pointer-events:none;
 }
 
-.bar.buy{
-  background:#26dc8c;
-}
-
-.bar.sell{
-  background:#ff4f5b;
-}
-
-.bar.delta-positive{
-  background:#2cda8b;
-}
-
-.bar.delta-negative{
-  background:#ff515c;
-}
-
-.cell-content{
-  position:relative;
-  z-index:1;
-}
-
-.empty{
-  padding:35px 15px;
-  text-align:center;
-  color:#667f8e;
-  font-size:12px;
-}
-
-.candle-preview{
-  padding:12px 14px 0;
-}
-
-.preview-title{
-  font-size:11px;
-  color:#718b9a;
-  margin-bottom:7px;
-}
-
-.preview-box{
-  width:100%;
-  height:130px;
-  background:#061019;
-  border:1px solid #142b38;
-  border-radius:10px;
-  overflow:hidden;
-}
-
-#miniCandle{
-  display:block;
-  width:100%;
-  height:100%;
-}
-
-.error-box{
-  margin:10px;
-  padding:11px;
-  border-radius:10px;
-  background:#211014;
-  border:1px solid #63313a;
-  color:#ff7279;
-  direction:ltr;
-  text-align:left;
-  font-family:monospace;
-  font-size:11px;
-  white-space:pre-wrap;
-  word-break:break-word;
-}
-
-.footer{
-  padding:12px 4px;
-  color:#526b79;
+.legend{
+  display:flex;
+  justify-content:center;
+  flex-wrap:wrap;
+  gap:12px;
+  padding:9px;
+  border-top:1px solid #1d303d;
+  color:#7890a1;
   font-size:10px;
-  text-align:center;
 }
 
-@media(max-width:850px){
-  .controls{
-    grid-template-columns:1fr 1fr;
-  }
+.legend span{
+  display:flex;
+  align-items:center;
+  gap:4px;
+}
 
-  .analyze{
-    width:100%;
-  }
+.dot{
+  width:8px;
+  height:8px;
+  border-radius:50%;
+  display:inline-block;
+}
 
-  .stats{
-    grid-template-columns:repeat(3,1fr);
-  }
-
-  .chart-wrap{
-    height:390px;
-  }
-
-  .selected-summary{
-    grid-template-columns:repeat(3,1fr);
-  }
+@media(max-width:900px){
+  .controls{grid-template-columns:1fr 1fr}
+  .btn{width:100%}
+  .stats{grid-template-columns:repeat(3,1fr)}
+  .chart-wrap{height:390px}
+  .fp-wrap{height:500px}
 }
 
 @media(max-width:520px){
-  .app{
-    padding:7px;
-  }
-
-  .title{
-    font-size:19px;
-  }
-
-  .subtitle{
-    font-size:11px;
-  }
-
-  .controls{
-    grid-template-columns:1fr 1fr;
-  }
-
-  .stats{
-    grid-template-columns:repeat(2,1fr);
-  }
-
-  .chart-wrap{
-    height:360px;
-  }
+  .app{padding:7px}
+  .title{font-size:18px}
+  .subtitle{font-size:11px}
+  .controls{grid-template-columns:1fr 1fr}
+  .stats{grid-template-columns:repeat(2,1fr)}
+  .chart-wrap{height:350px}
+  .fp-wrap{height:500px}
 }
 </style>
 </head>
@@ -528,19 +322,18 @@ select:focus{
 <div class="app">
 
   <div class="header">
-
     <div class="title">📊 Absorption Zone Scanner</div>
     <div class="subtitle">تحلیل Order Flow واقعی بازار Bybit</div>
 
     <div class="controls">
 
       <div class="control">
-        <label>Symbol</label>
+        <label>نماد</label>
         <input id="symbol" value="HUSDT" autocomplete="off">
       </div>
 
       <div class="control">
-        <label>Market</label>
+        <label>بازار</label>
         <select id="category">
           <option value="linear">Futures</option>
           <option value="spot">Spot</option>
@@ -549,7 +342,7 @@ select:focus{
       </div>
 
       <div class="control">
-        <label>Timeframe</label>
+        <label>تایم‌فریم</label>
         <select id="interval">
           <option value="1">1m</option>
           <option value="3">3m</option>
@@ -563,7 +356,7 @@ select:focus{
 
       <div class="control">
         <label>تعداد کندل</label>
-        <select id="count">
+        <select id="candleCount">
           <option value="60">60</option>
           <option value="90" selected>90</option>
           <option value="120">120</option>
@@ -572,175 +365,93 @@ select:focus{
         </select>
       </div>
 
-      <button class="analyze" id="analyzeBtn">
-        🔎 تحلیل
-      </button>
+      <button class="btn" id="analyze">🔎 تحلیل</button>
 
     </div>
 
-    <div class="status" id="status">
-      ⏳ در حال اتصال...
-    </div>
-
+    <div class="status" id="status">⏳ در حال اتصال به Bybit...</div>
   </div>
 
   <div class="stats">
-
     <div class="stat">
-      <div class="stat-title">قیمت</div>
-      <div class="stat-value" id="statPrice">—</div>
+      <small>قیمت</small>
+      <b id="price">—</b>
     </div>
-
     <div class="stat">
-      <div class="stat-title">24h</div>
-      <div class="stat-value" id="stat24">—</div>
+      <small>تغییر 24h</small>
+      <b id="change">—</b>
     </div>
-
     <div class="stat">
-      <div class="stat-title">Delta</div>
-      <div class="stat-value" id="statDelta">—</div>
+      <small>Delta</small>
+      <b id="delta">—</b>
     </div>
-
     <div class="stat">
-      <div class="stat-title">Buy</div>
-      <div class="stat-value green" id="statBuy">—</div>
+      <small>Buy</small>
+      <b id="buy">—</b>
     </div>
-
     <div class="stat">
-      <div class="stat-title">Sell</div>
-      <div class="stat-value red" id="statSell">—</div>
+      <small>Sell</small>
+      <b id="sell">—</b>
     </div>
-
     <div class="stat">
-      <div class="stat-title">Absorption</div>
-      <div class="stat-value yellow" id="statAbsorption">—</div>
+      <small>Absorption</small>
+      <b id="absorption">—</b>
     </div>
-
   </div>
 
-  <div class="main-card">
+  <div class="panel">
 
-    <div class="card-head">
-      <div class="card-title">📈 Price / Order Flow</div>
-      <div class="chart-hint">
-        یک انگشت: حرکت · دو انگشت: زوم · لمس کندل: انتخاب
-      </div>
+    <div class="panel-head">
+      <div class="panel-title">📈 Price / Order Flow</div>
+      <div class="panel-hint">یک انگشت: حرکت · دو انگشت: زوم · لمس کندل: انتخاب</div>
     </div>
 
-    <div class="chart-wrap" id="chartWrap">
-
-      <canvas id="chart"></canvas>
-
-      <div class="no-data" id="chartMessage">
-        در حال دریافت داده واقعی Bybit...
-      </div>
-
+    <div class="chart-wrap">
+      <canvas id="chartCanvas"></canvas>
     </div>
 
     <div class="tabs">
-
       <button class="tab active">Footprint</button>
       <button class="tab">Heatmap</button>
       <button class="tab">Liquidity</button>
       <button class="tab">Absorption</button>
       <button class="tab">Order Book</button>
-      <button class="tab">Delta/CVD</button>
+      <button class="tab">Delta / CVD</button>
       <button class="tab">Large Trades</button>
-
     </div>
 
   </div>
 
-  <div class="selected">
+  <div class="panel">
 
     <div class="selected-head">
-
-      <div class="selected-title">
-        کندل انتخابی
+      <div class="selected-title">🕯️ کندل انتخابی</div>
+      <div class="selected-info">
+        <span id="selectedTime">زمان: —</span>
+        <span id="selectedOHLC">O/H/L/C: —</span>
+        <span id="selectedDelta">Delta: —</span>
+        <span id="selectedVolume">Volume: —</span>
       </div>
-
-      <div class="selected-time" id="selectedTime">
-        —
-      </div>
-
     </div>
 
-    <div class="candle-preview">
-
-      <div class="preview-title">
-        شکل کندل انتخاب‌شده
-      </div>
-
-      <div class="preview-box">
-        <canvas id="miniCandle"></canvas>
-      </div>
-
+    <div class="fp-tools">
+      <span>لمس و کشیدن = حرکت · دو انگشت = کوچک/بزرگ کردن کل کندل و اطلاعات</span>
+      <button class="fp-reset" id="fpReset">↺ بازنشانی</button>
     </div>
 
-    <div class="selected-summary">
-
-      <div class="ohlc">
-        <span>O</span>
-        <b id="selOpen">—</b>
-      </div>
-
-      <div class="ohlc">
-        <span>H</span>
-        <b id="selHigh">—</b>
-      </div>
-
-      <div class="ohlc">
-        <span>L</span>
-        <b id="selLow">—</b>
-      </div>
-
-      <div class="ohlc">
-        <span>C</span>
-        <b id="selClose">—</b>
-      </div>
-
-      <div class="ohlc">
-        <span>Δ</span>
-        <b id="selDelta">—</b>
-      </div>
-
-      <div class="ohlc">
-        <span>Volume</span>
-        <b id="selVolume">—</b>
-      </div>
-
+    <div class="fp-wrap">
+      <canvas id="footprintCanvas"></canvas>
+      <div class="fp-message" id="fpMessage"></div>
     </div>
 
-    <div id="footprintContent">
-
-      <div class="footprint-wrap">
-
-        <div class="footprint">
-
-          <div class="fp-head">
-            <div class="fp-cell">Volume Fixed Range</div>
-            <div class="fp-cell">Bid</div>
-            <div class="fp-cell">Price</div>
-            <div class="fp-cell">Delta</div>
-            <div class="fp-cell">Ask</div>
-            <div class="fp-cell">Delta Histogram</div>
-            <div class="fp-cell">Volume</div>
-          </div>
-
-        </div>
-
-      </div>
-
-      <div class="empty">
-        برای مشاهده Footprint یک کندل را لمس کنید.
-      </div>
-
+    <div class="legend">
+      <span><i class="dot" style="background:#e85b67"></i>Bid / فروش تهاجمی</span>
+      <span><i class="dot" style="background:#35d98e"></i>Ask / خرید تهاجمی</span>
+      <span><i class="dot" style="background:#53a9ff"></i>Volume Fixed Range</span>
+      <span><i class="dot" style="background:#35d98e"></i>Delta مثبت</span>
+      <span><i class="dot" style="background:#e85b67"></i>Delta منفی</span>
     </div>
 
-  </div>
-
-  <div class="footer">
-    Fixed Range بر اساس معاملات واقعی همان کندل · هر ردیف = یک سطح قیمت
   </div>
 
 </div>
@@ -748,191 +459,1587 @@ select:focus{
 <script>
 "use strict";
 
-/* =========================================================
-   ABSORPTION ZONE SCANNER
-   FRONTEND ONLY
-   WORKER IS NOT MODIFIED
-========================================================= */
+const API_BASE = location.origin;
 
 const state = {
+  symbol: "HUSDT",
+  category: "linear",
+  interval: "1",
+  candleCount: 90,
+
   candles: [],
   trades: [],
   selectedIndex: -1,
-  interval: "1",
-  category: "linear",
-  symbol: "HUSDT",
 
-  zoom: 1,
-  pan: 0,
+  chartZoom: 1,
+  chartPan: 0,
 
-  dragging: false,
-  dragStartX: 0,
-  panStart: 0,
+  mainPointers: new Map(),
+  mainGesture: null,
 
-  pointers: new Map(),
-  pinchStartDistance: 0,
-  pinchStartZoom: 1,
+  fpScale: 1,
+  fpOffsetX: 0,
+  fpOffsetY: 0,
+  fpPointers: new Map(),
+  fpGesture: null,
 
-  tapStartX: 0,
-  tapStartY: 0,
-  tapMoved: false,
-
-  requestId: 0
+  loading: false
 };
 
-const $ = id => document.getElementById(id);
+const chartCanvas = document.getElementById("chartCanvas");
+const fpCanvas = document.getElementById("footprintCanvas");
+const chartCtx = chartCanvas.getContext("2d");
+const fpCtx = fpCanvas.getContext("2d");
 
-const chart = $("chart");
-const ctx = chart.getContext("2d");
+const statusEl = document.getElementById("status");
+const fpMessage = document.getElementById("fpMessage");
 
-const mini = $("miniCandle");
-const miniCtx = mini.getContext("2d");
-
-function setStatus(text, type=""){
-  const el = $("status");
-  el.textContent = text;
-  el.className = "status " + type;
+function $(id){
+  return document.getElementById(id);
 }
 
-function num(v, fallback=0){
+function setStatus(text, cls){
+  statusEl.textContent = text;
+  statusEl.className = "status";
+  if(cls) statusEl.classList.add(cls);
+}
+
+function num(v){
   const n = Number(v);
-  return Number.isFinite(n) ? n : fallback;
+  return Number.isFinite(n) ? n : 0;
 }
 
-function fmt(v, digits=6){
+function fmt(v, digits){
   const n = num(v);
-  if (!Number.isFinite(n)) return "—";
-
-  if (Math.abs(n) >= 1000){
+  if(!Number.isFinite(n)) return "—";
+  if(digits !== undefined){
     return n.toLocaleString("en-US", {
-      maximumFractionDigits:2
+      maximumFractionDigits: digits,
+      minimumFractionDigits: digits
     });
   }
-
-  if (Math.abs(n) >= 1){
-    return n.toLocaleString("en-US", {
-      maximumFractionDigits:Math.min(digits,4)
-    });
-  }
-
-  return n.toLocaleString("en-US", {
-    maximumFractionDigits:digits
-  });
-}
-
-function normalizeSymbol(value){
-  let s = String(value || "").trim()
-    .toUpperCase()
-    .replace(/[^A-Z0-9]/g,"");
-
-  if (!s) s = "BTCUSDT";
-
-  if (s === "BTC") return "BTCUSDT";
-  if (s === "ETH") return "ETHUSDT";
-
-  if (!s.endsWith("USDT") &&
-      !s.endsWith("USDC")){
-    s += "USDT";
-  }
-
-  return s;
-}
-
-function intervalMs(){
-  const x = String(state.interval);
-
-  const map = {
-    "1":60 * 1000,
-    "3":3 * 60 * 1000,
-    "5":5 * 60 * 1000,
-    "15":15 * 60 * 1000,
-    "30":30 * 60 * 1000,
-    "60":60 * 60 * 1000,
-    "120":120 * 60 * 1000,
-    "240":240 * 60 * 1000,
-    "360":360 * 60 * 1000,
-    "720":720 * 60 * 1000,
-    "D":24 * 60 * 60 * 1000
-  };
-
-  return map[x] || 60 * 1000;
+  if(Math.abs(n) >= 1000) return n.toLocaleString("en-US",{maximumFractionDigits:2});
+  if(Math.abs(n) >= 1) return n.toLocaleString("en-US",{maximumFractionDigits:6});
+  return n.toLocaleString("en-US",{maximumFractionDigits:10});
 }
 
 function normalizeCandle(c){
-  if (!c) return null;
-
   return {
-    time:num(c.time ?? c.timestamp ?? c.startTime),
-    open:num(c.open ?? c.o),
-    high:num(c.high ?? c.h),
-    low:num(c.low ?? c.l),
-    close:num(c.close ?? c.c),
-    volume:num(c.volume ?? c.v),
-    turnover:num(c.turnover ?? c.value ?? c.quoteVolume)
+    time:num(c.time),
+    open:num(c.open),
+    high:num(c.high),
+    low:num(c.low),
+    close:num(c.close),
+    volume:num(c.volume),
+    turnover:num(c.turnover)
   };
 }
 
 function normalizeTrade(t){
-  if (!t) return null;
-
-  const sideRaw = String(
-    t.side ??
-    t.S ??
-    t.direction ??
-    ""
-  ).toLowerCase();
-
-  let side = "sell";
-
-  if (
-    sideRaw === "buy" ||
-    sideRaw === "b"
-  ){
-    side = "buy";
-  }
-
-  const price = num(
-    t.price ??
-    t.p
-  );
-
-  const size = num(
-    t.size ??
-    t.qty ??
-    t.q ??
-    t.volume ??
-    t.v
-  );
-
-  const time = num(
-    t.time ??
-    t.timestamp ??
-    t.T
-  );
-
+  const side = String(t.side || "").toLowerCase();
   return {
-    id:String(t.id ?? t.execId ?? ""),
-    time,
-    price,
-    size,
-    value:num(t.value, price * size),
-    side
+    id:String(t.id || ""),
+    time:num(t.time),
+    price:num(t.price),
+    size:num(t.size),
+    value:num(t.value || (num(t.price) * num(t.size))),
+    side:side === "buy" ? "buy" : "sell"
   };
 }
 
-/* =========================================================
-   API
-========================================================= */
+function intervalMs(){
+  const map = {
+    "1":60000,
+    "3":180000,
+    "5":300000,
+    "15":900000,
+    "30":1800000,
+    "60":3600000,
+    "120":7200000,
+    "240":14400000
+  };
+  return map[state.interval] || 60000;
+}
 
-async function api(path, params={}){
-  const qs = new URLSearchParams(params);
+function resizeCanvas(canvas,ctx){
+  const rect = canvas.getBoundingClientRect();
+  const dpr = Math.max(1,Math.min(window.devicePixelRatio || 1,3));
 
-  const url =
-    window.location.origin +
-    path +
-    (qs.toString() ? "?" + qs.toString() : "");
+  const w = Math.max(1,Math.floor(rect.width));
+  const h = Math.max(1,Math.floor(rect.height));
 
-  const response = await fetch(
+  if(canvas.width !== w*dpr || canvas.height !== h*dpr){
+    canvas.width = w*dpr;
+    canvas.height = h*dpr;
+  }
+
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+
+  return {w,h};
+}
+
+function clearCanvas(ctx,w,h){
+  ctx.clearRect(0,0,w,h);
+}
+
+function clamp(v,min,max){
+  return Math.max(min,Math.min(max,v));
+}
+
+function formatTime(ts){
+  if(!ts) return "—";
+  const d = new Date(ts);
+  return d.toLocaleString("fa-IR",{
+    year:"numeric",
+    month:"2-digit",
+    day:"2-digit",
+    hour:"2-digit",
+    minute:"2-digit"
+  });
+}
+
+function formatPrice(v){
+  if(v >= 1000) return v.toFixed(2);
+  if(v >= 100) return v.toFixed(3);
+  if(v >= 1) return v.toFixed(4);
+  if(v >= .01) return v.toFixed(6);
+  return v.toFixed(8);
+}
+
+function getCandleTrades(candle){
+  if(!candle || !state.trades.length) return [];
+
+  const start = candle.time;
+  const end = start + intervalMs();
+
+  return state.trades.filter(t =>
+    t.time >= start &&
+    t.time < end &&
+    t.price > 0 &&
+    t.size >= 0
+  );
+}
+
+function detectTick(trades,candle){
+  const prices = [...new Set(
+    trades
+      .map(t => num(t.price))
+      .filter(v => v > 0)
+      .sort((a,b)=>a-b)
+  )];
+
+  if(prices.length < 2) return 0;
+
+  let minDiff = Infinity;
+
+  for(let i=1;i<prices.length;i++){
+    const d = prices[i] - prices[i-1];
+    if(d > 0 && d < minDiff) minDiff = d;
+  }
+
+  if(!Number.isFinite(minDiff) || minDiff <= 0) return 0;
+
+  return minDiff;
+}
+
+function roundToTick(price,tick){
+  if(!tick || tick <= 0) return price;
+
+  const v = Math.round(price/tick)*tick;
+
+  const decimals = Math.max(
+    0,
+    Math.min(12,
+      (String(tick).split(".")[1] || "").length + 2
+    )
+  );
+
+  return Number(v.toFixed(decimals));
+}
+
+function buildFootprint(candle){
+  const trades = getCandleTrades(candle);
+
+  const levelsMap = new Map();
+
+  const tick = detectTick(trades,candle);
+
+  for(const t of trades){
+
+    const p = tick > 0
+      ? roundToTick(t.price,tick)
+      : t.price;
+
+    if(!levelsMap.has(p)){
+      levelsMap.set(p,{
+        price:p,
+        bid:0,
+        ask:0,
+        bidTrades:0,
+        askTrades:0,
+        delta:0,
+        volume:0
+      });
+    }
+
+    const row = levelsMap.get(p);
+
+    if(t.side === "buy"){
+      row.ask += t.size;
+      row.askTrades++;
+    }else{
+      row.bid += t.size;
+      row.bidTrades++;
+    }
+
+    row.volume = row.bid + row.ask;
+    row.delta = row.ask - row.bid;
+  }
+
+  const levels = [...levelsMap.values()]
+    .sort((a,b)=>b.price-a.price);
+
+  let totalBid = 0;
+  let totalAsk = 0;
+  let totalVolume = 0;
+  let totalDelta = 0;
+
+  for(const r of levels){
+    totalBid += r.bid;
+    totalAsk += r.ask;
+    totalVolume += r.volume;
+    totalDelta += r.delta;
+  }
+
+  return {
+    candle,
+    trades,
+    levels,
+    tick,
+    totalBid,
+    totalAsk,
+    totalVolume,
+    totalDelta
+  };
+}
+
+function updateStats(){
+  const last = state.candles[state.candles.length-1];
+
+  if(!last){
+    $("price").textContent = "—";
+    return;
+  }
+
+  const tickerPrice =
+    state.lastPrice > 0
+      ? state.lastPrice
+      : last.close;
+
+  $("price").textContent = fmt(tickerPrice);
+
+  $("change").textContent =
+    state.price24hPcnt !== undefined
+      ? (num(state.price24hPcnt)*100).toFixed(2)+"%"
+      : "—";
+
+  const all = state.trades || [];
+
+  let buy = 0;
+  let sell = 0;
+
+  for(const t of all){
+    if(t.side === "buy") buy += t.size;
+    else sell += t.size;
+  }
+
+  const d = buy-sell;
+
+  $("buy").textContent = fmt(buy);
+  $("sell").textContent = fmt(sell);
+  $("delta").textContent = fmt(d);
+
+  $("delta").className =
+    d > 0 ? "green" :
+    d < 0 ? "red" : "";
+
+  let absorption = "—";
+
+  if(state.absorption){
+    if(typeof state.absorption === "string"){
+      absorption = state.absorption;
+    }else{
+      absorption =
+        state.absorption.signal ||
+        state.absorption.type ||
+        state.absorption.status ||
+        "—";
+    }
+  }
+
+  $("absorption").textContent = absorption;
+}
+
+function updateSelectedInfo(){
+  const c = state.candles[state.selectedIndex];
+
+  if(!c){
+    $("selectedTime").textContent = "زمان: —";
+    $("selectedOHLC").textContent = "O/H/L/C: —";
+    $("selectedDelta").textContent = "Delta: —";
+    $("selectedVolume").textContent = "Volume: —";
+    return;
+  }
+
+  const fp = buildFootprint(c);
+
+  $("selectedTime").textContent =
+    "زمان: " + formatTime(c.time);
+
+  $("selectedOHLC").textContent =
+    "O/H/L/C: " +
+    formatPrice(c.open)+" / "+
+    formatPrice(c.high)+" / "+
+    formatPrice(c.low)+" / "+
+    formatPrice(c.close);
+
+  $("selectedDelta").textContent =
+    "Delta: " + fmt(fp.totalDelta);
+
+  $("selectedVolume").textContent =
+    "Volume: " + fmt(fp.totalVolume);
+
+  $("selectedDelta").className =
+    fp.totalDelta > 0 ? "green" :
+    fp.totalDelta < 0 ? "red" : "";
+
+  drawFootprint();
+}
+
+function visibleChartInfo(){
+  const n = state.candles.length;
+
+  if(!n) return null;
+
+  const rect = chartCanvas.getBoundingClientRect();
+  const width = rect.width;
+
+  const plotLeft = 55;
+  const plotRight = width - 15;
+  const plotWidth = Math.max(100,plotRight-plotLeft);
+
+  const baseCount = Math.min(
+    n,
+    Math.max(10,Math.round(state.candleCount / state.chartZoom))
+  );
+
+  const step = plotWidth / Math.max(1,baseCount);
+
+  const maxStart = Math.max(0,n-baseCount);
+
+  const panUnits = state.chartPan / Math.max(1,step);
+
+  const startFloat =
+    clamp(
+      maxStart - panUnits,
+      0,
+      maxStart
+    );
+
+  return {
+    plotLeft,
+    plotRight,
+    plotWidth,
+    baseCount,
+    step,
+    maxStart,
+    startFloat
+  };
+}
+
+function drawChart(){
+  const {w,h} = resizeCanvas(chartCanvas,chartCtx);
+
+  clearCanvas(chartCtx,w,h);
+
+  chartCtx.fillStyle = "#071018";
+  chartCtx.fillRect(0,0,w,h);
+
+  if(!state.candles.length){
+    chartCtx.fillStyle="#718899";
+    chartCtx.font="12px Tahoma";
+    chartCtx.textAlign="center";
+    chartCtx.fillText("داده‌ای برای نمایش وجود ندارد",w/2,h/2);
+    return;
+  }
+
+  const info = visibleChartInfo();
+
+  const left = info.plotLeft;
+  const right = info.plotRight;
+  const top = 20;
+  const bottom = h-38;
+
+  const visibleCount = info.baseCount + 2;
+
+  const first = Math.floor(info.startFloat);
+  const last = Math.min(
+    state.candles.length-1,
+    first + visibleCount + 2
+  );
+
+  let minPrice = Infinity;
+  let maxPrice = -Infinity;
+
+  for(let i=first;i<=last;i++){
+    const c=state.candles[i];
+    minPrice=Math.min(minPrice,c.low);
+    maxPrice=Math.max(maxPrice,c.high);
+  }
+
+  if(!Number.isFinite(minPrice)){
+    minPrice=0;
+    maxPrice=1;
+  }
+
+  const range = Math.max(maxPrice-minPrice,Math.abs(maxPrice)*0.0001 || 1);
+  minPrice -= range*.08;
+  maxPrice += range*.08;
+
+  function py(price){
+    return bottom -
+      ((price-minPrice)/(maxPrice-minPrice)) *
+      (bottom-top);
+  }
+
+  function px(index){
+    return left +
+      (index-info.startFloat) *
+      info.step +
+      info.step/2;
+  }
+
+  chartCtx.font="10px Tahoma";
+  chartCtx.textAlign="left";
+
+  for(let i=0;i<=5;i++){
+    const y=top+(bottom-top)*i/5;
+    const p=maxPrice-(maxPrice-minPrice)*i/5;
+
+    chartCtx.strokeStyle="#142632";
+    chartCtx.lineWidth=1;
+    chartCtx.beginPath();
+    chartCtx.moveTo(left,y);
+    chartCtx.lineTo(right,y);
+    chartCtx.stroke();
+
+    chartCtx.fillStyle="#647b8b";
+    chartCtx.fillText(formatPrice(p),5,y+3);
+  }
+
+  for(let i=first;i<=last;i++){
+    const c=state.candles[i];
+    if(!c) continue;
+
+    const x=px(i);
+
+    if(x < left-info.step || x > right+info.step) continue;
+
+    const yOpen=py(c.open);
+    const yClose=py(c.close);
+    const yHigh=py(c.high);
+    const yLow=py(c.low);
+
+    const bullish=c.close>=c.open;
+
+    chartCtx.strokeStyle=bullish ? "#2fd78c" : "#ef5e6d";
+    chartCtx.lineWidth=1;
+
+    chartCtx.beginPath();
+    chartCtx.moveTo(x,yHigh);
+    chartCtx.lineTo(x,yLow);
+    chartCtx.stroke();
+
+    const bodyW=Math.max(2,Math.min(18,info.step*.62));
+    const bodyTop=Math.min(yOpen,yClose);
+    const bodyH=Math.max(1,Math.abs(yClose-yOpen));
+
+    chartCtx.fillStyle=bullish ? "#2fd78c" : "#ef5e6d";
+    chartCtx.fillRect(
+      x-bodyW/2,
+      bodyTop,
+      bodyW,
+      bodyH
+    );
+
+    if(i===state.selectedIndex){
+      chartCtx.strokeStyle="#fff";
+      chartCtx.lineWidth=2;
+      chartCtx.strokeRect(
+        x-bodyW/2-3,
+        bodyTop-3,
+        bodyW+6,
+        bodyH+6
+      );
+
+      chartCtx.fillStyle="#fff";
+      chartCtx.beginPath();
+      chartCtx.arc(x,Math.max(7,yHigh-7),3,0,Math.PI*2);
+      chartCtx.fill();
+    }
+
+    if(info.step > 48){
+      chartCtx.save();
+      chartCtx.fillStyle="#6e8494";
+      chartCtx.font="9px Tahoma";
+      chartCtx.textAlign="center";
+      chartCtx.fillText(
+        new Date(c.time).toLocaleTimeString("fa-IR",{hour:"2-digit",minute:"2-digit"}),
+        x,
+        h-17
+      );
+      chartCtx.restore();
+    }
+  }
+
+  chartCtx.strokeStyle="#294150";
+  chartCtx.lineWidth=1;
+  chartCtx.beginPath();
+  chartCtx.moveTo(left,bottom);
+  chartCtx.lineTo(right,bottom);
+  chartCtx.stroke();
+
+  chartCtx.fillStyle="#668092";
+  chartCtx.font="9px Tahoma";
+  chartCtx.textAlign="left";
+  chartCtx.fillText(
+    `${state.symbol} · ${state.interval==="60"?"1h":state.interval+"m"}`,
+    left,
+    11
+  );
+}
+
+function chartPoint(ev){
+  const r=chartCanvas.getBoundingClientRect();
+
+  return {
+    x:ev.clientX-r.left,
+    y:ev.clientY-r.top
+  };
+}
+
+function selectCandleAt(x){
+  const info=visibleChartInfo();
+  if(!info) return;
+
+  const raw =
+    info.startFloat +
+    (x-info.plotLeft-info.step/2)/info.step;
+
+  const idx=Math.round(raw);
+
+  if(idx<0 || idx>=state.candles.length) return;
+
+  const cx=
+    info.plotLeft +
+    (idx-info.startFloat)*info.step +
+    info.step/2;
+
+  if(Math.abs(x-cx)>Math.max(18,info.step*.8)) return;
+
+  state.selectedIndex=idx;
+
+  updateSelectedInfo();
+  drawChart();
+}
+
+function mainPointerDown(e){
+  chartCanvas.setPointerCapture?.(e.pointerId);
+
+  state.mainPointers.set(e.pointerId,chartPoint(e));
+
+  if(state.mainPointers.size===1){
+    const p=chartPoint(e);
+
+    state.mainGesture={
+      type:"drag",
+      startX:p.x,
+      startY:p.y,
+      lastX:p.x,
+      lastY:p.y,
+      moved:false,
+      startPan:state.chartPan,
+      startZoom:state.chartZoom
+    };
+  }else if(state.mainPointers.size===2){
+
+    const ps=[...state.mainPointers.values()];
+
+    const dx=ps[0].x-ps[1].x;
+    const dy=ps[0].y-ps[1].y;
+
+    state.mainGesture={
+      type:"pinch",
+      startDistance:Math.hypot(dx,dy),
+      startZoom:state.chartZoom,
+      centerX:(ps[0].x+ps[1].x)/2,
+      centerY:(ps[0].y+ps[1].y)/2,
+      startPan:state.chartPan
+    };
+  }
+}
+
+function mainPointerMove(e){
+  if(!state.mainPointers.has(e.pointerId)) return;
+
+  state.mainPointers.set(e.pointerId,chartPoint(e));
+
+  if(state.mainPointers.size===1 &&
+     state.mainGesture &&
+     state.mainGesture.type==="drag"){
+
+    const p=chartPoint(e);
+
+    const dx=p.x-state.mainGesture.startX;
+    const dy=p.y-state.mainGesture.startY;
+
+    if(Math.abs(dx)+Math.abs(dy)>5){
+      state.mainGesture.moved=true;
+    }
+
+    state.chartPan =
+      state.mainGesture.startPan + dx;
+
+    const info=visibleChartInfo();
+
+    const maxPan=info ? info.maxStart*info.step : 0;
+
+    state.chartPan=clamp(
+      state.chartPan,
+      -maxPan,
+      maxPan
+    );
+
+    drawChart();
+
+  }else if(state.mainPointers.size===2 &&
+           state.mainGesture &&
+           state.mainGesture.type==="pinch"){
+
+    const ps=[...state.mainPointers.values()];
+
+    const dx=ps[0].x-ps[1].x;
+    const dy=ps[0].y-ps[1].y;
+
+    const dist=Math.max(10,Math.hypot(dx,dy));
+
+    const newZoom=clamp(
+      state.mainGesture.startZoom *
+      dist/state.mainGesture.startDistance,
+      .5,
+      6
+    );
+
+    state.chartZoom=newZoom;
+
+    const info=visibleChartInfo();
+
+    const maxPan=info ? info.maxStart*info.step : 0;
+
+    state.chartPan=clamp(
+      state.chartPan,
+      -maxPan,
+      maxPan
+    );
+
+    drawChart();
+  }
+}
+
+function mainPointerUp(e){
+  const wasOne=state.mainPointers.size===1;
+
+  const gesture=state.mainGesture;
+
+  if(wasOne &&
+     gesture &&
+     gesture.type==="drag" &&
+     !gesture.moved){
+
+    const p=chartPoint(e);
+    selectCandleAt(p.x);
+  }
+
+  state.mainPointers.delete(e.pointerId);
+
+  if(state.mainPointers.size===0){
+    state.mainGesture=null;
+  }else if(state.mainPointers.size===1){
+    const p=[...state.mainPointers.values()][0];
+
+    state.mainGesture={
+      type:"drag",
+      startX:p.x,
+      startY:p.y,
+      lastX:p.x,
+      lastY:p.y,
+      moved:true,
+      startPan:state.chartPan,
+      startZoom:state.chartZoom
+    };
+  }
+}
+
+chartCanvas.addEventListener("pointerdown",mainPointerDown);
+chartCanvas.addEventListener("pointermove",mainPointerMove);
+chartCanvas.addEventListener("pointerup",mainPointerUp);
+chartCanvas.addEventListener("pointercancel",mainPointerUp);
+chartCanvas.addEventListener("pointerleave",e=>{
+  if(e.buttons===0) mainPointerUp(e);
+});
+
+chartCanvas.addEventListener("wheel",e=>{
+  e.preventDefault();
+
+  const old=state.chartZoom;
+
+  state.chartZoom=clamp(
+    old*(e.deltaY<0?1.12:.89),
+    .5,
+    6
+  );
+
+  drawChart();
+},{passive:false});
+
+function drawRoundedRect(ctx,x,y,w,h,r){
+  r=Math.min(r,Math.abs(w)/2,Math.abs(h)/2);
+
+  ctx.beginPath();
+  ctx.moveTo(x+r,y);
+  ctx.lineTo(x+w-r,y);
+  ctx.quadraticCurveTo(x+w,y,x+w,y+r);
+  ctx.lineTo(x+w,y+h-r);
+  ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
+  ctx.lineTo(x+r,y+h);
+  ctx.quadraticCurveTo(x,y+h,x,y+h-r);
+  ctx.lineTo(x,y+r);
+  ctx.quadraticCurveTo(x,y,x+r,y);
+  ctx.closePath();
+}
+
+function drawFootprint(){
+  const {w,h}=resizeCanvas(fpCanvas,fpCtx);
+
+  clearCanvas(fpCtx,w,h);
+
+  const candle=state.candles[state.selectedIndex];
+
+  if(!candle){
+    fpMessage.style.display="flex";
+    fpMessage.textContent="یک کندل از نمودار بالا انتخاب کنید";
+    return;
+  }
+
+  const fp=buildFootprint(candle);
+
+  if(!fp.levels.length){
+    fpMessage.style.display="flex";
+    fpMessage.textContent=
+      "برای این کندل در معاملات اخیر Bybit دادهٔ Trade کافی دریافت نشده است.\n"+
+      "برای جلوگیری از نمایش دادهٔ ساختگی، Footprint خالی نمایش داده می‌شود.";
+  }else{
+    fpMessage.style.display="none";
+  }
+
+  const dpr=Math.max(1,Math.min(3,window.devicePixelRatio||1));
+
+  fpCtx.save();
+
+  fpCtx.translate(
+    w/2 + state.fpOffsetX,
+    h/2 + state.fpOffsetY
+  );
+
+  fpCtx.scale(
+    state.fpScale,
+    state.fpScale
+  );
+
+  fpCtx.translate(
+    -w/2,
+    -h/2
+  );
+
+  drawFootprintWorld(fpCtx,w,h,candle,fp);
+
+  fpCtx.restore();
+}
+
+function drawFootprintWorld(ctx,w,h,candle,fp){
+
+  const center=w/2;
+
+  /*
+    Layout:
+    left side:
+      Volume Fixed Range histogram
+      Bid
+
+    center:
+      price
+      selected candle
+
+    right side:
+      Ask
+      Delta
+      Delta histogram
+  */
+
+  const volumeStart=25;
+  const volumeEnd=center-205;
+
+  const bidX=center-150;
+  const priceX=center;
+  const askX=center+150;
+  const deltaX=center+245;
+  const deltaBarStart=center+300;
+  const deltaBarEnd=w-20;
+
+  const top=55;
+  const bottom=h-35;
+
+  const rangeHigh=Math.max(
+    candle.high,
+    ...fp.levels.map(x=>x.price)
+  );
+
+  const rangeLow=Math.min(
+    candle.low,
+    ...fp.levels.map(x=>x.price)
+  );
+
+  let priceRange=rangeHigh-rangeLow;
+
+  if(priceRange<=0){
+    priceRange=Math.max(
+      Math.abs(rangeHigh)*.0001,
+      .00000001
+    );
+  }
+
+  const pad=priceRange*.08;
+
+  const high=rangeHigh+pad;
+  const low=rangeLow-pad;
+
+  function y(price){
+    return bottom -
+      ((price-low)/(high-low)) *
+      (bottom-top);
+  }
+
+  /*
+    title
+  */
+
+  ctx.textAlign="center";
+  ctx.font="bold 11px Tahoma";
+  ctx.fillStyle="#b6c8d4";
+  ctx.fillText(
+    "VFR",
+    (volumeStart+volumeEnd)/2,
+    21
+  );
+
+  ctx.fillText(
+    "BID",
+    bidX,
+    21
+  );
+
+  ctx.fillText(
+    "PRICE",
+    priceX,
+    21
+  );
+
+  ctx.fillText(
+    "ASK",
+    askX,
+    21
+  );
+
+  ctx.fillText(
+    "DELTA",
+    deltaX,
+    21
+  );
+
+  ctx.fillText(
+    "Δ HIST",
+    (deltaBarStart+deltaBarEnd)/2,
+    21
+  );
+
+  /*
+    vertical sections
+  */
+
+  ctx.strokeStyle="#1c303d";
+  ctx.lineWidth=1;
+
+  for(const x of [
+    volumeEnd+8,
+    bidX+55,
+    priceX-55,
+    priceX+55,
+    askX+55,
+    deltaX+55,
+    deltaBarStart-8
+  ]){
+    ctx.beginPath();
+    ctx.moveTo(x,35);
+    ctx.lineTo(x,h-15);
+    ctx.stroke();
+  }
+
+  /*
+    selected candle wick
+  */
+
+  const candleX=priceX;
+
+  const candleHighY=y(candle.high);
+  const candleLowY=y(candle.low);
+  const candleOpenY=y(candle.open);
+  const candleCloseY=y(candle.close);
+
+  const bullish=candle.close>=candle.open;
+
+  ctx.strokeStyle=bullish
+    ? "rgba(53,227,154,.85)"
+    : "rgba(255,92,110,.85)";
+
+  ctx.lineWidth=2;
+
+  ctx.beginPath();
+  ctx.moveTo(candleX,candleHighY);
+  ctx.lineTo(candleX,candleLowY);
+  ctx.stroke();
+
+  /*
+    faint candle body
+  */
+
+  const bodyTop=Math.min(candleOpenY,candleCloseY);
+  const bodyBottom=Math.max(candleOpenY,candleCloseY);
+  const bodyHeight=Math.max(8,bodyBottom-bodyTop);
+
+  ctx.fillStyle=bullish
+    ? "rgba(53,227,154,.13)"
+    : "rgba(255,92,110,.13)";
+
+  ctx.strokeStyle=bullish
+    ? "rgba(53,227,154,.55)"
+    : "rgba(255,92,110,.55)";
+
+  ctx.lineWidth=1;
+
+  ctx.fillRect(
+    candleX-30,
+    bodyTop,
+    60,
+    bodyHeight
+  );
+
+  ctx.strokeRect(
+    candleX-30,
+    bodyTop,
+    60,
+    bodyHeight
+  );
+
+  /*
+    price axis background
+  */
+
+  ctx.fillStyle="rgba(9,19,28,.94)";
+  ctx.fillRect(
+    priceX-47,
+    top,
+    94,
+    bottom-top
+  );
+
+  /*
+    candle body again faintly behind price labels
+  */
+
+  ctx.fillStyle=bullish
+    ? "rgba(53,227,154,.08)"
+    : "rgba(255,92,110,.08)";
+
+  ctx.fillRect(
+    candleX-30,
+    bodyTop,
+    60,
+    bodyHeight
+  );
+
+  /*
+    max values
+  */
+
+  let maxVolume=0;
+  let maxAbsDelta=0;
+
+  for(const row of fp.levels){
+    maxVolume=Math.max(maxVolume,row.volume);
+    maxAbsDelta=Math.max(maxAbsDelta,Math.abs(row.delta));
+  }
+
+  /*
+    level spacing
+  */
+
+  let rowGap=24;
+
+  if(fp.levels.length>1){
+    const available=bottom-top;
+
+    rowGap=Math.min(
+      28,
+      Math.max(
+        15,
+        available/Math.max(1,fp.levels.length-1)
+      )
+    );
+  }
+
+  /*
+    level lines and data
+  */
+
+  for(let i=0;i<fp.levels.length;i++){
+
+    const row=fp.levels[i];
+
+    let yy=y(row.price);
+
+    /*
+      If many levels become too close,
+      use actual price position but guarantee visibility.
+    */
+
+    yy=Math.max(top,Math.min(bottom,yy));
+
+    /*
+      horizontal level line
+    */
+
+    ctx.strokeStyle="rgba(93,117,132,.17)";
+    ctx.lineWidth=1;
+
+    ctx.beginPath();
+    ctx.moveTo(volumeStart,yy);
+    ctx.lineTo(deltaBarEnd,yy);
+    ctx.stroke();
+
+    /*
+      VOLUME FIXED RANGE histogram
+    */
+
+    const volumeRatio=maxVolume>0
+      ? row.volume/maxVolume
+      : 0;
+
+    const volumeWidth=
+      Math.max(2,(volumeEnd-volumeStart)*volumeRatio);
+
+    ctx.fillStyle="rgba(83,169,255,.22)";
+
+    drawRoundedRect(
+      ctx,
+      volumeEnd-volumeWidth,
+      yy-7,
+      volumeWidth,
+      14,
+      3
+    );
+
+    ctx.fill();
+
+    /*
+      Bid
+    */
+
+    ctx.textAlign="right";
+    ctx.font="10px Tahoma";
+    ctx.fillStyle=
+      row.bid>0
+        ? "#ef6875"
+        : "#465b68";
+
+    ctx.fillText(
+      fmt(row.bid),
+      bidX+40,
+      yy+3
+    );
+
+    /*
+      Ask
+    */
+
+    ctx.textAlign="left";
+    ctx.fillStyle=
+      row.ask>0
+        ? "#39db92"
+        : "#465b68";
+
+    ctx.fillText(
+      fmt(row.ask),
+      askX-40,
+      yy+3
+    );
+
+    /*
+      PRICE
+    */
+
+    ctx.textAlign="center";
+
+    const priceText=formatPrice(row.price);
+
+    const pw=Math.max(
+      58,
+      ctx.measureText(priceText).width+14
+    );
+
+    ctx.fillStyle="rgba(7,16,24,.90)";
+    drawRoundedRect(
+      ctx,
+      priceX-pw/2,
+      yy-8,
+      pw,
+      16,
+      4
+    );
+    ctx.fill();
+
+    ctx.fillStyle="#dce7ee";
+    ctx.font="10px Tahoma";
+
+    ctx.fillText(
+      priceText,
+      priceX,
+      yy+3
+    );
+
+    /*
+      Delta number
+    */
+
+    ctx.textAlign="right";
+
+    if(row.delta>0){
+      ctx.fillStyle="#39db92";
+    }else if(row.delta<0){
+      ctx.fillStyle="#ef6875";
+    }else{
+      ctx.fillStyle="#728896";
+    }
+
+    ctx.font="bold 10px Tahoma";
+
+    const deltaText =
+      (row.delta>0?"+":"") +
+      fmt(row.delta);
+
+    ctx.fillText(
+      deltaText,
+      deltaX+32,
+      yy+3
+    );
+
+    /*
+      DELTA HISTOGRAM
+    */
+
+    const deltaRatio=maxAbsDelta>0
+      ? Math.abs(row.delta)/maxAbsDelta
+      : 0;
+
+    const maxDeltaWidth=
+      Math.max(2,deltaBarEnd-deltaBarStart);
+
+    const dw=
+      Math.max(
+        row.delta===0 ? 0 : 2,
+        maxDeltaWidth*deltaRatio
+      );
+
+    ctx.fillStyle=
+      row.delta>=0
+        ? "rgba(53,219,146,.48)"
+        : "rgba(239,104,117,.48)";
+
+    if(row.delta>=0){
+      drawRoundedRect(
+        ctx,
+        deltaBarStart,
+        yy-6,
+        dw,
+        12,
+        3
+      );
+    }else{
+      drawRoundedRect(
+        ctx,
+        deltaBarEnd-dw,
+        yy-6,
+        dw,
+        12,
+        3
+      );
+    }
+
+    ctx.fill();
+
+    /*
+      small volume number near VFR end
+    */
+
+    ctx.textAlign="left";
+    ctx.font="8px Tahoma";
+    ctx.fillStyle="#55788f";
+
+    if(row.volume>0){
+      ctx.fillText(
+        fmt(row.volume),
+        volumeStart,
+        yy+3
+      );
+    }
+  }
+
+  /*
+    candle high / low / open / close markers
+  */
+
+  const markers=[
+    ["H",candle.high],
+    ["O",candle.open],
+    ["C",candle.close],
+    ["L",candle.low]
+  ];
+
+  for(const [label,p] of markers){
+
+    const yy=y(p);
+
+    ctx.strokeStyle=
+      label==="H" || label==="L"
+        ? "rgba(120,145,160,.35)"
+        : "rgba(180,200,215,.20)";
+
+    ctx.setLineDash([3,3]);
+
+    ctx.beginPath();
+    ctx.moveTo(priceX-32,yy);
+    ctx.lineTo(priceX+32,yy);
+    ctx.stroke();
+
+    ctx.setLineDash([]);
+
+    ctx.font="8px Tahoma";
+    ctx.textAlign="right";
+    ctx.fillStyle="#718899";
+
+    ctx.fillText(
+      label,
+      priceX-40,
+      yy+3
+    );
+  }
+
+  /*
+    candle summary at bottom
+  */
+
+  ctx.textAlign="center";
+  ctx.font="10px Tahoma";
+  ctx.fillStyle="#8198a8";
+
+  ctx.fillText(
+    `Trades: ${fp.trades.length} · Levels: ${fp.levels.length} · Tick: ${fp.tick ? formatPrice(fp.tick) : "—"}`,
+    w/2,
+    h-8
+  );
+
+  /*
+    total delta badge
+  */
+
+  const totalText =
+    "TOTAL Δ " +
+    (fp.totalDelta>=0?"+":"") +
+    fmt(fp.totalDelta);
+
+  const totalColor=
+    fp.totalDelta>=0
+      ? "#39db92"
+      : "#ef6875";
+
+  ctx.fillStyle="rgba(8,18,26,.95)";
+  ctx.strokeStyle=totalColor;
+  ctx.lineWidth=1;
+
+  const badgeW=145;
+  const badgeX=w/2-badgeW/2;
+  const badgeY=31;
+
+  drawRoundedRect(
+    ctx,
+    badgeX,
+    badgeY,
+    badgeW,
+    18,
+    5
+  );
+
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.fillStyle=totalColor;
+  ctx.font="bold 9px Tahoma";
+  ctx.textAlign="center";
+
+  ctx.fillText(
+    totalText,
+    w/2,
+    badgeY+12
+  );
+}
+
+function fpPoint(e){
+  const r=fpCanvas.getBoundingClientRect();
+
+  return {
+    x:e.clientX-r.left,
+    y:e.clientY-r.top
+  };
+}
+
+function distance(a,b){
+  return Math.hypot(
+    a.x-b.x,
+    a.y-b.y
+  );
+}
+
+function fpPointerDown(e){
+
+  fpCanvas.setPointerCapture?.(e.pointerId);
+
+  fpCanvas.style.cursor="grabbing";
+
+  fpPointersSet(e.pointerId,fpPoint(e));
+
+  if(state.fpPointers.size===1){
+
+    const p=fpPoint(e);
+
+    state.fpGesture={
+      type:"drag",
+      startX:p.x,
+      startY:p.y,
+      lastX:p.x,
+      lastY:p.y,
+      startOffsetX:state.fpOffsetX,
+      startOffsetY:state.fpOffsetY
+    };
+
+  }else if(state.fpPointers.size===2){
+
+    const ps=[...state.fpPointers.values()];
+
+    const center={
+      x:(ps[0].x+ps[1].x)/2,
+      y:(ps[0].y+ps[1].y)/2
+    };
+
+    state.fpGesture={
+      type:"pinch",
+      startDistance:distance(ps[0],ps[1]),
+      startScale:state.fpScale,
+      startOffsetX:state.fpOffsetX,
+      startOffsetY:state.fpOffsetY,
+      centerX:center.x,
+      centerY:center.y
+    };
+  }
+}
+
+function fpPointersSet(id,p){
+  state.fpPointers.set(id,p);
+}
+
+function fpPointerMove(e){
+
+  if(!state.fpPointers.has(e.pointerId)) return;
+
+  state.fpPointers.set(
+    e.pointerId,
+    fpPoint(e)
+  );
+
+  if(
+    state.fpPointers.size===1 &&
+    state.fpGesture &&
+    state.fpGesture.type==="drag"
+  ){
+
+    const p=fpPoint(e);
+
+    const dx=p.x-state.fpGesture.startX;
+    const dy=p.y-state.fpGesture.startY;
+
+    state.fpOffsetX=
+      state.fpGesture.startOffsetX+dx;
+
+    state.fpOffsetY=
+      state.fpGesture.startOffsetY+dy;
+
+    drawFootprint();
+
+  }else if(
+    state.fpPointers.size===2 &&
+    state.fpGesture &&
+    state.fpGesture.type==="pinch"
+  ){
+
+    const ps=[...state.fpPointers.values()];
+
+    const currentDistance=
+      Math.max(5,distance(ps[0],ps[1]));
+
+    const oldScale=state.fpScale;
+
+    const newScale=clamp(
+      state.fpGesture.startScale *
+      currentDistance/
+      Math.max(5,state.fpGesture.startDistance),
+      .45,
+      4
+    );
+
+    const centerX=
+      (ps[0].x+ps[1].x)/2;
+
+    const centerY=
+      (ps[0].y+ps[1].y)/2;
+
+    /*
+      Keep the content below the pinch center
+      so the whole footprint zooms naturally.
+    */
+
+    const factor=newScale/oldScale;
+
+    state.fpOffsetX =
+      centerX -
+      (centerX-state.fpGesture.startOffsetX) *
+      factor -
+      (fpCanvas.clientWidth/2)*(1-factor);
+
+    state.fpOffsetY =
+      centerY -
+      (centerY-state.fpGesture.startOffsetY) *
+      factor -
+      (fpCanvas.clientHeight/2)*(1-factor);
+
+    state.fpScale=newScale;
+
+    drawFootprint();
+  }
+}
+
+function fpPointerUp(e){
+
+  state.fpPointers.delete(e.pointerId);
+
+  if(state.fpPointers.size===0){
+
+    state.fpGesture=null;
+    fpCanvas.style.cursor="default";
+
+  }else if(state.fpPointers.size===1){
+
+    const p=[...state.fpPointers.values()][0];
+
+    state.fpGesture={
+      type:"drag",
+      startX:p.x,
+      startY:p.y,
+      lastX:p.x,
+      lastY:p.y,
+      startOffsetX:state.fpOffsetX,
+      startOffsetY:state.fpOffsetY
+    };
+  }
+}
+
+fpCanvas.addEventListener("pointerdown",fpPointerDown);
+fpCanvas.addEventListener("pointermove",fpPointerMove);
+fpCanvas.addEventListener("pointerup",fpPointerUp);
+fpCanvas.addEventListener("pointercancel",fpPointerUp);
+
+fpCanvas.addEventListener("wheel",e=>{
+  e.preventDefault();
+
+  const oldScale=state.fpScale;
+
+  const factor=e.deltaY<0?1.12:.89;
+
+  state.fpScale=clamp(
+    oldScale*factor,
+    .45,
+    4
+  );
+
+  const r=fpCanvas.getBoundingClientRect();
+
+  const mx=e.clientX-r.left;
+  const my=e.clientY-r.top;
+
+  const cx=r.width/2;
+  const cy=r.height/2;
+
+  const ratio=state.fpScale/oldScale;
+
+  state.fpOffsetX =
+    mx -
+    (mx-cx-state.fpOffsetX)*ratio;
+
+  state.fpOffsetY =
+    my -
+    (my-cy-state.fpOffsetY)*ratio;
+
+  drawFootprint();
+
+},{passive:false});
+
+$("fpReset").addEventListener("click",()=>{
+  state.fpScale=1;
+  state.fpOffsetX=0;
+  state.fpOffsetY=0;
+  drawFootprint();
+});
+
+async function fetchJson(url){
+
+  const response=await fetch(
     url,
     {
       method:"GET",
@@ -943,1626 +2050,154 @@ async function api(path, params={}){
     }
   );
 
-  const text = await response.text();
+  const text=await response.text();
 
   let data;
 
   try{
-    data = JSON.parse(text);
-  }catch{
+    data=JSON.parse(text);
+  }catch(err){
     throw new Error(
-      "پاسخ Worker JSON نیست:\n" +
-      text.slice(0,1000)
+      `پاسخ Worker JSON نیست: ${text.slice(0,300)}`
     );
   }
 
-  if (!response.ok){
+  if(!response.ok){
     throw new Error(
-      data?.error ||
-      data?.message ||
+      data.error ||
+      data.message ||
       `HTTP ${response.status}`
     );
   }
 
-  if (data && data.ok === false){
+  if(data.ok===false){
     throw new Error(
       data.error ||
       data.message ||
-      "Worker returned ok:false"
+      "Worker خطا برگرداند"
     );
   }
 
   return data;
 }
 
-/* =========================================================
-   LOAD MARKET
-========================================================= */
-
 async function loadMarket(){
 
-  const request = ++state.requestId;
+  if(state.loading) return;
 
-  state.symbol = normalizeSymbol($("symbol").value);
-  state.category = $("category").value;
-  state.interval = $("interval").value;
+  state.loading=true;
 
-  $("symbol").value = state.symbol;
+  state.symbol=
+    $("symbol").value
+      .trim()
+      .toUpperCase();
 
-  $("chartMessage").style.display = "flex";
-  $("chartMessage").textContent =
-    "⏳ در حال دریافت داده واقعی Bybit...";
+  state.category=$("category").value;
+  state.interval=$("interval").value;
+  state.candleCount=
+    Number($("candleCount").value);
+
+  if(!state.symbol){
+    state.symbol="BTCUSDT";
+    $("symbol").value=state.symbol;
+  }
 
   setStatus(
-    `⏳ در حال دریافت ${state.symbol} · ${state.interval}m از Worker...`
+    `⏳ در حال دریافت داده واقعی Bybit · ${state.symbol}`,
+    "yellow"
   );
 
   try{
 
-    const data = await api(
-      "/api/market",
-      {
-        symbol:state.symbol,
-        category:state.category,
-        interval:state.interval
-      }
-    );
+    const url=
+      `${API_BASE}/api/market`+
+      `?symbol=${encodeURIComponent(state.symbol)}`+
+      `&category=${encodeURIComponent(state.category)}`+
+      `&interval=${encodeURIComponent(state.interval)}`;
 
-    if (request !== state.requestId) return;
+    const data=await fetchJson(url);
 
-    if (!data){
-      throw new Error("پاسخ Worker خالی است.");
+    if(!data.candles || !Array.isArray(data.candles)){
+      throw new Error("Worker داده کندل برنگرداند");
     }
 
-    if (!Array.isArray(data.candles)){
-      throw new Error(
-        "Worker پاسخ داد ولی آرایه candles وجود ندارد."
+    state.candles=
+      data.candles
+        .map(normalizeCandle)
+        .filter(c=>c.time>0)
+        .sort((a,b)=>a.time-b.time)
+        .slice(-state.candleCount);
+
+    state.trades=
+      Array.isArray(data.trades)
+        ? data.trades.map(normalizeTrade)
+        : [];
+
+    state.lastPrice=
+      num(
+        data.ticker &&
+        data.ticker.lastPrice
       );
+
+    state.price24hPcnt=
+      data.ticker
+        ? num(data.ticker.price24hPcnt)
+        : undefined;
+
+    state.absorption=data.absorption;
+
+    if(!state.candles.length){
+      throw new Error("هیچ کندلی از Bybit دریافت نشد");
     }
 
-    const candles = data.candles
-      .map(normalizeCandle)
-      .filter(c =>
-        c &&
-        c.time > 0 &&
-        c.high >= c.low
-      )
-      .sort((a,b)=>a.time-b.time);
+    state.chartZoom=1;
+    state.chartPan=0;
 
-    if (!candles.length){
-      throw new Error(
-        "Worker متصل است اما هیچ کندلی از Bybit دریافت نشد."
-      );
-    }
+    state.selectedIndex=
+      state.candles.length-1;
 
-    state.candles = candles.slice(
-      -Number($("count").value)
-    );
-
-    state.trades = Array.isArray(data.trades)
-      ? data.trades
-          .map(normalizeTrade)
-          .filter(t =>
-            t &&
-            t.time > 0 &&
-            t.price > 0 &&
-            t.size >= 0
-          )
-      : [];
-
-    state.selectedIndex = -1;
-    state.pan = 0;
-    state.zoom = 1;
-
-    updateStats(data);
-
-    $("chartMessage").style.display = "none";
+    updateStats();
+    updateSelectedInfo();
+    drawChart();
 
     setStatus(
-      `🟢 اتصال برقرار است — Bybit · ${data.symbol || state.symbol} · ${state.candles.length} کندل · ${state.trades.length} معامله واقعی`,
-      "ok"
+      `🟢 اتصال برقرار است — Bybit · ${state.symbol} · ${state.category}`,
+      "green"
     );
-
-    resizeCanvas();
-    drawChart();
-    clearSelected();
 
   }catch(err){
 
     console.error(err);
 
-    state.candles = [];
-    state.trades = [];
-    state.selectedIndex = -1;
-
-    $("chartMessage").style.display = "flex";
-    $("chartMessage").textContent =
-      "❌ دریافت داده انجام نشد";
-
     setStatus(
-      "🔴 خطا در اتصال/دریافت داده: " +
-      (err?.message || err),
-      "err"
+      `🔴 خطا: ${err.message || "خطای نامشخص"}`,
+      "red"
     );
 
-    clearStats();
-    clearSelected();
+    state.candles=[];
+    state.trades=[];
+    state.selectedIndex=-1;
+
+    updateStats();
+    updateSelectedInfo();
     drawChart();
+    drawFootprint();
+
+  }finally{
+    state.loading=false;
   }
 }
 
-/* =========================================================
-   STATS
-========================================================= */
-
-function updateStats(data){
-
-  const ticker = data.ticker || {};
-  const fp = data.footprint || {};
-  const abs = data.absorption || {};
-
-  $("statPrice").textContent =
-    fmt(ticker.lastPrice ?? data.lastPrice);
-
-  const p24 =
-    num(ticker.price24hPcnt, NaN);
-
-  $("stat24").textContent =
-    Number.isFinite(p24)
-      ? ((p24 >= 0 ? "+" : "") + (p24 * 100).toFixed(2) + "%")
-      : "—";
-
-  const buy =
-    num(fp.buyVolume ??
-        data.stats?.buyVolume);
-
-  const sell =
-    num(fp.sellVolume ??
-        data.stats?.sellVolume);
-
-  const delta =
-    num(
-      fp.delta ??
-      (buy - sell)
-    );
-
-  $("statBuy").textContent = fmt(buy);
-  $("statSell").textContent = fmt(sell);
-
-  $("statDelta").textContent =
-    (delta >= 0 ? "+" : "") + fmt(delta);
-
-  $("statDelta").className =
-    "stat-value " +
-    (delta >= 0 ? "green" : "red");
-
-  let absorptionText = "—";
-
-  if (typeof abs === "string"){
-    absorptionText = abs;
-  }else if (abs && typeof abs === "object"){
-    absorptionText =
-      abs.signal ??
-      abs.type ??
-      abs.status ??
-      "—";
-  }
-
-  $("statAbsorption").textContent =
-    absorptionText;
-}
-
-function clearStats(){
-  $("statPrice").textContent = "—";
-  $("stat24").textContent = "—";
-  $("statDelta").textContent = "—";
-  $("statBuy").textContent = "—";
-  $("statSell").textContent = "—";
-  $("statAbsorption").textContent = "—";
-}
-
-/* =========================================================
-   CANVAS
-========================================================= */
-
-function resizeCanvas(){
-
-  const rect = chart.getBoundingClientRect();
-
-  const dpr =
-    Math.max(1, window.devicePixelRatio || 1);
-
-  chart.width = Math.floor(rect.width * dpr);
-  chart.height = Math.floor(rect.height * dpr);
-
-  ctx.setTransform(
-    dpr,0,0,dpr,0,0
-  );
-
-  const mrect = mini.getBoundingClientRect();
-
-  mini.width = Math.floor(mrect.width * dpr);
-  mini.height = Math.floor(mrect.height * dpr);
-
-  miniCtx.setTransform(
-    dpr,0,0,dpr,0,0
-  );
-
-  drawChart();
-
-  if (state.selectedIndex >= 0){
-    drawMiniCandle(
-      state.candles[state.selectedIndex]
-    );
-  }
-}
-
-function chartSize(){
-  const r = chart.getBoundingClientRect();
-
-  return {
-    width:r.width,
-    height:r.height
-  };
-}
-
-/* =========================================================
-   VISIBLE CANDLES
-========================================================= */
-
-function visibleRange(){
-
-  const total = state.candles.length;
-
-  if (!total){
-    return {
-      start:0,
-      end:0,
-      count:0
-    };
-  }
-
-  const baseCount =
-    Math.min(
-      total,
-      Number($("count").value) || 90
-    );
-
-  const count = Math.max(
-    8,
-    Math.min(
-      total,
-      Math.round(baseCount / state.zoom)
-    )
-  );
-
-  const maxStart =
-    Math.max(0,total-count);
-
-  let start =
-    Math.round(
-      maxStart - state.pan
-    );
-
-  start = Math.max(
-    0,
-    Math.min(maxStart,start)
-  );
-
-  return {
-    start,
-    end:start+count,
-    count
-  };
-}
-
-function candleX(localIndex, range, width){
-
-  const left = 58;
-  const right = 15;
-
-  const plotWidth =
-    Math.max(
-      1,
-      width-left-right
-    );
-
-  if (range.count <= 1){
-    return left + plotWidth / 2;
-  }
-
-  return left +
-    (
-      localIndex /
-      (range.count - 1)
-    ) *
-    plotWidth;
-}
-
-/* =========================================================
-   DRAW MAIN CHART
-========================================================= */
-
-function drawChart(){
-
-  const {width,height} = chartSize();
-
-  ctx.clearRect(
-    0,0,width,height
-  );
-
-  ctx.fillStyle = "#061019";
-  ctx.fillRect(
-    0,0,width,height
-  );
-
-  if (!state.candles.length){
-
-    drawGrid(
-      ctx,
-      width,
-      height
-    );
-
-    return;
-  }
-
-  const range = visibleRange();
-
-  if (range.count <= 0) return;
-
-  const visible =
-    state.candles.slice(
-      range.start,
-      range.end
-    );
-
-  let high = -Infinity;
-  let low = Infinity;
-
-  for (const c of visible){
-
-    if (c.high > high) high = c.high;
-    if (c.low < low) low = c.low;
-  }
-
-  if (
-    !Number.isFinite(high) ||
-    !Number.isFinite(low)
-  ){
-    return;
-  }
-
-  const pad =
-    (high-low) * 0.08 ||
-    Math.max(high * 0.001,0.000001);
-
-  high += pad;
-  low -= pad;
-
-  drawGrid(
-    ctx,
-    width,
-    height
-  );
-
-  const top = 15;
-  const bottom = 34;
-  const left = 58;
-  const right = 15;
-
-  const plotHeight =
-    Math.max(
-      1,
-      height-top-bottom
-    );
-
-  function y(price){
-    return top +
-      (
-        (high-price) /
-        (high-low)
-      ) *
-      plotHeight;
-  }
-
-  /* Price labels */
-
-  ctx.font = "10px Tahoma";
-  ctx.textAlign = "left";
-  ctx.textBaseline = "middle";
-  ctx.fillStyle = "#68818f";
-
-  for(let i=0;i<=5;i++){
-
-    const price =
-      high -
-      ((high-low)*i/5);
-
-    ctx.fillText(
-      fmt(price,6),
-      5,
-      y(price)
-    );
-  }
-
-  /* candles */
-
-  const spacing =
-    (width-left-right) /
-    Math.max(1,range.count-1);
-
-  const bodyWidth =
-    Math.max(
-      2,
-      Math.min(
-        18,
-        spacing * 0.65
-      )
-    );
-
-  visible.forEach((c,i)=>{
-
-    const x =
-      candleX(
-        i,
-        range,
-        width
-      );
-
-    const yo = y(c.open);
-    const yc = y(c.close);
-    const yh = y(c.high);
-    const yl = y(c.low);
-
-    const bullish =
-      c.close >= c.open;
-
-    const selected =
-      state.selectedIndex ===
-      range.start+i;
-
-    /* wick */
-
-    ctx.beginPath();
-    ctx.moveTo(x,yh);
-    ctx.lineTo(x,yl);
-
-    ctx.lineWidth =
-      selected ? 2 : 1;
-
-    ctx.strokeStyle =
-      bullish
-        ? "#39dc8c"
-        : "#ff5964";
-
-    ctx.stroke();
-
-    /* body */
-
-    const bodyTop =
-      Math.min(yo,yc);
-
-    const bodyHeight =
-      Math.max(
-        1,
-        Math.abs(yc-yo)
-      );
-
-    ctx.fillStyle =
-      bullish
-        ? "#24c982"
-        : "#f04e59";
-
-    ctx.fillRect(
-      x-bodyWidth/2,
-      bodyTop,
-      bodyWidth,
-      bodyHeight
-    );
-
-    /* selected halo */
-
-    if (selected){
-
-      ctx.strokeStyle = "#f5d76e";
-      ctx.lineWidth = 2;
-
-      ctx.strokeRect(
-        x-bodyWidth/2-3,
-        bodyTop-3,
-        bodyWidth+6,
-        bodyHeight+6
-      );
-
-      ctx.beginPath();
-      ctx.arc(
-        x,
-        yh-7,
-        3,
-        0,
-        Math.PI*2
-      );
-
-      ctx.fillStyle = "#f5d76e";
-      ctx.fill();
-    }
-
-  });
-
-  /* last price */
-
-  const last =
-    state.candles[
-      state.candles.length-1
-    ];
-
-  if (last){
-
-    const yy = y(last.close);
-
-    ctx.setLineDash([4,4]);
-    ctx.strokeStyle = "#557585";
-    ctx.lineWidth = 1;
-
-    ctx.beginPath();
-    ctx.moveTo(left,yy);
-    ctx.lineTo(width-right,yy);
-    ctx.stroke();
-
-    ctx.setLineDash([]);
-
-    ctx.fillStyle = "#d7e7ee";
-    ctx.font = "10px Tahoma";
-    ctx.textAlign = "right";
-    ctx.fillText(
-      fmt(last.close,6),
-      width-4,
-      yy-5
-    );
-  }
-
-  /* bottom time labels */
-
-  ctx.fillStyle = "#5f7785";
-  ctx.font = "9px Tahoma";
-  ctx.textAlign = "center";
-
-  const labelStep =
-    Math.max(
-      1,
-      Math.ceil(range.count/7)
-    );
-
-  visible.forEach((c,i)=>{
-
-    if (i % labelStep !== 0) return;
-
-    const x =
-      candleX(i,range,width);
-
-    const d =
-      new Date(c.time);
-
-    const text =
-      String(d.getHours()).padStart(2,"0") +
-      ":" +
-      String(d.getMinutes()).padStart(2,"0");
-
-    ctx.fillText(
-      text,
-      x,
-      height-12
-    );
-  });
-}
-
-function drawGrid(c,width,height){
-
-  c.strokeStyle = "#0e222d";
-  c.lineWidth = 1;
-
-  for(let i=0;i<6;i++){
-
-    const y =
-      10 +
-      (height-45) *
-      i/5;
-
-    c.beginPath();
-    c.moveTo(0,y);
-    c.lineTo(width,y);
-    c.stroke();
-  }
-
-  for(let i=0;i<8;i++){
-
-    const x =
-      58 +
-      (width-73) *
-      i/7;
-
-    c.beginPath();
-    c.moveTo(x,0);
-    c.lineTo(x,height-30);
-    c.stroke();
-  }
-}
-
-/* =========================================================
-   TOUCH / MOUSE
-========================================================= */
-
-function distance(a,b){
-
-  const dx = a.x-b.x;
-  const dy = a.y-b.y;
-
-  return Math.sqrt(
-    dx*dx+dy*dy
-  );
-}
-
-chart.addEventListener(
-  "pointerdown",
-  e => {
-
-    chart.setPointerCapture?.(
-      e.pointerId
-    );
-
-    state.pointers.set(
-      e.pointerId,
-      {
-        x:e.clientX,
-        y:e.clientY
-      }
-    );
-
-    if (state.pointers.size === 1){
-
-      state.dragging = true;
-
-      state.dragStartX =
-        e.clientX;
-
-      state.panStart =
-        state.pan;
-
-      state.tapStartX =
-        e.clientX;
-
-      state.tapStartY =
-        e.clientY;
-
-      state.tapMoved = false;
-    }
-
-    if (state.pointers.size === 2){
-
-      const pts =
-        [...state.pointers.values()];
-
-      state.pinchStartDistance =
-        distance(
-          pts[0],
-          pts[1]
-        );
-
-      state.pinchStartZoom =
-        state.zoom;
-
-      state.dragging = false;
-    }
-
-    e.preventDefault();
-  },
-  {passive:false}
-);
-
-chart.addEventListener(
-  "pointermove",
-  e => {
-
-    if (!state.pointers.has(e.pointerId)){
-      return;
-    }
-
-    state.pointers.set(
-      e.pointerId,
-      {
-        x:e.clientX,
-        y:e.clientY
-      }
-    );
-
-    if (state.pointers.size === 2){
-
-      const pts =
-        [...state.pointers.values()];
-
-      const d =
-        distance(
-          pts[0],
-          pts[1]
-        );
-
-      if (state.pinchStartDistance > 0){
-
-        let z =
-          state.pinchStartZoom *
-          (
-            d /
-            state.pinchStartDistance
-          );
-
-        z =
-          Math.max(
-            0.5,
-            Math.min(12,z)
-          );
-
-        state.zoom = z;
-
-        drawChart();
-      }
-
-      e.preventDefault();
-      return;
-    }
-
-    if (
-      state.pointers.size === 1 &&
-      state.dragging
-    ){
-
-      const dx =
-        e.clientX -
-        state.dragStartX;
-
-      if (Math.abs(dx) > 5){
-        state.tapMoved = true;
-      }
-
-      /*
-        طبیعی:
-        انگشت به راست -> نمودار به راست
-        انگشت به چپ -> نمودار به چپ
-      */
-
-      const sensitivity =
-        Math.max(
-          0.25,
-          visibleRange().count /
-          Math.max(1,chart.clientWidth)
-        );
-
-      state.pan =
-        state.panStart +
-        dx * sensitivity;
-
-      drawChart();
-    }
-
-    e.preventDefault();
-  },
-  {passive:false}
-);
-
-function finishPointer(e){
-
-  const wasSingle =
-    state.pointers.size === 1;
-
-  const moved =
-    state.tapMoved;
-
-  const x = e.clientX;
-  const y = e.clientY;
-
-  state.pointers.delete(
-    e.pointerId
-  );
-
-  if (
-    wasSingle &&
-    !moved
-  ){
-
-    selectCandleAt(
-      x,
-      y
-    );
-  }
-
-  if (state.pointers.size === 0){
-
-    state.dragging = false;
-    state.pinchStartDistance = 0;
-  }
-
-  drawChart();
-}
-
-chart.addEventListener(
-  "pointerup",
-  finishPointer,
-  {passive:false}
-);
-
-chart.addEventListener(
-  "pointercancel",
-  e => {
-    state.pointers.delete(
-      e.pointerId
-    );
-
-    if (state.pointers.size === 0){
-      state.dragging = false;
-      state.pinchStartDistance = 0;
-    }
-  },
-  {passive:false}
-);
-
-chart.addEventListener(
-  "wheel",
-  e => {
-
-    e.preventDefault();
-
-    const oldZoom =
-      state.zoom;
-
-    state.zoom *=
-      e.deltaY < 0
-        ? 1.15
-        : 0.87;
-
-    state.zoom =
-      Math.max(
-        0.5,
-        Math.min(12,state.zoom)
-      );
-
-    if (oldZoom !== state.zoom){
-      drawChart();
-    }
-  },
-  {passive:false}
-);
-
-/* =========================================================
-   SELECT CANDLE
-========================================================= */
-
-function selectCandleAt(clientX,clientY){
-
-  if (!state.candles.length) return;
-
-  const rect =
-    chart.getBoundingClientRect();
-
-  const x =
-    clientX - rect.left;
-
-  const y =
-    clientY - rect.top;
-
-  const range =
-    visibleRange();
-
-  if (
-    x < 50 ||
-    x > rect.width-5
-  ){
-    return;
-  }
-
-  let nearest = 0;
-  let nearestDist = Infinity;
-
-  for(let i=0;i<range.count;i++){
-
-    const cx =
-      candleX(
-        i,
-        range,
-        rect.width
-      );
-
-    const d =
-      Math.abs(
-        x-cx
-      );
-
-    if (d < nearestDist){
-
-      nearestDist = d;
-      nearest = i;
-    }
-  }
-
-  /*
-    اجازه انتخاب حتی اگر لمس
-    کمی کنار بدنه کندل باشد
-  */
-
-  const maxTouch =
-    Math.max(
-      24,
-      (
-        rect.width /
-        Math.max(1,range.count)
-      ) * 1.5
-    );
-
-  if (
-    nearestDist <= maxTouch
-  ){
-
-    const index =
-      range.start + nearest;
-
-    if (
-      index >= 0 &&
-      index < state.candles.length
-    ){
-
-      state.selectedIndex =
-        index;
-
-      showSelectedCandle(
-        state.candles[index]
-      );
-
-      drawChart();
-    }
-  }
-}
-
-/* =========================================================
-   SELECTED CANDLE
-========================================================= */
-
-function clearSelected(){
-
-  $("selectedTime").textContent = "—";
-
-  $("selOpen").textContent = "—";
-  $("selHigh").textContent = "—";
-  $("selLow").textContent = "—";
-  $("selClose").textContent = "—";
-  $("selDelta").textContent = "—";
-  $("selVolume").textContent = "—";
-
-  $("footprintContent").innerHTML = `
-    <div class="footprint-wrap">
-      <div class="footprint">
-        <div class="fp-head">
-          <div class="fp-cell">Volume Fixed Range</div>
-          <div class="fp-cell">Bid</div>
-          <div class="fp-cell">Price</div>
-          <div class="fp-cell">Delta</div>
-          <div class="fp-cell">Ask</div>
-          <div class="fp-cell">Delta Histogram</div>
-          <div class="fp-cell">Volume</div>
-        </div>
-      </div>
-    </div>
-    <div class="empty">
-      برای مشاهده Footprint یک کندل را لمس کنید.
-    </div>
-  `;
-
-  clearMini();
-}
-
-function showSelectedCandle(candle){
-
-  if (!candle) return;
-
-  $("selectedTime").textContent =
-    new Date(candle.time)
-      .toLocaleString(
-        "fa-IR",
-        {
-          year:"numeric",
-          month:"2-digit",
-          day:"2-digit",
-          hour:"2-digit",
-          minute:"2-digit"
-        }
-      );
-
-  $("selOpen").textContent =
-    fmt(candle.open,8);
-
-  $("selHigh").textContent =
-    fmt(candle.high,8);
-
-  $("selLow").textContent =
-    fmt(candle.low,8);
-
-  $("selClose").textContent =
-    fmt(candle.close,8);
-
-  $("selVolume").textContent =
-    fmt(candle.volume,4);
-
-  const trades =
-    getCandleTrades(candle);
-
-  const footprint =
-    buildFootprint(
-      trades,
-      candle
-    );
-
-  let totalBuy = 0;
-  let totalSell = 0;
-
-  for(const r of footprint){
-
-    totalBuy += r.ask;
-    totalSell += r.bid;
-  }
-
-  const delta =
-    totalBuy-totalSell;
-
-  $("selDelta").textContent =
-    (delta >= 0 ? "+" : "") +
-    fmt(delta,6);
-
-  $("selDelta").className =
-    delta >= 0
-      ? "green"
-      : "red";
-
-  drawMiniCandle(candle);
-
-  renderFootprint(
-    footprint,
-    trades,
-    candle
-  );
-}
-
-/* =========================================================
-   EXACT SELECTED CANDLE TRADES
-========================================================= */
-
-function getCandleTrades(candle){
-
-  const start =
-    candle.time;
-
-  const end =
-    start + intervalMs();
-
-  return state.trades.filter(
-    t =>
-      t.time >= start &&
-      t.time < end
-  );
-}
-
-/* =========================================================
-   TICK SIZE
-========================================================= */
-
-function detectTick(trades){
-
-  const prices =
-    [...new Set(
-      trades
-        .map(t=>num(t.price))
-        .filter(p=>p>0)
-    )].sort((a,b)=>a-b);
-
-  if (prices.length < 2){
-    return 0;
-  }
-
-  let minDiff = Infinity;
-
-  for(let i=1;i<prices.length;i++){
-
-    const d =
-      prices[i]-prices[i-1];
-
-    if (
-      d > 0 &&
-      d < minDiff
-    ){
-      minDiff = d;
-    }
-  }
-
-  return Number.isFinite(minDiff)
-    ? minDiff
-    : 0;
-}
-
-function decimalsForTick(tick){
-
-  if (!tick || tick >= 1) return 2;
-
-  const s =
-    tick.toFixed(12)
-      .replace(/0+$/,"");
-
-  const i =
-    s.indexOf(".");
-
-  return i < 0
-    ? 0
-    : Math.min(
-        10,
-        s.length-i-1
-      );
-}
-
-/* =========================================================
-   BUILD EXACT FOOTPRINT
-========================================================= */
-
-function buildFootprint(trades,candle){
-
-  if (!trades.length){
-    return [];
-  }
-
-  const tick =
-    detectTick(trades);
-
-  /*
-    Bybit trade side:
-      Buy  = aggressive buy = Ask
-      Sell = aggressive sell = Bid
-  */
-
-  const map = new Map();
-
-  for(const t of trades){
-
-    let price = num(t.price);
-
-    if (tick > 0){
-
-      price =
-        Math.round(
-          price/tick
-        ) * tick;
-    }
-
-    const key =
-      price.toFixed(
-        decimalsForTick(tick)
-      );
-
-    if (!map.has(key)){
-
-      map.set(
-        key,
-        {
-          price,
-          bid:0,
-          ask:0,
-          delta:0,
-          volume:0,
-          bidValue:0,
-          askValue:0,
-          trades:0
-        }
-      );
-    }
-
-    const row =
-      map.get(key);
-
-    const size =
-      num(t.size);
-
-    if (t.side === "buy"){
-
-      row.ask += size;
-      row.askValue +=
-        num(t.value,size*price);
-
-    }else{
-
-      row.bid += size;
-      row.bidValue +=
-        num(t.value,size*price);
-    }
-
-    row.volume =
-      row.bid +
-      row.ask;
-
-    row.delta =
-      row.ask -
-      row.bid;
-
-    row.trades++;
-  }
-
-  return [...map.values()]
-    .sort(
-      (a,b)=>b.price-a.price
-    );
-}
-
-/* =========================================================
-   RENDER FOOTPRINT
-========================================================= */
-
-function renderFootprint(
-  rows,
-  trades,
-  candle
-){
-
-  if (!trades.length){
-
-    $("footprintContent").innerHTML = `
-      <div class="empty">
-        ⚠️ برای این کندل در بین معاملات واقعی دریافتی Worker
-        معامله‌ای در بازه زمانی دقیق همین کندل وجود ندارد.
-        <br><br>
-        داده ساختگی نمایش داده نمی‌شود.
-      </div>
-    `;
-
-    return;
-  }
-
-  if (!rows.length){
-
-    $("footprintContent").innerHTML = `
-      <div class="empty">
-        معامله واقعی برای ساخت Footprint این کندل کافی نیست.
-      </div>
-    `;
-
-    return;
-  }
-
-  let maxVolume = 0;
-  let maxDelta = 0;
-
-  for(const r of rows){
-
-    maxVolume =
-      Math.max(
-        maxVolume,
-        r.volume
-      );
-
-    maxDelta =
-      Math.max(
-        maxDelta,
-        Math.abs(r.delta)
-      );
-  }
-
-  const htmlRows =
-    rows.map(r=>{
-
-      const volumeWidth =
-        maxVolume > 0
-          ? r.volume/maxVolume*100
-          : 0;
-
-      const deltaWidth =
-        maxDelta > 0
-          ? Math.abs(r.delta)/maxDelta*100
-          : 0;
-
-      const deltaClass =
-        r.delta >= 0
-          ? "delta-pos"
-          : "delta-neg";
-
-      const deltaSign =
-        r.delta >= 0 ? "+" : "";
-
-      return `
-        <div class="fp-row">
-
-          <div class="fp-cell">
-            <div
-              class="bar buy"
-              style="width:${volumeWidth}%"
-            ></div>
-            <div class="cell-content">
-              ${fmt(r.volume,6)}
-            </div>
-          </div>
-
-          <div class="fp-cell bid">
-            ${fmt(r.bid,6)}
-          </div>
-
-          <div class="fp-cell price">
-            ${fmt(r.price,8)}
-          </div>
-
-          <div class="fp-cell ${deltaClass}">
-            ${deltaSign}${fmt(r.delta,6)}
-          </div>
-
-          <div class="fp-cell ask">
-            ${fmt(r.ask,6)}
-          </div>
-
-          <div class="fp-cell">
-
-            <div
-              class="bar ${
-                r.delta >= 0
-                  ? "delta-positive"
-                  : "delta-negative"
-              }"
-              style="width:${deltaWidth}%"
-            ></div>
-
-            <div class="cell-content ${deltaClass}">
-              ${deltaSign}${fmt(
-                r.delta,
-                6
-              )}
-            </div>
-
-          </div>
-
-          <div class="fp-cell">
-
-            <div
-              class="bar ${
-                r.delta >= 0
-                  ? "buy"
-                  : "sell"
-              }"
-              style="width:${volumeWidth}%"
-            ></div>
-
-            <div class="cell-content">
-              ${fmt(r.volume,6)}
-            </div>
-
-          </div>
-
-        </div>
-      `;
-
-    }).join("");
-
-  $("footprintContent").innerHTML = `
-    <div class="footprint-wrap">
-
-      <div class="footprint">
-
-        <div class="fp-head">
-
-          <div class="fp-cell">
-            Volume Fixed Range
-          </div>
-
-          <div class="fp-cell">
-            Bid
-          </div>
-
-          <div class="fp-cell">
-            Price
-          </div>
-
-          <div class="fp-cell">
-            Delta
-          </div>
-
-          <div class="fp-cell">
-            Ask
-          </div>
-
-          <div class="fp-cell">
-            Delta Histogram
-          </div>
-
-          <div class="fp-cell">
-            Volume
-          </div>
-
-        </div>
-
-        ${htmlRows}
-
-      </div>
-
-    </div>
-
-    <div class="empty">
-      Fixed Range واقعی همین کندل ·
-      ${trades.length} معامله دریافتی از Worker ·
-      هر ردیف = یک سطح قیمت
-    </div>
-  `;
-}
-
-/* =========================================================
-   MINI CANDLE
-========================================================= */
-
-function clearMini(){
-
-  const r =
-    mini.getBoundingClientRect();
-
-  miniCtx.clearRect(
-    0,
-    0,
-    r.width,
-    r.height
-  );
-}
-
-function drawMiniCandle(candle){
-
-  if (!candle) return;
-
-  const r =
-    mini.getBoundingClientRect();
-
-  const w = r.width;
-  const h = r.height;
-
-  miniCtx.clearRect(
-    0,0,w,h
-  );
-
-  miniCtx.fillStyle =
-    "#061019";
-
-  miniCtx.fillRect(
-    0,0,w,h
-  );
-
-  miniCtx.strokeStyle =
-    "#102631";
-
-  miniCtx.lineWidth = 1;
-
-  for(let i=1;i<5;i++){
-
-    const y =
-      h*i/5;
-
-    miniCtx.beginPath();
-    miniCtx.moveTo(0,y);
-    miniCtx.lineTo(w,y);
-    miniCtx.stroke();
-  }
-
-  const range =
-    candle.high-candle.low;
-
-  if (range <= 0) return;
-
-  const padX = w*0.35;
-
-  function y(price){
-
-    return 10 +
-      (
-        (candle.high-price) /
-        range
-      ) *
-      (h-20);
-  }
-
-  const x = w/2;
-
-  const yo = y(candle.open);
-  const yc = y(candle.close);
-  const yh = y(candle.high);
-  const yl = y(candle.low);
-
-  const bullish =
-    candle.close >= candle.open;
-
-  miniCtx.strokeStyle =
-    bullish
-      ? "#39dc8c"
-      : "#ff5964";
-
-  miniCtx.lineWidth = 3;
-
-  miniCtx.beginPath();
-  miniCtx.moveTo(x,yh);
-  miniCtx.lineTo(x,yl);
-  miniCtx.stroke();
-
-  miniCtx.fillStyle =
-    bullish
-      ? "#24c982"
-      : "#f04e59";
-
-  const top =
-    Math.min(yo,yc);
-
-  const bh =
-    Math.max(
-      3,
-      Math.abs(yc-yo)
-    );
-
-  miniCtx.fillRect(
-    x-padX/2,
-    top,
-    padX,
-    bh
-  );
-
-  miniCtx.strokeStyle =
-    "#f5d76e";
-
-  miniCtx.lineWidth = 1;
-
-  miniCtx.strokeRect(
-    x-padX/2-2,
-    top-2,
-    padX+4,
-    bh+4
-  );
-}
-
-/* =========================================================
-   AUTO REFRESH
-========================================================= */
-
-let refreshTimer = null;
-
-function startRefresh(){
-
-  clearInterval(
-    refreshTimer
-  );
-
-  refreshTimer =
-    setInterval(
-      () => {
-
-        if (
-          document.visibilityState ===
-          "visible"
-        ){
-          loadMarket();
-        }
-
-      },
-      10000
-    );
-}
-
-/* =========================================================
-   EVENTS
-========================================================= */
-
-$("analyzeBtn").addEventListener(
+$("analyze").addEventListener(
   "click",
   loadMarket
 );
 
-$("symbol").addEventListener(
-  "keydown",
-  e => {
-    if (e.key === "Enter"){
-      loadMarket();
-    }
+$("symbol").addEventListener("keydown",e=>{
+  if(e.key==="Enter"){
+    loadMarket();
   }
-);
+});
 
 $("interval").addEventListener(
   "change",
@@ -2574,45 +2209,49 @@ $("category").addEventListener(
   loadMarket
 );
 
-$("count").addEventListener(
+$("candleCount").addEventListener(
   "change",
-  () => {
+  loadMarket
+);
 
-    if (!state.candles.length) return;
+window.addEventListener("resize",()=>{
+  drawChart();
+  drawFootprint();
+});
 
-    state.pan = 0;
-    state.zoom = 1;
-    state.selectedIndex = -1;
+document.querySelectorAll(".tab").forEach(tab=>{
+  tab.addEventListener("click",()=>{
+    document.querySelectorAll(".tab")
+      .forEach(x=>x.classList.remove("active"));
 
+    tab.classList.add("active");
+  });
+});
+
+function boot(){
+
+  requestAnimationFrame(()=>{
     drawChart();
-    clearSelected();
-  }
-);
+    drawFootprint();
+  });
 
-window.addEventListener(
-  "resize",
-  resizeCanvas
-);
+  loadMarket();
 
-window.addEventListener(
-  "orientationchange",
-  () => {
-    setTimeout(
-      resizeCanvas,
-      200
-    );
-  }
-);
+  /*
+    Refresh actual Bybit data periodically.
+    Selection is kept on the newest candle when
+    the previous selection was the last candle.
+  */
 
-/* =========================================================
-   INIT
-========================================================= */
+  setInterval(()=>{
+    if(!state.loading){
+      loadMarket();
+    }
+  },15000);
+}
 
-resizeCanvas();
-startRefresh();
-loadMarket();
+boot();
 
 </script>
-
 </body>
 </html>
