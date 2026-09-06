@@ -1,8 +1,7 @@
-const VERSION = "ABSORPTION-ZONE-V5-HOUR-BLOCK-20K-LOWWRITE";
+const VERSION = "ABSORPTION-ZONE-V5-HOUR-BLOCK-20K-LOWWRITE-BYBIT-FUTURES";
 
 const BYBIT = "https://api.bybit.com";
 const BYBIT_WS = "wss://stream.bybit.com/v5/public/linear";
-const LBANK = "https://www.lbank.com";
 
 const DEFAULT_SYMBOL = "BTCUSDT";
 const DEFAULT_INTERVAL = "1";
@@ -678,7 +677,9 @@ function detectAbsorption(
 }
 
 /* =========================================================
-   SYMBOLS
+   BYBIT FUTURES SYMBOLS
+   مستقیم از Bybit Linear USDT Perpetual
+   بدون LBank
 ========================================================= */
 
 function isPerpetual(row) {
@@ -751,6 +752,10 @@ async function getBybitSymbols() {
       const symbol =
         normalizeSymbol(row.symbol);
 
+      if (!symbol.endsWith("USDT")) {
+        continue;
+      }
+
       output.push({
         symbol,
 
@@ -798,136 +803,12 @@ async function getBybitSymbols() {
 }
 
 /* =========================================================
-   LBANK
+   COLLECTOR SYMBOLS
+   مستقیم Bybit Futures
 ========================================================= */
 
-function isCryptoLbankInstrument(item) {
-  if (
-    !item ||
-    typeof item !== "object"
-  ) {
-    return false;
-  }
-
-  const raw =
-    String(
-      item.symbol ||
-      item.pair ||
-      item.symbolName ||
-      ""
-    )
-      .toUpperCase()
-      .replace(/[-_/]/g, "");
-
-  if (!raw) {
-    return false;
-  }
-
-  return raw.endsWith("USDT");
-}
-
-async function getLbankSymbols() {
-  const endpoints = [
-    "/v2/currencyPairs.do",
-    "/v2/accuracy.do"
-  ];
-
-  for (const endpoint of endpoints) {
-    try {
-      const response =
-        await fetch(
-          LBANK + endpoint,
-          {
-            headers: {
-              "Accept":
-                "application/json"
-            }
-          }
-        );
-
-      if (!response.ok) {
-        continue;
-      }
-
-      const data =
-        await response.json();
-
-      const list =
-        Array.isArray(data)
-          ? data
-          : Array.isArray(data.data)
-            ? data.data
-            : Array.isArray(data.result)
-              ? data.result
-              : [];
-
-      const symbols = [];
-
-      for (const item of list) {
-        if (
-          !isCryptoLbankInstrument(
-            item
-          )
-        ) {
-          continue;
-        }
-
-        const raw =
-          String(
-            item.symbol ||
-            item.pair ||
-            item.symbolName ||
-            ""
-          )
-            .toUpperCase()
-            .replace(
-              /[-_/]/g,
-              ""
-            );
-
-        if (
-          raw &&
-          raw.endsWith("USDT")
-        ) {
-          symbols.push(raw);
-        }
-      }
-
-      if (symbols.length) {
-        return [
-          ...new Set(symbols)
-        ];
-      }
-    } catch (_) {}
-  }
-
-  return [];
-}
-
 async function getCollectorSymbols() {
-  const bybitSymbols =
-    await getBybitSymbols();
-
-  try {
-    const lbankSymbols =
-      await getLbankSymbols();
-
-    if (lbankSymbols.length) {
-      const lbankSet =
-        new Set(
-          lbankSymbols
-        );
-
-      return bybitSymbols.filter(
-        x =>
-          lbankSet.has(
-            x.symbol
-          )
-      );
-    }
-  } catch (_) {}
-
-  return bybitSymbols;
+  return await getBybitSymbols();
 }
 
 /* =========================================================
@@ -1218,16 +1099,7 @@ export class AbsorptionStorageV5 {
 
   /* =======================================================
      DATABASE DETECTION
-     
-     IMPORTANT:
-     این تابع در شروع Worker هیچ CREATE/DELETE/INSERT/UPDATE
-     انجام نمی‌دهد.
-
-     فقط بررسی می‌کند جدول وجود دارد یا نه.
-
-     بنابراین START و STATUS در صورت تمام شدن Row Write
-     دیگر در initDB گیر نمی‌کنند.
-  ======================================================= */
+======================================================= */
 
   initDB() {
     if (this.dbInitialized) {
@@ -1267,10 +1139,7 @@ export class AbsorptionStorageV5 {
 
   /* =======================================================
      CREATE STORAGE ONLY WHEN FIRST REAL CHECKPOINT WRITE
-     
-     این تنها جایی است که جدول جدید ساخته می‌شود.
-     START / STATUS / HISTORY هیچ CREATE انجام نمی‌دهند.
-  ======================================================= */
+======================================================= */
 
   ensureDBForWrite() {
     if (
@@ -1425,10 +1294,6 @@ export class AbsorptionStorageV5 {
       };
     }
 
-    /*
-     * فقط ساعت‌های بسته‌شده.
-     * ساعت جاری هرگز در DELETE قرار نمی‌گیرد.
-     */
     this.state.storage.sql.exec(`
       DELETE FROM hour_blocks_v5
       WHERE rowid IN (
@@ -2102,10 +1967,6 @@ export class AbsorptionStorageV5 {
 
       let written = 0;
 
-      /*
-       * جدول فقط زمانی ساخته می‌شود که واقعاً
-       * یک ساعت بسته‌شده برای ذخیره وجود داشته باشد.
-       */
       let writeTableReady =
         this.tableExists === true;
 
@@ -2131,10 +1992,6 @@ export class AbsorptionStorageV5 {
           continue;
         }
 
-        /*
-         * اولین Write واقعی:
-         * اگر جدول هنوز وجود ندارد، همین‌جا ساخته می‌شود.
-         */
         if (!writeTableReady) {
           this.ensureDBForWrite();
           writeTableReady = true;
@@ -2643,7 +2500,7 @@ export class AbsorptionStorageV5 {
         !this.symbols.length
       ) {
         throw new Error(
-          "هیچ Symbol مشترک بین LBank و Bybit پیدا نشد"
+          "هیچ قرارداد Futures USDT در Bybit پیدا نشد"
         );
       }
 
@@ -2865,11 +2722,6 @@ export class AbsorptionStorageV5 {
 
       this.persistClosedBlocks();
 
-      /*
-       * persistClosedBlocks در صورت Write،
-       * Capacity را خودش بررسی می‌کند.
-       */
-
       try {
         await this.refreshSymbols();
       } catch (error) {
@@ -2914,16 +2766,8 @@ export class AbsorptionStorageV5 {
     this.started =
       true;
 
-    /*
-     * فقط بررسی وجود جدول.
-     * هیچ CREATE/DELETE/INSERT/UPDATE.
-     */
     this.initDB();
 
-    /*
-     * اگر جدول وجود داشته باشد، اطلاعات قبلی
-     * V5 بارگذاری می‌شوند.
-     */
     this.loadRecentBlocks();
 
     try {
@@ -2942,10 +2786,6 @@ export class AbsorptionStorageV5 {
       await this.connect();
     }
 
-    /*
-     * فقط در صورت وجود جدول بررسی ظرفیت.
-     * اگر جدول هنوز ساخته نشده باشد هیچ Write انجام نمی‌شود.
-     */
     if (
       this.tableExists === true
     ) {
@@ -3074,7 +2914,7 @@ export class AbsorptionStorageV5 {
         "preserved / new writes disabled",
 
       symbolSource:
-        "LBank ∩ Bybit",
+        "Bybit Linear USDT Perpetual",
 
       marketData:
         "Bybit",
@@ -3533,10 +3373,6 @@ export class AbsorptionStorageV5 {
       url.pathname;
 
     try {
-      /*
-       * فقط بررسی وجود جدول.
-       * هیچ Write در این مرحله.
-       */
       this.initDB();
 
       if (
@@ -3981,6 +3817,15 @@ export default {
           oldStorage:
             "preserved / new writes disabled",
 
+          symbolSource:
+            "Bybit Linear USDT Perpetual",
+
+          marketData:
+            "Bybit",
+
+          lbankFilter:
+            "disabled",
+
           writePolicy:
             "no startup DB write; closed hour only"
         });
@@ -4013,6 +3858,9 @@ export default {
 
           count:
             symbols.length,
+
+          source:
+            "Bybit Linear USDT Perpetual",
 
           symbols
         });
