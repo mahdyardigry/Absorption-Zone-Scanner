@@ -8,17 +8,24 @@ workers_dev = true
 directory = "./public"
 binding = "ASSETS"
 
+# Durable Object قدیمی — دست نخورده
 [[durable_objects.bindings]]
 name = "TRADE_COLLECTOR"
 class_name = "TradeCollector"
 
+# Durable Object جدید V5
+[[durable_objects.bindings]]
+name = "TRADE_COLLECTOR_V5"
+class_name = "AbsorptionStorageV5"
+
+# کلاس‌های Durable Object که این Worker صادر می‌کند
 [exports.TradeCollector]
 type = "durable-object"
 storage = "sqlite"
 
-[exports.CollectorDO]
+[exports.AbsorptionStorageV5]
 type = "durable-object"
-state = "deleted"
+storage = "sqlite"
 
 [triggers]
 crons = ["*/5 * * * *"]
