@@ -13,22 +13,8 @@ const ORDERBOOK_LIMIT = 50;
 const SYMBOL_LIMIT = 1000;
 
 const HOUR_MS = 60 * 60 * 1000;
-
-/*
- * Alarm فقط برای نگهداری اتصال و checkpoint
- * هر 1 ساعت یک بار اجرا می‌شود تا Write اضافه کم شود.
- */
 const ALARM_MS = 60 * 60 * 1000;
 
-/*
- * ظرفیت مخزن جدید
- *
- * 1 row = 1 symbol + 1 hour
- *
- * وقتی تعداد ردیف‌ها به 20000 برسد،
- * قدیمی‌ترین ساعت‌های بسته‌شده حذف می‌شوند
- * تا تعداد ردیف‌ها به 19000 برسد.
- */
 const MAX_ROWS = 20000;
 const CLEANUP_TARGET_ROWS = 19000;
 
@@ -216,11 +202,8 @@ function parseTrades(rows) {
         ),
 
         time: safeNumber(row.time),
-
         price,
-
         size,
-
         value: price * size,
 
         side: String(
@@ -1149,9 +1132,7 @@ export class TradeCollector {
 
     return json({
       ok: true,
-
       legacy: true,
-
       collector:
         "TradeCollector",
 
@@ -1170,10 +1151,6 @@ export class TradeCollector {
   }
 
   async alarm() {
-    /*
-     * عمداً هیچ کاری انجام نمی‌شود.
-     * مخزن قدیمی Write جدید ندارد.
-     */
     return;
   }
 }
@@ -1213,6 +1190,7 @@ export class AbsorptionStorageV5 {
     this.alarmScheduled = false;
 
     this.dbInitialized = false;
+    this.tableExists = null;
 
     this.hourBlocks =
       new Map();
@@ -1239,11 +1217,16 @@ export class AbsorptionStorageV5 {
   }
 
   /* =======================================================
-     DATABASE
+     DATABASE DETECTION
+     
      IMPORTANT:
-     NO DESTRUCTIVE MIGRATION
-     NO DELETE ON INIT
-     NO STORAGE VERSION WRITE
+     این تابع در شروع Worker هیچ CREATE/DELETE/INSERT/UPDATE
+     انجام نمی‌دهد.
+
+     فقط بررسی می‌کند جدول وجود دارد یا نه.
+
+     بنابراین START و STATUS در صورت تمام شدن Row Write
+     دیگر در initDB گیر نمی‌کنند.
   ======================================================= */
 
   initDB() {
@@ -1254,12 +1237,51 @@ export class AbsorptionStorageV5 {
     const sql =
       this.state.storage.sql;
 
-    /*
-     * جدول فقط در صورت نبودن ساخته می‌شود.
-     *
-     * هیچ DELETE از اطلاعات قبلی وجود ندارد.
-     * هیچ storage_meta و storage_version وجود ندارد.
-     */
+    try {
+      const rows =
+        sql.exec(`
+          SELECT name
+          FROM sqlite_master
+          WHERE type = 'table'
+          AND name = ?
+          LIMIT 1
+        `,
+          TABLE_NAME
+        ).toArray();
+
+      this.tableExists =
+        rows.length > 0;
+    } catch (error) {
+      this.lastError =
+        String(
+          error?.message ||
+          error
+        );
+
+      this.tableExists =
+        false;
+    }
+
+    this.dbInitialized = true;
+  }
+
+  /* =======================================================
+     CREATE STORAGE ONLY WHEN FIRST REAL CHECKPOINT WRITE
+     
+     این تنها جایی است که جدول جدید ساخته می‌شود.
+     START / STATUS / HISTORY هیچ CREATE انجام نمی‌دهند.
+  ======================================================= */
+
+  ensureDBForWrite() {
+    if (
+      this.tableExists === true
+    ) {
+      return;
+    }
+
+    const sql =
+      this.state.storage.sql;
+
     sql.exec(`
       CREATE TABLE IF NOT EXISTS hour_blocks_v5 (
         symbol TEXT NOT NULL,
@@ -1270,44 +1292,63 @@ export class AbsorptionStorageV5 {
       )
     `);
 
-    /*
-     * ایندکس اضافی ایجاد نمی‌کنیم.
-     *
-     * دلیل:
-     * هر INSERT/UPDATE باید ایندکس را نیز به‌روزرسانی کند
-     * و هدف این نسخه کم‌کردن Write است.
-     *
-     * اگر ایندکس قدیمی قبلاً وجود داشته باشد،
-     * حذف آن انجام نمی‌شود تا هنگام تغییر نسخه
-     * هیچ عملیات اضافی روی Storage ایجاد نشود.
-     */
-
+    this.tableExists = true;
     this.dbInitialized = true;
   }
+
+  /* =======================================================
+     ROW COUNT
+======================================================= */
 
   getRowCount() {
     this.initDB();
 
-    const rows =
-      this.state.storage.sql
-        .exec(`
-          SELECT COUNT(*) AS count
-          FROM hour_blocks_v5
-        `)
-        .toArray();
+    if (
+      this.tableExists !== true
+    ) {
+      return 0;
+    }
 
-    return Number(
-      rows[0]?.count || 0
-    );
+    try {
+      const rows =
+        this.state.storage.sql
+          .exec(`
+            SELECT COUNT(*) AS count
+            FROM hour_blocks_v5
+          `)
+          .toArray();
+
+      return Number(
+        rows[0]?.count || 0
+      );
+    } catch (error) {
+      this.lastError =
+        String(
+          error?.message ||
+          error
+        );
+
+      return 0;
+    }
   }
 
   /* =======================================================
      CAPACITY
-     CURRENT HOUR CAN NEVER BE DELETED
-  ======================================================= */
+======================================================= */
 
   enforceCapacity() {
     this.initDB();
+
+    if (
+      this.tableExists !== true
+    ) {
+      return {
+        deleted: 0,
+        rows: 0,
+        tableExists: false,
+        protectedCurrentHour: true
+      };
+    }
 
     const count =
       this.getRowCount();
@@ -1317,7 +1358,8 @@ export class AbsorptionStorageV5 {
     ) {
       return {
         deleted: 0,
-        rows: count
+        rows: count,
+        protectedCurrentHour: true
       };
     }
 
@@ -1341,18 +1383,11 @@ export class AbsorptionStorageV5 {
     ) {
       return {
         deleted: 0,
-        rows: count
+        rows: count,
+        protectedCurrentHour: true
       };
     }
 
-    /*
-     * ساعت جاری هرگز حذف نمی‌شود.
-     *
-     * فقط hour_start < currentHour مجاز به حذف است.
-     *
-     * ترتیب حذف:
-     * قدیمی‌ترین بلوک‌های بسته‌شده اول.
-     */
     const currentHour =
       hourStartOf(
         Date.now()
@@ -1391,8 +1426,8 @@ export class AbsorptionStorageV5 {
     }
 
     /*
-     * حذف قدیمی‌ترین ساعت‌های بسته‌شده.
-     * currentHour به صورت کامل خارج است.
+     * فقط ساعت‌های بسته‌شده.
+     * ساعت جاری هرگز در DELETE قرار نمی‌گیرد.
      */
     this.state.storage.sql.exec(`
       DELETE FROM hour_blocks_v5
@@ -1413,10 +1448,6 @@ export class AbsorptionStorageV5 {
     this.lastCleanupAt =
       Date.now();
 
-    /*
-     * از RAM نیز فقط ساعت‌های قدیمی حذف می‌شوند.
-     * ساعت جاری دست‌نخورده باقی می‌ماند.
-     */
     for (
       const [key, block]
       of this.hourBlocks
@@ -1448,7 +1479,7 @@ export class AbsorptionStorageV5 {
 
   /* =======================================================
      LOAD RECENT BLOCKS
-  ======================================================= */
+======================================================= */
 
   loadRecentBlocks() {
     if (
@@ -1458,6 +1489,15 @@ export class AbsorptionStorageV5 {
     }
 
     this.initDB();
+
+    if (
+      this.tableExists !== true
+    ) {
+      this.loadedRecentBlocks =
+        true;
+
+      return;
+    }
 
     const now =
       Date.now();
@@ -1515,7 +1555,7 @@ export class AbsorptionStorageV5 {
 
   /* =======================================================
      BLOCKS
-  ======================================================= */
+======================================================= */
 
   createBlock(
     symbol,
@@ -1600,7 +1640,7 @@ export class AbsorptionStorageV5 {
 
   /* =======================================================
      TRADE AGGREGATION
-  ======================================================= */
+======================================================= */
 
   aggregateTrade(
     trade
@@ -1787,7 +1827,7 @@ export class AbsorptionStorageV5 {
 
   /* =======================================================
      SERIALIZE
-  ======================================================= */
+======================================================= */
 
   serializeBlock(
     block
@@ -1856,7 +1896,7 @@ export class AbsorptionStorageV5 {
 
   /* =======================================================
      DESERIALIZE
-  ======================================================= */
+======================================================= */
 
   deserializeBlock(
     row
@@ -2033,8 +2073,7 @@ export class AbsorptionStorageV5 {
 
   /* =======================================================
      CLOSED HOUR CHECKPOINT
-     ONLY CLOSED HOURS ARE WRITTEN
-  ======================================================= */
+======================================================= */
 
   persistClosedBlocks() {
     if (
@@ -2063,13 +2102,17 @@ export class AbsorptionStorageV5 {
 
       let written = 0;
 
+      /*
+       * جدول فقط زمانی ساخته می‌شود که واقعاً
+       * یک ساعت بسته‌شده برای ذخیره وجود داشته باشد.
+       */
+      let writeTableReady =
+        this.tableExists === true;
+
       for (
         const [key, block]
         of this.hourBlocks
       ) {
-        /*
-         * ساعت جاری هرگز Write نمی‌شود.
-         */
         if (
           block.hourStart >=
           currentHour
@@ -2077,9 +2120,6 @@ export class AbsorptionStorageV5 {
           continue;
         }
 
-        /*
-         * اگر قبلاً ذخیره شده، دوباره Write نمی‌شود.
-         */
         if (!block.dirty) {
           continue;
         }
@@ -2091,17 +2131,20 @@ export class AbsorptionStorageV5 {
           continue;
         }
 
+        /*
+         * اولین Write واقعی:
+         * اگر جدول هنوز وجود ندارد، همین‌جا ساخته می‌شود.
+         */
+        if (!writeTableReady) {
+          this.ensureDBForWrite();
+          writeTableReady = true;
+        }
+
         const data =
           this.serializeBlock(
             block
           );
 
-        /*
-         * هر symbol/hour فقط یک ردیف دارد.
-         *
-         * در حالت عادی هر بلوک بسته‌شده
-         * فقط یک بار Write می‌شود.
-         */
         sql.exec(`
           INSERT INTO hour_blocks_v5
           (
@@ -2131,13 +2174,6 @@ export class AbsorptionStorageV5 {
       this.lastCheckpointAt =
         now;
 
-      /*
-       * فقط بلوک‌های قدیمی‌تر از ساعت قبل
-       * از RAM حذف می‌شوند.
-       *
-       * داده SQLite باقی می‌ماند تا Capacity
-       * در صورت رسیدن به 20000 آن را پاک کند.
-       */
       const removeBefore =
         currentHour -
         HOUR_MS;
@@ -2156,10 +2192,6 @@ export class AbsorptionStorageV5 {
         }
       }
 
-      /*
-       * فقط اگر چیزی نوشته شد
-       * Capacity بررسی می‌شود.
-       */
       if (written > 0) {
         this.enforceCapacity();
       }
@@ -2170,6 +2202,22 @@ export class AbsorptionStorageV5 {
         rows:
           this.getRowCount()
       };
+    } catch (error) {
+      this.lastError =
+        String(
+          error?.message ||
+          error
+        );
+
+      return {
+        written: 0,
+
+        rows:
+          this.getRowCount(),
+
+        error:
+          this.lastError
+      };
     } finally {
       this.checkpointRunning =
         false;
@@ -2178,7 +2226,7 @@ export class AbsorptionStorageV5 {
 
   /* =======================================================
      DEDUPE
-  ======================================================= */
+======================================================= */
 
   isDuplicate(
     trade
@@ -2246,7 +2294,7 @@ export class AbsorptionStorageV5 {
 
   /* =======================================================
      WS TRADE PARSER
-  ======================================================= */
+======================================================= */
 
   parseWsTrade(row) {
     const price =
@@ -2276,9 +2324,7 @@ export class AbsorptionStorageV5 {
         ),
 
       time,
-
       price,
-
       size,
 
       value:
@@ -2293,7 +2339,7 @@ export class AbsorptionStorageV5 {
 
   /* =======================================================
      WS MESSAGE
-  ======================================================= */
+======================================================= */
 
   handleMessage(
     raw
@@ -2412,20 +2458,22 @@ export class AbsorptionStorageV5 {
       this.totalTrades++;
     }
 
-    /*
-     * اگر ساعت عوض شد،
-     * ساعت قبلی فوراً ذخیره می‌شود.
-     *
-     * ساعت جاری همچنان RAM-only است.
-     */
     if (crossedHour) {
-      this.persistClosedBlocks();
+      try {
+        this.persistClosedBlocks();
+      } catch (error) {
+        this.lastError =
+          String(
+            error?.message ||
+            error
+          );
+      }
     }
   }
 
   /* =======================================================
      SUBSCRIBE
-  ======================================================= */
+======================================================= */
 
   async subscribeAll() {
     if (
@@ -2520,7 +2568,7 @@ export class AbsorptionStorageV5 {
 
   /* =======================================================
      PING
-  ======================================================= */
+======================================================= */
 
   startPing() {
     this.stopPing();
@@ -2558,7 +2606,7 @@ export class AbsorptionStorageV5 {
 
   /* =======================================================
      CONNECT
-  ======================================================= */
+======================================================= */
 
   async connect() {
     if (!this.started) {
@@ -2692,7 +2740,7 @@ export class AbsorptionStorageV5 {
 
   /* =======================================================
      RECONNECT
-  ======================================================= */
+======================================================= */
 
   scheduleReconnect() {
     if (!this.started) {
@@ -2734,7 +2782,7 @@ export class AbsorptionStorageV5 {
 
   /* =======================================================
      REFRESH SYMBOLS
-  ======================================================= */
+======================================================= */
 
   async refreshSymbols() {
     const list =
@@ -2777,7 +2825,7 @@ export class AbsorptionStorageV5 {
 
   /* =======================================================
      ALARM
-  ======================================================= */
+======================================================= */
 
   scheduleAlarm() {
     if (
@@ -2789,14 +2837,21 @@ export class AbsorptionStorageV5 {
     this.alarmScheduled =
       true;
 
-    /*
-     * فقط یک alarm در هر ساعت.
-     * هدف کاهش Writeهای غیرضروری است.
-     */
-    this.state.storage.setAlarm(
-      Date.now() +
-        ALARM_MS
-    );
+    try {
+      this.state.storage.setAlarm(
+        Date.now() +
+          ALARM_MS
+      );
+    } catch (error) {
+      this.alarmScheduled =
+        false;
+
+      this.lastError =
+        String(
+          error?.message ||
+          error
+        );
+    }
   }
 
   async alarm() {
@@ -2808,20 +2863,13 @@ export class AbsorptionStorageV5 {
 
       this.loadRecentBlocks();
 
-      /*
-       * فقط ساعت‌های بسته‌شده ذخیره می‌شوند.
-       */
       this.persistClosedBlocks();
 
       /*
-       * اگر به سقف رسیدیم،
-       * قدیمی‌ترین ساعت‌های بسته‌شده حذف می‌شوند.
+       * persistClosedBlocks در صورت Write،
+       * Capacity را خودش بررسی می‌کند.
        */
-      this.enforceCapacity();
 
-      /*
-       * هر ساعت Symbolها یک بار refresh می‌شوند.
-       */
       try {
         await this.refreshSymbols();
       } catch (error) {
@@ -2860,21 +2908,21 @@ export class AbsorptionStorageV5 {
 
   /* =======================================================
      START
-  ======================================================= */
+======================================================= */
 
   async start() {
     this.started =
       true;
 
     /*
-     * فقط ساختار جدول.
-     * هیچ داده‌ای پاک نمی‌شود.
+     * فقط بررسی وجود جدول.
+     * هیچ CREATE/DELETE/INSERT/UPDATE.
      */
     this.initDB();
 
     /*
-     * اطلاعات قبلی V5 در صورت وجود
-     * برای تاریخچه دوباره در RAM بارگذاری می‌شوند.
+     * اگر جدول وجود داشته باشد، اطلاعات قبلی
+     * V5 بارگذاری می‌شوند.
      */
     this.loadRecentBlocks();
 
@@ -2895,10 +2943,14 @@ export class AbsorptionStorageV5 {
     }
 
     /*
-     * اگر قبلاً بیش از ظرفیت بوده،
-     * فقط داده‌های بسته و قدیمی حذف می‌شوند.
+     * فقط در صورت وجود جدول بررسی ظرفیت.
+     * اگر جدول هنوز ساخته نشده باشد هیچ Write انجام نمی‌شود.
      */
-    this.enforceCapacity();
+    if (
+      this.tableExists === true
+    ) {
+      this.enforceCapacity();
+    }
 
     this.scheduleAlarm();
 
@@ -2907,7 +2959,7 @@ export class AbsorptionStorageV5 {
 
   /* =======================================================
      STATUS
-  ======================================================= */
+======================================================= */
 
   statusObject() {
     let rows = 0;
@@ -2991,6 +3043,9 @@ export class AbsorptionStorageV5 {
       table:
         TABLE_NAME,
 
+      tableExists:
+        this.tableExists === true,
+
       storageModel:
         "1 row = 1 symbol + 1 hour",
 
@@ -3036,6 +3091,9 @@ export class AbsorptionStorageV5 {
       alarmIntervalMs:
         ALARM_MS,
 
+      writePolicy:
+        "no startup DB write; closed hour only",
+
       now:
         Date.now()
     };
@@ -3043,7 +3101,7 @@ export class AbsorptionStorageV5 {
 
   /* =======================================================
      HISTORY
-  ======================================================= */
+======================================================= */
 
   getHistory(
     symbol,
@@ -3072,44 +3130,48 @@ export class AbsorptionStorageV5 {
     const lastHour =
       hourStartOf(end);
 
-    const rows =
-      this.state.storage.sql
-        .exec(`
-          SELECT
-            symbol,
-            hour_start,
-            data,
-            updated_at
-          FROM hour_blocks_v5
-          WHERE symbol = ?
-          AND hour_start >= ?
-          AND hour_start <= ?
-          ORDER BY hour_start ASC
-        `,
-          symbol,
-          firstHour,
-          lastHour
-        )
-        .toArray();
-
     const blocks =
       new Map();
 
-    for (
-      const row
-      of rows
+    if (
+      this.tableExists === true
     ) {
-      try {
-        const block =
-          this.deserializeBlock(
-            row
-          );
+      const rows =
+        this.state.storage.sql
+          .exec(`
+            SELECT
+              symbol,
+              hour_start,
+              data,
+              updated_at
+            FROM hour_blocks_v5
+            WHERE symbol = ?
+            AND hour_start >= ?
+            AND hour_start <= ?
+            ORDER BY hour_start ASC
+          `,
+            symbol,
+            firstHour,
+            lastHour
+          )
+          .toArray();
 
-        blocks.set(
-          block.hourStart,
-          block
-        );
-      } catch (_) {}
+      for (
+        const row
+        of rows
+      ) {
+        try {
+          const block =
+            this.deserializeBlock(
+              row
+            );
+
+          blocks.set(
+            block.hourStart,
+            block
+          );
+        } catch (_) {}
+      }
     }
 
     for (
@@ -3240,7 +3302,7 @@ export class AbsorptionStorageV5 {
 
   /* =======================================================
      FOOTPRINT HISTORY
-  ======================================================= */
+======================================================= */
 
   getFootprint(
     symbol,
@@ -3271,7 +3333,10 @@ export class AbsorptionStorageV5 {
         key
       );
 
-    if (!block) {
+    if (
+      !block &&
+      this.tableExists === true
+    ) {
       const rows =
         this.state.storage.sql
           .exec(`
@@ -3290,30 +3355,32 @@ export class AbsorptionStorageV5 {
           )
           .toArray();
 
-      if (!rows.length) {
-        return {
-          version:
-            VERSION,
-
-          symbol,
-
-          minute:
-            target,
-
-          found:
-            false,
-
-          candle:
-            null,
-
-          levels: []
-        };
+      if (rows.length) {
+        block =
+          this.deserializeBlock(
+            rows[0]
+          );
       }
+    }
 
-      block =
-        this.deserializeBlock(
-          rows[0]
-        );
+    if (!block) {
+      return {
+        version:
+          VERSION,
+
+        symbol,
+
+        minute:
+          target,
+
+        found:
+          false,
+
+        candle:
+          null,
+
+        levels: []
+      };
     }
 
     const candle =
@@ -3456,7 +3523,7 @@ export class AbsorptionStorageV5 {
 
   /* =======================================================
      INTERNAL FETCH
-  ======================================================= */
+======================================================= */
 
   async fetch(request) {
     const url =
@@ -3467,7 +3534,8 @@ export class AbsorptionStorageV5 {
 
     try {
       /*
-       * هیچ migration یا DELETE در initDB نیست.
+       * فقط بررسی وجود جدول.
+       * هیچ Write در این مرحله.
        */
       this.initDB();
 
@@ -3914,7 +3982,7 @@ export default {
             "preserved / new writes disabled",
 
           writePolicy:
-            "closed hour only"
+            "no startup DB write; closed hour only"
         });
       }
 
