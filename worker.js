@@ -1,4 +1,4 @@
-const VERSION = "ABSORPTION-ZONE-V5-HOUR-BLOCK-20K-LOWWRITE-BYBIT-FUTURES-DEBUG-V2";
+const VERSION = "ABSORPTION-ZONE-V5-HOUR-BLOCK-20K-LOWWRITE-BYBIT-FUTURES-VOLUME-TEST-V3";
 
 const BYBIT = "https://api.bybit.com";
 const BYBIT_WS = "wss://stream.bybit.com/v5/public/linear";
@@ -12,6 +12,7 @@ const ORDERBOOK_LIMIT = 50;
 const SYMBOL_LIMIT = 1000;
 
 const HOUR_MS = 60 * 60 * 1000;
+const MINUTE_MS = 60 * 1000;
 const ALARM_MS = 60 * 60 * 1000;
 
 const MAX_ROWS = 20000;
@@ -90,7 +91,7 @@ function hourStartOf(time) {
 
 function minuteStartOf(time) {
   const t = Number(time) || Date.now();
-  return Math.floor(t / 60000) * 60000;
+  return Math.floor(t / MINUTE_MS) * MINUTE_MS;
 }
 
 function safeNumber(v, fallback = 0) {
@@ -123,6 +124,124 @@ function percentile(values, p) {
     (a[upper] - a[lower]) *
       (index - lower)
   );
+}
+
+/* =========================================================
+   BYTE / COMPRESSION HELPERS
+========================================================= */
+
+function utf8ByteLength(value) {
+  const text =
+    typeof value === "string"
+      ? value
+      : JSON.stringify(value);
+
+  return new TextEncoder().encode(text).byteLength;
+}
+
+function bytesToKB(bytes) {
+  return Number(
+    (Number(bytes || 0) / 1024).toFixed(3)
+  );
+}
+
+function bytesToMB(bytes) {
+  return Number(
+    (Number(bytes || 0) / 1024 / 1024).toFixed(6)
+  );
+}
+
+function bytesToGB(bytes) {
+  return Number(
+    (
+      Number(bytes || 0) /
+      1024 /
+      1024 /
+      1024
+    ).toFixed(6)
+  );
+}
+
+async function gzipByteLength(value) {
+  const text =
+    typeof value === "string"
+      ? value
+      : JSON.stringify(value);
+
+  const input =
+    new TextEncoder().encode(text);
+
+  if (
+    typeof CompressionStream !==
+    "function"
+  ) {
+    return null;
+  }
+
+  const stream =
+    new Blob([input])
+      .stream()
+      .pipeThrough(
+        new CompressionStream("gzip")
+      );
+
+  const buffer =
+    await new Response(
+      stream
+    ).arrayBuffer();
+
+  return buffer.byteLength;
+}
+
+function compressionInfo(
+  rawBytes,
+  gzipBytes
+) {
+  if (
+    !Number.isFinite(gzipBytes) ||
+    gzipBytes <= 0 ||
+    rawBytes <= 0
+  ) {
+    return {
+      available: false,
+      rawBytes,
+      compressedBytes: null,
+      savedBytes: null,
+      savedPercent: null,
+      ratio: null
+    };
+  }
+
+  const saved =
+    rawBytes - gzipBytes;
+
+  const savedPercent =
+    (saved / rawBytes) * 100;
+
+  const ratio =
+    rawBytes / gzipBytes;
+
+  return {
+    available: true,
+
+    rawBytes,
+
+    compressedBytes:
+      gzipBytes,
+
+    savedBytes:
+      saved,
+
+    savedPercent:
+      Number(
+        savedPercent.toFixed(2)
+      ),
+
+    ratio:
+      Number(
+        ratio.toFixed(3)
+      )
+  };
 }
 
 /* =========================================================
@@ -1034,8 +1153,6 @@ function detectAbsorption(
 
 /* =========================================================
    BYBIT FUTURES SYMBOLS
-   FIXED:
-   LinearPerpetual -> LINEARPERPETUAL
 ========================================================= */
 
 function isPerpetual(row) {
@@ -1195,6 +1312,573 @@ async function getBybitSymbols() {
         b.symbol
       )
   );
+}
+
+/* =========================================================
+   VOLUME TEST
+   NO DATABASE WRITE
+========================================================= */
+
+async function testVolume(
+  symbol
+) {
+  const startedAt =
+    Date.now();
+
+  symbol =
+    normalizeSymbol(symbol);
+
+  const result =
+    await bybit(
+      "/v5/market/recent-trade",
+      {
+        category:
+          "linear",
+
+        symbol,
+
+        limit:
+          TRADE_LIMIT
+      }
+    );
+
+  const trades =
+    parseTrades(
+      result?.list
+    );
+
+  if (!trades.length) {
+    return {
+      ok: false,
+
+      test:
+        "VOLUME_TEST",
+
+      symbol,
+
+      error:
+        "No valid trades received from Bybit",
+
+      version:
+        VERSION
+    };
+  }
+
+  /*
+   * Original normalized trade objects.
+   */
+  const rawTradePayload =
+    JSON.stringify(
+      trades
+    );
+
+  const rawTradeBytes =
+    utf8ByteLength(
+      rawTradePayload
+    );
+
+  const gzipTradeBytes =
+    await gzipByteLength(
+      rawTradePayload
+    );
+
+  /*
+   * Group trades by minute.
+   */
+  const minuteMap =
+    new Map();
+
+  for (const trade of trades) {
+    const minute =
+      minuteStartOf(
+        trade.time
+      );
+
+    if (
+      !minuteMap.has(minute)
+    ) {
+      minuteMap.set(
+        minute,
+        []
+      );
+    }
+
+    minuteMap
+      .get(minute)
+      .push(trade);
+  }
+
+  const minuteTests = [];
+
+  for (
+    const [
+      minute,
+      minuteTrades
+    ]
+    of minuteMap
+  ) {
+    const payload =
+      JSON.stringify(
+        minuteTrades
+      );
+
+    const rawBytes =
+      utf8ByteLength(
+        payload
+      );
+
+    const gzipBytes =
+      await gzipByteLength(
+        payload
+      );
+
+    minuteTests.push({
+      minute,
+
+      iso:
+        new Date(
+          minute
+        ).toISOString(),
+
+      trades:
+        minuteTrades.length,
+
+      rawBytes,
+
+      rawKB:
+        bytesToKB(
+          rawBytes
+        ),
+
+      rawMB:
+        bytesToMB(
+          rawBytes
+        ),
+
+      gzipBytes,
+
+      gzipKB:
+        gzipBytes === null
+          ? null
+          : bytesToKB(
+              gzipBytes
+            ),
+
+      gzipMB:
+        gzipBytes === null
+          ? null
+          : bytesToMB(
+              gzipBytes
+            ),
+
+      compression:
+        compressionInfo(
+          rawBytes,
+          gzipBytes
+        )
+    });
+  }
+
+  minuteTests.sort(
+    (a, b) =>
+      a.minute -
+      b.minute
+  );
+
+  const coveredMinutes =
+    minuteTests.length;
+
+  const totalTrades =
+    trades.length;
+
+  const firstTradeTime =
+    Math.min(
+      ...trades.map(
+        t => t.time
+      )
+    );
+
+  const lastTradeTime =
+    Math.max(
+      ...trades.map(
+        t => t.time
+      )
+    );
+
+  const elapsedDataMinutes =
+    Math.max(
+      1,
+      Math.ceil(
+        (
+          lastTradeTime -
+          firstTradeTime
+        ) /
+          MINUTE_MS
+      ) + 1
+    );
+
+  /*
+   * Actual average based on received sample.
+   */
+  const averageRawPerMinute =
+    rawTradeBytes /
+    elapsedDataMinutes;
+
+  const averageGzipPerMinute =
+    gzipTradeBytes === null
+      ? null
+      : gzipTradeBytes /
+        elapsedDataMinutes;
+
+  /*
+   * Projection for one hour.
+   */
+  const estimatedHourRaw =
+    averageRawPerMinute *
+    60;
+
+  const estimatedHourGzip =
+    averageGzipPerMinute === null
+      ? null
+      : averageGzipPerMinute *
+        60;
+
+  /*
+   * Projection for 20,000 hour rows.
+   *
+   * This is only a size estimate.
+   * Actual rows differ by symbol/activity.
+   */
+  const estimated20KRaw =
+    estimatedHourRaw *
+    MAX_ROWS;
+
+  const estimated20KGzip =
+    estimatedHourGzip === null
+      ? null
+      : estimatedHourGzip *
+        MAX_ROWS;
+
+  /*
+   * Also calculate average size
+   * of one minute from grouped data.
+   */
+  let groupedRawTotal = 0;
+  let groupedGzipTotal = 0;
+  let groupedGzipAvailable = true;
+
+  let minRaw =
+    Number.POSITIVE_INFINITY;
+
+  let maxRaw = 0;
+
+  let minGzip =
+    Number.POSITIVE_INFINITY;
+
+  let maxGzip = 0;
+
+  for (const item of minuteTests) {
+    groupedRawTotal +=
+      item.rawBytes;
+
+    if (
+      Number.isFinite(
+        item.gzipBytes
+      )
+    ) {
+      groupedGzipTotal +=
+        item.gzipBytes;
+
+      minGzip =
+        Math.min(
+          minGzip,
+          item.gzipBytes
+        );
+
+      maxGzip =
+        Math.max(
+          maxGzip,
+          item.gzipBytes
+        );
+    } else {
+      groupedGzipAvailable =
+        false;
+    }
+
+    minRaw =
+      Math.min(
+        minRaw,
+        item.rawBytes
+      );
+
+    maxRaw =
+      Math.max(
+        maxRaw,
+        item.rawBytes
+      );
+  }
+
+  const averageGroupedRaw =
+    coveredMinutes > 0
+      ? groupedRawTotal /
+        coveredMinutes
+      : 0;
+
+  const averageGroupedGzip =
+    coveredMinutes > 0 &&
+    groupedGzipAvailable
+      ? groupedGzipTotal /
+        coveredMinutes
+      : null;
+
+  return {
+    ok: true,
+
+    test:
+      "VOLUME_TEST",
+
+    version:
+      VERSION,
+
+    symbol,
+
+    source:
+      "Bybit Linear Futures publicTrade",
+
+    databaseWrite:
+      false,
+
+    databaseModified:
+      false,
+
+    compression:
+      "GZIP lossless",
+
+    compressionAvailable:
+      gzipTradeBytes !== null,
+
+    sample: {
+      trades:
+        totalTrades,
+
+      firstTradeTime,
+
+      firstTradeISO:
+        new Date(
+          firstTradeTime
+        ).toISOString(),
+
+      lastTradeTime,
+
+      lastTradeISO:
+        new Date(
+          lastTradeTime
+        ).toISOString(),
+
+      elapsedDataMinutes,
+
+      coveredMinutes
+    },
+
+    rawSample: {
+      bytes:
+        rawTradeBytes,
+
+      KB:
+        bytesToKB(
+          rawTradeBytes
+        ),
+
+      MB:
+        bytesToMB(
+          rawTradeBytes
+        )
+    },
+
+    gzipSample:
+      compressionInfo(
+        rawTradeBytes,
+        gzipTradeBytes
+      ),
+
+    minute: {
+      averageRawBytes:
+        Math.round(
+          averageRawPerMinute
+        ),
+
+      averageRawKB:
+        bytesToKB(
+          averageRawPerMinute
+        ),
+
+      averageRawMB:
+        bytesToMB(
+          averageRawPerMinute
+        ),
+
+      averageGzipBytes:
+        averageGzipPerMinute === null
+          ? null
+          : Math.round(
+              averageGzipPerMinute
+            ),
+
+      averageGzipKB:
+        averageGzipPerMinute === null
+          ? null
+          : bytesToKB(
+              averageGzipPerMinute
+            ),
+
+      averageGzipMB:
+        averageGzipPerMinute === null
+          ? null
+          : bytesToMB(
+              averageGzipPerMinute
+            )
+    },
+
+    groupedMinuteStats: {
+      averageRawBytes:
+        Math.round(
+          averageGroupedRaw
+        ),
+
+      averageRawKB:
+        bytesToKB(
+          averageGroupedRaw
+        ),
+
+      averageGzipBytes:
+        averageGroupedGzip === null
+          ? null
+          : Math.round(
+              averageGroupedGzip
+            ),
+
+      averageGzipKB:
+        averageGroupedGzip === null
+          ? null
+          : bytesToKB(
+              averageGroupedGzip
+            ),
+
+      minimumRawBytes:
+        Number.isFinite(
+          minRaw
+        )
+          ? minRaw
+          : 0,
+
+      maximumRawBytes:
+        maxRaw,
+
+      minimumGzipBytes:
+        groupedGzipAvailable &&
+        Number.isFinite(
+          minGzip
+        )
+          ? minGzip
+          : null,
+
+      maximumGzipBytes:
+        groupedGzipAvailable
+          ? maxGzip
+          : null
+    },
+
+    estimatedHour: {
+      rawBytes:
+        Math.round(
+          estimatedHourRaw
+        ),
+
+      rawKB:
+        bytesToKB(
+          estimatedHourRaw
+        ),
+
+      rawMB:
+        bytesToMB(
+          estimatedHourRaw
+        ),
+
+      gzipBytes:
+        estimatedHourGzip === null
+          ? null
+          : Math.round(
+              estimatedHourGzip
+            ),
+
+      gzipKB:
+        estimatedHourGzip === null
+          ? null
+          : bytesToKB(
+              estimatedHourGzip
+            ),
+
+      gzipMB:
+        estimatedHourGzip === null
+          ? null
+          : bytesToMB(
+              estimatedHourGzip
+            )
+    },
+
+    estimatedStorage: {
+      model:
+        "1 symbol + 1 hour = 1 row",
+
+      maxRows:
+        MAX_ROWS,
+
+      rawBytes:
+        Math.round(
+          estimated20KRaw
+        ),
+
+      rawMB:
+        bytesToMB(
+          estimated20KRaw
+        ),
+
+      rawGB:
+        bytesToGB(
+          estimated20KRaw
+        ),
+
+      gzipBytes:
+        estimated20KGzip === null
+          ? null
+          : Math.round(
+              estimated20KGzip
+            ),
+
+      gzipMB:
+        estimated20KGzip === null
+          ? null
+          : bytesToMB(
+              estimated20KGzip
+            ),
+
+      gzipGB:
+        estimated20KGzip === null
+          ? null
+          : bytesToGB(
+              estimated20KGzip
+            )
+    },
+
+    minuteTests,
+
+    elapsedMs:
+      Date.now() -
+      startedAt,
+
+    note:
+      "This endpoint only measures data size. It never writes to Durable Object SQLite."
+  };
 }
 
 /* =========================================================
@@ -1402,8 +2086,6 @@ function collectorStub(env) {
 
 /* =========================================================
    LEGACY TRADE COLLECTOR
-   PRESERVED
-   NO NEW WRITES
 ========================================================= */
 
 export class TradeCollector {
@@ -1574,7 +2256,7 @@ export class AbsorptionStorageV5 {
 
   /* =======================================================
      CREATE STORAGE ONLY ON REAL CHECKPOINT
-  ======================================================= */
+======================================================= */
 
   ensureDBForWrite() {
     if (
@@ -1607,7 +2289,7 @@ export class AbsorptionStorageV5 {
 
   /* =======================================================
      ROW COUNT
-  ======================================================= */
+======================================================= */
 
   getRowCount() {
     this.initDB();
@@ -1645,7 +2327,7 @@ export class AbsorptionStorageV5 {
 
   /* =======================================================
      CAPACITY
-  ======================================================= */
+======================================================= */
 
   enforceCapacity() {
     this.initDB();
@@ -1792,7 +2474,7 @@ export class AbsorptionStorageV5 {
 
   /* =======================================================
      LOAD RECENT BLOCKS
-  ======================================================= */
+======================================================= */
 
   loadRecentBlocks() {
     if (
@@ -1869,7 +2551,7 @@ export class AbsorptionStorageV5 {
 
   /* =======================================================
      BLOCKS
-  ======================================================= */
+======================================================= */
 
   createBlock(
     symbol,
@@ -1954,7 +2636,7 @@ export class AbsorptionStorageV5 {
 
   /* =======================================================
      TRADE AGGREGATION
-  ======================================================= */
+======================================================= */
 
   aggregateTrade(
     trade
@@ -2138,7 +2820,7 @@ export class AbsorptionStorageV5 {
 
   /* =======================================================
      SERIALIZE
-  ======================================================= */
+======================================================= */
 
   serializeBlock(
     block
@@ -2217,7 +2899,7 @@ export class AbsorptionStorageV5 {
 
   /* =======================================================
      DESERIALIZE
-  ======================================================= */
+======================================================= */
 
   deserializeBlock(
     row
@@ -2397,7 +3079,7 @@ export class AbsorptionStorageV5 {
 
   /* =======================================================
      CLOSED HOUR CHECKPOINT
-  ======================================================= */
+======================================================= */
 
   persistClosedBlocks() {
     if (
@@ -2558,7 +3240,7 @@ export class AbsorptionStorageV5 {
 
   /* =======================================================
      DEDUPE
-  ======================================================= */
+======================================================= */
 
   isDuplicate(
     trade
@@ -2632,7 +3314,7 @@ export class AbsorptionStorageV5 {
 
   /* =======================================================
      WS TRADE PARSER
-  ======================================================= */
+======================================================= */
 
   parseWsTrade(row) {
     const price =
@@ -2679,7 +3361,7 @@ export class AbsorptionStorageV5 {
 
   /* =======================================================
      WS MESSAGE
-  ======================================================= */
+======================================================= */
 
   handleMessage(
     raw
@@ -2817,7 +3499,7 @@ export class AbsorptionStorageV5 {
 
   /* =======================================================
      SUBSCRIBE
-  ======================================================= */
+======================================================= */
 
   async subscribeAll() {
     if (
@@ -2915,7 +3597,7 @@ export class AbsorptionStorageV5 {
 
   /* =======================================================
      PING
-  ======================================================= */
+======================================================= */
 
   startPing() {
     this.stopPing();
@@ -2957,7 +3639,7 @@ export class AbsorptionStorageV5 {
 
   /* =======================================================
      CONNECT
-  ======================================================= */
+======================================================= */
 
   async connect() {
     if (!this.started) {
@@ -3093,7 +3775,7 @@ export class AbsorptionStorageV5 {
 
   /* =======================================================
      RECONNECT
-  ======================================================= */
+======================================================= */
 
   scheduleReconnect() {
     if (!this.started) {
@@ -3135,7 +3817,7 @@ export class AbsorptionStorageV5 {
 
   /* =======================================================
      REFRESH SYMBOLS
-  ======================================================= */
+======================================================= */
 
   async refreshSymbols() {
     const list =
@@ -3178,7 +3860,7 @@ export class AbsorptionStorageV5 {
 
   /* =======================================================
      ALARM
-  ======================================================= */
+======================================================= */
 
   scheduleAlarm() {
     if (
@@ -3255,7 +3937,7 @@ export class AbsorptionStorageV5 {
 
   /* =======================================================
      START
-  ======================================================= */
+======================================================= */
 
   async start() {
     this.started =
@@ -3294,7 +3976,7 @@ export class AbsorptionStorageV5 {
 
   /* =======================================================
      STATUS
-  ======================================================= */
+======================================================= */
 
   statusObject() {
     let rows = 0;
@@ -3436,7 +4118,7 @@ export class AbsorptionStorageV5 {
 
   /* =======================================================
      HISTORY
-  ======================================================= */
+======================================================= */
 
   getHistory(
     symbol,
@@ -3638,7 +4320,7 @@ export class AbsorptionStorageV5 {
 
   /* =======================================================
      FOOTPRINT HISTORY
-  ======================================================= */
+======================================================= */
 
   getFootprint(
     symbol,
@@ -3862,7 +4544,7 @@ export class AbsorptionStorageV5 {
 
   /* =======================================================
      INTERNAL FETCH
-  ======================================================= */
+======================================================= */
 
   async fetch(request) {
     const url =
@@ -4337,7 +5019,13 @@ export default {
             "disabled",
 
           writePolicy:
-            "no startup DB write; closed hour only"
+            "no startup DB write; closed hour only",
+
+          volumeTest:
+            "/api/test/volume?symbol=BTCUSDT",
+
+          compression:
+            "GZIP lossless"
         });
       }
 
@@ -4351,6 +5039,29 @@ export default {
       ) {
         return json(
           await debugBybit()
+        );
+      }
+
+      /* ===================================================
+         VOLUME TEST
+      =================================================== */
+
+      if (
+        url.pathname ===
+        "/api/test/volume"
+      ) {
+        const symbol =
+          normalizeSymbol(
+            url.searchParams.get(
+              "symbol"
+            ) ||
+            DEFAULT_SYMBOL
+          );
+
+        return json(
+          await testVolume(
+            symbol
+          )
         );
       }
 
@@ -4369,7 +5080,10 @@ export default {
             VERSION,
 
           time:
-            Date.now()
+            Date.now(),
+
+          volumeTest:
+            "/api/test/volume?symbol=BTCUSDT"
         });
       }
 
