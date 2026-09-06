@@ -1201,6 +1201,13 @@ export class AbsorptionStorageV5 {
       false;
 
     this.lastCheckpointAt = 0;
+
+    this.totalMessages = 0;
+    this.totalTrades = 0;
+    this.totalDuplicates = 0;
+    this.totalInvalidTrades = 0;
+    this.totalPersistedBlocks = 0;
+    this.totalDeletedRows = 0;
   }
 
   /* =======================================================
@@ -1339,6 +1346,9 @@ export class AbsorptionStorageV5 {
       )
     `);
 
+    this.totalDeletedRows +=
+      deleteCount;
+
     const currentHour =
       hourStartOf(
         Date.now()
@@ -1415,7 +1425,13 @@ export class AbsorptionStorageV5 {
           `${block.symbol}:${block.hourStart}`,
           block
         );
-      } catch (_) {}
+      } catch (error) {
+        this.lastError =
+          String(
+            error?.message ||
+            error
+          );
+      }
     }
 
     this.loadedRecentBlocks =
@@ -1938,13 +1954,16 @@ export class AbsorptionStorageV5 {
 
   /* =======================================================
      CLOSED-HOUR CHECKPOINT
-  ======================================================= */
+======================================================= */
 
   persistClosedBlocks() {
     if (
       this.checkpointRunning
     ) {
-      return;
+      return {
+        written: 0,
+        rows: this.getRowCount()
+      };
     }
 
     this.checkpointRunning =
@@ -2014,6 +2033,7 @@ export class AbsorptionStorageV5 {
         block.dirty = false;
 
         written++;
+        this.totalPersistedBlocks++;
       }
 
       this.lastCheckpointAt =
@@ -2071,6 +2091,7 @@ export class AbsorptionStorageV5 {
     if (
       this.dedupe.has(id)
     ) {
+      this.totalDuplicates++;
       return true;
     }
 
@@ -2176,6 +2197,8 @@ export class AbsorptionStorageV5 {
     this.lastMessageAt =
       Date.now();
 
+    this.totalMessages++;
+
     let message;
 
     try {
@@ -2240,8 +2263,12 @@ export class AbsorptionStorageV5 {
         !trade.symbol ||
         !trade.time ||
         trade.price <= 0 ||
-        trade.size <= 0
+        trade.size <= 0 ||
+        !["BUY", "SELL"].includes(
+          trade.side
+        )
       ) {
+        this.totalInvalidTrades++;
         continue;
       }
 
@@ -2277,6 +2304,8 @@ export class AbsorptionStorageV5 {
 
       this.lastTradeAt =
         Date.now();
+
+      this.totalTrades++;
     }
 
     if (crossedHour) {
@@ -2744,12 +2773,22 @@ export class AbsorptionStorageV5 {
   statusObject() {
     let rows = 0;
 
+    let dbError = "";
+
     try {
       rows =
         this.getRowCount();
-    } catch (_) {}
+    } catch (error) {
+      dbError =
+        String(
+          error?.message ||
+          error
+        );
+    }
 
     return {
+      ok: true,
+
       version: VERSION,
 
       collector:
@@ -2781,6 +2820,28 @@ export class AbsorptionStorageV5 {
 
       lastError:
         this.lastError,
+
+      dbError,
+
+      counters: {
+        totalMessages:
+          this.totalMessages,
+
+        totalTrades:
+          this.totalTrades,
+
+        totalDuplicates:
+          this.totalDuplicates,
+
+        totalInvalidTrades:
+          this.totalInvalidTrades,
+
+        totalPersistedBlocks:
+          this.totalPersistedBlocks,
+
+        totalDeletedRows:
+          this.totalDeletedRows
+      },
 
       storage:
         "Durable Object SQLite",
@@ -2819,7 +2880,10 @@ export class AbsorptionStorageV5 {
         "Bybit",
 
       hourBlocksInMemory:
-        this.hourBlocks.size
+        this.hourBlocks.size,
+
+      now:
+        Date.now()
     };
   }
 
@@ -3241,8 +3305,6 @@ export class AbsorptionStorageV5 {
   ======================================================= */
 
   async fetch(request) {
-    this.initDB();
-
     const url =
       new URL(request.url);
 
@@ -3250,6 +3312,8 @@ export class AbsorptionStorageV5 {
       url.pathname;
 
     try {
+      this.initDB();
+
       if (
         request.method ===
         "OPTIONS"
@@ -3364,8 +3428,22 @@ export class AbsorptionStorageV5 {
       return json(
         {
           ok: false,
+
           error:
-            this.lastError
+            this.lastError,
+
+          errorName:
+            error?.name ||
+            "Error",
+
+          stack:
+            error?.stack ||
+            "",
+
+          version:
+            VERSION,
+
+          path
         },
         500
       );
@@ -3374,117 +3452,247 @@ export class AbsorptionStorageV5 {
 }
 
 /* =========================================================
-   PUBLIC WORKER
+   PUBLIC COLLECTOR FUNCTIONS
 ========================================================= */
 
 async function startCollector(
   env
 ) {
-  const stub =
-    collectorStub(env);
+  try {
+    const stub =
+      collectorStub(env);
 
-  return stub.fetch(
-    "https://collector/internal/start"
-  );
+    return stub.fetch(
+      "https://collector/internal/start"
+    );
+  } catch (error) {
+    return json(
+      {
+        ok: false,
+
+        error:
+          String(
+            error?.message ||
+            error
+          ),
+
+        errorName:
+          error?.name ||
+          "Error",
+
+        stack:
+          error?.stack ||
+          "",
+
+        version:
+          VERSION
+      },
+      500
+    );
+  }
 }
 
 async function collectorStatus(
   env
 ) {
-  const stub =
-    collectorStub(env);
+  try {
+    const stub =
+      collectorStub(env);
 
-  return stub.fetch(
-    "https://collector/internal/status"
-  );
+    return stub.fetch(
+      "https://collector/internal/status"
+    );
+  } catch (error) {
+    return json(
+      {
+        ok: false,
+
+        error:
+          String(
+            error?.message ||
+            error
+          ),
+
+        errorName:
+          error?.name ||
+          "Error",
+
+        stack:
+          error?.stack ||
+          "",
+
+        version:
+          VERSION
+      },
+      500
+    );
+  }
 }
 
 async function collectorRefresh(
   env
 ) {
-  const stub =
-    collectorStub(env);
+  try {
+    const stub =
+      collectorStub(env);
 
-  return stub.fetch(
-    "https://collector/internal/refresh"
-  );
+    return stub.fetch(
+      "https://collector/internal/refresh"
+    );
+  } catch (error) {
+    return json(
+      {
+        ok: false,
+
+        error:
+          String(
+            error?.message ||
+            error
+          ),
+
+        errorName:
+          error?.name ||
+          "Error",
+
+        stack:
+          error?.stack ||
+          "",
+
+        version:
+          VERSION
+      },
+      500
+    );
+  }
 }
 
 async function collectorHistory(
   env,
   url
 ) {
-  const stub =
-    collectorStub(env);
+  try {
+    const stub =
+      collectorStub(env);
 
-  const target =
-    new URL(
-      "https://collector/internal/history"
-    );
-
-  for (
-    const key of [
-      "symbol",
-      "from",
-      "to"
-    ]
-  ) {
-    const value =
-      url.searchParams.get(
-        key
+    const target =
+      new URL(
+        "https://collector/internal/history"
       );
 
-    if (
-      value !== null
+    for (
+      const key of [
+        "symbol",
+        "from",
+        "to"
+      ]
     ) {
-      target.searchParams.set(
-        key,
-        value
-      );
-    }
-  }
+      const value =
+        url.searchParams.get(
+          key
+        );
 
-  return stub.fetch(
-    target.toString()
-  );
+      if (
+        value !== null
+      ) {
+        target.searchParams.set(
+          key,
+          value
+        );
+      }
+    }
+
+    return stub.fetch(
+      target.toString()
+    );
+  } catch (error) {
+    return json(
+      {
+        ok: false,
+
+        error:
+          String(
+            error?.message ||
+            error
+          ),
+
+        errorName:
+          error?.name ||
+          "Error",
+
+        stack:
+          error?.stack ||
+          "",
+
+        version:
+          VERSION
+      },
+      500
+    );
+  }
 }
 
 async function collectorFootprint(
   env,
   url
 ) {
-  const stub =
-    collectorStub(env);
+  try {
+    const stub =
+      collectorStub(env);
 
-  const target =
-    new URL(
-      "https://collector/internal/history/footprint"
-    );
-
-  for (
-    const key of [
-      "symbol",
-      "minute"
-    ]
-  ) {
-    const value =
-      url.searchParams.get(
-        key
+    const target =
+      new URL(
+        "https://collector/internal/history/footprint"
       );
 
-    if (
-      value !== null
+    for (
+      const key of [
+        "symbol",
+        "minute"
+      ]
     ) {
-      target.searchParams.set(
-        key,
-        value
-      );
-    }
-  }
+      const value =
+        url.searchParams.get(
+          key
+        );
 
-  return stub.fetch(
-    target.toString()
-  );
+      if (
+        value !== null
+      ) {
+        target.searchParams.set(
+          key,
+          value
+        );
+      }
+    }
+
+    return stub.fetch(
+      target.toString()
+    );
+  } catch (error) {
+    return json(
+      {
+        ok: false,
+
+        error:
+          String(
+            error?.message ||
+            error
+          ),
+
+        errorName:
+          error?.name ||
+          "Error",
+
+        stack:
+          error?.stack ||
+          "",
+
+        version:
+          VERSION
+      },
+      500
+    );
+  }
 }
 
 /* =========================================================
@@ -3799,8 +4007,19 @@ export default {
               error
             ),
 
+          errorName:
+            error?.name ||
+            "Error",
+
+          stack:
+            error?.stack ||
+            "",
+
           version:
-            VERSION
+            VERSION,
+
+          path:
+            url.pathname
         },
         500
       );
