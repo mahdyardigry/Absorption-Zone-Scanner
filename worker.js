@@ -76,9 +76,13 @@ function normalizeInterval(value) {
     "M"
   ];
 
-  const v = String(value || DEFAULT_INTERVAL).toUpperCase();
+  const v = String(
+    value || DEFAULT_INTERVAL
+  ).toUpperCase();
 
-  return allowed.includes(v) ? v : DEFAULT_INTERVAL;
+  return allowed.includes(v)
+    ? v
+    : DEFAULT_INTERVAL;
 }
 
 function hourStartOf(time) {
@@ -99,16 +103,28 @@ function safeNumber(v, fallback = 0) {
 function percentile(values, p) {
   if (!values.length) return 0;
 
-  const a = [...values].sort((x, y) => x - y);
+  const a = [...values].sort(
+    (x, y) => x - y
+  );
 
-  const index = (a.length - 1) * p;
-  const lower = Math.floor(index);
-  const upper = Math.ceil(index);
+  const index =
+    (a.length - 1) * p;
 
-  if (lower === upper) return a[lower];
+  const lower =
+    Math.floor(index);
 
-  return a[lower] +
-    (a[upper] - a[lower]) * (index - lower);
+  const upper =
+    Math.ceil(index);
+
+  if (lower === upper) {
+    return a[lower];
+  }
+
+  return (
+    a[lower] +
+    (a[upper] - a[lower]) *
+      (index - lower)
+  );
 }
 
 
@@ -117,24 +133,35 @@ function percentile(values, p) {
 ========================================================= */
 
 async function bybit(path, params = {}) {
-  const url = new URL(BYBIT + path);
+  const url = new URL(
+    BYBIT + path
+  );
 
-  for (const [key, value] of Object.entries(params)) {
+  for (
+    const [key, value]
+    of Object.entries(params)
+  ) {
     if (
       value !== undefined &&
       value !== null &&
       value !== ""
     ) {
-      url.searchParams.set(key, String(value));
+      url.searchParams.set(
+        key,
+        String(value)
+      );
     }
   }
 
-  const response = await fetch(url.toString(), {
-    method: "GET",
-    headers: {
-      "Accept": "application/json"
+  const response = await fetch(
+    url.toString(),
+    {
+      method: "GET",
+      headers: {
+        "Accept": "application/json"
+      }
     }
-  });
+  );
 
   if (!response.ok) {
     throw new Error(
@@ -142,11 +169,13 @@ async function bybit(path, params = {}) {
     );
   }
 
-  const data = await response.json();
+  const data =
+    await response.json();
 
   if (Number(data.retCode) !== 0) {
     throw new Error(
-      data.retMsg || "Bybit API error"
+      data.retMsg ||
+      "Bybit API error"
     );
   }
 
@@ -159,7 +188,9 @@ async function bybit(path, params = {}) {
 ========================================================= */
 
 function parseKlines(rows) {
-  if (!Array.isArray(rows)) return [];
+  if (!Array.isArray(rows)) {
+    return [];
+  }
 
   return rows
     .map(row => ({
@@ -184,12 +215,17 @@ function parseKlines(rows) {
 ========================================================= */
 
 function parseTrades(rows) {
-  if (!Array.isArray(rows)) return [];
+  if (!Array.isArray(rows)) {
+    return [];
+  }
 
   return rows
     .map((row, index) => {
-      const price = safeNumber(row.price);
-      const size = safeNumber(row.size);
+      const price =
+        safeNumber(row.price);
+
+      const size =
+        safeNumber(row.size);
 
       return {
         id: String(
@@ -198,11 +234,21 @@ function parseTrades(rows) {
           row.id ||
           `${row.time || Date.now()}-${index}-${price}-${size}`
         ),
-        time: safeNumber(row.time),
+
+        time:
+          safeNumber(row.time),
+
         price,
+
         size,
-        value: price * size,
-        side: String(row.side || "").toUpperCase()
+
+        value:
+          price * size,
+
+        side:
+          String(
+            row.side || ""
+          ).toUpperCase()
       };
     })
     .filter(x =>
@@ -230,14 +276,18 @@ function tradeStats(trades) {
   const values = [];
 
   for (const t of trades) {
-    const value = safeNumber(t.value);
+    const value =
+      safeNumber(t.value);
+
     values.push(value);
 
     if (t.side === "BUY") {
       buyVolume += t.size;
       buyValue += value;
       buyTrades++;
-    } else if (t.side === "SELL") {
+    } else if (
+      t.side === "SELL"
+    ) {
       sellVolume += t.size;
       sellValue += value;
       sellTrades++;
@@ -263,12 +313,17 @@ function tradeStats(trades) {
 
   const averageNotional =
     values.length
-      ? values.reduce((a, b) => a + b, 0) /
-        values.length
+      ? values.reduce(
+          (a, b) => a + b,
+          0
+        ) / values.length
       : 0;
 
   const p95 =
-    percentile(values, 0.95);
+    percentile(
+      values,
+      0.95
+    );
 
   const largeThreshold =
     Math.max(
@@ -283,7 +338,12 @@ function tradeStats(trades) {
   let largeSellValue = 0;
 
   for (const t of trades) {
-    if (t.value < largeThreshold) continue;
+    if (
+      t.value <
+      largeThreshold
+    ) {
+      continue;
+    }
 
     if (t.side === "BUY") {
       largeBuyVolume += t.size;
@@ -300,7 +360,9 @@ function tradeStats(trades) {
 
   if (deltaPercent >= 10) {
     pressure = "BUY_PRESSURE";
-  } else if (deltaPercent <= -10) {
+  } else if (
+    deltaPercent <= -10
+  ) {
     pressure = "SELL_PRESSURE";
   }
 
@@ -342,23 +404,34 @@ function tradeStats(trades) {
 function decimalsFromTick(tick) {
   const s = String(tick);
 
-  if (!s.includes(".")) return 0;
+  if (!s.includes(".")) {
+    return 0;
+  }
 
-  return s.split(".")[1]
+  return s
+    .split(".")[1]
     .replace(/0+$/, "")
     .length;
 }
 
-function roundToTick(price, tickSize) {
-  const tick = Number(tickSize);
+function roundToTick(
+  price,
+  tickSize
+) {
+  const tick =
+    Number(tickSize);
 
-  if (!Number.isFinite(tick) || tick <= 0) {
+  if (
+    !Number.isFinite(tick) ||
+    tick <= 0
+  ) {
     return Number(price);
   }
 
-  const n = Math.round(
-    Number(price) / tick
-  ) * tick;
+  const n =
+    Math.round(
+      Number(price) / tick
+    ) * tick;
 
   const decimals =
     decimalsFromTick(tick);
@@ -368,42 +441,65 @@ function roundToTick(price, tickSize) {
   );
 }
 
-function aggregateFootprint(trades, tickSize) {
+function aggregateFootprint(
+  trades,
+  tickSize
+) {
   const levels = new Map();
 
   for (const t of trades) {
-    const price = roundToTick(
-      t.price,
-      tickSize
-    );
+    const price =
+      roundToTick(
+        t.price,
+        tickSize
+      );
 
     if (!levels.has(price)) {
       levels.set(price, {
         price,
+
         buyVolume: 0,
         sellVolume: 0,
+
         buyValue: 0,
         sellValue: 0,
+
         buyTrades: 0,
         sellTrades: 0
       });
     }
 
-    const level = levels.get(price);
+    const level =
+      levels.get(price);
 
     if (t.side === "BUY") {
-      level.buyVolume += t.size;
-      level.buyValue += t.value;
+      level.buyVolume +=
+        t.size;
+
+      level.buyValue +=
+        t.value;
+
       level.buyTrades++;
-    } else if (t.side === "SELL") {
-      level.sellVolume += t.size;
-      level.sellValue += t.value;
+    } else if (
+      t.side === "SELL"
+    ) {
+      level.sellVolume +=
+        t.size;
+
+      level.sellValue +=
+        t.value;
+
       level.sellTrades++;
     }
   }
 
-  return [...levels.values()]
-    .sort((a, b) => a.price - b.price)
+  return [
+    ...levels.values()
+  ]
+    .sort(
+      (a, b) =>
+        a.price - b.price
+    )
     .map(level => ({
       ...level,
 
@@ -435,13 +531,15 @@ function aggregateFootprint(trades, tickSize) {
 ========================================================= */
 
 function orderbookStats(data) {
-  const bids = Array.isArray(data?.b)
-    ? data.b
-    : [];
+  const bids =
+    Array.isArray(data?.b)
+      ? data.b
+      : [];
 
-  const asks = Array.isArray(data?.a)
-    ? data.a
-    : [];
+  const asks =
+    Array.isArray(data?.a)
+      ? data.a
+      : [];
 
   let buyLiquidity = 0;
   let sellLiquidity = 0;
@@ -450,19 +548,27 @@ function orderbookStats(data) {
   let sellValue = 0;
 
   for (const row of bids) {
-    const price = safeNumber(row[0]);
-    const size = safeNumber(row[1]);
+    const price =
+      safeNumber(row[0]);
+
+    const size =
+      safeNumber(row[1]);
 
     buyLiquidity += size;
-    buyValue += price * size;
+    buyValue +=
+      price * size;
   }
 
   for (const row of asks) {
-    const price = safeNumber(row[0]);
-    const size = safeNumber(row[1]);
+    const price =
+      safeNumber(row[0]);
+
+    const size =
+      safeNumber(row[1]);
 
     sellLiquidity += size;
-    sellValue += price * size;
+    sellValue +=
+      price * size;
   }
 
   const totalLiquidity =
@@ -485,9 +591,15 @@ function orderbookStats(data) {
 
   let pressure = "NEUTRAL";
 
-  if (buyShare > sellShare + 8) {
+  if (
+    buyShare >
+    sellShare + 8
+  ) {
     pressure = "BUY_PRESSURE";
-  } else if (sellShare > buyShare + 8) {
+  } else if (
+    sellShare >
+    buyShare + 8
+  ) {
     pressure = "SELL_PRESSURE";
   }
 
@@ -504,19 +616,27 @@ function orderbookStats(data) {
 
     bestBid:
       bids.length
-        ? safeNumber(bids[0][0])
+        ? safeNumber(
+            bids[0][0]
+          )
         : 0,
 
     bestAsk:
       asks.length
-        ? safeNumber(asks[0][0])
+        ? safeNumber(
+            asks[0][0]
+          )
         : 0,
 
     spread:
       bids.length &&
       asks.length
-        ? safeNumber(asks[0][0]) -
-          safeNumber(bids[0][0])
+        ? safeNumber(
+            asks[0][0]
+          ) -
+          safeNumber(
+            bids[0][0]
+          )
         : 0,
 
     pressure,
@@ -545,7 +665,9 @@ function detectAbsorption(
   }
 
   const candle =
-    candles[candles.length - 1];
+    candles[
+      candles.length - 1
+    ];
 
   const stats =
     tradeStats(trades);
@@ -580,7 +702,8 @@ function detectAbsorption(
 
     if (nearLow <= 0.25) {
       score += 35;
-      type = "BUY_ABSORPTION";
+      type =
+        "BUY_ABSORPTION";
     }
   }
 
@@ -596,11 +719,14 @@ function detectAbsorption(
 
     if (nearHigh <= 0.25) {
       score += 35;
-      type = "SELL_ABSORPTION";
+      type =
+        "SELL_ABSORPTION";
     }
   }
 
-  if (bodyRatio < 0.35) {
+  if (
+    bodyRatio < 0.35
+  ) {
     score += 20;
   }
 
@@ -623,11 +749,17 @@ function detectAbsorption(
   }
 
   return {
-    detected: score >= 50,
+    detected:
+      score >= 50,
+
     type,
+
     score,
+
     bodyRatio,
-    pressure: stats.pressure
+
+    pressure:
+      stats.pressure
   };
 }
 
@@ -676,7 +808,11 @@ async function getBybitSymbols() {
   let cursor = "";
   const output = [];
 
-  for (let page = 0; page < 20; page++) {
+  for (
+    let page = 0;
+    page < 20;
+    page++
+  ) {
     const result =
       await bybit(
         "/v5/market/instruments-info",
@@ -689,35 +825,50 @@ async function getBybitSymbols() {
       );
 
     const list =
-      Array.isArray(result.list)
+      Array.isArray(
+        result.list
+      )
         ? result.list
         : [];
 
     for (const row of list) {
-      if (!isPerpetual(row)) continue;
+      if (
+        !isPerpetual(row)
+      ) {
+        continue;
+      }
 
       const symbol =
-        normalizeSymbol(row.symbol);
+        normalizeSymbol(
+          row.symbol
+        );
 
       output.push({
         symbol,
+
         tickSize:
           safeNumber(
-            row.priceFilter?.tickSize,
+            row.priceFilter
+              ?.tickSize,
             0
           ),
+
         minOrderQty:
           safeNumber(
-            row.lotSizeFilter?.minOrderQty,
+            row.lotSizeFilter
+              ?.minOrderQty,
             0
           )
       });
     }
 
     cursor =
-      result.nextPageCursor || "";
+      result.nextPageCursor ||
+      "";
 
-    if (!cursor) break;
+    if (!cursor) {
+      break;
+    }
   }
 
   const unique =
@@ -730,10 +881,14 @@ async function getBybitSymbols() {
     );
   }
 
-  return [...unique.values()]
-    .sort((a, b) =>
-      a.symbol.localeCompare(b.symbol)
-    );
+  return [
+    ...unique.values()
+  ].sort(
+    (a, b) =>
+      a.symbol.localeCompare(
+        b.symbol
+      )
+  );
 }
 
 
@@ -741,8 +896,13 @@ async function getBybitSymbols() {
    LBANK
 ========================================================= */
 
-function isCryptoLbankInstrument(item) {
-  if (!item || typeof item !== "object") {
+function isCryptoLbankInstrument(
+  item
+) {
+  if (
+    !item ||
+    typeof item !== "object"
+  ) {
     return false;
   }
 
@@ -754,12 +914,17 @@ function isCryptoLbankInstrument(item) {
       ""
     )
       .toUpperCase()
-      .replace(/[-_/]/g, "");
+      .replace(
+        /[-_/]/g,
+        ""
+      );
 
-  if (!raw) return false;
+  if (!raw) {
+    return false;
+  }
 
-  return (
-    raw.endsWith("USDT")
+  return raw.endsWith(
+    "USDT"
   );
 }
 
@@ -769,7 +934,10 @@ async function getLbankSymbols() {
     "/v2/accuracy.do"
   ];
 
-  for (const endpoint of endpoints) {
+  for (
+    const endpoint
+    of endpoints
+  ) {
     try {
       const response =
         await fetch(
@@ -782,7 +950,9 @@ async function getLbankSymbols() {
           }
         );
 
-      if (!response.ok) continue;
+      if (!response.ok) {
+        continue;
+      }
 
       const data =
         await response.json();
@@ -790,16 +960,27 @@ async function getLbankSymbols() {
       const list =
         Array.isArray(data)
           ? data
-          : Array.isArray(data.data)
+          : Array.isArray(
+              data.data
+            )
             ? data.data
-            : Array.isArray(data.result)
+            : Array.isArray(
+                data.result
+              )
               ? data.result
               : [];
 
       const symbols = [];
 
-      for (const item of list) {
-        if (!isCryptoLbankInstrument(item)) {
+      for (
+        const item
+        of list
+      ) {
+        if (
+          !isCryptoLbankInstrument(
+            item
+          )
+        ) {
           continue;
         }
 
@@ -811,7 +992,10 @@ async function getLbankSymbols() {
             ""
           )
             .toUpperCase()
-            .replace(/[-_/]/g, "");
+            .replace(
+              /[-_/]/g,
+              ""
+            );
 
         if (
           raw &&
@@ -823,7 +1007,9 @@ async function getLbankSymbols() {
 
       if (symbols.length) {
         return [
-          ...new Set(symbols)
+          ...new Set(
+            symbols
+          )
         ];
       }
     } catch (_) {}
@@ -844,7 +1030,9 @@ async function getCollectorSymbols() {
       lbankSymbols.length
     ) {
       const lbankSet =
-        new Set(lbankSymbols);
+        new Set(
+          lbankSymbols
+        );
 
       return bybitSymbols.filter(
         x =>
@@ -903,7 +1091,8 @@ async function getMarket(
       {
         category: "linear",
         symbol,
-        limit: ORDERBOOK_LIMIT
+        limit:
+          ORDERBOOK_LIMIT
       }
     ),
 
@@ -912,7 +1101,8 @@ async function getMarket(
       {
         category: "linear",
         symbol,
-        limit: TRADE_LIMIT
+        limit:
+          TRADE_LIMIT
       }
     ),
 
@@ -936,7 +1126,9 @@ async function getMarket(
     );
 
   const ticker =
-    Array.isArray(tickerResult.list)
+    Array.isArray(
+      tickerResult.list
+    )
       ? tickerResult.list[0]
       : null;
 
@@ -949,7 +1141,9 @@ async function getMarket(
 
   const tickSize =
     safeNumber(
-      instrument?.priceFilter?.tickSize,
+      instrument
+        ?.priceFilter
+        ?.tickSize,
       0
     );
 
@@ -976,24 +1170,32 @@ async function getMarket(
 
   return {
     version: VERSION,
+
     symbol,
+
     interval,
 
     candles,
+
     trades,
 
     ticker,
 
     stats,
+
     footprint,
+
     orderbook,
+
     absorption,
 
     instrument: {
       tickSize,
+
       minOrderQty:
         safeNumber(
-          instrument?.lotSizeFilter
+          instrument
+            ?.lotSizeFilter
             ?.minOrderQty,
           0
         )
@@ -1003,7 +1205,7 @@ async function getMarket(
 
 
 /* =========================================================
-   DURABLE OBJECT
+   DURABLE OBJECT BINDINGS
 ========================================================= */
 
 function collectorId(env) {
@@ -1033,11 +1235,77 @@ function collectorStub(env) {
 
 
 /* =========================================================
+   LEGACY TRADE COLLECTOR
+   حفظ Durable Object قدیمی
+   TRADE_COLLECTOR حذف نمی‌شود
+========================================================= */
+
+export class TradeCollector {
+  constructor(
+    state,
+    env
+  ) {
+    this.state = state;
+    this.env = env;
+  }
+
+  async fetch(request) {
+    const url =
+      new URL(
+        request.url
+      );
+
+    if (
+      request.method ===
+      "OPTIONS"
+    ) {
+      return new Response(
+        null,
+        {
+          status: 204,
+          headers: CORS
+        }
+      );
+    }
+
+    /*
+      این کلاس فقط برای حفظ
+      Durable Object قدیمی Export شده است.
+
+      Storage قدیمی در namespace قبلی
+      دست‌نخورده باقی می‌ماند.
+    */
+
+    return json({
+      ok: true,
+
+      legacy: true,
+
+      collector:
+        "TradeCollector",
+
+      message:
+        "Legacy TradeCollector preserved",
+
+      path:
+        url.pathname,
+
+      version:
+        VERSION
+    });
+  }
+}
+
+
+/* =========================================================
    TRADE COLLECTOR V5
 ========================================================= */
 
 export class AbsorptionStorageV5 {
-  constructor(state, env) {
+  constructor(
+    state,
+    env
+  ) {
     this.state = state;
     this.env = env;
 
@@ -1047,8 +1315,11 @@ export class AbsorptionStorageV5 {
     this.connected = false;
 
     this.symbols = [];
-    this.symbolMeta = new Map();
-    this.subscribed = new Set();
+    this.symbolMeta =
+      new Map();
+
+    this.subscribed =
+      new Set();
 
     this.lastMessageAt = 0;
     this.lastTradeAt = 0;
@@ -1058,24 +1329,34 @@ export class AbsorptionStorageV5 {
 
     this.reconnectAttempt = 0;
 
-    this.reconnectTimer = null;
-    this.pingTimer = null;
+    this.reconnectTimer =
+      null;
 
-    this.alarmScheduled = false;
+    this.pingTimer =
+      null;
 
-    this.dbInitialized = false;
+    this.alarmScheduled =
+      false;
 
-    this.hourBlocks = new Map();
+    this.dbInitialized =
+      false;
 
-    this.dedupe = new Map();
+    this.hourBlocks =
+      new Map();
+
+    this.dedupe =
+      new Map();
 
     this.lastCleanupAt = 0;
 
-    this.loadedRecentBlocks = false;
+    this.loadedRecentBlocks =
+      false;
 
-    this.checkpointRunning = false;
+    this.checkpointRunning =
+      false;
 
-    this.lastCheckpointAt = 0;
+    this.lastCheckpointAt =
+      0;
   }
 
 
@@ -1084,7 +1365,9 @@ export class AbsorptionStorageV5 {
   ======================================================= */
 
   initDB() {
-    if (this.dbInitialized) {
+    if (
+      this.dbInitialized
+    ) {
       return;
     }
 
@@ -1125,17 +1408,19 @@ export class AbsorptionStorageV5 {
 
     const current =
       rows.length
-        ? String(rows[0].value)
+        ? String(
+            rows[0].value
+          )
         : "";
 
     /*
-      این Storage کاملاً جدید است.
-      فقط در اولین اجرای V5 داده احتمالی
-      همین جدول V5 پاک می‌شود.
+      فقط جدول V5 پاک می‌شود.
+      Storage قدیمی اصلاً لمس نمی‌شود.
     */
 
     if (
-      current !== STORAGE_VERSION
+      current !==
+      STORAGE_VERSION
     ) {
       sql.exec(`
         DELETE FROM hour_blocks_v5
@@ -1155,7 +1440,8 @@ export class AbsorptionStorageV5 {
       );
     }
 
-    this.dbInitialized = true;
+    this.dbInitialized =
+      true;
   }
 
 
@@ -1182,7 +1468,7 @@ export class AbsorptionStorageV5 {
 
   /* =======================================================
      CAPACITY CLEANUP
-  ======================================================= */
+======================================================= */
 
   enforceCapacity() {
     this.initDB();
@@ -1190,7 +1476,9 @@ export class AbsorptionStorageV5 {
     const count =
       this.getRowCount();
 
-    if (count < MAX_ROWS) {
+    if (
+      count < MAX_ROWS
+    ) {
       return {
         deleted: 0,
         rows: count
@@ -1212,7 +1500,9 @@ export class AbsorptionStorageV5 {
         count - target
       );
 
-    if (deleteCount <= 0) {
+    if (
+      deleteCount <= 0
+    ) {
       return {
         deleted: 0,
         rows: count
@@ -1230,20 +1520,28 @@ export class AbsorptionStorageV5 {
     `);
 
     /*
-      پاک‌سازی RAM هم برای همان Hour Blockهای
-      قدیمی انجام می‌شود.
+      Hour جاری از RAM حذف نمی‌شود.
     */
 
+    const currentHour =
+      hourStartOf(
+        Date.now()
+      );
+
     for (
-      const [key, block]
+      const [
+        key,
+        block
+      ]
       of this.hourBlocks
     ) {
       if (
         block.hourStart <
-        hourStartOf(Date.now()) -
-        HOUR_MS
+        currentHour
       ) {
-        this.hourBlocks.delete(key);
+        this.hourBlocks.delete(
+          key
+        );
       }
     }
 
@@ -1251,15 +1549,18 @@ export class AbsorptionStorageV5 {
       this.getRowCount();
 
     return {
-      deleted: deleteCount,
-      rows: newCount
+      deleted:
+        deleteCount,
+
+      rows:
+        newCount
     };
   }
 
 
   /* =======================================================
      LOAD RECENT BLOCKS
-  ======================================================= */
+======================================================= */
 
   loadRecentBlocks() {
     if (
@@ -1297,14 +1598,19 @@ export class AbsorptionStorageV5 {
         )
         .toArray();
 
-    for (const row of rows) {
+    for (
+      const row
+      of rows
+    ) {
       try {
         const block =
           this.deserializeBlock(
             row
           );
 
-        if (!block) continue;
+        if (!block) {
+          continue;
+        }
 
         this.hourBlocks.set(
           `${block.symbol}:${block.hourStart}`,
@@ -1313,13 +1619,14 @@ export class AbsorptionStorageV5 {
       } catch (_) {}
     }
 
-    this.loadedRecentBlocks = true;
+    this.loadedRecentBlocks =
+      true;
   }
 
 
   /* =======================================================
      BLOCK CREATION
-  ======================================================= */
+======================================================= */
 
   createBlock(
     symbol,
@@ -1327,13 +1634,17 @@ export class AbsorptionStorageV5 {
   ) {
     return {
       v: 1,
+
       symbol,
+
       hourStart,
+
       hourEnd:
         hourStart +
         HOUR_MS,
 
-      candles: new Map(),
+      candles:
+        new Map(),
 
       dirty: true,
 
@@ -1350,7 +1661,9 @@ export class AbsorptionStorageV5 {
       `${symbol}:${hourStart}`;
 
     let block =
-      this.hourBlocks.get(key);
+      this.hourBlocks.get(
+        key
+      );
 
     if (!block) {
       block =
@@ -1371,7 +1684,7 @@ export class AbsorptionStorageV5 {
 
   /* =======================================================
      CURRENT HOUR
-  ======================================================= */
+======================================================= */
 
   currentHourForSymbol(
     symbol
@@ -1383,7 +1696,8 @@ export class AbsorptionStorageV5 {
       of this.hourBlocks.values()
     ) {
       if (
-        block.symbol !== symbol
+        block.symbol !==
+        symbol
       ) {
         continue;
       }
@@ -1404,9 +1718,11 @@ export class AbsorptionStorageV5 {
 
   /* =======================================================
      TRADE AGGREGATION
-  ======================================================= */
+======================================================= */
 
-  aggregateTrade(trade) {
+  aggregateTrade(
+    trade
+  ) {
     const symbol =
       normalizeSymbol(
         trade.symbol
@@ -1438,26 +1754,35 @@ export class AbsorptionStorageV5 {
         m: minuteStart,
 
         o: trade.price,
+
         h: trade.price,
+
         l: trade.price,
+
         c: trade.price,
 
         v: 0,
+
         t: 0,
 
         b: 0,
+
         s: 0,
 
         bv: 0,
+
         sv: 0,
 
         bt: 0,
+
         st: 0,
 
         ot: trade.time,
+
         ct: trade.time,
 
-        levels: new Map()
+        levels:
+          new Map()
       };
 
       block.candles.set(
@@ -1494,7 +1819,8 @@ export class AbsorptionStorageV5 {
       );
 
     if (
-      trade.side === "BUY"
+      trade.side ===
+      "BUY"
     ) {
       candle.b +=
         trade.value;
@@ -1504,7 +1830,8 @@ export class AbsorptionStorageV5 {
 
       candle.bt++;
     } else if (
-      trade.side === "SELL"
+      trade.side ===
+      "SELL"
     ) {
       candle.s +=
         trade.value;
@@ -1558,7 +1885,8 @@ export class AbsorptionStorageV5 {
     }
 
     if (
-      trade.side === "BUY"
+      trade.side ===
+      "BUY"
     ) {
       level.buyVolume +=
         trade.size;
@@ -1568,7 +1896,8 @@ export class AbsorptionStorageV5 {
 
       level.buyTrades++;
     } else if (
-      trade.side === "SELL"
+      trade.side ===
+      "SELL"
     ) {
       level.sellVolume +=
         trade.size;
@@ -1585,83 +1914,104 @@ export class AbsorptionStorageV5 {
 
   /* =======================================================
      SERIALIZE
-  ======================================================= */
+======================================================= */
 
-  serializeBlock(block) {
+  serializeBlock(
+    block
+  ) {
     const candles =
-      [...block.candles.values()]
+      [
+        ...block.candles.values()
+      ]
         .sort(
           (a, b) =>
             a.m - b.m
         )
-        .map(candle => ({
-          m: candle.m,
+        .map(
+          candle => ({
+            m: candle.m,
 
-          o: candle.o,
-          h: candle.h,
-          l: candle.l,
-          c: candle.c,
+            o: candle.o,
+            h: candle.h,
+            l: candle.l,
+            c: candle.c,
 
-          v: candle.v,
-          t: candle.t,
+            v: candle.v,
+            t: candle.t,
 
-          b: candle.b,
-          s: candle.s,
+            b: candle.b,
+            s: candle.s,
 
-          bv: candle.bv,
-          sv: candle.sv,
+            bv: candle.bv,
+            sv: candle.sv,
 
-          bt: candle.bt,
-          st: candle.st,
+            bt: candle.bt,
+            st: candle.st,
 
-          ot: candle.ot,
-          ct: candle.ct,
+            ot: candle.ot,
+            ct: candle.ct,
 
-          lvs:
-            [...candle.levels.values()]
-              .sort(
-                (a, b) =>
-                  a.price -
-                  b.price
-              )
-              .map(level => [
-                level.price,
+            lvs:
+              [
+                ...candle.levels.values()
+              ]
+                .sort(
+                  (a, b) =>
+                    a.price -
+                    b.price
+                )
+                .map(
+                  level => [
+                    level.price,
 
-                level.buyVolume,
-                level.sellVolume,
+                    level.buyVolume,
+                    level.sellVolume,
 
-                level.buyValue,
-                level.sellValue,
+                    level.buyValue,
+                    level.sellValue,
 
-                level.buyTrades,
-                level.sellTrades
-              ])
-        }));
+                    level.buyTrades,
+                    level.sellTrades
+                  ]
+                )
+          })
+        );
 
     return JSON.stringify({
       v: 1,
 
-      s: block.symbol,
+      s:
+        block.symbol,
 
-      h: block.hourStart,
+      h:
+        block.hourStart,
 
-      c: candles
+      c:
+        candles
     });
   }
 
 
   /* =======================================================
      DESERIALIZE
-  ======================================================= */
+======================================================= */
 
-  deserializeBlock(row) {
+  deserializeBlock(
+    row
+  ) {
     const raw =
-      typeof row.data === "string"
-        ? JSON.parse(row.data)
+      typeof row.data ===
+      "string"
+        ? JSON.parse(
+            row.data
+          )
         : row.data;
 
     const block = {
-      v: Number(raw.v || 1),
+      v:
+        Number(
+          raw.v || 1
+        ),
 
       symbol:
         normalizeSymbol(
@@ -1682,7 +2032,8 @@ export class AbsorptionStorageV5 {
         ) +
         HOUR_MS,
 
-      candles: new Map(),
+      candles:
+        new Map(),
 
       dirty: false,
 
@@ -1694,40 +2045,80 @@ export class AbsorptionStorageV5 {
         ? raw.c
         : [];
 
-    for (const item of candles) {
+    for (
+      const item
+      of candles
+    ) {
       const candle = {
-        m: Number(item.m),
+        m:
+          Number(item.m),
 
-        o: Number(item.o),
-        h: Number(item.h),
-        l: Number(item.l),
-        c: Number(item.c),
+        o:
+          Number(item.o),
 
-        v: Number(item.v || 0),
-        t: Number(item.t || 0),
+        h:
+          Number(item.h),
 
-        b: Number(item.b || 0),
-        s: Number(item.s || 0),
+        l:
+          Number(item.l),
 
-        bv: Number(item.bv || 0),
-        sv: Number(item.sv || 0),
+        c:
+          Number(item.c),
 
-        bt: Number(item.bt || 0),
-        st: Number(item.st || 0),
+        v:
+          Number(item.v || 0),
 
-        ot: Number(item.ot || item.m),
-        ct: Number(item.ct || item.m),
+        t:
+          Number(item.t || 0),
 
-        levels: new Map()
+        b:
+          Number(item.b || 0),
+
+        s:
+          Number(item.s || 0),
+
+        bv:
+          Number(item.bv || 0),
+
+        sv:
+          Number(item.sv || 0),
+
+        bt:
+          Number(item.bt || 0),
+
+        st:
+          Number(item.st || 0),
+
+        ot:
+          Number(
+            item.ot ||
+            item.m
+          ),
+
+        ct:
+          Number(
+            item.ct ||
+            item.m
+          ),
+
+        levels:
+          new Map()
       };
 
       const levels =
-        Array.isArray(item.lvs)
+        Array.isArray(
+          item.lvs
+        )
           ? item.lvs
           : [];
 
-      for (const lv of levels) {
-        if (!Array.isArray(lv)) {
+      for (
+        const lv
+        of levels
+      ) {
+        if (
+          !Array.isArray(lv)
+        ) {
           continue;
         }
 
@@ -1740,22 +2131,34 @@ export class AbsorptionStorageV5 {
             price,
 
             buyVolume:
-              Number(lv[1] || 0),
+              Number(
+                lv[1] || 0
+              ),
 
             sellVolume:
-              Number(lv[2] || 0),
+              Number(
+                lv[2] || 0
+              ),
 
             buyValue:
-              Number(lv[3] || 0),
+              Number(
+                lv[3] || 0
+              ),
 
             sellValue:
-              Number(lv[4] || 0),
+              Number(
+                lv[4] || 0
+              ),
 
             buyTrades:
-              Number(lv[5] || 0),
+              Number(
+                lv[5] || 0
+              ),
 
             sellTrades:
-              Number(lv[6] || 0)
+              Number(
+                lv[6] || 0
+              )
           }
         );
       }
@@ -1772,7 +2175,7 @@ export class AbsorptionStorageV5 {
 
   /* =======================================================
      PERSIST CLOSED HOURS ONLY
-  ======================================================= */
+======================================================= */
 
   persistClosedBlocks() {
     if (
@@ -1781,7 +2184,8 @@ export class AbsorptionStorageV5 {
       return;
     }
 
-    this.checkpointRunning = true;
+    this.checkpointRunning =
+      true;
 
     try {
       this.initDB();
@@ -1798,11 +2202,14 @@ export class AbsorptionStorageV5 {
       let written = 0;
 
       for (
-        const [key, block]
+        const [
+          key,
+          block
+        ]
         of this.hourBlocks
       ) {
         /*
-          ساعت جاری هرگز اینجا نوشته نمی‌شود.
+          ساعت جاری هرگز نوشته نمی‌شود.
         */
 
         if (
@@ -1863,8 +2270,9 @@ export class AbsorptionStorageV5 {
         now;
 
       /*
-        بلوک‌های بسته‌شده در RAM فقط
-        تا مدت کوتاهی نگه داشته می‌شوند.
+        RAM:
+        فقط Hourهای قدیمی‌تر از Hour جاری حذف.
+        Hour جاری حفظ می‌شود.
       */
 
       const removeBefore =
@@ -1872,7 +2280,10 @@ export class AbsorptionStorageV5 {
         HOUR_MS;
 
       for (
-        const [key, block]
+        const [
+          key,
+          block
+        ]
         of this.hourBlocks
       ) {
         if (
@@ -1885,12 +2296,15 @@ export class AbsorptionStorageV5 {
         }
       }
 
-      if (written > 0) {
+      if (
+        written > 0
+      ) {
         this.enforceCapacity();
       }
 
       return {
         written,
+
         rows:
           this.getRowCount()
       };
@@ -1903,15 +2317,19 @@ export class AbsorptionStorageV5 {
 
   /* =======================================================
      DEDUPE
-  ======================================================= */
+======================================================= */
 
-  isDuplicate(trade) {
+  isDuplicate(
+    trade
+  ) {
     const id =
       String(
         trade.id || ""
       );
 
-    if (!id) return false;
+    if (!id) {
+      return false;
+    }
 
     if (
       this.dedupe.has(id)
@@ -1933,7 +2351,10 @@ export class AbsorptionStorageV5 {
         5 * 60 * 1000;
 
       for (
-        const [key, time]
+        const [
+          key,
+          time
+        ]
         of this.dedupe
       ) {
         if (
@@ -1968,9 +2389,11 @@ export class AbsorptionStorageV5 {
 
   /* =======================================================
      WEBSOCKET TRADE PARSER
-  ======================================================= */
+======================================================= */
 
-  parseWsTrade(row) {
+  parseWsTrade(
+    row
+  ) {
     const price =
       safeNumber(row.p);
 
@@ -1998,7 +2421,9 @@ export class AbsorptionStorageV5 {
         ),
 
       time,
+
       price,
+
       size,
 
       value:
@@ -2014,9 +2439,11 @@ export class AbsorptionStorageV5 {
 
   /* =======================================================
      MESSAGE
-  ======================================================= */
+======================================================= */
 
-  handleMessage(raw) {
+  handleMessage(
+    raw
+  ) {
     this.lastMessageAt =
       Date.now();
 
@@ -2030,13 +2457,15 @@ export class AbsorptionStorageV5 {
     }
 
     if (
-      message.op === "pong"
+      message.op ===
+      "pong"
     ) {
       return;
     }
 
     if (
-      message.success === false
+      message.success ===
+      false
     ) {
       this.lastError =
         message.ret_msg ||
@@ -2066,9 +2495,13 @@ export class AbsorptionStorageV5 {
         ? message.data
         : [];
 
-    let crossedHour = false;
+    let crossedHour =
+      false;
 
-    for (const row of rows) {
+    for (
+      const row
+      of rows
+    ) {
       const trade =
         this.parseWsTrade(
           row
@@ -2109,7 +2542,8 @@ export class AbsorptionStorageV5 {
         before !== null &&
         before !== after
       ) {
-        crossedHour = true;
+        crossedHour =
+          true;
       }
 
       this.lastTradeAt =
@@ -2117,11 +2551,13 @@ export class AbsorptionStorageV5 {
     }
 
     /*
-      اگر ساعت عوض شده باشد، ساعت بسته‌شده
-      بلافاصله ذخیره می‌شود.
+      وقتی Hour جدید شروع شد،
+      Hour قبلی فوراً ذخیره می‌شود.
     */
 
-    if (crossedHour) {
+    if (
+      crossedHour
+    ) {
       this.persistClosedBlocks();
     }
   }
@@ -2129,7 +2565,7 @@ export class AbsorptionStorageV5 {
 
   /* =======================================================
      SUBSCRIBE
-  ======================================================= */
+======================================================= */
 
   async subscribeAll() {
     if (
@@ -2152,7 +2588,10 @@ export class AbsorptionStorageV5 {
     let current = [];
     let length = 0;
 
-    for (const topic of args) {
+    for (
+      const topic
+      of args
+    ) {
       const extra =
         topic.length + 3;
 
@@ -2169,11 +2608,16 @@ export class AbsorptionStorageV5 {
       }
 
       current.push(topic);
+
       length += extra;
     }
 
-    if (current.length) {
-      chunks.push(current);
+    if (
+      current.length
+    ) {
+      chunks.push(
+        current
+      );
     }
 
     for (
@@ -2183,12 +2627,18 @@ export class AbsorptionStorageV5 {
       try {
         this.ws.send(
           JSON.stringify({
-            op: "subscribe",
-            args: chunk
+            op:
+              "subscribe",
+
+            args:
+              chunk
           })
         );
 
-        for (const topic of chunk) {
+        for (
+          const topic
+          of chunk
+        ) {
           this.subscribed.add(
             topic
           );
@@ -2214,26 +2664,31 @@ export class AbsorptionStorageV5 {
 
   /* =======================================================
      PING
-  ======================================================= */
+======================================================= */
 
   startPing() {
     this.stopPing();
 
     this.pingTimer =
-      setInterval(() => {
-        try {
-          if (
-            this.ws &&
-            this.ws.readyState === 1
-          ) {
-            this.ws.send(
-              JSON.stringify({
-                op: "ping"
-              })
-            );
-          }
-        } catch (_) {}
-      }, 20000);
+      setInterval(
+        () => {
+          try {
+            if (
+              this.ws &&
+              this.ws.readyState ===
+                1
+            ) {
+              this.ws.send(
+                JSON.stringify({
+                  op:
+                    "ping"
+                })
+              );
+            }
+          } catch (_) {}
+        },
+        20000
+      );
   }
 
   stopPing() {
@@ -2244,14 +2699,15 @@ export class AbsorptionStorageV5 {
         this.pingTimer
       );
 
-      this.pingTimer = null;
+      this.pingTimer =
+        null;
     }
   }
 
 
   /* =======================================================
      CONNECT
-  ======================================================= */
+======================================================= */
 
   async connect() {
     if (
@@ -2263,8 +2719,10 @@ export class AbsorptionStorageV5 {
     if (
       this.ws &&
       (
-        this.ws.readyState === 0 ||
-        this.ws.readyState === 1
+        this.ws.readyState ===
+          0 ||
+        this.ws.readyState ===
+          1
       )
     ) {
       return;
@@ -2305,15 +2763,20 @@ export class AbsorptionStorageV5 {
       this.ws.addEventListener(
         "open",
         async () => {
-          this.connected = true;
+          this.connected =
+            true;
 
-          this.reconnectAttempt = 0;
+          this.reconnectAttempt =
+            0;
 
-          this.lastError = "";
+          this.lastError =
+            "";
 
           try {
             await this.subscribeAll();
-          } catch (error) {
+          } catch (
+            error
+          ) {
             this.lastError =
               String(
                 error?.message ||
@@ -2334,7 +2797,9 @@ export class AbsorptionStorageV5 {
             this.handleMessage(
               event.data
             );
-          } catch (error) {
+          } catch (
+            error
+          ) {
             this.lastError =
               String(
                 error?.message ||
@@ -2370,8 +2835,11 @@ export class AbsorptionStorageV5 {
             false;
         }
       );
-    } catch (error) {
-      this.connected = false;
+    } catch (
+      error
+    ) {
+      this.connected =
+        false;
 
       this.lastError =
         String(
@@ -2386,7 +2854,7 @@ export class AbsorptionStorageV5 {
 
   /* =======================================================
      RECONNECT
-  ======================================================= */
+======================================================= */
 
   scheduleReconnect() {
     if (
@@ -2407,13 +2875,13 @@ export class AbsorptionStorageV5 {
       Math.min(
         30000,
         1000 *
-        Math.pow(
-          2,
-          Math.min(
-            this.reconnectAttempt,
-            5
+          Math.pow(
+            2,
+            Math.min(
+              this.reconnectAttempt,
+              5
+            )
           )
-        )
       );
 
     this.reconnectTimer =
@@ -2431,7 +2899,7 @@ export class AbsorptionStorageV5 {
 
   /* =======================================================
      REFRESH
-  ======================================================= */
+======================================================= */
 
   async refreshSymbols() {
     const list =
@@ -2457,7 +2925,9 @@ export class AbsorptionStorageV5 {
     ) {
       try {
         await this.subscribeAll();
-      } catch (error) {
+      } catch (
+        error
+      ) {
         this.lastError =
           String(
             error?.message ||
@@ -2475,7 +2945,7 @@ export class AbsorptionStorageV5 {
 
   /* =======================================================
      ALARM
-  ======================================================= */
+======================================================= */
 
   scheduleAlarm() {
     if (
@@ -2484,7 +2954,8 @@ export class AbsorptionStorageV5 {
       return;
     }
 
-    this.alarmScheduled = true;
+    this.alarmScheduled =
+      true;
 
     this.state.storage.setAlarm(
       Date.now() +
@@ -2503,21 +2974,20 @@ export class AbsorptionStorageV5 {
       this.loadRecentBlocks();
 
       /*
-        فقط Hour Blockهای بسته‌شده
-        نوشته می‌شوند.
+        فقط Hour بسته‌شده ذخیره می‌شود.
       */
 
       this.persistClosedBlocks();
 
       /*
-        کنترل ظرفیت 80K
+        کنترل سقف 80K
       */
 
       this.enforceCapacity();
 
       /*
-        هر چند ساعت Symbolها دوباره
-        از LBank ∩ Bybit خوانده می‌شوند.
+        اگر Symbolها خالی باشند
+        یا WS قطع شده باشد.
       */
 
       if (
@@ -2534,11 +3004,6 @@ export class AbsorptionStorageV5 {
         await this.connect();
       }
 
-      /*
-        اگر WebSocket باز است ولی Symbolها
-        تغییر کرده‌اند، دوباره Subscribe.
-      */
-
       if (
         this.connected &&
         this.ws &&
@@ -2546,7 +3011,9 @@ export class AbsorptionStorageV5 {
       ) {
         await this.subscribeAll();
       }
-    } catch (error) {
+    } catch (
+      error
+    ) {
       this.lastError =
         String(
           error?.message ||
@@ -2560,10 +3027,11 @@ export class AbsorptionStorageV5 {
 
   /* =======================================================
      START
-  ======================================================= */
+======================================================= */
 
   async start() {
-    this.started = true;
+    this.started =
+      true;
 
     this.initDB();
 
@@ -2571,7 +3039,9 @@ export class AbsorptionStorageV5 {
 
     try {
       await this.refreshSymbols();
-    } catch (error) {
+    } catch (
+      error
+    ) {
       this.lastError =
         String(
           error?.message ||
@@ -2595,7 +3065,7 @@ export class AbsorptionStorageV5 {
 
   /* =======================================================
      STATUS
-  ======================================================= */
+======================================================= */
 
   statusObject() {
     let rows = 0;
@@ -2606,7 +3076,8 @@ export class AbsorptionStorageV5 {
     } catch (_) {}
 
     return {
-      version: VERSION,
+      version:
+        VERSION,
 
       collector:
         "AbsorptionStorageV5",
@@ -2682,7 +3153,7 @@ export class AbsorptionStorageV5 {
 
   /* =======================================================
      HISTORY
-  ======================================================= */
+======================================================= */
 
   getHistory(
     symbol,
@@ -2692,22 +3163,28 @@ export class AbsorptionStorageV5 {
     this.initDB();
 
     symbol =
-      normalizeSymbol(symbol);
+      normalizeSymbol(
+        symbol
+      );
 
     const start =
       Number(from) ||
       Date.now() -
-      24 * HOUR_MS;
+        24 * HOUR_MS;
 
     const end =
       Number(to) ||
       Date.now();
 
     const firstHour =
-      hourStartOf(start);
+      hourStartOf(
+        start
+      );
 
     const lastHour =
-      hourStartOf(end);
+      hourStartOf(
+        end
+      );
 
     const rows =
       this.state.storage.sql
@@ -2730,9 +3207,13 @@ export class AbsorptionStorageV5 {
         )
         .toArray();
 
-    const blocks = new Map();
+    const blocks =
+      new Map();
 
-    for (const row of rows) {
+    for (
+      const row
+      of rows
+    ) {
       try {
         const block =
           this.deserializeBlock(
@@ -2747,7 +3228,7 @@ export class AbsorptionStorageV5 {
     }
 
     /*
-      RAM روی Storage اولویت دارد.
+      RAM اولویت دارد.
     */
 
     for (
@@ -2755,7 +3236,8 @@ export class AbsorptionStorageV5 {
       of this.hourBlocks.values()
     ) {
       if (
-        block.symbol !== symbol
+        block.symbol !==
+        symbol
       ) {
         continue;
       }
@@ -2779,12 +3261,13 @@ export class AbsorptionStorageV5 {
 
     for (
       const block
-      of [...blocks.values()]
-        .sort(
-          (a, b) =>
-            a.hourStart -
-            b.hourStart
-        )
+      of [
+        ...blocks.values()
+      ].sort(
+        (a, b) =>
+          a.hourStart -
+          b.hourStart
+      )
     ) {
       for (
         const candle
@@ -2826,6 +3309,7 @@ export class AbsorptionStorageV5 {
             candle.t,
 
           buyVolume,
+
           sellVolume,
 
           buyValue:
@@ -2858,10 +3342,17 @@ export class AbsorptionStorageV5 {
     );
 
     return {
-      version: VERSION,
+      version:
+        VERSION,
+
       symbol,
-      from: start,
-      to: end,
+
+      from:
+        start,
+
+      to:
+        end,
+
       candles
     };
   }
@@ -2869,7 +3360,7 @@ export class AbsorptionStorageV5 {
 
   /* =======================================================
      FOOTPRINT
-  ======================================================= */
+======================================================= */
 
   getFootprint(
     symbol,
@@ -2878,7 +3369,9 @@ export class AbsorptionStorageV5 {
     this.initDB();
 
     symbol =
-      normalizeSymbol(symbol);
+      normalizeSymbol(
+        symbol
+      );
 
     const target =
       minuteStartOf(
@@ -2886,13 +3379,17 @@ export class AbsorptionStorageV5 {
       );
 
     const hour =
-      hourStartOf(target);
+      hourStartOf(
+        target
+      );
 
     const key =
       `${symbol}:${hour}`;
 
     let block =
-      this.hourBlocks.get(key);
+      this.hourBlocks.get(
+        key
+      );
 
     if (!block) {
       const rows =
@@ -2914,14 +3411,26 @@ export class AbsorptionStorageV5 {
           )
           .toArray();
 
-      if (!rows.length) {
+      if (
+        !rows.length
+      ) {
         return {
-          version: VERSION,
+          version:
+            VERSION,
+
           symbol,
-          minute: target,
-          found: false,
-          candle: null,
-          levels: []
+
+          minute:
+            target,
+
+          found:
+            false,
+
+          candle:
+            null,
+
+          levels:
+            []
         };
       }
 
@@ -2938,56 +3447,70 @@ export class AbsorptionStorageV5 {
 
     if (!candle) {
       return {
-        version: VERSION,
+        version:
+          VERSION,
+
         symbol,
-        minute: target,
-        found: false,
-        candle: null,
-        levels: []
+
+        minute:
+          target,
+
+        found:
+          false,
+
+        candle:
+          null,
+
+        levels:
+          []
       };
     }
 
     const levels =
-      [...candle.levels.values()]
+      [
+        ...candle.levels.values()
+      ]
         .sort(
           (a, b) =>
             a.price -
             b.price
         )
-        .map(level => ({
-          price:
-            level.price,
+        .map(
+          level => ({
+            price:
+              level.price,
 
-          buyVolume:
-            level.buyVolume,
+            buyVolume:
+              level.buyVolume,
 
-          sellVolume:
-            level.sellVolume,
+            sellVolume:
+              level.sellVolume,
 
-          buyValue:
-            level.buyValue,
+            buyValue:
+              level.buyValue,
 
-          sellValue:
-            level.sellValue,
+            sellValue:
+              level.sellValue,
 
-          buyTrades:
-            level.buyTrades,
+            buyTrades:
+              level.buyTrades,
 
-          sellTrades:
-            level.sellTrades,
+            sellTrades:
+              level.sellTrades,
 
-          delta:
-            level.buyVolume -
-            level.sellVolume,
+            delta:
+              level.buyVolume -
+              level.sellVolume,
 
-          deltaValue:
-            level.buyValue -
-            level.sellValue,
+            deltaValue:
+              level.buyValue -
+              level.sellValue,
 
-          totalVolume:
-            level.buyVolume +
-            level.sellVolume
-        }));
+            totalVolume:
+              level.buyVolume +
+              level.sellVolume
+          })
+        );
 
     const buyVolume =
       candle.bv;
@@ -2996,13 +3519,16 @@ export class AbsorptionStorageV5 {
       candle.sv;
 
     return {
-      version: VERSION,
+      version:
+        VERSION,
 
       symbol,
 
-      minute: target,
+      minute:
+        target,
 
-      found: true,
+      found:
+        true,
 
       candle: {
         time:
@@ -3027,6 +3553,7 @@ export class AbsorptionStorageV5 {
           candle.t,
 
         buyVolume,
+
         sellVolume,
 
         buyValue:
@@ -3057,9 +3584,11 @@ export class AbsorptionStorageV5 {
 
   /* =======================================================
      FETCH
-  ======================================================= */
+======================================================= */
 
-  async fetch(request) {
+  async fetch(
+    request
+  ) {
     this.initDB();
 
     const url =
@@ -3120,7 +3649,9 @@ export class AbsorptionStorageV5 {
 
         return json({
           ok: true,
+
           ...result,
+
           status:
             this.statusObject()
         });
@@ -3183,24 +3714,34 @@ export class AbsorptionStorageV5 {
       }
 
 
-      return json({
-        ok: false,
-        error:
-          "Internal route not found"
-      }, 404);
+      return json(
+        {
+          ok: false,
 
-    } catch (error) {
+          error:
+            "Internal route not found"
+        },
+        404
+      );
+
+    } catch (
+      error
+    ) {
       this.lastError =
         String(
           error?.message ||
           error
         );
 
-      return json({
-        ok: false,
-        error:
-          this.lastError
-      }, 500);
+      return json(
+        {
+          ok: false,
+
+          error:
+            this.lastError
+        },
+        500
+      );
     }
   }
 }
@@ -3210,27 +3751,39 @@ export class AbsorptionStorageV5 {
    PUBLIC WORKER
 ========================================================= */
 
-async function startCollector(env) {
+async function startCollector(
+  env
+) {
   const stub =
-    collectorStub(env);
+    collectorStub(
+      env
+    );
 
   return stub.fetch(
     "https://collector/internal/start"
   );
 }
 
-async function collectorStatus(env) {
+async function collectorStatus(
+  env
+) {
   const stub =
-    collectorStub(env);
+    collectorStub(
+      env
+    );
 
   return stub.fetch(
     "https://collector/internal/status"
   );
 }
 
-async function collectorRefresh(env) {
+async function collectorRefresh(
+  env
+) {
   const stub =
-    collectorStub(env);
+    collectorStub(
+      env
+    );
 
   return stub.fetch(
     "https://collector/internal/refresh"
@@ -3242,7 +3795,9 @@ async function collectorHistory(
   url
 ) {
   const stub =
-    collectorStub(env);
+    collectorStub(
+      env
+    );
 
   const target =
     new URL(
@@ -3250,7 +3805,8 @@ async function collectorHistory(
     );
 
   for (
-    const key of [
+    const key
+    of [
       "symbol",
       "from",
       "to"
@@ -3281,7 +3837,9 @@ async function collectorFootprint(
   url
 ) {
   const stub =
-    collectorStub(env);
+    collectorStub(
+      env
+    );
 
   const target =
     new URL(
@@ -3289,7 +3847,8 @@ async function collectorFootprint(
     );
 
   for (
-    const key of [
+    const key
+    of [
       "symbol",
       "minute"
     ]
@@ -3380,8 +3939,12 @@ export default {
       ) {
         return json({
           ok: true,
-          version: VERSION,
-          time: Date.now()
+
+          version:
+            VERSION,
+
+          time:
+            Date.now()
         });
       }
 
@@ -3397,8 +3960,10 @@ export default {
 
         return json({
           ok: true,
+
           count:
             symbols.length,
+
           symbols
         });
       }
@@ -3553,8 +4118,11 @@ export default {
           await bybit(
             "/v5/market/orderbook",
             {
-              category: "linear",
+              category:
+                "linear",
+
               symbol,
+
               limit:
                 ORDERBOOK_LIMIT
             }
@@ -3600,9 +4168,13 @@ export default {
           await bybit(
             "/v5/market/kline",
             {
-              category: "linear",
+              category:
+                "linear",
+
               symbol,
+
               interval,
+
               limit:
                 KLINE_LIMIT
             }
@@ -3635,27 +4207,37 @@ export default {
       }
 
 
-      return json({
-        ok: false,
-        error:
-          "Route not found",
-        version:
-          VERSION
-      }, 404);
+      return json(
+        {
+          ok: false,
 
-    } catch (error) {
-      return json({
-        ok: false,
+          error:
+            "Route not found",
 
-        error:
-          String(
-            error?.message ||
-            error
-          ),
+          version:
+            VERSION
+        },
+        404
+      );
 
-        version:
-          VERSION
-      }, 500);
+    } catch (
+      error
+    ) {
+      return json(
+        {
+          ok: false,
+
+          error:
+            String(
+              error?.message ||
+              error
+            ),
+
+          version:
+            VERSION
+        },
+        500
+      );
     }
   },
 
