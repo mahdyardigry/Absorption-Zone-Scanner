@@ -1,4 +1,4 @@
-const VERSION = "ABSORPTION-ZONE-V4-HOUR-BLOCK";
+const VERSION = "ABSORPTION-ZONE-V5-HOUR-BLOCK-80K";
 
 const BYBIT = "https://api.bybit.com";
 const BYBIT_WS = "wss://stream.bybit.com/v5/public/linear";
@@ -12,11 +12,13 @@ const TRADE_LIMIT = 1000;
 const ORDERBOOK_LIMIT = 50;
 const SYMBOL_LIMIT = 1000;
 
-const HISTORY_MS = 24 * 60 * 60 * 1000;
 const HOUR_MS = 60 * 60 * 1000;
+const ALARM_MS = 5 * 60 * 1000;
 
-const CHECKPOINT_INTERVAL_MS = 15 * 60 * 1000;
-const CLEANUP_INTERVAL_MS = 60 * 60 * 1000;
+const MAX_ROWS = 80000;
+const CLEANUP_TARGET_ROWS = 76000;
+
+const STORAGE_VERSION = "ABSORPTION-STORAGE-V5-80K-2026-09-06";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -27,7 +29,7 @@ const CORS = {
 
 
 /* =========================================================
-   COMMON
+   BASIC HELPERS
 ========================================================= */
 
 function json(data, status = 200) {
@@ -41,31 +43,23 @@ function json(data, status = 200) {
 }
 
 function normalizeSymbol(value) {
-  let s = String(value || DEFAULT_SYMBOL)
-    .trim()
-    .toUpperCase()
-    .replace(/[^A-Z0-9]/g, "");
+  let s = String(value || "").trim().toUpperCase();
 
   if (!s) return DEFAULT_SYMBOL;
 
-  if (
-    s === "BTC" ||
-    s === "BTCUSDT" ||
-    s === "BUSDT"
-  ) {
-    return "BTCUSDT";
+  s = s.replace(/[^A-Z0-9]/g, "");
+
+  if (s === "BTC") return "BTCUSDT";
+  if (s === "BUSDT") return "BTCUSDT";
+
+  if (!s.endsWith("USDT")) {
+    s += "USDT";
   }
 
-  if (s.endsWith("USDT")) {
-    return s;
-  }
-
-  return s + "USDT";
+  return s;
 }
 
 function normalizeInterval(value) {
-  const v = String(value || DEFAULT_INTERVAL);
-
   const allowed = [
     "1",
     "3",
@@ -82,23 +76,48 @@ function normalizeInterval(value) {
     "M"
   ];
 
-  return allowed.includes(v) ? v : "1";
+  const v = String(value || DEFAULT_INTERVAL).toUpperCase();
+
+  return allowed.includes(v) ? v : DEFAULT_INTERVAL;
 }
 
 function hourStartOf(time) {
-  return Math.floor(
-    Number(time) / HOUR_MS
-  ) * HOUR_MS;
+  const t = Number(time) || Date.now();
+  return Math.floor(t / HOUR_MS) * HOUR_MS;
 }
 
 function minuteStartOf(time) {
-  return Math.floor(
-    Number(time) / 60000
-  ) * 60000;
+  const t = Number(time) || Date.now();
+  return Math.floor(t / 60000) * 60000;
 }
 
+function safeNumber(v, fallback = 0) {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : fallback;
+}
+
+function percentile(values, p) {
+  if (!values.length) return 0;
+
+  const a = [...values].sort((x, y) => x - y);
+
+  const index = (a.length - 1) * p;
+  const lower = Math.floor(index);
+  const upper = Math.ceil(index);
+
+  if (lower === upper) return a[lower];
+
+  return a[lower] +
+    (a[upper] - a[lower]) * (index - lower);
+}
+
+
+/* =========================================================
+   BYBIT REST
+========================================================= */
+
 async function bybit(path, params = {}) {
-  const query = new URLSearchParams();
+  const url = new URL(BYBIT + path);
 
   for (const [key, value] of Object.entries(params)) {
     if (
@@ -106,50 +125,32 @@ async function bybit(path, params = {}) {
       value !== null &&
       value !== ""
     ) {
-      query.set(key, String(value));
+      url.searchParams.set(key, String(value));
     }
   }
 
-  const url =
-    `${BYBIT}${path}?${query.toString()}`;
-
-  const response = await fetch(url, {
+  const response = await fetch(url.toString(), {
     method: "GET",
     headers: {
-      Accept: "application/json"
+      "Accept": "application/json"
     }
   });
 
-  const text = await response.text();
-
-  if (!text) {
-    throw new Error(
-      `Bybit پاسخ خالی داد (${response.status})`
-    );
-  }
-
-  let data;
-
-  try {
-    data = JSON.parse(text);
-  } catch {
-    throw new Error(
-      `پاسخ Bybit معتبر نیست: ${text.slice(0, 300)}`
-    );
-  }
-
   if (!response.ok) {
-    throw new Error(`HTTP ${response.status}`);
-  }
-
-  if (data.retCode !== 0) {
     throw new Error(
-      data.retMsg ||
-      `Bybit error ${data.retCode}`
+      `Bybit HTTP ${response.status}`
     );
   }
 
-  return data;
+  const data = await response.json();
+
+  if (Number(data.retCode) !== 0) {
+    throw new Error(
+      data.retMsg || "Bybit API error"
+    );
+  }
+
+  return data.result;
 }
 
 
@@ -158,22 +159,21 @@ async function bybit(path, params = {}) {
 ========================================================= */
 
 function parseKlines(rows) {
-  return (rows || [])
-    .map(r => ({
-      time: Number(r[0]),
-      open: Number(r[1]),
-      high: Number(r[2]),
-      low: Number(r[3]),
-      close: Number(r[4]),
-      volume: Number(r[5]),
-      turnover: Number(r[6])
+  if (!Array.isArray(rows)) return [];
+
+  return rows
+    .map(row => ({
+      time: Number(row[0]),
+      open: Number(row[1]),
+      high: Number(row[2]),
+      low: Number(row[3]),
+      close: Number(row[4]),
+      volume: Number(row[5]),
+      turnover: Number(row[6])
     }))
     .filter(x =>
       Number.isFinite(x.time) &&
-      Number.isFinite(x.open) &&
-      Number.isFinite(x.high) &&
-      Number.isFinite(x.low) &&
-      Number.isFinite(x.close)
+      Number.isFinite(x.open)
     )
     .reverse();
 }
@@ -184,55 +184,31 @@ function parseKlines(rows) {
 ========================================================= */
 
 function parseTrades(rows) {
-  return (rows || [])
-    .map(t => {
-      const side =
-        String(
-          t.side ||
-          t.S ||
-          ""
-        ).toLowerCase() === "buy"
-          ? "buy"
-          : "sell";
+  if (!Array.isArray(rows)) return [];
 
-      const price = Number(
-        t.price ??
-        t.p
-      );
-
-      const size = Number(
-        t.size ??
-        t.v
-      );
-
-      const time = Number(
-        t.time ??
-        t.T ??
-        Date.now()
-      );
-
-      const id =
-        t.execId ||
-        t.tradeId ||
-        t.i ||
-        t.id ||
-        `${time}-${price}-${size}-${side}`;
+  return rows
+    .map((row, index) => {
+      const price = safeNumber(row.price);
+      const size = safeNumber(row.size);
 
       return {
-        id: String(id),
-        time,
+        id: String(
+          row.execId ||
+          row.tradeId ||
+          row.id ||
+          `${row.time || Date.now()}-${index}-${price}-${size}`
+        ),
+        time: safeNumber(row.time),
         price,
         size,
         value: price * size,
-        side
+        side: String(row.side || "").toUpperCase()
       };
     })
-    .filter(t =>
-      Number.isFinite(t.price) &&
-      Number.isFinite(t.size) &&
-      Number.isFinite(t.time) &&
-      t.price > 0 &&
-      t.size > 0
+    .filter(x =>
+      x.time > 0 &&
+      x.price > 0 &&
+      x.size > 0
     );
 }
 
@@ -251,20 +227,17 @@ function tradeStats(trades) {
   let buyTrades = 0;
   let sellTrades = 0;
 
-  const notionals = [];
+  const values = [];
 
   for (const t of trades) {
-    const value =
-      Number(t.price) *
-      Number(t.size);
+    const value = safeNumber(t.value);
+    values.push(value);
 
-    notionals.push(value);
-
-    if (t.side === "buy") {
+    if (t.side === "BUY") {
       buyVolume += t.size;
       buyValue += value;
       buyTrades++;
-    } else {
+    } else if (t.side === "SELL") {
       sellVolume += t.size;
       sellValue += value;
       sellTrades++;
@@ -285,33 +258,22 @@ function tradeStats(trades) {
 
   const deltaPercent =
     totalVolume > 0
-      ? delta / totalVolume * 100
+      ? (delta / totalVolume) * 100
       : 0;
 
-  const sorted =
-    [...notionals].sort(
-      (a, b) => a - b
-    );
+  const averageNotional =
+    values.length
+      ? values.reduce((a, b) => a + b, 0) /
+        values.length
+      : 0;
 
   const p95 =
-    sorted.length
-      ? sorted[
-          Math.floor(
-            (sorted.length - 1) * 0.95
-          )
-        ]
-      : 0;
-
-  const average =
-    notionals.length
-      ? totalValue / notionals.length
-      : 0;
+    percentile(values, 0.95);
 
   const largeThreshold =
     Math.max(
-      average * 5,
-      p95,
-      0
+      averageNotional * 5,
+      p95
     );
 
   let largeBuyVolume = 0;
@@ -321,39 +283,45 @@ function tradeStats(trades) {
   let largeSellValue = 0;
 
   for (const t of trades) {
-    const value =
-      t.price * t.size;
+    if (t.value < largeThreshold) continue;
 
-    if (value >= largeThreshold) {
-      if (t.side === "buy") {
-        largeBuyVolume += t.size;
-        largeBuyValue += value;
-      } else {
-        largeSellVolume += t.size;
-        largeSellValue += value;
-      }
+    if (t.side === "BUY") {
+      largeBuyVolume += t.size;
+      largeBuyValue += t.value;
+    }
+
+    if (t.side === "SELL") {
+      largeSellVolume += t.size;
+      largeSellValue += t.value;
     }
   }
 
-  return {
-    trades: trades.length,
+  let pressure = "NEUTRAL";
 
+  if (deltaPercent >= 10) {
+    pressure = "BUY_PRESSURE";
+  } else if (deltaPercent <= -10) {
+    pressure = "SELL_PRESSURE";
+  }
+
+  return {
     buyVolume,
     sellVolume,
+    totalVolume,
 
     buyValue,
     sellValue,
-
-    totalVolume,
     totalValue,
+
+    buyTrades,
+    sellTrades,
 
     delta,
     deltaValue,
     deltaPercent,
 
-    buyTrades,
-    sellTrades,
-
+    averageNotional,
+    p95,
     largeThreshold,
 
     largeBuyVolume,
@@ -362,82 +330,55 @@ function tradeStats(trades) {
     largeBuyValue,
     largeSellValue,
 
-    pressure:
-      deltaPercent >= 10
-        ? "BUY_PRESSURE"
-        : deltaPercent <= -10
-          ? "SELL_PRESSURE"
-          : "BALANCED"
+    pressure
   };
 }
 
 
 /* =========================================================
-   FOOTPRINT
+   TICK / FOOTPRINT
 ========================================================= */
 
-function decimalsFromTick(tickSize) {
-  const n = Number(tickSize);
+function decimalsFromTick(tick) {
+  const s = String(tick);
 
-  if (!Number.isFinite(n) || n <= 0) {
-    return 8;
-  }
+  if (!s.includes(".")) return 0;
 
-  if (n >= 1) {
-    return 0;
-  }
-
-  return Math.max(
-    0,
-    Math.min(
-      12,
-      Math.ceil(-Math.log10(n))
-    )
-  );
+  return s.split(".")[1]
+    .replace(/0+$/, "")
+    .length;
 }
 
 function roundToTick(price, tickSize) {
   const tick = Number(tickSize);
 
-  if (
-    !Number.isFinite(tick) ||
-    tick <= 0
-  ) {
-    return price;
+  if (!Number.isFinite(tick) || tick <= 0) {
+    return Number(price);
   }
 
-  return Math.round(
-    price / tick
+  const n = Math.round(
+    Number(price) / tick
   ) * tick;
-}
-
-function aggregateFootprint(
-  trades,
-  tickSize = 0
-) {
-  const levels = new Map();
 
   const decimals =
-    decimalsFromTick(tickSize);
+    decimalsFromTick(tick);
+
+  return Number(
+    n.toFixed(decimals)
+  );
+}
+
+function aggregateFootprint(trades, tickSize) {
+  const levels = new Map();
 
   for (const t of trades) {
-    let price = Number(t.price);
+    const price = roundToTick(
+      t.price,
+      tickSize
+    );
 
-    if (
-      Number(tickSize) > 0
-    ) {
-      price =
-        roundToTick(
-          price,
-          tickSize
-        );
-    }
-
-    const key =
-      price.toFixed(decimals);
-
-    if (!levels.has(key)) {
-      levels.set(key, {
+    if (!levels.has(price)) {
+      levels.set(price, {
         price,
         buyVolume: 0,
         sellVolume: 0,
@@ -448,14 +389,13 @@ function aggregateFootprint(
       });
     }
 
-    const level =
-      levels.get(key);
+    const level = levels.get(price);
 
-    if (t.side === "buy") {
+    if (t.side === "BUY") {
       level.buyVolume += t.size;
       level.buyValue += t.value;
       level.buyTrades++;
-    } else {
+    } else if (t.side === "SELL") {
       level.sellVolume += t.size;
       level.sellValue += t.value;
       level.sellTrades++;
@@ -463,33 +403,30 @@ function aggregateFootprint(
   }
 
   return [...levels.values()]
-    .map(x => ({
-      ...x,
+    .sort((a, b) => a.price - b.price)
+    .map(level => ({
+      ...level,
 
       delta:
-        x.buyVolume -
-        x.sellVolume,
+        level.buyVolume -
+        level.sellVolume,
 
       deltaValue:
-        x.buyValue -
-        x.sellValue,
+        level.buyValue -
+        level.sellValue,
 
       totalVolume:
-        x.buyVolume +
-        x.sellVolume,
+        level.buyVolume +
+        level.sellVolume,
 
       imbalance:
-        x.sellVolume > 0
-          ? x.buyVolume /
-            x.sellVolume
-          : x.buyVolume > 0
-            ? 999
+        level.sellVolume > 0
+          ? level.buyVolume /
+            level.sellVolume
+          : level.buyVolume > 0
+            ? Infinity
             : 0
-    }))
-    .sort(
-      (a, b) =>
-        b.price - a.price
-    );
+    }));
 }
 
 
@@ -498,47 +435,35 @@ function aggregateFootprint(
 ========================================================= */
 
 function orderbookStats(data) {
-  const bids =
-    (data?.b || [])
-      .map(x => ({
-        price: Number(x[0]),
-        size: Number(x[1]),
-        value:
-          Number(x[0]) *
-          Number(x[1])
-      }))
-      .filter(x =>
-        Number.isFinite(x.price) &&
-        Number.isFinite(x.size)
-      );
+  const bids = Array.isArray(data?.b)
+    ? data.b
+    : [];
 
-  const asks =
-    (data?.a || [])
-      .map(x => ({
-        price: Number(x[0]),
-        size: Number(x[1]),
-        value:
-          Number(x[0]) *
-          Number(x[1])
-      }))
-      .filter(x =>
-        Number.isFinite(x.price) &&
-        Number.isFinite(x.size)
-      );
+  const asks = Array.isArray(data?.a)
+    ? data.a
+    : [];
 
-  const buyLiquidity =
-    bids.reduce(
-      (sum, x) =>
-        sum + x.value,
-      0
-    );
+  let buyLiquidity = 0;
+  let sellLiquidity = 0;
 
-  const sellLiquidity =
-    asks.reduce(
-      (sum, x) =>
-        sum + x.value,
-      0
-    );
+  let buyValue = 0;
+  let sellValue = 0;
+
+  for (const row of bids) {
+    const price = safeNumber(row[0]);
+    const size = safeNumber(row[1]);
+
+    buyLiquidity += size;
+    buyValue += price * size;
+  }
+
+  for (const row of asks) {
+    const price = safeNumber(row[0]);
+    const size = safeNumber(row[1]);
+
+    sellLiquidity += size;
+    sellValue += price * size;
+  }
 
   const totalLiquidity =
     buyLiquidity +
@@ -558,47 +483,46 @@ function orderbookStats(data) {
         100
       : 0;
 
-  const bestBid =
-    bids.length
-      ? bids[0].price
-      : 0;
+  let pressure = "NEUTRAL";
 
-  const bestAsk =
-    asks.length
-      ? asks[0].price
-      : 0;
-
-  const spread =
-    bestAsk > 0 &&
-    bestBid > 0
-      ? bestAsk - bestBid
-      : 0;
+  if (buyShare > sellShare + 8) {
+    pressure = "BUY_PRESSURE";
+  } else if (sellShare > buyShare + 8) {
+    pressure = "SELL_PRESSURE";
+  }
 
   return {
-    bids,
-    asks,
-
     buyLiquidity,
     sellLiquidity,
-
     totalLiquidity,
+
+    buyValue,
+    sellValue,
 
     buyShare,
     sellShare,
 
-    bestBid,
-    bestAsk,
+    bestBid:
+      bids.length
+        ? safeNumber(bids[0][0])
+        : 0,
 
-    spread,
+    bestAsk:
+      asks.length
+        ? safeNumber(asks[0][0])
+        : 0,
 
-    pressure:
-      buyShare >
-      sellShare + 8
-        ? "BUY_PRESSURE"
-        : sellShare >
-          buyShare + 8
-          ? "SELL_PRESSURE"
-          : "BALANCED"
+    spread:
+      bids.length &&
+      asks.length
+        ? safeNumber(asks[0][0]) -
+          safeNumber(bids[0][0])
+        : 0,
+
+    pressure,
+
+    bids,
+    asks
   };
 }
 
@@ -612,545 +536,349 @@ function detectAbsorption(
   candles,
   book
 ) {
-  if (
-    !trades.length ||
-    !candles.length
-  ) {
+  if (!candles.length) {
     return {
       detected: false,
-      side: "NONE",
-      score: 0,
-      reason: "داده کافی نیست"
+      type: "NONE",
+      score: 0
     };
   }
 
-  const last =
+  const candle =
     candles[candles.length - 1];
 
   const stats =
     tradeStats(trades);
 
   const range =
-    Math.max(
-      last.high - last.low,
-      Number.EPSILON
-    );
+    candle.high -
+    candle.low;
 
   const body =
     Math.abs(
-      last.close - last.open
+      candle.close -
+      candle.open
     );
 
   const bodyRatio =
-    body / range;
-
-  const nearLow =
-    (last.close - last.low) /
-    range;
-
-  const nearHigh =
-    (last.high - last.close) /
-    range;
-
-  const sellPressure =
-    stats.deltaPercent < -10;
-
-  const buyPressure =
-    stats.deltaPercent > 10;
+    range > 0
+      ? body / range
+      : 1;
 
   let score = 0;
-  let side = "NONE";
-
-  const reasons = [];
+  let type = "NONE";
 
   if (
-    sellPressure &&
-    nearLow < 0.35
+    stats.pressure ===
+      "SELL_PRESSURE" &&
+    range > 0
   ) {
-    score += 35;
-    side = "BUY";
+    const nearLow =
+      (candle.close -
+        candle.low) /
+      range;
 
-    reasons.push(
-      "فشار فروش در کف جذب شده"
-    );
+    if (nearLow <= 0.25) {
+      score += 35;
+      type = "BUY_ABSORPTION";
+    }
   }
 
   if (
-    buyPressure &&
-    nearHigh < 0.35
+    stats.pressure ===
+      "BUY_PRESSURE" &&
+    range > 0
   ) {
-    score += 35;
-    side = "SELL";
+    const nearHigh =
+      (candle.high -
+        candle.close) /
+      range;
 
-    reasons.push(
-      "فشار خرید در سقف جذب شده"
-    );
+    if (nearHigh <= 0.25) {
+      score += 35;
+      type = "SELL_ABSORPTION";
+    }
   }
 
   if (bodyRatio < 0.35) {
     score += 20;
-
-    reasons.push(
-      "بدنه کندل کوچک نسبت به محدوده"
-    );
   }
 
-  const bookPressure =
-    book?.pressure ||
-    "BALANCED";
-
   if (
-    side === "BUY" &&
-    bookPressure ===
+    book &&
+    type === "BUY_ABSORPTION" &&
+    book.pressure ===
       "BUY_PRESSURE"
   ) {
     score += 20;
-
-    reasons.push(
-      "حمایت سمت Bid در Order Book"
-    );
   }
 
   if (
-    side === "SELL" &&
-    bookPressure ===
+    book &&
+    type === "SELL_ABSORPTION" &&
+    book.pressure ===
       "SELL_PRESSURE"
   ) {
     score += 20;
-
-    reasons.push(
-      "حمایت سمت Ask در Order Book"
-    );
   }
 
   return {
-    detected:
-      score >= 50,
-
-    side,
-
-    score:
-      Math.min(
-        score,
-        100
-      ),
-
-    reason:
-      reasons.length
-        ? reasons.join(" · ")
-        : "Absorption معتبر شناسایی نشد"
+    detected: score >= 50,
+    type,
+    score,
+    bodyRatio,
+    pressure: stats.pressure
   };
 }
 
 
 /* =========================================================
-   BYBIT SYMBOLS
+   SYMBOLS
 ========================================================= */
 
+function isPerpetual(row) {
+  const contractType =
+    String(
+      row.contractType || ""
+    ).toUpperCase();
+
+  const status =
+    String(
+      row.status || ""
+    ).toUpperCase();
+
+  const quoteCoin =
+    String(
+      row.quoteCoin || ""
+    ).toUpperCase();
+
+  const settleCoin =
+    String(
+      row.settleCoin || ""
+    ).toUpperCase();
+
+  return (
+    status === "TRADING" &&
+    (
+      contractType ===
+        "LINEAR_PERPETUAL" ||
+      contractType ===
+        "PERPETUAL"
+    ) &&
+    (
+      quoteCoin === "USDT" ||
+      settleCoin === "USDT"
+    )
+  );
+}
+
 async function getBybitSymbols() {
-  const all = [];
-
   let cursor = "";
+  const output = [];
 
-  for (
-    let page = 0;
-    page < 20;
-    page++
-  ) {
-    const params = {
-      category: "linear",
-      status: "Trading",
-      limit: SYMBOL_LIMIT
-    };
-
-    if (cursor) {
-      params.cursor = cursor;
-    }
-
+  for (let page = 0; page < 20; page++) {
     const result =
       await bybit(
         "/v5/market/instruments-info",
-        params
+        {
+          category: "linear",
+          status: "Trading",
+          limit: SYMBOL_LIMIT,
+          cursor
+        }
       );
 
     const list =
-      result.result?.list ||
-      [];
+      Array.isArray(result.list)
+        ? result.list
+        : [];
 
-    for (const item of list) {
+    for (const row of list) {
+      if (!isPerpetual(row)) continue;
+
       const symbol =
-        String(
-          item.symbol || ""
-        ).toUpperCase();
+        normalizeSymbol(row.symbol);
 
-      if (!symbol) {
-        continue;
-      }
-
-      if (
-        item.status !==
-        "Trading"
-      ) {
-        continue;
-      }
-
-      if (
-        item.quoteCoin &&
-        item.quoteCoin !==
-          "USDT"
-      ) {
-        continue;
-      }
-
-      if (
-        item.settleCoin &&
-        item.settleCoin !==
-          "USDT"
-      ) {
-        continue;
-      }
-
-      if (
-        item.contractType &&
-        !String(
-          item.contractType
-        )
-          .toLowerCase()
-          .includes(
-            "perpetual"
-          )
-      ) {
-        continue;
-      }
-
-      all.push({
+      output.push({
         symbol,
-
-        baseCoin:
-          item.baseCoin ||
-          "",
-
-        quoteCoin:
-          item.quoteCoin ||
-          "USDT",
-
-        settleCoin:
-          item.settleCoin ||
-          "USDT",
-
-        contractType:
-          item.contractType ||
-          "LinearPerpetual",
-
-        status:
-          item.status ||
-          "Trading",
-
         tickSize:
-          item.priceFilter?.tickSize ||
-          "0",
-
+          safeNumber(
+            row.priceFilter?.tickSize,
+            0
+          ),
         minOrderQty:
-          item.lotSizeFilter?.minOrderQty ||
-          "0"
+          safeNumber(
+            row.lotSizeFilter?.minOrderQty,
+            0
+          )
       });
     }
 
-    const next =
-      result.result
-        ?.nextPageCursor ||
-      "";
+    cursor =
+      result.nextPageCursor || "";
 
-    if (
-      !next ||
-      !list.length
-    ) {
-      break;
-    }
-
-    cursor = next;
+    if (!cursor) break;
   }
 
   const unique =
     new Map();
 
-  for (const item of all) {
+  for (const item of output) {
     unique.set(
       item.symbol,
       item
     );
   }
 
-  return [
-    ...unique.values()
-  ].sort((a, b) =>
-    a.symbol.localeCompare(
-      b.symbol
-    )
-  );
+  return [...unique.values()]
+    .sort((a, b) =>
+      a.symbol.localeCompare(b.symbol)
+    );
 }
 
 
 /* =========================================================
-   LBANK SYMBOL SOURCE
+   LBANK
 ========================================================= */
 
 function isCryptoLbankInstrument(item) {
-  const symbol =
+  if (!item || typeof item !== "object") {
+    return false;
+  }
+
+  const raw =
     String(
-      item?.symbol ||
-      item?.contractCode ||
-      item?.pair ||
+      item.symbol ||
+      item.pair ||
+      item.symbolName ||
       ""
     )
       .toUpperCase()
-      .replace(
-        /[-_/]/g,
-        ""
-      );
+      .replace(/[-_/]/g, "");
 
-  const base =
-    String(
-      item?.baseCurrency ||
-      item?.baseCoin ||
-      ""
-    )
-      .toUpperCase();
+  if (!raw) return false;
 
-  const clear =
-    String(
-      item?.clearCurrency ||
-      item?.settleCurrency ||
-      item?.quoteCurrency ||
-      ""
-    )
-      .toUpperCase();
-
-  const quote =
-    String(
-      item?.quoteCurrency ||
-      item?.quoteCoin ||
-      item?.marginCoin ||
-      ""
-    )
-      .toUpperCase();
-
-  if (
-    !symbol &&
-    !base
-  ) {
-    return null;
-  }
-
-  const stable =
-    clear === "USDT" ||
-    quote === "USDT" ||
-    symbol.endsWith("USDT");
-
-  if (!stable) {
-    return null;
-  }
-
-  if (
-    !symbol.endsWith("USDT") &&
-    !base
-  ) {
-    return null;
-  }
-
-  let finalSymbol =
-    symbol;
-
-  if (
-    !finalSymbol &&
-    base
-  ) {
-    finalSymbol =
-      base + "USDT";
-  }
-
-  if (
-    !finalSymbol.endsWith(
-      "USDT"
-    )
-  ) {
-    finalSymbol +=
-      "USDT";
-  }
-
-  if (
-    !/^[A-Z0-9]+USDT$/.test(
-      finalSymbol
-    )
-  ) {
-    return null;
-  }
-
-  return finalSymbol;
+  return (
+    raw.endsWith("USDT")
+  );
 }
 
 async function getLbankSymbols() {
-  const urls = [
-    `${LBANK}/cfd/openApi/v1/pub/instrument`,
-    `${LBANK}/api/v2/cfd/openApi/v1/pub/instrument`
+  const endpoints = [
+    "/v2/currencyPairs.do",
+    "/v2/accuracy.do"
   ];
 
-  let lastError =
-    null;
-
-  for (const url of urls) {
+  for (const endpoint of endpoints) {
     try {
       const response =
         await fetch(
-          url,
+          LBANK + endpoint,
           {
-            method: "GET",
             headers: {
-              Accept:
+              "Accept":
                 "application/json"
             }
           }
         );
 
-      const text =
-        await response.text();
-
-      if (
-        !response.ok ||
-        !text
-      ) {
-        throw new Error(
-          `LBank HTTP ${response.status}`
-        );
-      }
+      if (!response.ok) continue;
 
       const data =
-        JSON.parse(text);
+        await response.json();
 
       const list =
         Array.isArray(data)
           ? data
-          : Array.isArray(
-              data?.data
-            )
+          : Array.isArray(data.data)
             ? data.data
-            : Array.isArray(
-                data?.result
-              )
+            : Array.isArray(data.result)
               ? data.result
-              : Array.isArray(
-                  data?.data?.list
-                )
-                ? data.data.list
-                : [];
+              : [];
 
-      const symbols =
-        new Set();
+      const symbols = [];
 
       for (const item of list) {
-        const symbol =
-          isCryptoLbankInstrument(
-            item
-          );
+        if (!isCryptoLbankInstrument(item)) {
+          continue;
+        }
 
-        if (symbol) {
-          symbols.add(
-            symbol
-          );
+        const raw =
+          String(
+            item.symbol ||
+            item.pair ||
+            item.symbolName ||
+            ""
+          )
+            .toUpperCase()
+            .replace(/[-_/]/g, "");
+
+        if (
+          raw &&
+          raw.endsWith("USDT")
+        ) {
+          symbols.push(raw);
         }
       }
 
-      if (symbols.size > 0) {
+      if (symbols.length) {
         return [
-          ...symbols
-        ].sort();
+          ...new Set(symbols)
+        ];
       }
-
-      throw new Error(
-        "LBank لیست قرارداد معتبر برنگرداند"
-      );
-    } catch (error) {
-      lastError = error;
-    }
+    } catch (_) {}
   }
 
-  throw (
-    lastError ||
-    new Error(
-      "LBank unavailable"
-    )
-  );
+  return [];
 }
-
-
-/* =========================================================
-   FINAL COLLECTOR SYMBOL LIST
-========================================================= */
 
 async function getCollectorSymbols() {
   const bybitSymbols =
     await getBybitSymbols();
 
-  let lbankSymbols = [];
-
   try {
-    lbankSymbols =
+    const lbankSymbols =
       await getLbankSymbols();
-  } catch {
-    lbankSymbols = [];
-  }
 
-  let selected;
+    if (
+      lbankSymbols.length
+    ) {
+      const lbankSet =
+        new Set(lbankSymbols);
 
-  if (
-    lbankSymbols.length
-  ) {
-    const allowed =
-      new Set(
-        lbankSymbols
-      );
-
-    selected =
-      bybitSymbols.filter(
+      return bybitSymbols.filter(
         x =>
-          allowed.has(
+          lbankSet.has(
             x.symbol
           )
       );
-  } else {
-    selected =
-      bybitSymbols;
-  }
+    }
+  } catch (_) {}
 
-  return {
-    symbols: selected,
-    bybitCount:
-      bybitSymbols.length,
-    lbankCount:
-      lbankSymbols.length,
-    filteredCount:
-      selected.length,
-    lbankAvailable:
-      lbankSymbols.length >
-      0
-  };
+  return bybitSymbols;
 }
 
 
 /* =========================================================
-   MARKET
+   ON DEMAND MARKET DATA
 ========================================================= */
 
 async function getMarket(
   symbol,
   interval
 ) {
+  symbol =
+    normalizeSymbol(symbol);
+
+  interval =
+    normalizeInterval(interval);
+
   const [
-    kline,
-    ticker,
-    book,
-    trades,
-    instrument
+    klineResult,
+    tickerResult,
+    orderbookResult,
+    tradeResult,
+    instrumentResult
   ] = await Promise.all([
     bybit(
       "/v5/market/kline",
@@ -1158,8 +886,7 @@ async function getMarket(
         category: "linear",
         symbol,
         interval,
-        limit:
-          KLINE_LIMIT
+        limit: KLINE_LIMIT
       }
     ),
 
@@ -1176,8 +903,7 @@ async function getMarket(
       {
         category: "linear",
         symbol,
-        limit:
-          ORDERBOOK_LIMIT
+        limit: ORDERBOOK_LIMIT
       }
     ),
 
@@ -1186,8 +912,7 @@ async function getMarket(
       {
         category: "linear",
         symbol,
-        limit:
-          TRADE_LIMIT
+        limit: TRADE_LIMIT
       }
     ),
 
@@ -1202,771 +927,116 @@ async function getMarket(
 
   const candles =
     parseKlines(
-      kline.result?.list
+      klineResult.list
     );
 
-  const parsedTrades =
+  const trades =
     parseTrades(
-      trades.result?.list
+      tradeResult.list
     );
 
-  const bookStats =
-    orderbookStats(
-      book.result?.list ||
-      {}
+  const ticker =
+    Array.isArray(tickerResult.list)
+      ? tickerResult.list[0]
+      : null;
+
+  const instrument =
+    Array.isArray(
+      instrumentResult.list
+    )
+      ? instrumentResult.list[0]
+      : null;
+
+  const tickSize =
+    safeNumber(
+      instrument?.priceFilter?.tickSize,
+      0
     );
 
   const stats =
-    tradeStats(
-      parsedTrades
-    );
-
-  const tickSize =
-    instrument.result?.list?.[0]
-      ?.priceFilter?.tickSize ||
-    "0";
+    tradeStats(trades);
 
   const footprint =
     aggregateFootprint(
-      parsedTrades,
+      trades,
       tickSize
+    );
+
+  const orderbook =
+    orderbookStats(
+      orderbookResult
     );
 
   const absorption =
     detectAbsorption(
-      parsedTrades,
+      trades,
       candles,
-      bookStats
+      orderbook
     );
-
-  const tickerData =
-    ticker.result?.list?.[0] ||
-    {};
 
   return {
     version: VERSION,
-
     symbol,
-
-    category:
-      "linear",
-
     interval,
 
-    serverTime:
-      Date.now(),
-
-    tickSize,
-
-    ticker: {
-      lastPrice:
-        Number(
-          tickerData.lastPrice ||
-          0
-        ),
-
-      markPrice:
-        Number(
-          tickerData.markPrice ||
-          0
-        ),
-
-      indexPrice:
-        Number(
-          tickerData.indexPrice ||
-          0
-        ),
-
-      price24hPcnt:
-        Number(
-          tickerData.price24hPcnt ||
-          0
-        ) * 100,
-
-      volume24h:
-        Number(
-          tickerData.volume24h ||
-          0
-        ),
-
-      turnover24h:
-        Number(
-          tickerData.turnover24h ||
-          0
-        )
-    },
-
     candles,
+    trades,
 
-    trades:
-      parsedTrades,
+    ticker,
 
     stats,
-
     footprint,
+    orderbook,
+    absorption,
 
-    orderbook:
-      bookStats,
-
-    absorption
+    instrument: {
+      tickSize,
+      minOrderQty:
+        safeNumber(
+          instrument?.lotSizeFilter
+            ?.minOrderQty,
+          0
+        )
+    }
   };
 }
 
 
 /* =========================================================
-   DURABLE OBJECT HELPER
+   DURABLE OBJECT
 ========================================================= */
 
 function collectorId(env) {
   if (
     !env ||
-    !env.TRADE_COLLECTOR
+    !env.TRADE_COLLECTOR_V5
   ) {
     throw new Error(
-      "TRADE_COLLECTOR binding پیدا نشد"
+      "TRADE_COLLECTOR_V5 binding پیدا نشد"
     );
   }
 
-  return env.TRADE_COLLECTOR.idFromName(
-    "global-bybit-trade-collector"
-  );
+  return env
+    .TRADE_COLLECTOR_V5
+    .idFromName(
+      "absorption-storage-v5-global"
+    );
 }
 
 function collectorStub(env) {
-  return env.TRADE_COLLECTOR.get(
-    collectorId(env)
-  );
-}
-
-
-/* =========================================================
-   COLLECTOR START
-========================================================= */
-
-async function startCollector(env) {
-  const stub =
-    collectorStub(env);
-
-  const response =
-    await stub.fetch(
-      "https://collector/internal/start"
+  return env
+    .TRADE_COLLECTOR_V5
+    .get(
+      collectorId(env)
     );
-
-  return response.json();
 }
 
 
 /* =========================================================
-   API ROUTER
+   TRADE COLLECTOR V5
 ========================================================= */
 
-async function route(
-  request,
-  env
-) {
-  const url =
-    new URL(request.url);
-
-  if (
-    url.pathname ===
-    "/api/health"
-  ) {
-    return json({
-      ok: true,
-      version: VERSION,
-      category:
-        "linear",
-      time:
-        new Date().toISOString()
-    });
-  }
-
-
-  if (
-    url.pathname ===
-    "/api/test"
-  ) {
-    return new Response(
-      "API TEST OK - " +
-      VERSION,
-      {
-        headers: {
-          ...CORS,
-          "Content-Type":
-            "text/plain; charset=utf-8"
-        }
-      }
-    );
-  }
-
-
-  if (
-    url.pathname ===
-    "/api/symbols"
-  ) {
-    try {
-      const result =
-        await getCollectorSymbols();
-
-      return json({
-        ok: true,
-
-        version:
-          VERSION,
-
-        category:
-          "linear",
-
-        count:
-          result.symbols.length,
-
-        bybitCount:
-          result.bybitCount,
-
-        lbankCount:
-          result.lbankCount,
-
-        lbankAvailable:
-          result.lbankAvailable,
-
-        symbols:
-          result.symbols
-      });
-    } catch (error) {
-      return json(
-        {
-          ok: false,
-
-          error:
-            error?.message ||
-            "خطای دریافت لیست Futures",
-
-          version:
-            VERSION
-        },
-        502
-      );
-    }
-  }
-
-
-  if (
-    url.pathname ===
-    "/api/collector/start"
-  ) {
-    try {
-      const result =
-        await startCollector(
-          env
-        );
-
-      return json({
-        ok: true,
-        ...result
-      });
-    } catch (error) {
-      return json(
-        {
-          ok: false,
-          error:
-            error?.message ||
-            "Collector start error"
-        },
-        500
-      );
-    }
-  }
-
-
-  if (
-    url.pathname ===
-    "/api/collector/status"
-  ) {
-    try {
-      const stub =
-        collectorStub(env);
-
-      const response =
-        await stub.fetch(
-          "https://collector/internal/status"
-        );
-
-      const data =
-        await response.json();
-
-      return json({
-        ok: true,
-        ...data
-      });
-    } catch (error) {
-      return json(
-        {
-          ok: false,
-          error:
-            error?.message ||
-            "Collector status error"
-        },
-        500
-      );
-    }
-  }
-
-
-  if (
-    url.pathname ===
-    "/api/collector/refresh"
-  ) {
-    try {
-      const stub =
-        collectorStub(env);
-
-      const response =
-        await stub.fetch(
-          "https://collector/internal/refresh"
-        );
-
-      const data =
-        await response.json();
-
-      return json({
-        ok: true,
-        ...data
-      });
-    } catch (error) {
-      return json(
-        {
-          ok: false,
-          error:
-            error?.message ||
-            "Collector refresh error"
-        },
-        500
-      );
-    }
-  }
-
-
-  if (
-    url.pathname ===
-    "/api/history"
-  ) {
-    const symbol =
-      normalizeSymbol(
-        url.searchParams.get(
-          "symbol"
-        )
-      );
-
-    const fromParam =
-      Number(
-        url.searchParams.get(
-          "from"
-        ) || 0
-      );
-
-    const toParam =
-      Number(
-        url.searchParams.get(
-          "to"
-        ) || Date.now()
-      );
-
-    try {
-      const stub =
-        collectorStub(env);
-
-      const target =
-        new URL(
-          "https://collector/internal/history"
-        );
-
-      target.searchParams.set(
-        "symbol",
-        symbol
-      );
-
-      if (
-        Number.isFinite(
-          fromParam
-        ) &&
-        fromParam > 0
-      ) {
-        target.searchParams.set(
-          "from",
-          String(fromParam)
-        );
-      }
-
-      if (
-        Number.isFinite(
-          toParam
-        )
-      ) {
-        target.searchParams.set(
-          "to",
-          String(toParam)
-        );
-      }
-
-      const response =
-        await stub.fetch(
-          target.toString()
-        );
-
-      const data =
-        await response.json();
-
-      return json(data);
-    } catch (error) {
-      return json(
-        {
-          ok: false,
-          error:
-            error?.message ||
-            "History error"
-        },
-        500
-      );
-    }
-  }
-
-
-  if (
-    url.pathname ===
-    "/api/history/footprint"
-  ) {
-    const symbol =
-      normalizeSymbol(
-        url.searchParams.get(
-          "symbol"
-        )
-      );
-
-    const minute =
-      Number(
-        url.searchParams.get(
-          "time"
-        ) || 0
-      );
-
-    try {
-      const stub =
-        collectorStub(env);
-
-      const target =
-        new URL(
-          "https://collector/internal/history/footprint"
-        );
-
-      target.searchParams.set(
-        "symbol",
-        symbol
-      );
-
-      if (
-        Number.isFinite(
-          minute
-        ) &&
-        minute > 0
-      ) {
-        target.searchParams.set(
-          "time",
-          String(minute)
-        );
-      }
-
-      const response =
-        await stub.fetch(
-          target.toString()
-        );
-
-      const data =
-        await response.json();
-
-      return json(data);
-    } catch (error) {
-      return json(
-        {
-          ok: false,
-          error:
-            error?.message ||
-            "History footprint error"
-        },
-        500
-      );
-    }
-  }
-
-
-  if (
-    url.pathname ===
-    "/api/market"
-  ) {
-    const symbol =
-      normalizeSymbol(
-        url.searchParams.get(
-          "symbol"
-        )
-      );
-
-    const interval =
-      normalizeInterval(
-        url.searchParams.get(
-          "interval"
-        )
-      );
-
-    try {
-      const result =
-        await getMarket(
-          symbol,
-          interval
-        );
-
-      return json({
-        ok: true,
-        ...result
-      });
-    } catch (error) {
-      return json(
-        {
-          ok: false,
-
-          error:
-            error?.message ||
-            "خطای دریافت اطلاعات Bybit",
-
-          version:
-            VERSION
-        },
-        502
-      );
-    }
-  }
-
-
-  if (
-    url.pathname ===
-    "/api/footprint"
-  ) {
-    const symbol =
-      normalizeSymbol(
-        url.searchParams.get(
-          "symbol"
-        )
-      );
-
-    try {
-      const [
-        tradesResult,
-        instrumentResult
-      ] = await Promise.all([
-        bybit(
-          "/v5/market/recent-trade",
-          {
-            category:
-              "linear",
-            symbol,
-            limit:
-              TRADE_LIMIT
-          }
-        ),
-
-        bybit(
-          "/v5/market/instruments-info",
-          {
-            category:
-              "linear",
-            symbol
-          }
-        )
-      ]);
-
-      const trades =
-        parseTrades(
-          tradesResult.result?.list
-        );
-
-      const tickSize =
-        instrumentResult.result
-          ?.list?.[0]
-          ?.priceFilter
-          ?.tickSize ||
-        "0";
-
-      return json({
-        ok: true,
-
-        symbol,
-
-        category:
-          "linear",
-
-        tickSize,
-
-        trades,
-
-        stats:
-          tradeStats(
-            trades
-          ),
-
-        footprint:
-          aggregateFootprint(
-            trades,
-            tickSize
-          )
-      });
-    } catch (error) {
-      return json(
-        {
-          ok: false,
-
-          error:
-            error?.message ||
-            "Footprint error"
-        },
-        502
-      );
-    }
-  }
-
-
-  if (
-    url.pathname ===
-    "/api/orderbook"
-  ) {
-    const symbol =
-      normalizeSymbol(
-        url.searchParams.get(
-          "symbol"
-        )
-      );
-
-    try {
-      const result =
-        await bybit(
-          "/v5/market/orderbook",
-          {
-            category:
-              "linear",
-            symbol,
-            limit:
-              ORDERBOOK_LIMIT
-          }
-        );
-
-      return json({
-        ok: true,
-
-        symbol,
-
-        category:
-          "linear",
-
-        ...orderbookStats(
-          result.result?.list ||
-          {}
-        )
-      });
-    } catch (error) {
-      return json(
-        {
-          ok: false,
-
-          error:
-            error?.message ||
-            "Order Book error"
-        },
-        502
-      );
-    }
-  }
-
-
-  if (
-    url.pathname ===
-    "/api/candles"
-  ) {
-    const symbol =
-      normalizeSymbol(
-        url.searchParams.get(
-          "symbol"
-        )
-      );
-
-    const interval =
-      normalizeInterval(
-        url.searchParams.get(
-          "interval"
-        )
-      );
-
-    try {
-      const result =
-        await bybit(
-          "/v5/market/kline",
-          {
-            category:
-              "linear",
-            symbol,
-            interval,
-            limit:
-              KLINE_LIMIT
-          }
-        );
-
-      return json({
-        ok: true,
-
-        symbol,
-
-        category:
-          "linear",
-
-        interval,
-
-        candles:
-          parseKlines(
-            result.result?.list
-          )
-      });
-    } catch (error) {
-      return json(
-        {
-          ok: false,
-
-          error:
-            error?.message ||
-            "Kline error"
-        },
-        502
-      );
-    }
-  }
-
-
-  return json({
-    ok: true,
-
-    service:
-      "Absorption Zone Scanner",
-
-    version:
-      VERSION,
-
-    category:
-      "linear"
-  });
-}
-
-
-/* =========================================================
-   DURABLE OBJECT
-   HOUR BLOCK STORAGE
-========================================================= */
-
-export class TradeCollector {
+export class AbsorptionStorageV5 {
   constructor(state, env) {
     this.state = state;
     this.env = env;
@@ -1978,1034 +1048,899 @@ export class TradeCollector {
 
     this.symbols = [];
     this.symbolMeta = new Map();
-
     this.subscribed = new Set();
 
     this.lastMessageAt = 0;
     this.lastTradeAt = 0;
-
     this.wsStartedAt = 0;
+
+    this.lastError = "";
+
+    this.reconnectAttempt = 0;
 
     this.reconnectTimer = null;
     this.pingTimer = null;
 
-    this.reconnectAttempt = 0;
+    this.alarmScheduled = false;
 
-    this.lastError = "";
+    this.dbInitialized = false;
 
-    /*
-      فقط Hour Blockهای فعال در RAM.
-      SQLite داده‌های پایدار را نگه می‌دارد.
-    */
     this.hourBlocks = new Map();
 
     this.dedupe = new Map();
 
-    this.alarmScheduled = false;
-
-    this.lastCheckpointAt = 0;
-
-    this.checkpointRunning = false;
-
-    this.boundaryCheckpointScheduled = false;
-
     this.lastCleanupAt = 0;
 
     this.loadedRecentBlocks = false;
+
+    this.checkpointRunning = false;
+
+    this.lastCheckpointAt = 0;
   }
 
 
   /* =======================================================
-     DB
+     DATABASE
   ======================================================= */
 
   initDB() {
+    if (this.dbInitialized) {
+      return;
+    }
+
     const sql =
       this.state.storage.sql;
 
-    /*
-      یک رکورد = یک Symbol + یک Hour
-    */
     sql.exec(`
-      CREATE TABLE IF NOT EXISTS hour_blocks (
+      CREATE TABLE IF NOT EXISTS hour_blocks_v5 (
         symbol TEXT NOT NULL,
         hour_start INTEGER NOT NULL,
         data TEXT NOT NULL,
         updated_at INTEGER NOT NULL,
-
-        PRIMARY KEY (
-          symbol,
-          hour_start
-        )
+        PRIMARY KEY(symbol, hour_start)
       )
     `);
 
     sql.exec(`
-      CREATE INDEX IF NOT EXISTS idx_hour_blocks_time
-      ON hour_blocks (
-        symbol,
-        hour_start
+      CREATE INDEX IF NOT EXISTS
+      idx_hour_blocks_v5_time
+      ON hour_blocks_v5(symbol, hour_start)
+    `);
+
+    sql.exec(`
+      CREATE TABLE IF NOT EXISTS
+      storage_meta_v5 (
+        key TEXT PRIMARY KEY,
+        value TEXT NOT NULL
       )
     `);
 
+    const rows =
+      sql.exec(`
+        SELECT value
+        FROM storage_meta_v5
+        WHERE key = 'storage_version'
+        LIMIT 1
+      `).toArray();
+
+    const current =
+      rows.length
+        ? String(rows[0].value)
+        : "";
+
     /*
-      جداول معماری قبلی دیگر استفاده نمی‌شوند.
-      حذف آن‌ها باعث می‌شود نوشتن تک‌تک
-      کندل/سطح/Trade دیگر انجام نشود.
+      این Storage کاملاً جدید است.
+      فقط در اولین اجرای V5 داده احتمالی
+      همین جدول V5 پاک می‌شود.
     */
-    try {
-      sql.exec(`
-        DROP TABLE IF EXISTS candles_1m
-      `);
-    } catch {}
 
-    try {
+    if (
+      current !== STORAGE_VERSION
+    ) {
       sql.exec(`
-        DROP TABLE IF EXISTS trades_1m
+        DELETE FROM hour_blocks_v5
       `);
-    } catch {}
 
-    try {
-      sql.exec(`
-        DROP TABLE IF EXISTS trade_ids
-      `);
-    } catch {}
+      sql.exec(
+        `
+        INSERT INTO storage_meta_v5
+          (key, value)
+        VALUES
+          ('storage_version', ?)
+        ON CONFLICT(key)
+        DO UPDATE SET
+          value = excluded.value
+        `,
+        STORAGE_VERSION
+      );
+    }
+
+    this.dbInitialized = true;
   }
 
 
   /* =======================================================
-     ALARM
+     ROW COUNT
   ======================================================= */
 
-  async scheduleAlarm() {
-    try {
-      await this.state.storage.setAlarm(
-        Date.now() +
-        5 * 60 * 1000
+  getRowCount() {
+    this.initDB();
+
+    const rows =
+      this.state.storage.sql
+        .exec(`
+          SELECT COUNT(*) AS count
+          FROM hour_blocks_v5
+        `)
+        .toArray();
+
+    return Number(
+      rows[0]?.count || 0
+    );
+  }
+
+
+  /* =======================================================
+     CAPACITY CLEANUP
+  ======================================================= */
+
+  enforceCapacity() {
+    this.initDB();
+
+    const count =
+      this.getRowCount();
+
+    if (count < MAX_ROWS) {
+      return {
+        deleted: 0,
+        rows: count
+      };
+    }
+
+    const target =
+      Math.max(
+        0,
+        Math.min(
+          CLEANUP_TARGET_ROWS,
+          MAX_ROWS - 1
+        )
       );
 
-      this.alarmScheduled =
-        true;
-    } catch {
-      this.alarmScheduled =
+    const deleteCount =
+      Math.max(
+        0,
+        count - target
+      );
+
+    if (deleteCount <= 0) {
+      return {
+        deleted: 0,
+        rows: count
+      };
+    }
+
+    this.state.storage.sql.exec(`
+      DELETE FROM hour_blocks_v5
+      WHERE rowid IN (
+        SELECT rowid
+        FROM hour_blocks_v5
+        ORDER BY hour_start ASC
+        LIMIT ${deleteCount}
+      )
+    `);
+
+    /*
+      پاک‌سازی RAM هم برای همان Hour Blockهای
+      قدیمی انجام می‌شود.
+    */
+
+    for (
+      const [key, block]
+      of this.hourBlocks
+    ) {
+      if (
+        block.hourStart <
+        hourStartOf(Date.now()) -
+        HOUR_MS
+      ) {
+        this.hourBlocks.delete(key);
+      }
+    }
+
+    const newCount =
+      this.getRowCount();
+
+    return {
+      deleted: deleteCount,
+      rows: newCount
+    };
+  }
+
+
+  /* =======================================================
+     LOAD RECENT BLOCKS
+  ======================================================= */
+
+  loadRecentBlocks() {
+    if (
+      this.loadedRecentBlocks
+    ) {
+      return;
+    }
+
+    this.initDB();
+
+    const now =
+      Date.now();
+
+    const currentHour =
+      hourStartOf(now);
+
+    const from =
+      currentHour -
+      2 * HOUR_MS;
+
+    const rows =
+      this.state.storage.sql
+        .exec(
+          `
+          SELECT
+            symbol,
+            hour_start,
+            data,
+            updated_at
+          FROM hour_blocks_v5
+          WHERE hour_start >= ?
+          ORDER BY hour_start ASC
+          `,
+          from
+        )
+        .toArray();
+
+    for (const row of rows) {
+      try {
+        const block =
+          this.deserializeBlock(
+            row
+          );
+
+        if (!block) continue;
+
+        this.hourBlocks.set(
+          `${block.symbol}:${block.hourStart}`,
+          block
+        );
+      } catch (_) {}
+    }
+
+    this.loadedRecentBlocks = true;
+  }
+
+
+  /* =======================================================
+     BLOCK CREATION
+  ======================================================= */
+
+  createBlock(
+    symbol,
+    hourStart
+  ) {
+    return {
+      v: 1,
+      symbol,
+      hourStart,
+      hourEnd:
+        hourStart +
+        HOUR_MS,
+
+      candles: new Map(),
+
+      dirty: true,
+
+      loaded: false
+    };
+  }
+
+
+  getOrCreateBlock(
+    symbol,
+    hourStart
+  ) {
+    const key =
+      `${symbol}:${hourStart}`;
+
+    let block =
+      this.hourBlocks.get(key);
+
+    if (!block) {
+      block =
+        this.createBlock(
+          symbol,
+          hourStart
+        );
+
+      this.hourBlocks.set(
+        key,
+        block
+      );
+    }
+
+    return block;
+  }
+
+
+  /* =======================================================
+     CURRENT HOUR
+  ======================================================= */
+
+  currentHourForSymbol(
+    symbol
+  ) {
+    let latest = null;
+
+    for (
+      const block
+      of this.hourBlocks.values()
+    ) {
+      if (
+        block.symbol !== symbol
+      ) {
+        continue;
+      }
+
+      if (
+        latest === null ||
+        block.hourStart >
+          latest
+      ) {
+        latest =
+          block.hourStart;
+      }
+    }
+
+    return latest;
+  }
+
+
+  /* =======================================================
+     TRADE AGGREGATION
+  ======================================================= */
+
+  aggregateTrade(trade) {
+    const symbol =
+      normalizeSymbol(
+        trade.symbol
+      );
+
+    const hourStart =
+      hourStartOf(
+        trade.time
+      );
+
+    const minuteStart =
+      minuteStartOf(
+        trade.time
+      );
+
+    const block =
+      this.getOrCreateBlock(
+        symbol,
+        hourStart
+      );
+
+    let candle =
+      block.candles.get(
+        minuteStart
+      );
+
+    if (!candle) {
+      candle = {
+        m: minuteStart,
+
+        o: trade.price,
+        h: trade.price,
+        l: trade.price,
+        c: trade.price,
+
+        v: 0,
+        t: 0,
+
+        b: 0,
+        s: 0,
+
+        bv: 0,
+        sv: 0,
+
+        bt: 0,
+        st: 0,
+
+        ot: trade.time,
+        ct: trade.time,
+
+        levels: new Map()
+      };
+
+      block.candles.set(
+        minuteStart,
+        candle
+      );
+    }
+
+    candle.h =
+      Math.max(
+        candle.h,
+        trade.price
+      );
+
+    candle.l =
+      Math.min(
+        candle.l,
+        trade.price
+      );
+
+    candle.c =
+      trade.price;
+
+    candle.v +=
+      trade.size;
+
+    candle.t +=
+      trade.value;
+
+    candle.ct =
+      Math.max(
+        candle.ct,
+        trade.time
+      );
+
+    if (
+      trade.side === "BUY"
+    ) {
+      candle.b +=
+        trade.value;
+
+      candle.bv +=
+        trade.size;
+
+      candle.bt++;
+    } else if (
+      trade.side === "SELL"
+    ) {
+      candle.s +=
+        trade.value;
+
+      candle.sv +=
+        trade.size;
+
+      candle.st++;
+    }
+
+    const meta =
+      this.symbolMeta.get(
+        symbol
+      );
+
+    const tickSize =
+      safeNumber(
+        meta?.tickSize,
+        0
+      );
+
+    const price =
+      roundToTick(
+        trade.price,
+        tickSize
+      );
+
+    let level =
+      candle.levels.get(
+        price
+      );
+
+    if (!level) {
+      level = {
+        price,
+
+        buyVolume: 0,
+        sellVolume: 0,
+
+        buyValue: 0,
+        sellValue: 0,
+
+        buyTrades: 0,
+        sellTrades: 0
+      };
+
+      candle.levels.set(
+        price,
+        level
+      );
+    }
+
+    if (
+      trade.side === "BUY"
+    ) {
+      level.buyVolume +=
+        trade.size;
+
+      level.buyValue +=
+        trade.value;
+
+      level.buyTrades++;
+    } else if (
+      trade.side === "SELL"
+    ) {
+      level.sellVolume +=
+        trade.size;
+
+      level.sellValue +=
+        trade.value;
+
+      level.sellTrades++;
+    }
+
+    block.dirty = true;
+  }
+
+
+  /* =======================================================
+     SERIALIZE
+  ======================================================= */
+
+  serializeBlock(block) {
+    const candles =
+      [...block.candles.values()]
+        .sort(
+          (a, b) =>
+            a.m - b.m
+        )
+        .map(candle => ({
+          m: candle.m,
+
+          o: candle.o,
+          h: candle.h,
+          l: candle.l,
+          c: candle.c,
+
+          v: candle.v,
+          t: candle.t,
+
+          b: candle.b,
+          s: candle.s,
+
+          bv: candle.bv,
+          sv: candle.sv,
+
+          bt: candle.bt,
+          st: candle.st,
+
+          ot: candle.ot,
+          ct: candle.ct,
+
+          lvs:
+            [...candle.levels.values()]
+              .sort(
+                (a, b) =>
+                  a.price -
+                  b.price
+              )
+              .map(level => [
+                level.price,
+
+                level.buyVolume,
+                level.sellVolume,
+
+                level.buyValue,
+                level.sellValue,
+
+                level.buyTrades,
+                level.sellTrades
+              ])
+        }));
+
+    return JSON.stringify({
+      v: 1,
+
+      s: block.symbol,
+
+      h: block.hourStart,
+
+      c: candles
+    });
+  }
+
+
+  /* =======================================================
+     DESERIALIZE
+  ======================================================= */
+
+  deserializeBlock(row) {
+    const raw =
+      typeof row.data === "string"
+        ? JSON.parse(row.data)
+        : row.data;
+
+    const block = {
+      v: Number(raw.v || 1),
+
+      symbol:
+        normalizeSymbol(
+          raw.s ||
+          row.symbol
+        ),
+
+      hourStart:
+        Number(
+          raw.h ||
+          row.hour_start
+        ),
+
+      hourEnd:
+        Number(
+          raw.h ||
+          row.hour_start
+        ) +
+        HOUR_MS,
+
+      candles: new Map(),
+
+      dirty: false,
+
+      loaded: true
+    };
+
+    const candles =
+      Array.isArray(raw.c)
+        ? raw.c
+        : [];
+
+    for (const item of candles) {
+      const candle = {
+        m: Number(item.m),
+
+        o: Number(item.o),
+        h: Number(item.h),
+        l: Number(item.l),
+        c: Number(item.c),
+
+        v: Number(item.v || 0),
+        t: Number(item.t || 0),
+
+        b: Number(item.b || 0),
+        s: Number(item.s || 0),
+
+        bv: Number(item.bv || 0),
+        sv: Number(item.sv || 0),
+
+        bt: Number(item.bt || 0),
+        st: Number(item.st || 0),
+
+        ot: Number(item.ot || item.m),
+        ct: Number(item.ct || item.m),
+
+        levels: new Map()
+      };
+
+      const levels =
+        Array.isArray(item.lvs)
+          ? item.lvs
+          : [];
+
+      for (const lv of levels) {
+        if (!Array.isArray(lv)) {
+          continue;
+        }
+
+        const price =
+          Number(lv[0]);
+
+        candle.levels.set(
+          price,
+          {
+            price,
+
+            buyVolume:
+              Number(lv[1] || 0),
+
+            sellVolume:
+              Number(lv[2] || 0),
+
+            buyValue:
+              Number(lv[3] || 0),
+
+            sellValue:
+              Number(lv[4] || 0),
+
+            buyTrades:
+              Number(lv[5] || 0),
+
+            sellTrades:
+              Number(lv[6] || 0)
+          }
+        );
+      }
+
+      block.candles.set(
+        candle.m,
+        candle
+      );
+    }
+
+    return block;
+  }
+
+
+  /* =======================================================
+     PERSIST CLOSED HOURS ONLY
+  ======================================================= */
+
+  persistClosedBlocks() {
+    if (
+      this.checkpointRunning
+    ) {
+      return;
+    }
+
+    this.checkpointRunning = true;
+
+    try {
+      this.initDB();
+
+      const now =
+        Date.now();
+
+      const currentHour =
+        hourStartOf(now);
+
+      const sql =
+        this.state.storage.sql;
+
+      let written = 0;
+
+      for (
+        const [key, block]
+        of this.hourBlocks
+      ) {
+        /*
+          ساعت جاری هرگز اینجا نوشته نمی‌شود.
+        */
+
+        if (
+          block.hourStart >=
+          currentHour
+        ) {
+          continue;
+        }
+
+        if (
+          !block.dirty
+        ) {
+          continue;
+        }
+
+        if (
+          !block.candles.size
+        ) {
+          block.dirty = false;
+          continue;
+        }
+
+        const data =
+          this.serializeBlock(
+            block
+          );
+
+        sql.exec(
+          `
+          INSERT INTO hour_blocks_v5
+            (
+              symbol,
+              hour_start,
+              data,
+              updated_at
+            )
+          VALUES
+            (?, ?, ?, ?)
+          ON CONFLICT(symbol, hour_start)
+          DO UPDATE SET
+            data =
+              excluded.data,
+            updated_at =
+              excluded.updated_at
+          `,
+          block.symbol,
+          block.hourStart,
+          data,
+          now
+        );
+
+        block.dirty = false;
+
+        written++;
+      }
+
+      this.lastCheckpointAt =
+        now;
+
+      /*
+        بلوک‌های بسته‌شده در RAM فقط
+        تا مدت کوتاهی نگه داشته می‌شوند.
+      */
+
+      const removeBefore =
+        currentHour -
+        HOUR_MS;
+
+      for (
+        const [key, block]
+        of this.hourBlocks
+      ) {
+        if (
+          block.hourStart <
+          removeBefore
+        ) {
+          this.hourBlocks.delete(
+            key
+          );
+        }
+      }
+
+      if (written > 0) {
+        this.enforceCapacity();
+      }
+
+      return {
+        written,
+        rows:
+          this.getRowCount()
+      };
+    } finally {
+      this.checkpointRunning =
         false;
     }
   }
 
 
   /* =======================================================
-     FETCH
-  ======================================================= */
-
-  async fetch(request) {
-    this.initDB();
-
-    if (
-      !this.loadedRecentBlocks
-    ) {
-      this.loadRecentBlocks();
-
-      this.loadedRecentBlocks =
-        true;
-    }
-
-    const url =
-      new URL(request.url);
-
-
-    if (
-      url.pathname ===
-      "/internal/start"
-    ) {
-      await this.start();
-
-      return new Response(
-        JSON.stringify(
-          this.statusObject()
-        ),
-        {
-          headers: {
-            "Content-Type":
-              "application/json"
-          }
-        }
-      );
-    }
-
-
-    if (
-      url.pathname ===
-      "/internal/status"
-    ) {
-      return new Response(
-        JSON.stringify(
-          this.statusObject()
-        ),
-        {
-          headers: {
-            "Content-Type":
-              "application/json"
-          }
-        }
-      );
-    }
-
-
-    if (
-      url.pathname ===
-      "/internal/refresh"
-    ) {
-      await this.refreshSymbols();
-
-      if (
-        !this.ws ||
-        !this.connected
-      ) {
-        await this.connect();
-      } else {
-        await this.resubscribe();
-      }
-
-      return new Response(
-        JSON.stringify(
-          this.statusObject()
-        ),
-        {
-          headers: {
-            "Content-Type":
-              "application/json"
-          }
-        }
-      );
-    }
-
-
-    if (
-      url.pathname ===
-      "/internal/history"
-    ) {
-      const symbol =
-        normalizeSymbol(
-          url.searchParams.get(
-            "symbol"
-          )
-        );
-
-      const from =
-        Number(
-          url.searchParams.get(
-            "from"
-          ) ||
-          Date.now() -
-            HISTORY_MS
-        );
-
-      const to =
-        Number(
-          url.searchParams.get(
-            "to"
-          ) ||
-          Date.now()
-        );
-
-      const rows =
-        this.getHistory(
-          symbol,
-          from,
-          to
-        );
-
-      return new Response(
-        JSON.stringify({
-          ok: true,
-
-          symbol,
-
-          from,
-
-          to,
-
-          count:
-            rows.length,
-
-          candles:
-            rows
-        }),
-        {
-          headers: {
-            "Content-Type":
-              "application/json"
-          }
-        }
-      );
-    }
-
-
-    if (
-      url.pathname ===
-      "/internal/history/footprint"
-    ) {
-      const symbol =
-        normalizeSymbol(
-          url.searchParams.get(
-            "symbol"
-          )
-        );
-
-      let minute =
-        Number(
-          url.searchParams.get(
-            "time"
-          ) || 0
-        );
-
-      if (
-        minute <= 0
-      ) {
-        minute =
-          minuteStartOf(
-            Date.now()
-          );
-      }
-
-      const result =
-        this.getFootprint(
-          symbol,
-          minute
-        );
-
-      return new Response(
-        JSON.stringify({
-          ok: true,
-
-          symbol,
-
-          minute,
-
-          ...result
-        }),
-        {
-          headers: {
-            "Content-Type":
-              "application/json"
-          }
-        }
-      );
-    }
-
-
-    return new Response(
-      JSON.stringify({
-        ok: false,
-        error:
-          "Collector endpoint not found"
-      }),
-      {
-        status: 404,
-        headers: {
-          "Content-Type":
-            "application/json"
-        }
-      }
-    );
-  }
-
-
-  /* =======================================================
-     STATUS
-  ======================================================= */
-
-  statusObject() {
-    return {
-      version:
-        VERSION,
-
-      collector:
-        "TradeCollector",
-
-      connected:
-        this.connected,
-
-      started:
-        this.started,
-
-      symbols:
-        this.symbols.length,
-
-      subscribed:
-        this.subscribed.size,
-
-      lastMessageAt:
-        this.lastMessageAt,
-
-      lastTradeAt:
-        this.lastTradeAt,
-
-      wsStartedAt:
-        this.wsStartedAt,
-
-      reconnectAttempt:
-        this.reconnectAttempt,
-
-      lastError:
-        this.lastError,
-
-      storage:
-        "Durable Object SQLite · Hour Blocks",
-
-      storageModel:
-        "1 row = 1 symbol + 1 hour",
-
-      checkpoint:
-        "15 minutes",
-
-      history:
-        "24h rolling",
-
-      marketData:
-        "Bybit",
-
-      symbolSource:
-        "LBank ∩ Bybit",
-
-      hourBlocksInMemory:
-        this.hourBlocks.size
-    };
-  }
-
-
-  /* =======================================================
-     START
-  ======================================================= */
-
-  async start() {
-    this.started =
-      true;
-
-    this.initDB();
-
-    if (
-      !this.loadedRecentBlocks
-    ) {
-      this.loadRecentBlocks();
-
-      this.loadedRecentBlocks =
-        true;
-    }
-
-    await this.refreshSymbols();
-
-    if (
-      !this.ws ||
-      !this.connected
-    ) {
-      await this.connect();
-    }
-
-    const now =
-      Date.now();
-
-    if (
-      now -
-      this.lastCleanupAt >=
-      CLEANUP_INTERVAL_MS
-    ) {
-      this.cleanup();
-
-      this.lastCleanupAt =
-        now;
-    }
-
-    await this.scheduleAlarm();
-
-    return this.statusObject();
-  }
-
-
-  /* =======================================================
-     SYMBOL REFRESH
-  ======================================================= */
-
-  async refreshSymbols() {
-    const result =
-      await getCollectorSymbols();
-
-    this.symbols =
-      result.symbols.map(
-        x => x.symbol
-      );
-
-    this.symbolMeta.clear();
-
-    for (const item of result.symbols) {
-      this.symbolMeta.set(
-        item.symbol,
-        item
-      );
-    }
-
-    return result;
-  }
-
-
-  /* =======================================================
-     WEBSOCKET CONNECT
-  ======================================================= */
-
-  async connect() {
-    if (
-      this.ws &&
-      this.connected
-    ) {
-      return;
-    }
-
-    if (
-      !this.symbols.length
-    ) {
-      await this.refreshSymbols();
-    }
-
-    if (
-      !this.symbols.length
-    ) {
-      throw new Error(
-        "هیچ Symbol معتبری برای Collector پیدا نشد"
-      );
-    }
-
-    this.closeSocket();
-
-    const ws =
-      new WebSocket(
-        BYBIT_WS
-      );
-
-    this.ws =
-      ws;
-
-    this.connected =
-      false;
-
-    this.wsStartedAt =
-      Date.now();
-
-    this.subscribed.clear();
-
-    ws.addEventListener(
-      "open",
-      () => {
-        this.connected =
-          true;
-
-        this.lastError =
-          "";
-
-        this.reconnectAttempt =
-          0;
-
-        this.subscribeAll();
-
-        this.startPing();
-
-        this.scheduleAlarm();
-      }
-    );
-
-    ws.addEventListener(
-      "message",
-      event => {
-        this.handleMessage(
-          event.data
-        );
-      }
-    );
-
-    ws.addEventListener(
-      "close",
-      () => {
-        this.connected =
-          false;
-
-        this.stopPing();
-
-        this.scheduleReconnect();
-      }
-    );
-
-    ws.addEventListener(
-      "error",
-      () => {
-        this.lastError =
-          "Bybit WebSocket error";
-
-        this.connected =
-          false;
-
-        try {
-          ws.close();
-        } catch {}
-      }
-    );
-  }
-
-
-  /* =======================================================
-     CLOSE
-  ======================================================= */
-
-  closeSocket() {
-    this.stopPing();
-
-    if (this.ws) {
-      try {
-        this.ws.close();
-      } catch {}
-    }
-
-    this.ws =
-      null;
-
-    this.connected =
-      false;
-
-    this.subscribed.clear();
-  }
-
-
-  /* =======================================================
-     PING
-  ======================================================= */
-
-  startPing() {
-    this.stopPing();
-
-    this.pingTimer =
-      setInterval(
-        () => {
-          if (
-            this.ws &&
-            this.connected
-          ) {
-            try {
-              this.ws.send(
-                JSON.stringify({
-                  op:
-                    "ping"
-                })
-              );
-            } catch {}
-          }
-        },
-        20000
-      );
-  }
-
-
-  stopPing() {
-    if (
-      this.pingTimer
-    ) {
-      clearInterval(
-        this.pingTimer
-      );
-
-      this.pingTimer =
-        null;
-    }
-  }
-
-
-  /* =======================================================
-     RECONNECT
-  ======================================================= */
-
-  scheduleReconnect() {
-    if (
-      this.reconnectTimer
-    ) {
-      return;
-    }
-
-    const delay =
-      Math.min(
-        30000,
-        Math.max(
-          1000,
-          1000 *
-            Math.pow(
-              2,
-              this.reconnectAttempt
-            )
-        )
-      );
-
-    this.reconnectAttempt++;
-
-    this.reconnectTimer =
-      setTimeout(
-        async () => {
-          this.reconnectTimer =
-            null;
-
-          try {
-            await this.refreshSymbols();
-
-            await this.connect();
-          } catch (error) {
-            this.lastError =
-              error?.message ||
-              "Reconnect error";
-
-            this.scheduleReconnect();
-          }
-        },
-        delay
-      );
-  }
-
-
-  /* =======================================================
-     SUBSCRIBE
-  ======================================================= */
-
-  subscribeAll() {
-    if (
-      !this.ws ||
-      !this.connected ||
-      !this.symbols.length
-    ) {
-      return;
-    }
-
-    const topics =
-      this.symbols.map(
-        symbol =>
-          `publicTrade.${symbol}`
-      );
-
-    const chunks = [];
-
-    let current = [];
-    let length = 0;
-
-    for (const topic of topics) {
-      const extra =
-        topic.length + 3;
-
-      if (
-        current.length > 0 &&
-        length + extra >
-          18000
-      ) {
-        chunks.push(
-          current
-        );
-
-        current = [];
-        length = 0;
-      }
-
-      current.push(topic);
-
-      length += extra;
-    }
-
-    if (
-      current.length
-    ) {
-      chunks.push(
-        current
-      );
-    }
-
-    for (const args of chunks) {
-      try {
-        this.ws.send(
-          JSON.stringify({
-            op:
-              "subscribe",
-            args
-          })
-        );
-
-        for (const topic of args) {
-          const symbol =
-            topic.replace(
-              "publicTrade.",
-              ""
-            );
-
-          this.subscribed.add(
-            symbol
-          );
-        }
-      } catch (error) {
-        this.lastError =
-          error?.message ||
-          "Subscribe error";
-      }
-    }
-  }
-
-
-  async resubscribe() {
-    if (
-      !this.ws ||
-      !this.connected
-    ) {
-      return;
-    }
-
-    this.subscribed.clear();
-
-    this.subscribeAll();
-  }
-
-
-  /* =======================================================
-     WS MESSAGE
-========================================================= */
-
-  handleMessage(raw) {
-    this.lastMessageAt =
-      Date.now();
-
-    let data;
-
-    try {
-      data =
-        typeof raw ===
-        "string"
-          ? JSON.parse(raw)
-          : raw;
-    } catch {
-      return;
-    }
-
-    if (
-      data?.op ===
-        "pong" ||
-      data?.op ===
-        "ping"
-    ) {
-      return;
-    }
-
-    const topic =
-      String(
-        data?.topic ||
-        ""
-      );
-
-    if (
-      !topic.startsWith(
-        "publicTrade."
-      )
-    ) {
-      return;
-    }
-
-    const symbol =
-      topic.replace(
-        "publicTrade.",
-        ""
-      );
-
-    const list =
-      Array.isArray(
-        data?.data
-      )
-        ? data.data
-        : [];
-
-    if (
-      !list.length
-    ) {
-      return;
-    }
-
-    let newHourDetected =
-      false;
-
-    for (const rawTrade of list) {
-      const trade =
-        this.parseWsTrade(
-          symbol,
-          rawTrade
-        );
-
-      if (!trade) {
-        continue;
-      }
-
-      if (
-        this.isDuplicate(
-          symbol,
-          trade.id
-        )
-      ) {
-        continue;
-      }
-
-      this.lastTradeAt =
-        trade.time;
-
-      const before =
-        this.currentHourForSymbol(
-          symbol
-        );
-
-      this.aggregateTrade(
-        trade
-      );
-
-      const after =
-        hourStartOf(
-          trade.time
-        );
-
-      if (
-        before !== null &&
-        before !== after
-      ) {
-        newHourDetected =
-          true;
-      }
-    }
-
-    /*
-      در عبور از ساعت،
-      Hour Block قبلی را ذخیره می‌کنیم.
-    */
-    if (
-      newHourDetected
-    ) {
-      this.scheduleClosedBlockCheckpoint();
-    }
-  }
-
-
-  /* =======================================================
-     WS TRADE PARSER
-========================================================= */
-
-  parseWsTrade(
-    symbol,
-    raw
-  ) {
-    const price =
-      Number(
-        raw.p ??
-        raw.price
-      );
-
-    const size =
-      Number(
-        raw.v ??
-        raw.size
-      );
-
-    const time =
-      Number(
-        raw.T ??
-        raw.time ??
-        Date.now()
-      );
-
-    const side =
-      String(
-        raw.S ??
-        raw.side ??
-        ""
-      ).toLowerCase();
-
-    const id =
-      raw.i ??
-      raw.execId ??
-      raw.tradeId ??
-      `${time}-${price}-${size}-${side}`;
-
-    if (
-      !Number.isFinite(
-        price
-      ) ||
-      !Number.isFinite(
-        size
-      ) ||
-      !Number.isFinite(
-        time
-      ) ||
-      price <= 0 ||
-      size <= 0
-    ) {
-      return null;
-    }
-
-    return {
-      symbol,
-
-      id:
-        String(id),
-
-      time,
-
-      price,
-
-      size,
-
-      value:
-        price * size,
-
-      side:
-        side === "buy"
-          ? "buy"
-          : "sell"
-    };
-  }
-
-
-  /* =======================================================
      DEDUPE
-========================================================= */
+  ======================================================= */
 
-  isDuplicate(
-    symbol,
-    id
-  ) {
-    const key =
-      `${symbol}:${id}`;
+  isDuplicate(trade) {
+    const id =
+      String(
+        trade.id || ""
+      );
+
+    if (!id) return false;
 
     if (
-      this.dedupe.has(key)
+      this.dedupe.has(id)
     ) {
       return true;
     }
 
     this.dedupe.set(
-      key,
+      id,
       Date.now()
     );
 
     if (
       this.dedupe.size >
-      50000
+      60000
     ) {
       const cutoff =
         Date.now() -
         5 * 60 * 1000;
 
       for (
-        const [
-          k,
-          t
-        ] of this.dedupe
+        const [key, time]
+        of this.dedupe
       ) {
         if (
-          t < cutoff
+          time < cutoff
         ) {
           this.dedupe.delete(
-            k
+            key
           );
         }
       }
@@ -3032,956 +1967,804 @@ export class TradeCollector {
 
 
   /* =======================================================
-     MEMORY BLOCK HELPERS
-========================================================= */
+     WEBSOCKET TRADE PARSER
+  ======================================================= */
 
-  currentHourForSymbol(
-    symbol
-  ) {
-    let latest =
-      null;
+  parseWsTrade(row) {
+    const price =
+      safeNumber(row.p);
 
-    for (
-      const block of
-      this.hourBlocks.values()
-    ) {
-      if (
-        block.symbol ===
-        symbol
-      ) {
-        if (
-          latest === null ||
-          block.hourStart >
-            latest
-        ) {
-          latest =
-            block.hourStart;
-        }
-      }
-    }
+    const size =
+      safeNumber(row.v);
 
-    return latest;
-  }
+    const time =
+      safeNumber(
+        row.T ||
+        row.ts ||
+        Date.now()
+      );
 
-
-  createBlock(
-    symbol,
-    hourStart
-  ) {
     return {
-      symbol,
+      symbol:
+        normalizeSymbol(
+          row.s
+        ),
 
-      hourStart,
+      id:
+        String(
+          row.i ||
+          row.execId ||
+          `${time}-${price}-${size}-${row.S || ""}`
+        ),
 
-      hourEnd:
-        hourStart +
-        HOUR_MS,
+      time,
+      price,
+      size,
 
-      candles:
-        new Map(),
+      value:
+        price * size,
 
-      dirty:
-        true,
-
-      loaded:
-        false
+      side:
+        String(
+          row.S || ""
+        ).toUpperCase()
     };
   }
 
 
-  getOrCreateBlock(
-    symbol,
-    hourStart
-  ) {
-    const key =
-      `${symbol}:${hourStart}`;
-
-    let block =
-      this.hourBlocks.get(
-        key
-      );
-
-    if (!block) {
-      block =
-        this.createBlock(
-          symbol,
-          hourStart
-        );
-
-      this.hourBlocks.set(
-        key,
-        block
-      );
-    }
-
-    return block;
-  }
-
-
   /* =======================================================
-     AGGREGATE IN MEMORY
-========================================================= */
+     MESSAGE
+  ======================================================= */
 
-  aggregateTrade(
-    trade
-  ) {
-    const minute =
-      minuteStartOf(
-        trade.time
-      );
+  handleMessage(raw) {
+    this.lastMessageAt =
+      Date.now();
 
-    const hourStart =
-      hourStartOf(
-        trade.time
-      );
-
-    const block =
-      this.getOrCreateBlock(
-        trade.symbol,
-        hourStart
-      );
-
-    let candle =
-      block.candles.get(
-        minute
-      );
-
-    if (!candle) {
-      candle = {
-        minute,
-
-        open:
-          trade.price,
-
-        high:
-          trade.price,
-
-        low:
-          trade.price,
-
-        close:
-          trade.price,
-
-        volume:
-          trade.size,
-
-        turnover:
-          trade.value,
-
-        buyVolume:
-          trade.side ===
-          "buy"
-            ? trade.size
-            : 0,
-
-        sellVolume:
-          trade.side ===
-          "sell"
-            ? trade.size
-            : 0,
-
-        buyValue:
-          trade.side ===
-          "buy"
-            ? trade.value
-            : 0,
-
-        sellValue:
-          trade.side ===
-          "sell"
-            ? trade.value
-            : 0,
-
-        buyTrades:
-          trade.side ===
-          "buy"
-            ? 1
-            : 0,
-
-        sellTrades:
-          trade.side ===
-          "sell"
-            ? 1
-            : 0,
-
-        openTime:
-          trade.time,
-
-        closeTime:
-          trade.time,
-
-        levels:
-          new Map()
-      };
-
-      block.candles.set(
-        minute,
-        candle
-      );
-    } else {
-      if (
-        trade.time <
-        candle.openTime
-      ) {
-        candle.openTime =
-          trade.time;
-
-        candle.open =
-          trade.price;
-      }
-
-      if (
-        trade.time >=
-        candle.closeTime
-      ) {
-        candle.closeTime =
-          trade.time;
-
-        candle.close =
-          trade.price;
-      }
-
-      candle.high =
-        Math.max(
-          candle.high,
-          trade.price
-        );
-
-      candle.low =
-        Math.min(
-          candle.low,
-          trade.price
-        );
-
-      candle.volume +=
-        trade.size;
-
-      candle.turnover +=
-        trade.value;
-
-      if (
-        trade.side ===
-        "buy"
-      ) {
-        candle.buyVolume +=
-          trade.size;
-
-        candle.buyValue +=
-          trade.value;
-
-        candle.buyTrades++;
-      } else {
-        candle.sellVolume +=
-          trade.size;
-
-        candle.sellValue +=
-          trade.value;
-
-        candle.sellTrades++;
-      }
-    }
-
-    const meta =
-      this.symbolMeta.get(
-        trade.symbol
-      );
-
-    const tickSize =
-      Number(
-        meta?.tickSize ||
-        0
-      );
-
-    let levelPrice =
-      trade.price;
-
-    if (
-      tickSize > 0
-    ) {
-      levelPrice =
-        roundToTick(
-          trade.price,
-          tickSize
-        );
-    }
-
-    const decimals =
-      decimalsFromTick(
-        tickSize
-      );
-
-    const levelKey =
-      levelPrice.toFixed(
-        decimals
-      );
-
-    let level =
-      candle.levels.get(
-        levelKey
-      );
-
-    if (!level) {
-      level = {
-        price:
-          levelPrice,
-
-        buyVolume: 0,
-        sellVolume: 0,
-
-        buyValue: 0,
-        sellValue: 0,
-
-        buyTrades: 0,
-        sellTrades: 0
-      };
-
-      candle.levels.set(
-        levelKey,
-        level
-      );
-    }
-
-    if (
-      trade.side ===
-      "buy"
-    ) {
-      level.buyVolume +=
-        trade.size;
-
-      level.buyValue +=
-        trade.value;
-
-      level.buyTrades++;
-    } else {
-      level.sellVolume +=
-        trade.size;
-
-      level.sellValue +=
-        trade.value;
-
-      level.sellTrades++;
-    }
-
-    block.dirty =
-      true;
-  }
-
-
-  /* =======================================================
-     SERIALIZE HOUR BLOCK
-========================================================= */
-
-  serializeBlock(
-    block
-  ) {
-    const candles =
-      [...block.candles.values()]
-        .sort(
-          (a, b) =>
-            a.minute -
-            b.minute
-        )
-        .map(candle => ({
-          m:
-            candle.minute,
-
-          o:
-            candle.open,
-
-          h:
-            candle.high,
-
-          l:
-            candle.low,
-
-          c:
-            candle.close,
-
-          v:
-            candle.volume,
-
-          t:
-            candle.turnover,
-
-          b:
-            candle.buyVolume,
-
-          s:
-            candle.sellVolume,
-
-          bv:
-            candle.buyValue,
-
-          sv:
-            candle.sellValue,
-
-          bt:
-            candle.buyTrades,
-
-          st:
-            candle.sellTrades,
-
-          ot:
-            candle.openTime,
-
-          ct:
-            candle.closeTime,
-
-          lvs:
-            [...candle.levels.values()]
-              .sort(
-                (a, b) =>
-                  b.price -
-                  a.price
-              )
-              .map(level => [
-                level.price,
-                level.buyVolume,
-                level.sellVolume,
-                level.buyValue,
-                level.sellValue,
-                level.buyTrades,
-                level.sellTrades
-              ])
-        }));
-
-    return JSON.stringify(
-      {
-        v: 1,
-
-        s:
-          block.symbol,
-
-        h:
-          block.hourStart,
-
-        c:
-          candles
-      }
-    );
-  }
-
-
-  /* =======================================================
-     DESERIALIZE HOUR BLOCK
-========================================================= */
-
-  deserializeBlock(
-    row
-  ) {
-    let parsed;
+    let message;
 
     try {
-      parsed =
-        typeof row.data ===
-        "string"
-          ? JSON.parse(
-              row.data
-            )
-          : row.data;
-    } catch {
-      return null;
+      message =
+        JSON.parse(raw);
+    } catch (_) {
+      return;
     }
 
     if (
-      !parsed ||
-      !Array.isArray(
-        parsed.c
-      )
+      message.op === "pong"
     ) {
-      return null;
+      return;
     }
 
-    const symbol =
-      normalizeSymbol(
-        parsed.s ||
-        row.symbol
-      );
+    if (
+      message.success === false
+    ) {
+      this.lastError =
+        message.ret_msg ||
+        message.retMsg ||
+        "WebSocket error";
 
-    const hourStart =
-      Number(
-        parsed.h ??
-        row.hour_start
+      return;
+    }
+
+    const topic =
+      String(
+        message.topic || ""
       );
 
     if (
-      !Number.isFinite(
-        hourStart
+      !topic.startsWith(
+        "publicTrade."
       )
     ) {
-      return null;
+      return;
     }
 
-    const block =
-      this.createBlock(
-        symbol,
-        hourStart
-      );
+    const rows =
+      Array.isArray(
+        message.data
+      )
+        ? message.data
+        : [];
 
-    block.dirty =
-      false;
+    let crossedHour = false;
 
-    block.loaded =
-      true;
-
-    for (const c of parsed.c) {
-      const minute =
-        Number(c.m);
+    for (const row of rows) {
+      const trade =
+        this.parseWsTrade(
+          row
+        );
 
       if (
-        !Number.isFinite(
-          minute
+        !trade.symbol ||
+        !trade.time ||
+        trade.price <= 0 ||
+        trade.size <= 0
+      ) {
+        continue;
+      }
+
+      if (
+        this.isDuplicate(
+          trade
         )
       ) {
         continue;
       }
 
-      const candle = {
-        minute,
-
-        open:
-          Number(c.o),
-
-        high:
-          Number(c.h),
-
-        low:
-          Number(c.l),
-
-        close:
-          Number(c.c),
-
-        volume:
-          Number(c.v || 0),
-
-        turnover:
-          Number(c.t || 0),
-
-        buyVolume:
-          Number(c.b || 0),
-
-        sellVolume:
-          Number(c.s || 0),
-
-        buyValue:
-          Number(c.bv || 0),
-
-        sellValue:
-          Number(c.sv || 0),
-
-        buyTrades:
-          Number(c.bt || 0),
-
-        sellTrades:
-          Number(c.st || 0),
-
-        openTime:
-          Number(c.ot || minute),
-
-        closeTime:
-          Number(c.ct || minute),
-
-        levels:
-          new Map()
-      };
-
-      const levels =
-        Array.isArray(
-          c.lvs
-        )
-          ? c.lvs
-          : [];
-
-      for (const item of levels) {
-        if (
-          !Array.isArray(item) ||
-          item.length < 7
-        ) {
-          continue;
-        }
-
-        const price =
-          Number(item[0]);
-
-        if (
-          !Number.isFinite(
-            price
-          )
-        ) {
-          continue;
-        }
-
-        const decimals =
-          decimalsFromTick(
-            this.symbolMeta.get(
-              symbol
-            )?.tickSize ||
-            0
-          );
-
-        const key =
-          price.toFixed(
-            decimals
-          );
-
-        candle.levels.set(
-          key,
-          {
-            price,
-
-            buyVolume:
-              Number(
-                item[1] || 0
-              ),
-
-            sellVolume:
-              Number(
-                item[2] || 0
-              ),
-
-            buyValue:
-              Number(
-                item[3] || 0
-              ),
-
-            sellValue:
-              Number(
-                item[4] || 0
-              ),
-
-            buyTrades:
-              Number(
-                item[5] || 0
-              ),
-
-            sellTrades:
-              Number(
-                item[6] || 0
-              )
-          }
+      const before =
+        this.currentHourForSymbol(
+          trade.symbol
         );
+
+      this.aggregateTrade(
+        trade
+      );
+
+      const after =
+        hourStartOf(
+          trade.time
+        );
+
+      if (
+        before !== null &&
+        before !== after
+      ) {
+        crossedHour = true;
       }
 
-      block.candles.set(
-        minute,
-        candle
-      );
+      this.lastTradeAt =
+        Date.now();
     }
 
-    return block;
-  }
+    /*
+      اگر ساعت عوض شده باشد، ساعت بسته‌شده
+      بلافاصله ذخیره می‌شود.
+    */
 
-
-  /* =======================================================
-     LOAD RECENT BLOCKS
-========================================================= */
-
-  loadRecentBlocks() {
-    const now =
-      Date.now();
-
-    const currentHour =
-      hourStartOf(
-        now
-      );
-
-    const from =
-      currentHour -
-      HOUR_MS;
-
-    try {
-      const rows =
-        this.state.storage.sql.exec(
-          `
-          SELECT
-            symbol,
-            hour_start,
-            data,
-            updated_at
-
-          FROM hour_blocks
-
-          WHERE
-            hour_start >= ?
-            AND hour_start <= ?
-
-          ORDER BY
-            hour_start ASC
-          `,
-          from,
-          currentHour
-        ).toArray();
-
-      for (const row of rows) {
-        const block =
-          this.deserializeBlock(
-            row
-          );
-
-        if (!block) {
-          continue;
-        }
-
-        const key =
-          `${block.symbol}:${block.hourStart}`;
-
-        this.hourBlocks.set(
-          key,
-          block
-        );
-      }
-    } catch (error) {
-      this.lastError =
-        error?.message ||
-        "Load hour blocks error";
+    if (crossedHour) {
+      this.persistClosedBlocks();
     }
   }
 
 
   /* =======================================================
-     CHECKPOINT
-========================================================= */
+     SUBSCRIBE
+  ======================================================= */
 
-  checkpointBlocks(
-    force = false
-  ) {
+  async subscribeAll() {
     if (
-      this.checkpointRunning
+      !this.ws ||
+      this.ws.readyState !== 1
     ) {
       return;
     }
 
-    this.checkpointRunning =
-      true;
+    this.subscribed.clear();
+
+    const args =
+      this.symbols.map(
+        item =>
+          `publicTrade.${item.symbol}`
+      );
+
+    const chunks = [];
+
+    let current = [];
+    let length = 0;
+
+    for (const topic of args) {
+      const extra =
+        topic.length + 3;
+
+      if (
+        current.length >= 100 ||
+        length + extra > 16000
+      ) {
+        chunks.push(
+          current
+        );
+
+        current = [];
+        length = 0;
+      }
+
+      current.push(topic);
+      length += extra;
+    }
+
+    if (current.length) {
+      chunks.push(current);
+    }
+
+    for (
+      const chunk
+      of chunks
+    ) {
+      try {
+        this.ws.send(
+          JSON.stringify({
+            op: "subscribe",
+            args: chunk
+          })
+        );
+
+        for (const topic of chunk) {
+          this.subscribed.add(
+            topic
+          );
+        }
+
+        await new Promise(
+          resolve =>
+            setTimeout(
+              resolve,
+              100
+            )
+        );
+      } catch (error) {
+        this.lastError =
+          String(
+            error?.message ||
+            error
+          );
+      }
+    }
+  }
+
+
+  /* =======================================================
+     PING
+  ======================================================= */
+
+  startPing() {
+    this.stopPing();
+
+    this.pingTimer =
+      setInterval(() => {
+        try {
+          if (
+            this.ws &&
+            this.ws.readyState === 1
+          ) {
+            this.ws.send(
+              JSON.stringify({
+                op: "ping"
+              })
+            );
+          }
+        } catch (_) {}
+      }, 20000);
+  }
+
+  stopPing() {
+    if (
+      this.pingTimer
+    ) {
+      clearInterval(
+        this.pingTimer
+      );
+
+      this.pingTimer = null;
+    }
+  }
+
+
+  /* =======================================================
+     CONNECT
+  ======================================================= */
+
+  async connect() {
+    if (
+      !this.started
+    ) {
+      return;
+    }
+
+    if (
+      this.ws &&
+      (
+        this.ws.readyState === 0 ||
+        this.ws.readyState === 1
+      )
+    ) {
+      return;
+    }
 
     try {
-      const now =
+      this.symbols =
+        await getCollectorSymbols();
+
+      this.symbolMeta.clear();
+
+      for (
+        const item
+        of this.symbols
+      ) {
+        this.symbolMeta.set(
+          item.symbol,
+          item
+        );
+      }
+
+      if (
+        !this.symbols.length
+      ) {
+        throw new Error(
+          "هیچ Symbol مشترک بین LBank و Bybit پیدا نشد"
+        );
+      }
+
+      this.ws =
+        new WebSocket(
+          BYBIT_WS
+        );
+
+      this.wsStartedAt =
         Date.now();
 
-      const currentHour =
-        hourStartOf(
-          now
-        );
+      this.ws.addEventListener(
+        "open",
+        async () => {
+          this.connected = true;
 
-      const sql =
-        this.state.storage.sql;
+          this.reconnectAttempt = 0;
 
-      for (
-        const [
-          key,
-          block
-        ] of this.hourBlocks
-      ) {
-        const closed =
-          block.hourStart <
-          currentHour;
+          this.lastError = "";
 
-        if (
-          !force &&
-          !block.dirty &&
-          !closed
-        ) {
-          continue;
+          try {
+            await this.subscribeAll();
+          } catch (error) {
+            this.lastError =
+              String(
+                error?.message ||
+                error
+              );
+          }
+
+          this.startPing();
+
+          this.scheduleAlarm();
         }
+      );
 
-        if (
-          !block.candles.size
-        ) {
-          continue;
+      this.ws.addEventListener(
+        "message",
+        event => {
+          try {
+            this.handleMessage(
+              event.data
+            );
+          } catch (error) {
+            this.lastError =
+              String(
+                error?.message ||
+                error
+              );
+          }
         }
+      );
 
-        const data =
-          this.serializeBlock(
-            block
-          );
+      this.ws.addEventListener(
+        "close",
+        () => {
+          this.connected =
+            false;
 
-        sql.exec(
-          `
-          INSERT INTO hour_blocks (
-            symbol,
-            hour_start,
-            data,
-            updated_at
-          )
-          VALUES (?, ?, ?, ?)
+          this.stopPing();
 
-          ON CONFLICT (
-            symbol,
-            hour_start
-          )
-
-          DO UPDATE SET
-
-            data =
-              excluded.data,
-
-            updated_at =
-              excluded.updated_at
-          `,
-          block.symbol,
-          block.hourStart,
-          data,
-          now
-        );
-
-        block.dirty =
-          false;
-      }
-
-      this.lastCheckpointAt =
-        now;
-
-      /*
-        فقط ساعت جاری و در صورت نیاز
-        ساعت قبلی در RAM باقی می‌ماند.
-      */
-      for (
-        const [
-          key,
-          block
-        ] of this.hourBlocks
-      ) {
-        if (
-          block.hourStart <
-          currentHour -
-          HOUR_MS
-        ) {
-          this.hourBlocks.delete(
-            key
-          );
+          if (
+            this.started
+          ) {
+            this.scheduleReconnect();
+          }
         }
-      }
+      );
+
+      this.ws.addEventListener(
+        "error",
+        () => {
+          this.lastError =
+            "Bybit WebSocket error";
+
+          this.connected =
+            false;
+        }
+      );
     } catch (error) {
+      this.connected = false;
+
       this.lastError =
-        error?.message ||
-        "Hour block checkpoint error";
-    } finally {
-      this.checkpointRunning =
-        false;
+        String(
+          error?.message ||
+          error
+        );
+
+      this.scheduleReconnect();
     }
   }
 
 
   /* =======================================================
-     CLOSED BLOCK CHECKPOINT
-========================================================= */
+     RECONNECT
+  ======================================================= */
 
-  scheduleClosedBlockCheckpoint() {
+  scheduleReconnect() {
     if (
-      this.boundaryCheckpointScheduled
+      !this.started
     ) {
       return;
     }
 
-    this.boundaryCheckpointScheduled =
-      true;
+    if (
+      this.reconnectTimer
+    ) {
+      return;
+    }
 
-    queueMicrotask(
-      () => {
-        try {
-          this.checkpointBlocks(
-            false
-          );
-        } catch (error) {
-          this.lastError =
+    this.reconnectAttempt++;
+
+    const delay =
+      Math.min(
+        30000,
+        1000 *
+        Math.pow(
+          2,
+          Math.min(
+            this.reconnectAttempt,
+            5
+          )
+        )
+      );
+
+    this.reconnectTimer =
+      setTimeout(
+        async () => {
+          this.reconnectTimer =
+            null;
+
+          await this.connect();
+        },
+        delay
+      );
+  }
+
+
+  /* =======================================================
+     REFRESH
+  ======================================================= */
+
+  async refreshSymbols() {
+    const list =
+      await getCollectorSymbols();
+
+    this.symbols =
+      list;
+
+    this.symbolMeta.clear();
+
+    for (
+      const item
+      of list
+    ) {
+      this.symbolMeta.set(
+        item.symbol,
+        item
+      );
+    }
+
+    if (
+      this.connected
+    ) {
+      try {
+        await this.subscribeAll();
+      } catch (error) {
+        this.lastError =
+          String(
             error?.message ||
-            "Boundary checkpoint error";
-        } finally {
-          this.boundaryCheckpointScheduled =
-            false;
-        }
+            error
+          );
       }
+    }
+
+    return {
+      count:
+        this.symbols.length
+    };
+  }
+
+
+  /* =======================================================
+     ALARM
+  ======================================================= */
+
+  scheduleAlarm() {
+    if (
+      this.alarmScheduled
+    ) {
+      return;
+    }
+
+    this.alarmScheduled = true;
+
+    this.state.storage.setAlarm(
+      Date.now() +
+      ALARM_MS
     );
   }
 
 
+  async alarm() {
+    this.alarmScheduled =
+      false;
+
+    try {
+      this.initDB();
+
+      this.loadRecentBlocks();
+
+      /*
+        فقط Hour Blockهای بسته‌شده
+        نوشته می‌شوند.
+      */
+
+      this.persistClosedBlocks();
+
+      /*
+        کنترل ظرفیت 80K
+      */
+
+      this.enforceCapacity();
+
+      /*
+        هر چند ساعت Symbolها دوباره
+        از LBank ∩ Bybit خوانده می‌شوند.
+      */
+
+      if (
+        !this.symbols.length ||
+        !this.connected
+      ) {
+        await this.refreshSymbols();
+      }
+
+      if (
+        !this.connected &&
+        this.started
+      ) {
+        await this.connect();
+      }
+
+      /*
+        اگر WebSocket باز است ولی Symbolها
+        تغییر کرده‌اند، دوباره Subscribe.
+      */
+
+      if (
+        this.connected &&
+        this.ws &&
+        this.ws.readyState === 1
+      ) {
+        await this.subscribeAll();
+      }
+    } catch (error) {
+      this.lastError =
+        String(
+          error?.message ||
+          error
+        );
+    }
+
+    this.scheduleAlarm();
+  }
+
+
   /* =======================================================
-     GET HISTORY FROM MEMORY + SQLITE
-========================================================= */
+     START
+  ======================================================= */
+
+  async start() {
+    this.started = true;
+
+    this.initDB();
+
+    this.loadRecentBlocks();
+
+    try {
+      await this.refreshSymbols();
+    } catch (error) {
+      this.lastError =
+        String(
+          error?.message ||
+          error
+        );
+    }
+
+    if (
+      !this.connected
+    ) {
+      await this.connect();
+    }
+
+    this.enforceCapacity();
+
+    this.scheduleAlarm();
+
+    return this.statusObject();
+  }
+
+
+  /* =======================================================
+     STATUS
+  ======================================================= */
+
+  statusObject() {
+    let rows = 0;
+
+    try {
+      rows =
+        this.getRowCount();
+    } catch (_) {}
+
+    return {
+      version: VERSION,
+
+      collector:
+        "AbsorptionStorageV5",
+
+      started:
+        this.started,
+
+      connected:
+        this.connected,
+
+      symbols:
+        this.symbols.length,
+
+      subscribed:
+        this.subscribed.size,
+
+      lastMessageAt:
+        this.lastMessageAt,
+
+      lastTradeAt:
+        this.lastTradeAt,
+
+      wsStartedAt:
+        this.wsStartedAt,
+
+      reconnectAttempt:
+        this.reconnectAttempt,
+
+      lastError:
+        this.lastError,
+
+      storage:
+        "Durable Object SQLite",
+
+      storageName:
+        "AbsorptionStorageV5",
+
+      table:
+        "hour_blocks_v5",
+
+      storageModel:
+        "1 row = 1 symbol + 1 hour",
+
+      maxRows:
+        MAX_ROWS,
+
+      currentRows:
+        rows,
+
+      cleanupTarget:
+        CLEANUP_TARGET_ROWS,
+
+      checkpoint:
+        "closed hour only",
+
+      currentHour:
+        "RAM only until hour closes",
+
+      history:
+        "capacity based rolling history",
+
+      symbolSource:
+        "LBank ∩ Bybit",
+
+      marketData:
+        "Bybit",
+
+      hourBlocksInMemory:
+        this.hourBlocks.size
+    };
+  }
+
+
+  /* =======================================================
+     HISTORY
+  ======================================================= */
 
   getHistory(
     symbol,
     from,
     to
   ) {
-    const fromHour =
-      hourStartOf(
-        from
-      );
+    this.initDB();
 
-    const toHour =
-      hourStartOf(
-        to
-      );
+    symbol =
+      normalizeSymbol(symbol);
 
-    const blocks =
-      new Map();
+    const start =
+      Number(from) ||
+      Date.now() -
+      24 * HOUR_MS;
 
-    try {
-      const rows =
-        this.state.storage.sql.exec(
+    const end =
+      Number(to) ||
+      Date.now();
+
+    const firstHour =
+      hourStartOf(start);
+
+    const lastHour =
+      hourStartOf(end);
+
+    const rows =
+      this.state.storage.sql
+        .exec(
           `
           SELECT
             symbol,
             hour_start,
             data,
             updated_at
-
-          FROM hour_blocks
-
-          WHERE
-            symbol = ?
+          FROM hour_blocks_v5
+          WHERE symbol = ?
             AND hour_start >= ?
             AND hour_start <= ?
-
-          ORDER BY
-            hour_start ASC
+          ORDER BY hour_start ASC
           `,
           symbol,
-          fromHour,
-          toHour
-        ).toArray();
+          firstHour,
+          lastHour
+        )
+        .toArray();
 
-      for (const row of rows) {
+    const blocks = new Map();
+
+    for (const row of rows) {
+      try {
         const block =
           this.deserializeBlock(
             row
           );
 
-        if (!block) {
-          continue;
-        }
-
         blocks.set(
           block.hourStart,
           block
         );
-      }
-    } catch (error) {
-      this.lastError =
-        error?.message ||
-        "History block read error";
+      } catch (_) {}
     }
 
     /*
-      RAM نسخه جدیدتر را روی SQLite می‌گذارد.
+      RAM روی Storage اولویت دارد.
     */
+
     for (
-      const block of
-      this.hourBlocks.values()
+      const block
+      of this.hourBlocks.values()
     ) {
       if (
-        block.symbol !==
-        symbol
+        block.symbol !== symbol
       ) {
         continue;
       }
 
       if (
         block.hourStart <
-        fromHour ||
+          firstHour ||
         block.hourStart >
-        toHour
+          lastHour
       ) {
         continue;
       }
@@ -3992,12 +2775,11 @@ export class TradeCollector {
       );
     }
 
-    const candles =
-      [];
+    const candles = [];
 
     for (
-      const block of
-      [...blocks.values()]
+      const block
+      of [...blocks.values()]
         .sort(
           (a, b) =>
             a.hourStart -
@@ -4005,107 +2787,66 @@ export class TradeCollector {
         )
     ) {
       for (
-        const candle of
-        block.candles.values()
+        const candle
+        of block.candles.values()
       ) {
         if (
-          candle.minute <
-          from ||
-          candle.minute >
-          to
+          candle.m < start ||
+          candle.m > end
         ) {
           continue;
         }
 
+        const buyVolume =
+          candle.bv;
+
+        const sellVolume =
+          candle.sv;
+
         candles.push({
           time:
-            Number(
-              candle.minute
-            ),
+            candle.m,
 
           open:
-            Number(
-              candle.open
-            ),
+            candle.o,
 
           high:
-            Number(
-              candle.high
-            ),
+            candle.h,
 
           low:
-            Number(
-              candle.low
-            ),
+            candle.l,
 
           close:
-            Number(
-              candle.close
-            ),
+            candle.c,
 
           volume:
-            Number(
-              candle.volume
-            ),
+            candle.v,
 
           turnover:
-            Number(
-              candle.turnover
-            ),
+            candle.t,
 
-          buyVolume:
-            Number(
-              candle.buyVolume
-            ),
-
-          sellVolume:
-            Number(
-              candle.sellVolume
-            ),
+          buyVolume,
+          sellVolume,
 
           buyValue:
-            Number(
-              candle.buyValue
-            ),
+            candle.b,
 
           sellValue:
-            Number(
-              candle.sellValue
-            ),
+            candle.s,
 
           buyTrades:
-            Number(
-              candle.buyTrades
-            ),
+            candle.bt,
 
           sellTrades:
-            Number(
-              candle.sellTrades
-            ),
+            candle.st,
 
           delta:
-            Number(
-              candle.buyVolume
-            ) -
-            Number(
-              candle.sellVolume
-            ),
+            buyVolume -
+            sellVolume,
 
           deltaValue:
-            Number(
-              candle.buyValue
-            ) -
-            Number(
-              candle.sellValue
-            ),
-
-          trades:
-            Number(
-              candle.buyTrades
-            ) +
-            Number(
-              candle.sellTrades
-            )
+            candle.b -
+            candle.s
         });
       }
     }
@@ -4116,503 +2857,466 @@ export class TradeCollector {
         b.time
     );
 
-    return candles;
+    return {
+      version: VERSION,
+      symbol,
+      from: start,
+      to: end,
+      candles
+    };
   }
 
 
   /* =======================================================
-     FOOTPRINT HISTORY
-========================================================= */
+     FOOTPRINT
+  ======================================================= */
 
   getFootprint(
     symbol,
     minute
   ) {
-    const hourStart =
-      hourStartOf(
-        minute
+    this.initDB();
+
+    symbol =
+      normalizeSymbol(symbol);
+
+    const target =
+      minuteStartOf(
+        Number(minute)
       );
 
+    const hour =
+      hourStartOf(target);
+
+    const key =
+      `${symbol}:${hour}`;
+
     let block =
-      null;
+      this.hourBlocks.get(key);
 
-    /*
-      اول RAM
-    */
-    for (
-      const item of
-      this.hourBlocks.values()
-    ) {
-      if (
-        item.symbol ===
-        symbol &&
-        item.hourStart ===
-        hourStart
-      ) {
-        block =
-          item;
-
-        break;
-      }
-    }
-
-    /*
-      سپس SQLite
-    */
     if (!block) {
-      try {
-        const rows =
-          this.state.storage.sql.exec(
+      const rows =
+        this.state.storage.sql
+          .exec(
             `
             SELECT
               symbol,
               hour_start,
               data,
               updated_at
-
-            FROM hour_blocks
-
-            WHERE
-              symbol = ?
+            FROM hour_blocks_v5
+            WHERE symbol = ?
               AND hour_start = ?
-
             LIMIT 1
             `,
             symbol,
-            hourStart
-          ).toArray();
+            hour
+          )
+          .toArray();
 
-        if (rows.length) {
-          block =
-            this.deserializeBlock(
-              rows[0]
-            );
-        }
-      } catch (error) {
-        this.lastError =
-          error?.message ||
-          "Footprint block read error";
+      if (!rows.length) {
+        return {
+          version: VERSION,
+          symbol,
+          minute: target,
+          found: false,
+          candle: null,
+          levels: []
+        };
       }
-    }
 
-    if (!block) {
-      return {
-        candle: null,
-
-        stats: {
-          trades: 0,
-
-          buyVolume: 0,
-          sellVolume: 0,
-
-          buyValue: 0,
-          sellValue: 0,
-
-          totalVolume: 0,
-          totalValue: 0,
-
-          delta: 0,
-          deltaValue: 0,
-          deltaPercent: 0,
-
-          buyTrades: 0,
-          sellTrades: 0
-        },
-
-        footprint: []
-      };
+      block =
+        this.deserializeBlock(
+          rows[0]
+        );
     }
 
     const candle =
       block.candles.get(
-        minute
+        target
       );
 
     if (!candle) {
       return {
+        version: VERSION,
+        symbol,
+        minute: target,
+        found: false,
         candle: null,
-
-        stats: {
-          trades: 0,
-
-          buyVolume: 0,
-          sellVolume: 0,
-
-          buyValue: 0,
-          sellValue: 0,
-
-          totalVolume: 0,
-          totalValue: 0,
-
-          delta: 0,
-          deltaValue: 0,
-          deltaPercent: 0,
-
-          buyTrades: 0,
-          sellTrades: 0
-        },
-
-        footprint: []
+        levels: []
       };
     }
 
-    const footprint =
+    const levels =
       [...candle.levels.values()]
-        .map(level => ({
-          price:
-            Number(
-              level.price
-            ),
-
-          buyVolume:
-            Number(
-              level.buyVolume
-            ),
-
-          sellVolume:
-            Number(
-              level.sellVolume
-            ),
-
-          buyValue:
-            Number(
-              level.buyValue
-            ),
-
-          sellValue:
-            Number(
-              level.sellValue
-            ),
-
-          buyTrades:
-            Number(
-              level.buyTrades
-            ),
-
-          sellTrades:
-            Number(
-              level.sellTrades
-            ),
-
-          delta:
-            Number(
-              level.buyVolume
-            ) -
-            Number(
-              level.sellVolume
-            ),
-
-          deltaValue:
-            Number(
-              level.buyValue
-            ) -
-            Number(
-              level.sellValue
-            ),
-
-          totalVolume:
-            Number(
-              level.buyVolume
-            ) +
-            Number(
-              level.sellVolume
-            ),
-
-          imbalance:
-            Number(
-              level.sellVolume
-            ) > 0
-              ? Number(
-                  level.buyVolume
-                ) /
-                Number(
-                  level.sellVolume
-                )
-              : Number(
-                  level.buyVolume
-                ) > 0
-                  ? 999
-                  : 0
-        }))
         .sort(
           (a, b) =>
-            b.price -
-            a.price
-        );
+            a.price -
+            b.price
+        )
+        .map(level => ({
+          price:
+            level.price,
+
+          buyVolume:
+            level.buyVolume,
+
+          sellVolume:
+            level.sellVolume,
+
+          buyValue:
+            level.buyValue,
+
+          sellValue:
+            level.sellValue,
+
+          buyTrades:
+            level.buyTrades,
+
+          sellTrades:
+            level.sellTrades,
+
+          delta:
+            level.buyVolume -
+            level.sellVolume,
+
+          deltaValue:
+            level.buyValue -
+            level.sellValue,
+
+          totalVolume:
+            level.buyVolume +
+            level.sellVolume
+        }));
 
     const buyVolume =
-      Number(
-        candle.buyVolume
-      );
+      candle.bv;
 
     const sellVolume =
-      Number(
-        candle.sellVolume
-      );
-
-    const buyValue =
-      Number(
-        candle.buyValue
-      );
-
-    const sellValue =
-      Number(
-        candle.sellValue
-      );
-
-    const totalVolume =
-      buyVolume +
-      sellVolume;
-
-    const totalValue =
-      buyValue +
-      sellValue;
-
-    const stats = {
-      trades:
-        Number(
-          candle.buyTrades
-        ) +
-        Number(
-          candle.sellTrades
-        ),
-
-      buyVolume,
-
-      sellVolume,
-
-      buyValue,
-
-      sellValue,
-
-      totalVolume,
-
-      totalValue,
-
-      delta:
-        buyVolume -
-        sellVolume,
-
-      deltaValue:
-        buyValue -
-        sellValue,
-
-      deltaPercent:
-        totalVolume > 0
-          ? (
-              buyVolume -
-              sellVolume
-            ) /
-            totalVolume *
-            100
-          : 0,
-
-      buyTrades:
-        Number(
-          candle.buyTrades
-        ),
-
-      sellTrades:
-        Number(
-          candle.sellTrades
-        )
-    };
+      candle.sv;
 
     return {
+      version: VERSION,
+
+      symbol,
+
+      minute: target,
+
+      found: true,
+
       candle: {
         time:
-          Number(
-            candle.minute
-          ),
+          candle.m,
 
         open:
-          Number(
-            candle.open
-          ),
+          candle.o,
 
         high:
-          Number(
-            candle.high
-          ),
+          candle.h,
 
         low:
-          Number(
-            candle.low
-          ),
+          candle.l,
 
         close:
-          Number(
-            candle.close
-          ),
+          candle.c,
 
         volume:
-          Number(
-            candle.volume
-          ),
+          candle.v,
 
         turnover:
-          Number(
-            candle.turnover
-          )
+          candle.t,
+
+        buyVolume,
+        sellVolume,
+
+        buyValue:
+          candle.b,
+
+        sellValue:
+          candle.s,
+
+        buyTrades:
+          candle.bt,
+
+        sellTrades:
+          candle.st,
+
+        delta:
+          buyVolume -
+          sellVolume,
+
+        deltaValue:
+          candle.b -
+          candle.s
       },
 
-      stats,
-
-      footprint
+      levels
     };
   }
 
 
   /* =======================================================
-     CLEANUP
-========================================================= */
+     FETCH
+  ======================================================= */
 
-  cleanup() {
-    const cutoff =
-      Date.now() -
-      HISTORY_MS;
-
-    /*
-      چون ذخیره‌سازی ساعتی است،
-      کل Blockهای تمام‌شده قدیمی حذف می‌شوند.
-    */
-    const cutoffHour =
-      hourStartOf(
-        cutoff
-      );
-
-    try {
-      this.state.storage.sql.exec(
-        `
-        DELETE FROM hour_blocks
-        WHERE hour_start < ?
-        `,
-        cutoffHour
-      );
-
-      this.lastCleanupAt =
-        Date.now();
-    } catch (error) {
-      this.lastError =
-        error?.message ||
-        "Hour block cleanup error";
-    }
-
-    /*
-      RAM قدیمی هم حذف شود.
-    */
-    for (
-      const [
-        key,
-        block
-      ] of this.hourBlocks
-    ) {
-      if (
-        block.hourStart <
-        cutoffHour
-      ) {
-        this.hourBlocks.delete(
-          key
-        );
-      }
-    }
-  }
-
-
-  /* =======================================================
-     ALARM
-========================================================= */
-
-  async alarm() {
+  async fetch(request) {
     this.initDB();
 
+    const url =
+      new URL(
+        request.url
+      );
+
+    const path =
+      url.pathname;
+
     try {
       if (
-        !this.loadedRecentBlocks
+        request.method ===
+        "OPTIONS"
       ) {
-        this.loadRecentBlocks();
-
-        this.loadedRecentBlocks =
-          true;
-      }
-
-      const now =
-        Date.now();
-
-      /*
-        Checkpoint فقط هر 15 دقیقه.
-        بنابراین به‌جای نوشتن هر Trade،
-        فقط Blockهای تغییرکرده ذخیره می‌شوند.
-      */
-      if (
-        now -
-        this.lastCheckpointAt >=
-        CHECKPOINT_INTERVAL_MS
-      ) {
-        this.checkpointBlocks(
-          false
+        return new Response(
+          null,
+          {
+            status: 204,
+            headers: CORS
+          }
         );
       }
 
-      if (
-        now -
-        this.lastCleanupAt >=
-        CLEANUP_INTERVAL_MS
-      ) {
-        this.cleanup();
-      }
 
-      await this.refreshSymbols();
+      /* START */
 
       if (
-        !this.ws ||
-        !this.connected
+        path ===
+        "/internal/start"
       ) {
-        await this.connect();
-      } else {
-        await this.resubscribe();
+        return json(
+          await this.start()
+        );
       }
+
+
+      /* STATUS */
+
+      if (
+        path ===
+        "/internal/status"
+      ) {
+        return json(
+          this.statusObject()
+        );
+      }
+
+
+      /* REFRESH */
+
+      if (
+        path ===
+        "/internal/refresh"
+      ) {
+        const result =
+          await this.refreshSymbols();
+
+        return json({
+          ok: true,
+          ...result,
+          status:
+            this.statusObject()
+        });
+      }
+
+
+      /* HISTORY */
+
+      if (
+        path ===
+        "/internal/history"
+      ) {
+        const symbol =
+          url.searchParams.get(
+            "symbol"
+          );
+
+        const from =
+          url.searchParams.get(
+            "from"
+          );
+
+        const to =
+          url.searchParams.get(
+            "to"
+          );
+
+        return json(
+          this.getHistory(
+            symbol,
+            from,
+            to
+          )
+        );
+      }
+
+
+      /* FOOTPRINT */
+
+      if (
+        path ===
+        "/internal/history/footprint"
+      ) {
+        const symbol =
+          url.searchParams.get(
+            "symbol"
+          );
+
+        const minute =
+          url.searchParams.get(
+            "minute"
+          );
+
+        return json(
+          this.getFootprint(
+            symbol,
+            minute
+          )
+        );
+      }
+
+
+      return json({
+        ok: false,
+        error:
+          "Internal route not found"
+      }, 404);
+
     } catch (error) {
       this.lastError =
-        error?.message ||
-        "Alarm error";
+        String(
+          error?.message ||
+          error
+        );
 
-      this.scheduleReconnect();
+      return json({
+        ok: false,
+        error:
+          this.lastError
+      }, 500);
     }
-
-    await this.scheduleAlarm();
   }
 }
 
 
 /* =========================================================
-   SCHEDULED
+   PUBLIC WORKER
 ========================================================= */
 
-async function scheduled(
-  event,
+async function startCollector(env) {
+  const stub =
+    collectorStub(env);
+
+  return stub.fetch(
+    "https://collector/internal/start"
+  );
+}
+
+async function collectorStatus(env) {
+  const stub =
+    collectorStub(env);
+
+  return stub.fetch(
+    "https://collector/internal/status"
+  );
+}
+
+async function collectorRefresh(env) {
+  const stub =
+    collectorStub(env);
+
+  return stub.fetch(
+    "https://collector/internal/refresh"
+  );
+}
+
+async function collectorHistory(
   env,
-  ctx
+  url
 ) {
-  ctx.waitUntil(
-    (async () => {
-      try {
-        await startCollector(
-          env
-        );
-      } catch (error) {
-        console.error(
-          "Scheduled collector error:",
-          error
-        );
-      }
-    })()
+  const stub =
+    collectorStub(env);
+
+  const target =
+    new URL(
+      "https://collector/internal/history"
+    );
+
+  for (
+    const key of [
+      "symbol",
+      "from",
+      "to"
+    ]
+  ) {
+    const value =
+      url.searchParams.get(
+        key
+      );
+
+    if (
+      value !== null
+    ) {
+      target.searchParams.set(
+        key,
+        value
+      );
+    }
+  }
+
+  return stub.fetch(
+    target.toString()
+  );
+}
+
+async function collectorFootprint(
+  env,
+  url
+) {
+  const stub =
+    collectorStub(env);
+
+  const target =
+    new URL(
+      "https://collector/internal/history/footprint"
+    );
+
+  for (
+    const key of [
+      "symbol",
+      "minute"
+    ]
+  ) {
+    const value =
+      url.searchParams.get(
+        key
+      );
+
+    if (
+      value !== null
+    ) {
+      target.searchParams.set(
+        key,
+        value
+      );
+    }
+  }
+
+  return stub.fetch(
+    target.toString()
   );
 }
 
 
 /* =========================================================
-   DEFAULT WORKER
+   WORKER FETCH
 ========================================================= */
 
 export default {
@@ -4621,70 +3325,354 @@ export default {
     env,
     ctx
   ) {
-    if (
-      request.method ===
-      "OPTIONS"
-    ) {
-      return new Response(
-        null,
-        {
-          status: 204,
-          headers: CORS
-        }
-      );
-    }
-
     const url =
-      new URL(request.url);
-
-    if (
-      url.pathname.startsWith(
-        "/api/"
-      )
-    ) {
-      return route(
-        request,
-        env
+      new URL(
+        request.url
       );
-    }
 
-    if (
-      env.ASSETS
-    ) {
-      const response =
-        await env.ASSETS.fetch(
+    try {
+      if (
+        request.method ===
+        "OPTIONS"
+      ) {
+        return new Response(
+          null,
+          {
+            status: 204,
+            headers: CORS
+          }
+        );
+      }
+
+
+      /* HEALTH */
+
+      if (
+        url.pathname ===
+        "/api/health"
+      ) {
+        return json({
+          ok: true,
+
+          version:
+            VERSION,
+
+          storage:
+            "AbsorptionStorageV5",
+
+          table:
+            "hour_blocks_v5",
+
+          maxRows:
+            MAX_ROWS,
+
+          storageModel:
+            "1 symbol + 1 hour = 1 row"
+        });
+      }
+
+
+      /* TEST */
+
+      if (
+        url.pathname ===
+        "/api/test"
+      ) {
+        return json({
+          ok: true,
+          version: VERSION,
+          time: Date.now()
+        });
+      }
+
+
+      /* SYMBOLS */
+
+      if (
+        url.pathname ===
+        "/api/symbols"
+      ) {
+        const symbols =
+          await getBybitSymbols();
+
+        return json({
+          ok: true,
+          count:
+            symbols.length,
+          symbols
+        });
+      }
+
+
+      /* COLLECTOR START */
+
+      if (
+        url.pathname ===
+        "/api/collector/start"
+      ) {
+        return startCollector(
+          env
+        );
+      }
+
+
+      /* COLLECTOR STATUS */
+
+      if (
+        url.pathname ===
+        "/api/collector/status"
+      ) {
+        return collectorStatus(
+          env
+        );
+      }
+
+
+      /* COLLECTOR REFRESH */
+
+      if (
+        url.pathname ===
+        "/api/collector/refresh"
+      ) {
+        return collectorRefresh(
+          env
+        );
+      }
+
+
+      /* HISTORY */
+
+      if (
+        url.pathname ===
+        "/api/history"
+      ) {
+        return collectorHistory(
+          env,
+          url
+        );
+      }
+
+
+      /* FOOTPRINT HISTORY */
+
+      if (
+        url.pathname ===
+        "/api/history/footprint"
+      ) {
+        return collectorFootprint(
+          env,
+          url
+        );
+      }
+
+
+      /* MARKET */
+
+      if (
+        url.pathname ===
+        "/api/market"
+      ) {
+        const symbol =
+          normalizeSymbol(
+            url.searchParams.get(
+              "symbol"
+            ) ||
+            DEFAULT_SYMBOL
+          );
+
+        const interval =
+          normalizeInterval(
+            url.searchParams.get(
+              "interval"
+            ) ||
+            DEFAULT_INTERVAL
+          );
+
+        return json(
+          await getMarket(
+            symbol,
+            interval
+          )
+        );
+      }
+
+
+      /* FOOTPRINT */
+
+      if (
+        url.pathname ===
+        "/api/footprint"
+      ) {
+        const symbol =
+          normalizeSymbol(
+            url.searchParams.get(
+              "symbol"
+            ) ||
+            DEFAULT_SYMBOL
+          );
+
+        const market =
+          await getMarket(
+            symbol,
+            "1"
+          );
+
+        return json({
+          version:
+            VERSION,
+
+          symbol,
+
+          footprint:
+            market.footprint,
+
+          stats:
+            market.stats,
+
+          absorption:
+            market.absorption
+        });
+      }
+
+
+      /* ORDERBOOK */
+
+      if (
+        url.pathname ===
+        "/api/orderbook"
+      ) {
+        const symbol =
+          normalizeSymbol(
+            url.searchParams.get(
+              "symbol"
+            ) ||
+            DEFAULT_SYMBOL
+          );
+
+        const result =
+          await bybit(
+            "/v5/market/orderbook",
+            {
+              category: "linear",
+              symbol,
+              limit:
+                ORDERBOOK_LIMIT
+            }
+          );
+
+        return json({
+          version:
+            VERSION,
+
+          symbol,
+
+          orderbook:
+            orderbookStats(
+              result
+            )
+        });
+      }
+
+
+      /* CANDLES */
+
+      if (
+        url.pathname ===
+        "/api/candles"
+      ) {
+        const symbol =
+          normalizeSymbol(
+            url.searchParams.get(
+              "symbol"
+            ) ||
+            DEFAULT_SYMBOL
+          );
+
+        const interval =
+          normalizeInterval(
+            url.searchParams.get(
+              "interval"
+            ) ||
+            DEFAULT_INTERVAL
+          );
+
+        const result =
+          await bybit(
+            "/v5/market/kline",
+            {
+              category: "linear",
+              symbol,
+              interval,
+              limit:
+                KLINE_LIMIT
+            }
+          );
+
+        return json({
+          version:
+            VERSION,
+
+          symbol,
+
+          interval,
+
+          candles:
+            parseKlines(
+              result.list
+            )
+        });
+      }
+
+
+      /* ASSETS */
+
+      if (
+        env.ASSETS
+      ) {
+        return env.ASSETS.fetch(
           request
         );
+      }
 
-      const headers =
-        new Headers(
-          response.headers
-        );
 
-      headers.set(
-        "Cache-Control",
-        "no-store, no-cache, must-revalidate"
-      );
+      return json({
+        ok: false,
+        error:
+          "Route not found",
+        version:
+          VERSION
+      }, 404);
 
-      return new Response(
-        response.body,
-        {
-          status:
-            response.status,
+    } catch (error) {
+      return json({
+        ok: false,
 
-          statusText:
-            response.statusText,
+        error:
+          String(
+            error?.message ||
+            error
+          ),
 
-          headers
-        }
-      );
+        version:
+          VERSION
+      }, 500);
     }
-
-    return route(
-      request,
-      env
-    );
   },
 
-  scheduled
+
+  /* =======================================================
+     SCHEDULED
+  ======================================================= */
+
+  async scheduled(
+    event,
+    env,
+    ctx
+  ) {
+    ctx.waitUntil(
+      startCollector(
+        env
+      )
+    );
+  }
 };
