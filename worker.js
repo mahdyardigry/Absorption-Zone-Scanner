@@ -1,4 +1,4 @@
-const VERSION = "ABSORPTION-ZONE-V3";
+const VERSION = "ABSORPTION-ZONE-V4-HOUR-BLOCK";
 
 const BYBIT = "https://api.bybit.com";
 const BYBIT_WS = "wss://stream.bybit.com/v5/public/linear";
@@ -13,6 +13,9 @@ const ORDERBOOK_LIMIT = 50;
 const SYMBOL_LIMIT = 1000;
 
 const HISTORY_MS = 24 * 60 * 60 * 1000;
+const HOUR_MS = 60 * 60 * 1000;
+
+const CHECKPOINT_INTERVAL_MS = 15 * 60 * 1000;
 const CLEANUP_INTERVAL_MS = 60 * 60 * 1000;
 
 const CORS = {
@@ -80,6 +83,18 @@ function normalizeInterval(value) {
   ];
 
   return allowed.includes(v) ? v : "1";
+}
+
+function hourStartOf(time) {
+  return Math.floor(
+    Number(time) / HOUR_MS
+  ) * HOUR_MS;
+}
+
+function minuteStartOf(time) {
+  return Math.floor(
+    Number(time) / 60000
+  ) * 60000;
 }
 
 async function bybit(path, params = {}) {
@@ -878,8 +893,6 @@ async function getBybitSymbols() {
 
 /* =========================================================
    LBANK SYMBOL SOURCE
-   LBank فقط لیست نمادها را می‌دهد.
-   تمام دیتا از Bybit می‌آید.
 ========================================================= */
 
 function isCryptoLbankInstrument(item) {
@@ -1086,14 +1099,6 @@ async function getCollectorSymbols() {
   } catch {
     lbankSymbols = [];
   }
-
-  /*
-    اگر LBank در دسترس باشد:
-    اشتراک LBank و Bybit
-
-    اگر LBank در دسترس نباشد:
-    Bybit ادامه می‌دهد.
-  */
 
   let selected;
 
@@ -1362,10 +1367,6 @@ async function route(
   const url =
     new URL(request.url);
 
-  /* -------------------------
-     HEALTH
-  ------------------------- */
-
   if (
     url.pathname ===
     "/api/health"
@@ -1380,10 +1381,6 @@ async function route(
     });
   }
 
-
-  /* -------------------------
-     TEST
-  ------------------------- */
 
   if (
     url.pathname ===
@@ -1402,10 +1399,6 @@ async function route(
     );
   }
 
-
-  /* -------------------------
-     SYMBOLS
-  ------------------------- */
 
   if (
     url.pathname ===
@@ -1457,10 +1450,6 @@ async function route(
   }
 
 
-  /* -------------------------
-     COLLECTOR START
-  ------------------------- */
-
   if (
     url.pathname ===
     "/api/collector/start"
@@ -1488,10 +1477,6 @@ async function route(
     }
   }
 
-
-  /* -------------------------
-     COLLECTOR STATUS
-  ------------------------- */
 
   if (
     url.pathname ===
@@ -1527,10 +1512,6 @@ async function route(
   }
 
 
-  /* -------------------------
-     COLLECTOR REFRESH
-  ------------------------- */
-
   if (
     url.pathname ===
     "/api/collector/refresh"
@@ -1564,10 +1545,6 @@ async function route(
     }
   }
 
-
-  /* -------------------------
-     HISTORY
-  ------------------------- */
 
   if (
     url.pathname ===
@@ -1654,10 +1631,6 @@ async function route(
   }
 
 
-  /* -------------------------
-     HISTORY FOOTPRINT
-  ------------------------- */
-
   if (
     url.pathname ===
     "/api/history/footprint"
@@ -1725,10 +1698,6 @@ async function route(
   }
 
 
-  /* -------------------------
-     MARKET
-  ------------------------- */
-
   if (
     url.pathname ===
     "/api/market"
@@ -1775,10 +1744,6 @@ async function route(
     }
   }
 
-
-  /* -------------------------
-     FOOTPRINT
-  ------------------------- */
 
   if (
     url.pathname ===
@@ -1867,10 +1832,6 @@ async function route(
   }
 
 
-  /* -------------------------
-     ORDER BOOK
-  ------------------------- */
-
   if (
     url.pathname ===
     "/api/orderbook"
@@ -1922,10 +1883,6 @@ async function route(
     }
   }
 
-
-  /* -------------------------
-     CANDLES
-  ------------------------- */
 
   if (
     url.pathname ===
@@ -2006,6 +1963,7 @@ async function route(
 
 /* =========================================================
    DURABLE OBJECT
+   HOUR BLOCK STORAGE
 ========================================================= */
 
 export class TradeCollector {
@@ -2035,13 +1993,25 @@ export class TradeCollector {
 
     this.lastError = "";
 
-    this.batch = new Map();
+    /*
+      فقط Hour Blockهای فعال در RAM.
+      SQLite داده‌های پایدار را نگه می‌دارد.
+    */
+    this.hourBlocks = new Map();
 
     this.dedupe = new Map();
 
-    this.flushScheduled = false;
-
     this.alarmScheduled = false;
+
+    this.lastCheckpointAt = 0;
+
+    this.checkpointRunning = false;
+
+    this.boundaryCheckpointScheduled = false;
+
+    this.lastCleanupAt = 0;
+
+    this.loadedRecentBlocks = false;
   }
 
 
@@ -2053,96 +2023,53 @@ export class TradeCollector {
     const sql =
       this.state.storage.sql;
 
+    /*
+      یک رکورد = یک Symbol + یک Hour
+    */
     sql.exec(`
-      CREATE TABLE IF NOT EXISTS candles_1m (
+      CREATE TABLE IF NOT EXISTS hour_blocks (
         symbol TEXT NOT NULL,
-        minute INTEGER NOT NULL,
-
-        open REAL,
-        high REAL,
-        low REAL,
-        close REAL,
-
-        volume REAL NOT NULL DEFAULT 0,
-        turnover REAL NOT NULL DEFAULT 0,
-
-        buy_volume REAL NOT NULL DEFAULT 0,
-        sell_volume REAL NOT NULL DEFAULT 0,
-
-        buy_value REAL NOT NULL DEFAULT 0,
-        sell_value REAL NOT NULL DEFAULT 0,
-
-        buy_trades INTEGER NOT NULL DEFAULT 0,
-        sell_trades INTEGER NOT NULL DEFAULT 0,
-
-        open_time INTEGER,
-        close_time INTEGER,
+        hour_start INTEGER NOT NULL,
+        data TEXT NOT NULL,
+        updated_at INTEGER NOT NULL,
 
         PRIMARY KEY (
           symbol,
-          minute
+          hour_start
         )
       )
     `);
 
     sql.exec(`
-      CREATE TABLE IF NOT EXISTS trades_1m (
-        symbol TEXT NOT NULL,
-        minute INTEGER NOT NULL,
-        price REAL NOT NULL,
-
-        buy_volume REAL NOT NULL DEFAULT 0,
-        sell_volume REAL NOT NULL DEFAULT 0,
-
-        buy_value REAL NOT NULL DEFAULT 0,
-        sell_value REAL NOT NULL DEFAULT 0,
-
-        buy_trades INTEGER NOT NULL DEFAULT 0,
-        sell_trades INTEGER NOT NULL DEFAULT 0,
-
-        PRIMARY KEY (
-          symbol,
-          minute,
-          price
-        )
-      )
-    `);
-
-    sql.exec(`
-      CREATE TABLE IF NOT EXISTS trade_ids (
-        symbol TEXT NOT NULL,
-        trade_id TEXT NOT NULL,
-        time INTEGER NOT NULL,
-
-        PRIMARY KEY (
-          symbol,
-          trade_id
-        )
-      )
-    `);
-
-    sql.exec(`
-      CREATE INDEX IF NOT EXISTS idx_candles_time
-      ON candles_1m (
+      CREATE INDEX IF NOT EXISTS idx_hour_blocks_time
+      ON hour_blocks (
         symbol,
-        minute
+        hour_start
       )
     `);
 
-    sql.exec(`
-      CREATE INDEX IF NOT EXISTS idx_trades_time
-      ON trades_1m (
-        symbol,
-        minute
-      )
-    `);
+    /*
+      جداول معماری قبلی دیگر استفاده نمی‌شوند.
+      حذف آن‌ها باعث می‌شود نوشتن تک‌تک
+      کندل/سطح/Trade دیگر انجام نشود.
+    */
+    try {
+      sql.exec(`
+        DROP TABLE IF EXISTS candles_1m
+      `);
+    } catch {}
 
-    sql.exec(`
-      CREATE INDEX IF NOT EXISTS idx_trade_ids_time
-      ON trade_ids (
-        time
-      )
-    `);
+    try {
+      sql.exec(`
+        DROP TABLE IF EXISTS trades_1m
+      `);
+    } catch {}
+
+    try {
+      sql.exec(`
+        DROP TABLE IF EXISTS trade_ids
+      `);
+    } catch {}
   }
 
 
@@ -2173,8 +2100,18 @@ export class TradeCollector {
   async fetch(request) {
     this.initDB();
 
+    if (
+      !this.loadedRecentBlocks
+    ) {
+      this.loadRecentBlocks();
+
+      this.loadedRecentBlocks =
+        true;
+    }
+
     const url =
       new URL(request.url);
+
 
     if (
       url.pathname ===
@@ -2326,11 +2263,9 @@ export class TradeCollector {
         minute <= 0
       ) {
         minute =
-          Math.floor(
-            Date.now() /
-              60000
-          ) *
-          60000;
+          minuteStartOf(
+            Date.now()
+          );
       }
 
       const result =
@@ -2416,7 +2351,13 @@ export class TradeCollector {
         this.lastError,
 
       storage:
-        "SQLite Durable Object",
+        "Durable Object SQLite · Hour Blocks",
+
+      storageModel:
+        "1 row = 1 symbol + 1 hour",
+
+      checkpoint:
+        "15 minutes",
 
       history:
         "24h rolling",
@@ -2425,7 +2366,10 @@ export class TradeCollector {
         "Bybit",
 
       symbolSource:
-        "LBank ∩ Bybit"
+        "LBank ∩ Bybit",
+
+      hourBlocksInMemory:
+        this.hourBlocks.size
     };
   }
 
@@ -2440,6 +2384,15 @@ export class TradeCollector {
 
     this.initDB();
 
+    if (
+      !this.loadedRecentBlocks
+    ) {
+      this.loadRecentBlocks();
+
+      this.loadedRecentBlocks =
+        true;
+    }
+
     await this.refreshSymbols();
 
     if (
@@ -2449,7 +2402,19 @@ export class TradeCollector {
       await this.connect();
     }
 
-    await this.cleanup();
+    const now =
+      Date.now();
+
+    if (
+      now -
+      this.lastCleanupAt >=
+      CLEANUP_INTERVAL_MS
+    ) {
+      this.cleanup();
+
+      this.lastCleanupAt =
+        now;
+    }
 
     await this.scheduleAlarm();
 
@@ -2570,7 +2535,7 @@ export class TradeCollector {
 
     ws.addEventListener(
       "error",
-      error => {
+      () => {
         this.lastError =
           "Bybit WebSocket error";
 
@@ -2713,11 +2678,6 @@ export class TradeCollector {
       return;
     }
 
-    /*
-      Bybit برای public WS محدودیت طول args دارد.
-      Symbolها را به چند پیام تقسیم می‌کنیم.
-    */
-
     const topics =
       this.symbols.map(
         symbol =>
@@ -2747,6 +2707,7 @@ export class TradeCollector {
       }
 
       current.push(topic);
+
       length += extra;
     }
 
@@ -2804,7 +2765,7 @@ export class TradeCollector {
 
   /* =======================================================
      WS MESSAGE
-  ======================================================= */
+========================================================= */
 
   handleMessage(raw) {
     this.lastMessageAt =
@@ -2864,6 +2825,9 @@ export class TradeCollector {
       return;
     }
 
+    let newHourDetected =
+      false;
+
     for (const rawTrade of list) {
       const trade =
         this.parseWsTrade(
@@ -2887,18 +2851,44 @@ export class TradeCollector {
       this.lastTradeAt =
         trade.time;
 
+      const before =
+        this.currentHourForSymbol(
+          symbol
+        );
+
       this.aggregateTrade(
         trade
       );
+
+      const after =
+        hourStartOf(
+          trade.time
+        );
+
+      if (
+        before !== null &&
+        before !== after
+      ) {
+        newHourDetected =
+          true;
+      }
     }
 
-    this.scheduleFlush();
+    /*
+      در عبور از ساعت،
+      Hour Block قبلی را ذخیره می‌کنیم.
+    */
+    if (
+      newHourDetected
+    ) {
+      this.scheduleClosedBlockCheckpoint();
+    }
   }
 
 
   /* =======================================================
      WS TRADE PARSER
-  ======================================================= */
+========================================================= */
 
   parseWsTrade(
     symbol,
@@ -2977,7 +2967,7 @@ export class TradeCollector {
 
   /* =======================================================
      DEDUPE
-  ======================================================= */
+========================================================= */
 
   isDuplicate(
     symbol,
@@ -2996,10 +2986,6 @@ export class TradeCollector {
       key,
       Date.now()
     );
-
-    /*
-      حافظه را محدود نگه می‌داریم.
-    */
 
     if (
       this.dedupe.size >
@@ -3046,198 +3032,314 @@ export class TradeCollector {
 
 
   /* =======================================================
+     MEMORY BLOCK HELPERS
+========================================================= */
+
+  currentHourForSymbol(
+    symbol
+  ) {
+    let latest =
+      null;
+
+    for (
+      const block of
+      this.hourBlocks.values()
+    ) {
+      if (
+        block.symbol ===
+        symbol
+      ) {
+        if (
+          latest === null ||
+          block.hourStart >
+            latest
+        ) {
+          latest =
+            block.hourStart;
+        }
+      }
+    }
+
+    return latest;
+  }
+
+
+  createBlock(
+    symbol,
+    hourStart
+  ) {
+    return {
+      symbol,
+
+      hourStart,
+
+      hourEnd:
+        hourStart +
+        HOUR_MS,
+
+      candles:
+        new Map(),
+
+      dirty:
+        true,
+
+      loaded:
+        false
+    };
+  }
+
+
+  getOrCreateBlock(
+    symbol,
+    hourStart
+  ) {
+    const key =
+      `${symbol}:${hourStart}`;
+
+    let block =
+      this.hourBlocks.get(
+        key
+      );
+
+    if (!block) {
+      block =
+        this.createBlock(
+          symbol,
+          hourStart
+        );
+
+      this.hourBlocks.set(
+        key,
+        block
+      );
+    }
+
+    return block;
+  }
+
+
+  /* =======================================================
      AGGREGATE IN MEMORY
-  ======================================================= */
+========================================================= */
 
   aggregateTrade(
     trade
   ) {
     const minute =
-      Math.floor(
-        trade.time /
-          60000
-      ) * 60000;
-
-    const candleKey =
-      `${trade.symbol}:${minute}`;
-
-    if (
-      !this.batch.has(
-        candleKey
-      )
-    ) {
-      this.batch.set(
-        candleKey,
-        {
-          symbol:
-            trade.symbol,
-
-          minute,
-
-          open:
-            trade.price,
-
-          high:
-            trade.price,
-
-          low:
-            trade.price,
-
-          close:
-            trade.price,
-
-          volume:
-            trade.size,
-
-          turnover:
-            trade.value,
-
-          buyVolume:
-            trade.side ===
-            "buy"
-              ? trade.size
-              : 0,
-
-          sellVolume:
-            trade.side ===
-            "sell"
-              ? trade.size
-              : 0,
-
-          buyValue:
-            trade.side ===
-            "buy"
-              ? trade.value
-              : 0,
-
-          sellValue:
-            trade.side ===
-            "sell"
-              ? trade.value
-              : 0,
-
-          buyTrades:
-            trade.side ===
-            "buy"
-              ? 1
-              : 0,
-
-          sellTrades:
-            trade.side ===
-            "sell"
-              ? 1
-              : 0,
-
-          openTime:
-            trade.time,
-
-          closeTime:
-            trade.time,
-
-          levels:
-            new Map()
-        }
-      );
-    }
-
-    const candle =
-      this.batch.get(
-        candleKey
+      minuteStartOf(
+        trade.time
       );
 
-    if (
-      trade.time <
-      candle.openTime
-    ) {
-      candle.openTime =
-        trade.time;
-
-      candle.open =
-        trade.price;
-    }
-
-    if (
-      trade.time >=
-      candle.closeTime
-    ) {
-      candle.closeTime =
-        trade.time;
-
-      candle.close =
-        trade.price;
-    }
-
-    candle.high =
-      Math.max(
-        candle.high,
-        trade.price
+    const hourStart =
+      hourStartOf(
+        trade.time
       );
 
-    candle.low =
-      Math.min(
-        candle.low,
-        trade.price
+    const block =
+      this.getOrCreateBlock(
+        trade.symbol,
+        hourStart
       );
 
-    candle.volume +=
-      trade.size;
+    let candle =
+      block.candles.get(
+        minute
+      );
 
-    candle.turnover +=
-      trade.value;
+    if (!candle) {
+      candle = {
+        minute,
 
-    if (
-      trade.side ===
-      "buy"
-    ) {
-      candle.buyVolume +=
-        trade.size;
+        open:
+          trade.price,
 
-      candle.buyValue +=
-        trade.value;
+        high:
+          trade.price,
 
-      candle.buyTrades++;
+        low:
+          trade.price,
+
+        close:
+          trade.price,
+
+        volume:
+          trade.size,
+
+        turnover:
+          trade.value,
+
+        buyVolume:
+          trade.side ===
+          "buy"
+            ? trade.size
+            : 0,
+
+        sellVolume:
+          trade.side ===
+          "sell"
+            ? trade.size
+            : 0,
+
+        buyValue:
+          trade.side ===
+          "buy"
+            ? trade.value
+            : 0,
+
+        sellValue:
+          trade.side ===
+          "sell"
+            ? trade.value
+            : 0,
+
+        buyTrades:
+          trade.side ===
+          "buy"
+            ? 1
+            : 0,
+
+        sellTrades:
+          trade.side ===
+          "sell"
+            ? 1
+            : 0,
+
+        openTime:
+          trade.time,
+
+        closeTime:
+          trade.time,
+
+        levels:
+          new Map()
+      };
+
+      block.candles.set(
+        minute,
+        candle
+      );
     } else {
-      candle.sellVolume +=
+      if (
+        trade.time <
+        candle.openTime
+      ) {
+        candle.openTime =
+          trade.time;
+
+        candle.open =
+          trade.price;
+      }
+
+      if (
+        trade.time >=
+        candle.closeTime
+      ) {
+        candle.closeTime =
+          trade.time;
+
+        candle.close =
+          trade.price;
+      }
+
+      candle.high =
+        Math.max(
+          candle.high,
+          trade.price
+        );
+
+      candle.low =
+        Math.min(
+          candle.low,
+          trade.price
+        );
+
+      candle.volume +=
         trade.size;
 
-      candle.sellValue +=
+      candle.turnover +=
         trade.value;
 
-      candle.sellTrades++;
+      if (
+        trade.side ===
+        "buy"
+      ) {
+        candle.buyVolume +=
+          trade.size;
+
+        candle.buyValue +=
+          trade.value;
+
+        candle.buyTrades++;
+      } else {
+        candle.sellVolume +=
+          trade.size;
+
+        candle.sellValue +=
+          trade.value;
+
+        candle.sellTrades++;
+      }
     }
+
+    const meta =
+      this.symbolMeta.get(
+        trade.symbol
+      );
+
+    const tickSize =
+      Number(
+        meta?.tickSize ||
+        0
+      );
+
+    let levelPrice =
+      trade.price;
+
+    if (
+      tickSize > 0
+    ) {
+      levelPrice =
+        roundToTick(
+          trade.price,
+          tickSize
+        );
+    }
+
+    const decimals =
+      decimalsFromTick(
+        tickSize
+      );
 
     const levelKey =
-      String(
-        trade.price
+      levelPrice.toFixed(
+        decimals
       );
 
-    if (
-      !candle.levels.has(
-        levelKey
-      )
-    ) {
-      candle.levels.set(
-        levelKey,
-        {
-          price:
-            trade.price,
-
-          buyVolume: 0,
-          sellVolume: 0,
-
-          buyValue: 0,
-          sellValue: 0,
-
-          buyTrades: 0,
-          sellTrades: 0
-        }
-      );
-    }
-
-    const level =
+    let level =
       candle.levels.get(
         levelKey
       );
+
+    if (!level) {
+      level = {
+        price:
+          levelPrice,
+
+        buyVolume: 0,
+        sellVolume: 0,
+
+        buyValue: 0,
+        sellValue: 0,
+
+        buyTrades: 0,
+        sellTrades: 0
+      };
+
+      candle.levels.set(
+        levelKey,
+        level
+      );
+    }
 
     if (
       trade.side ===
@@ -3259,678 +3361,1100 @@ export class TradeCollector {
 
       level.sellTrades++;
     }
+
+    block.dirty =
+      true;
   }
 
 
   /* =======================================================
-     FLUSH
-  ======================================================= */
+     SERIALIZE HOUR BLOCK
+========================================================= */
 
-  scheduleFlush() {
+  serializeBlock(
+    block
+  ) {
+    const candles =
+      [...block.candles.values()]
+        .sort(
+          (a, b) =>
+            a.minute -
+            b.minute
+        )
+        .map(candle => ({
+          m:
+            candle.minute,
+
+          o:
+            candle.open,
+
+          h:
+            candle.high,
+
+          l:
+            candle.low,
+
+          c:
+            candle.close,
+
+          v:
+            candle.volume,
+
+          t:
+            candle.turnover,
+
+          b:
+            candle.buyVolume,
+
+          s:
+            candle.sellVolume,
+
+          bv:
+            candle.buyValue,
+
+          sv:
+            candle.sellValue,
+
+          bt:
+            candle.buyTrades,
+
+          st:
+            candle.sellTrades,
+
+          ot:
+            candle.openTime,
+
+          ct:
+            candle.closeTime,
+
+          lvs:
+            [...candle.levels.values()]
+              .sort(
+                (a, b) =>
+                  b.price -
+                  a.price
+              )
+              .map(level => [
+                level.price,
+                level.buyVolume,
+                level.sellVolume,
+                level.buyValue,
+                level.sellValue,
+                level.buyTrades,
+                level.sellTrades
+              ])
+        }));
+
+    return JSON.stringify(
+      {
+        v: 1,
+
+        s:
+          block.symbol,
+
+        h:
+          block.hourStart,
+
+        c:
+          candles
+      }
+    );
+  }
+
+
+  /* =======================================================
+     DESERIALIZE HOUR BLOCK
+========================================================= */
+
+  deserializeBlock(
+    row
+  ) {
+    let parsed;
+
+    try {
+      parsed =
+        typeof row.data ===
+        "string"
+          ? JSON.parse(
+              row.data
+            )
+          : row.data;
+    } catch {
+      return null;
+    }
+
     if (
-      this.flushScheduled
+      !parsed ||
+      !Array.isArray(
+        parsed.c
+      )
+    ) {
+      return null;
+    }
+
+    const symbol =
+      normalizeSymbol(
+        parsed.s ||
+        row.symbol
+      );
+
+    const hourStart =
+      Number(
+        parsed.h ??
+        row.hour_start
+      );
+
+    if (
+      !Number.isFinite(
+        hourStart
+      )
+    ) {
+      return null;
+    }
+
+    const block =
+      this.createBlock(
+        symbol,
+        hourStart
+      );
+
+    block.dirty =
+      false;
+
+    block.loaded =
+      true;
+
+    for (const c of parsed.c) {
+      const minute =
+        Number(c.m);
+
+      if (
+        !Number.isFinite(
+          minute
+        )
+      ) {
+        continue;
+      }
+
+      const candle = {
+        minute,
+
+        open:
+          Number(c.o),
+
+        high:
+          Number(c.h),
+
+        low:
+          Number(c.l),
+
+        close:
+          Number(c.c),
+
+        volume:
+          Number(c.v || 0),
+
+        turnover:
+          Number(c.t || 0),
+
+        buyVolume:
+          Number(c.b || 0),
+
+        sellVolume:
+          Number(c.s || 0),
+
+        buyValue:
+          Number(c.bv || 0),
+
+        sellValue:
+          Number(c.sv || 0),
+
+        buyTrades:
+          Number(c.bt || 0),
+
+        sellTrades:
+          Number(c.st || 0),
+
+        openTime:
+          Number(c.ot || minute),
+
+        closeTime:
+          Number(c.ct || minute),
+
+        levels:
+          new Map()
+      };
+
+      const levels =
+        Array.isArray(
+          c.lvs
+        )
+          ? c.lvs
+          : [];
+
+      for (const item of levels) {
+        if (
+          !Array.isArray(item) ||
+          item.length < 7
+        ) {
+          continue;
+        }
+
+        const price =
+          Number(item[0]);
+
+        if (
+          !Number.isFinite(
+            price
+          )
+        ) {
+          continue;
+        }
+
+        const decimals =
+          decimalsFromTick(
+            this.symbolMeta.get(
+              symbol
+            )?.tickSize ||
+            0
+          );
+
+        const key =
+          price.toFixed(
+            decimals
+          );
+
+        candle.levels.set(
+          key,
+          {
+            price,
+
+            buyVolume:
+              Number(
+                item[1] || 0
+              ),
+
+            sellVolume:
+              Number(
+                item[2] || 0
+              ),
+
+            buyValue:
+              Number(
+                item[3] || 0
+              ),
+
+            sellValue:
+              Number(
+                item[4] || 0
+              ),
+
+            buyTrades:
+              Number(
+                item[5] || 0
+              ),
+
+            sellTrades:
+              Number(
+                item[6] || 0
+              )
+          }
+        );
+      }
+
+      block.candles.set(
+        minute,
+        candle
+      );
+    }
+
+    return block;
+  }
+
+
+  /* =======================================================
+     LOAD RECENT BLOCKS
+========================================================= */
+
+  loadRecentBlocks() {
+    const now =
+      Date.now();
+
+    const currentHour =
+      hourStartOf(
+        now
+      );
+
+    const from =
+      currentHour -
+      HOUR_MS;
+
+    try {
+      const rows =
+        this.state.storage.sql.exec(
+          `
+          SELECT
+            symbol,
+            hour_start,
+            data,
+            updated_at
+
+          FROM hour_blocks
+
+          WHERE
+            hour_start >= ?
+            AND hour_start <= ?
+
+          ORDER BY
+            hour_start ASC
+          `,
+          from,
+          currentHour
+        ).toArray();
+
+      for (const row of rows) {
+        const block =
+          this.deserializeBlock(
+            row
+          );
+
+        if (!block) {
+          continue;
+        }
+
+        const key =
+          `${block.symbol}:${block.hourStart}`;
+
+        this.hourBlocks.set(
+          key,
+          block
+        );
+      }
+    } catch (error) {
+      this.lastError =
+        error?.message ||
+        "Load hour blocks error";
+    }
+  }
+
+
+  /* =======================================================
+     CHECKPOINT
+========================================================= */
+
+  checkpointBlocks(
+    force = false
+  ) {
+    if (
+      this.checkpointRunning
     ) {
       return;
     }
 
-    this.flushScheduled =
+    this.checkpointRunning =
+      true;
+
+    try {
+      const now =
+        Date.now();
+
+      const currentHour =
+        hourStartOf(
+          now
+        );
+
+      const sql =
+        this.state.storage.sql;
+
+      for (
+        const [
+          key,
+          block
+        ] of this.hourBlocks
+      ) {
+        const closed =
+          block.hourStart <
+          currentHour;
+
+        if (
+          !force &&
+          !block.dirty &&
+          !closed
+        ) {
+          continue;
+        }
+
+        if (
+          !block.candles.size
+        ) {
+          continue;
+        }
+
+        const data =
+          this.serializeBlock(
+            block
+          );
+
+        sql.exec(
+          `
+          INSERT INTO hour_blocks (
+            symbol,
+            hour_start,
+            data,
+            updated_at
+          )
+          VALUES (?, ?, ?, ?)
+
+          ON CONFLICT (
+            symbol,
+            hour_start
+          )
+
+          DO UPDATE SET
+
+            data =
+              excluded.data,
+
+            updated_at =
+              excluded.updated_at
+          `,
+          block.symbol,
+          block.hourStart,
+          data,
+          now
+        );
+
+        block.dirty =
+          false;
+      }
+
+      this.lastCheckpointAt =
+        now;
+
+      /*
+        فقط ساعت جاری و در صورت نیاز
+        ساعت قبلی در RAM باقی می‌ماند.
+      */
+      for (
+        const [
+          key,
+          block
+        ] of this.hourBlocks
+      ) {
+        if (
+          block.hourStart <
+          currentHour -
+          HOUR_MS
+        ) {
+          this.hourBlocks.delete(
+            key
+          );
+        }
+      }
+    } catch (error) {
+      this.lastError =
+        error?.message ||
+        "Hour block checkpoint error";
+    } finally {
+      this.checkpointRunning =
+        false;
+    }
+  }
+
+
+  /* =======================================================
+     CLOSED BLOCK CHECKPOINT
+========================================================= */
+
+  scheduleClosedBlockCheckpoint() {
+    if (
+      this.boundaryCheckpointScheduled
+    ) {
+      return;
+    }
+
+    this.boundaryCheckpointScheduled =
       true;
 
     queueMicrotask(
       () => {
-        this.flushScheduled =
-          false;
-
         try {
-          this.flushBatch();
+          this.checkpointBlocks(
+            false
+          );
         } catch (error) {
           this.lastError =
             error?.message ||
-            "Flush error";
+            "Boundary checkpoint error";
+        } finally {
+          this.boundaryCheckpointScheduled =
+            false;
         }
       }
     );
   }
 
 
-  flushBatch() {
-    if (
-      !this.batch.size
-    ) {
-      return;
-    }
-
-    const sql =
-      this.state.storage.sql;
-
-    for (
-      const candle of
-      this.batch.values()
-    ) {
-      sql.exec(
-        `
-        INSERT INTO candles_1m (
-          symbol,
-          minute,
-          open,
-          high,
-          low,
-          close,
-          volume,
-          turnover,
-          buy_volume,
-          sell_volume,
-          buy_value,
-          sell_value,
-          buy_trades,
-          sell_trades,
-          open_time,
-          close_time
-        )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ON CONFLICT (
-          symbol,
-          minute
-        )
-        DO UPDATE SET
-
-          open =
-            CASE
-              WHEN excluded.open_time <
-                   candles_1m.open_time
-              THEN excluded.open
-              ELSE candles_1m.open
-            END,
-
-          high =
-            MAX(
-              candles_1m.high,
-              excluded.high
-            ),
-
-          low =
-            MIN(
-              candles_1m.low,
-              excluded.low
-            ),
-
-          close =
-            CASE
-              WHEN excluded.close_time >=
-                   candles_1m.close_time
-              THEN excluded.close
-              ELSE candles_1m.close
-            END,
-
-          volume =
-            candles_1m.volume +
-            excluded.volume,
-
-          turnover =
-            candles_1m.turnover +
-            excluded.turnover,
-
-          buy_volume =
-            candles_1m.buy_volume +
-            excluded.buy_volume,
-
-          sell_volume =
-            candles_1m.sell_volume +
-            excluded.sell_volume,
-
-          buy_value =
-            candles_1m.buy_value +
-            excluded.buy_value,
-
-          sell_value =
-            candles_1m.sell_value +
-            excluded.sell_value,
-
-          buy_trades =
-            candles_1m.buy_trades +
-            excluded.buy_trades,
-
-          sell_trades =
-            candles_1m.sell_trades +
-            excluded.sell_trades,
-
-          open_time =
-            MIN(
-              candles_1m.open_time,
-              excluded.open_time
-            ),
-
-          close_time =
-            MAX(
-              candles_1m.close_time,
-              excluded.close_time
-            )
-        `,
-        candle.symbol,
-        candle.minute,
-        candle.open,
-        candle.high,
-        candle.low,
-        candle.close,
-        candle.volume,
-        candle.turnover,
-        candle.buyVolume,
-        candle.sellVolume,
-        candle.buyValue,
-        candle.sellValue,
-        candle.buyTrades,
-        candle.sellTrades,
-        candle.openTime,
-        candle.closeTime
-      );
-
-
-      for (
-        const level of
-        candle.levels.values()
-      ) {
-        sql.exec(
-          `
-          INSERT INTO trades_1m (
-            symbol,
-            minute,
-            price,
-            buy_volume,
-            sell_volume,
-            buy_value,
-            sell_value,
-            buy_trades,
-            sell_trades
-          )
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-          ON CONFLICT (
-            symbol,
-            minute,
-            price
-          )
-          DO UPDATE SET
-
-            buy_volume =
-              trades_1m.buy_volume +
-              excluded.buy_volume,
-
-            sell_volume =
-              trades_1m.sell_volume +
-              excluded.sell_volume,
-
-            buy_value =
-              trades_1m.buy_value +
-              excluded.buy_value,
-
-            sell_value =
-              trades_1m.sell_value +
-              excluded.sell_value,
-
-            buy_trades =
-              trades_1m.buy_trades +
-              excluded.buy_trades,
-
-            sell_trades =
-              trades_1m.sell_trades +
-              excluded.sell_trades
-          `,
-          candle.symbol,
-          candle.minute,
-          level.price,
-          level.buyVolume,
-          level.sellVolume,
-          level.buyValue,
-          level.sellValue,
-          level.buyTrades,
-          level.sellTrades
-        );
-      }
-    }
-
-    this.batch.clear();
-  }
-
-
   /* =======================================================
-     HISTORY
-  ======================================================= */
+     GET HISTORY FROM MEMORY + SQLITE
+========================================================= */
 
   getHistory(
     symbol,
     from,
     to
   ) {
-    this.flushBatch();
+    const fromHour =
+      hourStartOf(
+        from
+      );
 
-    const rows =
-      this.state.storage.sql.exec(
-        `
-        SELECT
-          symbol,
-          minute,
-          open,
-          high,
-          low,
-          close,
-          volume,
-          turnover,
-
-          buy_volume,
-          sell_volume,
-
-          buy_value,
-          sell_value,
-
-          buy_trades,
-          sell_trades,
-
-          open_time,
-          close_time
-
-        FROM candles_1m
-
-        WHERE
-          symbol = ?
-          AND minute >= ?
-          AND minute <= ?
-
-        ORDER BY
-          minute ASC
-        `,
-        symbol,
-        from,
+    const toHour =
+      hourStartOf(
         to
-      ).toArray();
+      );
 
-    return rows.map(
-      row => ({
-        time:
-          Number(
-            row.minute
-          ),
+    const blocks =
+      new Map();
 
-        open:
-          Number(
-            row.open
-          ),
+    try {
+      const rows =
+        this.state.storage.sql.exec(
+          `
+          SELECT
+            symbol,
+            hour_start,
+            data,
+            updated_at
 
-        high:
-          Number(
-            row.high
-          ),
+          FROM hour_blocks
 
-        low:
-          Number(
-            row.low
-          ),
+          WHERE
+            symbol = ?
+            AND hour_start >= ?
+            AND hour_start <= ?
 
-        close:
-          Number(
-            row.close
-          ),
+          ORDER BY
+            hour_start ASC
+          `,
+          symbol,
+          fromHour,
+          toHour
+        ).toArray();
 
-        volume:
-          Number(
-            row.volume
-          ),
+      for (const row of rows) {
+        const block =
+          this.deserializeBlock(
+            row
+          );
 
-        turnover:
-          Number(
-            row.turnover
-          ),
+        if (!block) {
+          continue;
+        }
 
-        buyVolume:
-          Number(
-            row.buy_volume
-          ),
+        blocks.set(
+          block.hourStart,
+          block
+        );
+      }
+    } catch (error) {
+      this.lastError =
+        error?.message ||
+        "History block read error";
+    }
 
-        sellVolume:
-          Number(
-            row.sell_volume
-          ),
+    /*
+      RAM نسخه جدیدتر را روی SQLite می‌گذارد.
+    */
+    for (
+      const block of
+      this.hourBlocks.values()
+    ) {
+      if (
+        block.symbol !==
+        symbol
+      ) {
+        continue;
+      }
 
-        buyValue:
-          Number(
-            row.buy_value
-          ),
+      if (
+        block.hourStart <
+        fromHour ||
+        block.hourStart >
+        toHour
+      ) {
+        continue;
+      }
 
-        sellValue:
-          Number(
-            row.sell_value
-          ),
+      blocks.set(
+        block.hourStart,
+        block
+      );
+    }
 
-        buyTrades:
-          Number(
-            row.buy_trades
-          ),
+    const candles =
+      [];
 
-        sellTrades:
-          Number(
-            row.sell_trades
-          ),
+    for (
+      const block of
+      [...blocks.values()]
+        .sort(
+          (a, b) =>
+            a.hourStart -
+            b.hourStart
+        )
+    ) {
+      for (
+        const candle of
+        block.candles.values()
+      ) {
+        if (
+          candle.minute <
+          from ||
+          candle.minute >
+          to
+        ) {
+          continue;
+        }
 
-        delta:
-          Number(
-            row.buy_volume
-          ) -
-          Number(
-            row.sell_volume
-          ),
+        candles.push({
+          time:
+            Number(
+              candle.minute
+            ),
 
-        deltaValue:
-          Number(
-            row.buy_value
-          ) -
-          Number(
-            row.sell_value
-          ),
+          open:
+            Number(
+              candle.open
+            ),
 
-        trades:
-          Number(
-            row.buy_trades
-          ) +
-          Number(
-            row.sell_trades
-          )
-      })
+          high:
+            Number(
+              candle.high
+            ),
+
+          low:
+            Number(
+              candle.low
+            ),
+
+          close:
+            Number(
+              candle.close
+            ),
+
+          volume:
+            Number(
+              candle.volume
+            ),
+
+          turnover:
+            Number(
+              candle.turnover
+            ),
+
+          buyVolume:
+            Number(
+              candle.buyVolume
+            ),
+
+          sellVolume:
+            Number(
+              candle.sellVolume
+            ),
+
+          buyValue:
+            Number(
+              candle.buyValue
+            ),
+
+          sellValue:
+            Number(
+              candle.sellValue
+            ),
+
+          buyTrades:
+            Number(
+              candle.buyTrades
+            ),
+
+          sellTrades:
+            Number(
+              candle.sellTrades
+            ),
+
+          delta:
+            Number(
+              candle.buyVolume
+            ) -
+            Number(
+              candle.sellVolume
+            ),
+
+          deltaValue:
+            Number(
+              candle.buyValue
+            ) -
+            Number(
+              candle.sellValue
+            ),
+
+          trades:
+            Number(
+              candle.buyTrades
+            ) +
+            Number(
+              candle.sellTrades
+            )
+        });
+      }
+    }
+
+    candles.sort(
+      (a, b) =>
+        a.time -
+        b.time
     );
+
+    return candles;
   }
 
 
   /* =======================================================
      FOOTPRINT HISTORY
-  ======================================================= */
+========================================================= */
 
   getFootprint(
     symbol,
     minute
   ) {
-    this.flushBatch();
-
-    const candleRows =
-      this.state.storage.sql.exec(
-        `
-        SELECT
-          symbol,
-          minute,
-          open,
-          high,
-          low,
-          close,
-          volume,
-          turnover,
-
-          buy_volume,
-          sell_volume,
-
-          buy_value,
-          sell_value,
-
-          buy_trades,
-          sell_trades
-
-        FROM candles_1m
-
-        WHERE
-          symbol = ?
-          AND minute = ?
-
-        LIMIT 1
-        `,
-        symbol,
+    const hourStart =
+      hourStartOf(
         minute
-      ).toArray();
+      );
 
-    const levelRows =
-      this.state.storage.sql.exec(
-        `
-        SELECT
-          symbol,
-          minute,
-          price,
+    let block =
+      null;
 
-          buy_volume,
-          sell_volume,
+    /*
+      اول RAM
+    */
+    for (
+      const item of
+      this.hourBlocks.values()
+    ) {
+      if (
+        item.symbol ===
+        symbol &&
+        item.hourStart ===
+        hourStart
+      ) {
+        block =
+          item;
 
-          buy_value,
-          sell_value,
+        break;
+      }
+    }
 
-          buy_trades,
-          sell_trades
+    /*
+      سپس SQLite
+    */
+    if (!block) {
+      try {
+        const rows =
+          this.state.storage.sql.exec(
+            `
+            SELECT
+              symbol,
+              hour_start,
+              data,
+              updated_at
 
-        FROM trades_1m
+            FROM hour_blocks
 
-        WHERE
-          symbol = ?
-          AND minute = ?
+            WHERE
+              symbol = ?
+              AND hour_start = ?
 
-        ORDER BY
-          price DESC
-        `,
-        symbol,
-        minute
-      ).toArray();
+            LIMIT 1
+            `,
+            symbol,
+            hourStart
+          ).toArray();
+
+        if (rows.length) {
+          block =
+            this.deserializeBlock(
+              rows[0]
+            );
+        }
+      } catch (error) {
+        this.lastError =
+          error?.message ||
+          "Footprint block read error";
+      }
+    }
+
+    if (!block) {
+      return {
+        candle: null,
+
+        stats: {
+          trades: 0,
+
+          buyVolume: 0,
+          sellVolume: 0,
+
+          buyValue: 0,
+          sellValue: 0,
+
+          totalVolume: 0,
+          totalValue: 0,
+
+          delta: 0,
+          deltaValue: 0,
+          deltaPercent: 0,
+
+          buyTrades: 0,
+          sellTrades: 0
+        },
+
+        footprint: []
+      };
+    }
 
     const candle =
-      candleRows.length
-        ? candleRows[0]
-        : null;
+      block.candles.get(
+        minute
+      );
+
+    if (!candle) {
+      return {
+        candle: null,
+
+        stats: {
+          trades: 0,
+
+          buyVolume: 0,
+          sellVolume: 0,
+
+          buyValue: 0,
+          sellValue: 0,
+
+          totalVolume: 0,
+          totalValue: 0,
+
+          delta: 0,
+          deltaValue: 0,
+          deltaPercent: 0,
+
+          buyTrades: 0,
+          sellTrades: 0
+        },
+
+        footprint: []
+      };
+    }
 
     const footprint =
-      levelRows.map(
-        row => ({
+      [...candle.levels.values()]
+        .map(level => ({
           price:
             Number(
-              row.price
+              level.price
             ),
 
           buyVolume:
             Number(
-              row.buy_volume
+              level.buyVolume
             ),
 
           sellVolume:
             Number(
-              row.sell_volume
+              level.sellVolume
             ),
 
           buyValue:
             Number(
-              row.buy_value
+              level.buyValue
             ),
 
           sellValue:
             Number(
-              row.sell_value
+              level.sellValue
             ),
 
           buyTrades:
             Number(
-              row.buy_trades
+              level.buyTrades
             ),
 
           sellTrades:
             Number(
-              row.sell_trades
+              level.sellTrades
             ),
 
           delta:
             Number(
-              row.buy_volume
+              level.buyVolume
             ) -
             Number(
-              row.sell_volume
+              level.sellVolume
             ),
 
           deltaValue:
             Number(
-              row.buy_value
+              level.buyValue
             ) -
             Number(
-              row.sell_value
+              level.sellValue
             ),
 
           totalVolume:
             Number(
-              row.buy_volume
+              level.buyVolume
             ) +
             Number(
-              row.sell_volume
+              level.sellVolume
             ),
 
           imbalance:
             Number(
-              row.sell_volume
+              level.sellVolume
             ) > 0
               ? Number(
-                  row.buy_volume
+                  level.buyVolume
                 ) /
                 Number(
-                  row.sell_volume
+                  level.sellVolume
                 )
               : Number(
-                  row.buy_volume
+                  level.buyVolume
                 ) > 0
                   ? 999
                   : 0
-        })
+        }))
+        .sort(
+          (a, b) =>
+            b.price -
+            a.price
+        );
+
+    const buyVolume =
+      Number(
+        candle.buyVolume
       );
 
+    const sellVolume =
+      Number(
+        candle.sellVolume
+      );
 
-    let stats;
+    const buyValue =
+      Number(
+        candle.buyValue
+      );
 
-    if (candle) {
-      const buyVolume =
+    const sellValue =
+      Number(
+        candle.sellValue
+      );
+
+    const totalVolume =
+      buyVolume +
+      sellVolume;
+
+    const totalValue =
+      buyValue +
+      sellValue;
+
+    const stats = {
+      trades:
         Number(
-          candle.buy_volume
-        );
-
-      const sellVolume =
+          candle.buyTrades
+        ) +
         Number(
-          candle.sell_volume
-        );
+          candle.sellTrades
+        ),
 
-      const buyValue =
-        Number(
-          candle.buy_value
-        );
+      buyVolume,
 
-      const sellValue =
-        Number(
-          candle.sell_value
-        );
+      sellVolume,
 
-      const totalVolume =
-        buyVolume +
-        sellVolume;
+      buyValue,
 
-      stats = {
-        trades:
-          Number(
-            candle.buy_trades
-          ) +
-          Number(
-            candle.sell_trades
-          ),
+      sellValue,
 
-        buyVolume,
+      totalVolume,
 
+      totalValue,
+
+      delta:
+        buyVolume -
         sellVolume,
 
-        buyValue,
-
+      deltaValue:
+        buyValue -
         sellValue,
 
-        totalVolume,
+      deltaPercent:
+        totalVolume > 0
+          ? (
+              buyVolume -
+              sellVolume
+            ) /
+            totalVolume *
+            100
+          : 0,
 
-        totalValue:
-          buyValue +
-          sellValue,
+      buyTrades:
+        Number(
+          candle.buyTrades
+        ),
 
-        delta:
-          buyVolume -
-          sellVolume,
-
-        deltaValue:
-          buyValue -
-          sellValue,
-
-        deltaPercent:
-          totalVolume > 0
-            ? (
-                buyVolume -
-                sellVolume
-              ) /
-              totalVolume *
-              100
-            : 0,
-
-        buyTrades:
-          Number(
-            candle.buy_trades
-          ),
-
-        sellTrades:
-          Number(
-            candle.sell_trades
-          )
-      };
-    } else {
-      stats = {
-        trades: 0,
-        buyVolume: 0,
-        sellVolume: 0,
-        buyValue: 0,
-        sellValue: 0,
-        totalVolume: 0,
-        totalValue: 0,
-        delta: 0,
-        deltaValue: 0,
-        deltaPercent: 0,
-        buyTrades: 0,
-        sellTrades: 0
-      };
-    }
+      sellTrades:
+        Number(
+          candle.sellTrades
+        )
+    };
 
     return {
-      candle: candle
-        ? {
-            time:
-              Number(
-                candle.minute
-              ),
+      candle: {
+        time:
+          Number(
+            candle.minute
+          ),
 
-            open:
-              Number(
-                candle.open
-              ),
+        open:
+          Number(
+            candle.open
+          ),
 
-            high:
-              Number(
-                candle.high
-              ),
+        high:
+          Number(
+            candle.high
+          ),
 
-            low:
-              Number(
-                candle.low
-              ),
+        low:
+          Number(
+            candle.low
+          ),
 
-            close:
-              Number(
-                candle.close
-              ),
+        close:
+          Number(
+            candle.close
+          ),
 
-            volume:
-              Number(
-                candle.volume
-              ),
+        volume:
+          Number(
+            candle.volume
+          ),
 
-            turnover:
-              Number(
-                candle.turnover
-              )
-          }
-        : null,
+        turnover:
+          Number(
+            candle.turnover
+          )
+      },
 
       stats,
 
@@ -3941,52 +4465,102 @@ export class TradeCollector {
 
   /* =======================================================
      CLEANUP
-  ======================================================= */
+========================================================= */
 
-  async cleanup() {
-    this.flushBatch();
-
+  cleanup() {
     const cutoff =
       Date.now() -
       HISTORY_MS;
 
-    this.state.storage.sql.exec(
-      `
-      DELETE FROM candles_1m
-      WHERE minute < ?
-      `,
-      cutoff
-    );
+    /*
+      چون ذخیره‌سازی ساعتی است،
+      کل Blockهای تمام‌شده قدیمی حذف می‌شوند.
+    */
+    const cutoffHour =
+      hourStartOf(
+        cutoff
+      );
 
-    this.state.storage.sql.exec(
-      `
-      DELETE FROM trades_1m
-      WHERE minute < ?
-      `,
-      cutoff
-    );
+    try {
+      this.state.storage.sql.exec(
+        `
+        DELETE FROM hour_blocks
+        WHERE hour_start < ?
+        `,
+        cutoffHour
+      );
 
-    this.state.storage.sql.exec(
-      `
-      DELETE FROM trade_ids
-      WHERE time < ?
-      `,
-      cutoff
-    );
+      this.lastCleanupAt =
+        Date.now();
+    } catch (error) {
+      this.lastError =
+        error?.message ||
+        "Hour block cleanup error";
+    }
+
+    /*
+      RAM قدیمی هم حذف شود.
+    */
+    for (
+      const [
+        key,
+        block
+      ] of this.hourBlocks
+    ) {
+      if (
+        block.hourStart <
+        cutoffHour
+      ) {
+        this.hourBlocks.delete(
+          key
+        );
+      }
+    }
   }
 
 
   /* =======================================================
      ALARM
-  ======================================================= */
+========================================================= */
 
   async alarm() {
     this.initDB();
 
     try {
-      this.flushBatch();
+      if (
+        !this.loadedRecentBlocks
+      ) {
+        this.loadRecentBlocks();
 
-      await this.cleanup();
+        this.loadedRecentBlocks =
+          true;
+      }
+
+      const now =
+        Date.now();
+
+      /*
+        Checkpoint فقط هر 15 دقیقه.
+        بنابراین به‌جای نوشتن هر Trade،
+        فقط Blockهای تغییرکرده ذخیره می‌شوند.
+      */
+      if (
+        now -
+        this.lastCheckpointAt >=
+        CHECKPOINT_INTERVAL_MS
+      ) {
+        this.checkpointBlocks(
+          false
+        );
+      }
+
+      if (
+        now -
+        this.lastCleanupAt >=
+        CLEANUP_INTERVAL_MS
+      ) {
+        this.cleanup();
+      }
 
       await this.refreshSymbols();
 
@@ -3996,11 +4570,6 @@ export class TradeCollector {
       ) {
         await this.connect();
       } else {
-        /*
-          اگر لیست LBank تغییر کرده باشد،
-          Subscription را دوباره تنظیم می‌کنیم.
-        */
-
         await this.resubscribe();
       }
     } catch (error) {
@@ -4018,7 +4587,6 @@ export class TradeCollector {
 
 /* =========================================================
    SCHEDULED
-   هر 5 دقیقه Collector را بیدار می‌کند.
 ========================================================= */
 
 async function scheduled(
@@ -4074,11 +4642,6 @@ export default {
         "/api/"
       )
     ) {
-      /*
-        مهم:
-        env حتماً به route داده می‌شود.
-      */
-
       return route(
         request,
         env
