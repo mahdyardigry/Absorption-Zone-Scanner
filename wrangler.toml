@@ -27,5 +27,6 @@ storage = "sqlite"
 type = "durable-object"
 storage = "sqlite"
 
+# Cron موقتاً خاموش است
 [triggers]
-crons = ["*/5 * * * *"]
+crons = []
