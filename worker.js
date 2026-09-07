@@ -1316,6 +1316,7 @@ async function getBybitSymbols() {
 
 /* =========================================================
    VOLUME TEST
+   REAL FOOTPRINT STORAGE TEST
    NO DATABASE WRITE
 ========================================================= */
 
@@ -1352,7 +1353,7 @@ async function testVolume(
       ok: false,
 
       test:
-        "VOLUME_TEST",
+        "FOOTPRINT_STORAGE_TEST",
 
       symbol,
 
@@ -1365,61 +1366,226 @@ async function testVolume(
   }
 
   /*
-   * Original normalized trade objects.
+   * =======================================================
+   * BUILD REAL FOOTPRINT STRUCTURE
+   *
+   * hour
+   *   └── minute
+   *        └── price level
+   *
+   * Each price level contains:
+   * - buy volume
+   * - sell volume
+   * - total volume
+   * - delta
+   * - trade count
+   * =======================================================
    */
-  const rawTradePayload =
-    JSON.stringify(
-      trades
-    );
 
-  const rawTradeBytes =
-    utf8ByteLength(
-      rawTradePayload
-    );
-
-  const gzipTradeBytes =
-    await gzipByteLength(
-      rawTradePayload
-    );
-
-  /*
-   * Group trades by minute.
-   */
   const minuteMap =
     new Map();
 
-  for (const trade of trades) {
+  for (
+    const trade of trades
+  ) {
     const minute =
       minuteStartOf(
         trade.time
       );
 
     if (
-      !minuteMap.has(minute)
+      !minuteMap.has(
+        minute
+      )
     ) {
       minuteMap.set(
         minute,
-        []
+        new Map()
       );
     }
 
-    minuteMap
-      .get(minute)
-      .push(trade);
+    const price =
+      Number(
+        trade.price
+      );
+
+    const qty =
+      Number(
+        trade.qty
+      );
+
+    if (
+      !Number.isFinite(
+        price
+      ) ||
+      !Number.isFinite(
+        qty
+      ) ||
+      qty <= 0
+    ) {
+      continue;
+    }
+
+    /*
+     * Keep the original price precision.
+     */
+    const priceKey =
+      String(
+        trade.price
+      );
+
+    const levels =
+      minuteMap.get(
+        minute
+      );
+
+    if (
+      !levels.has(
+        priceKey
+      )
+    ) {
+      levels.set(
+        priceKey,
+        {
+          p:
+            trade.price,
+
+          buy:
+            0,
+
+          sell:
+            0,
+
+          total:
+            0,
+
+          trades:
+            0
+        }
+      );
+    }
+
+    const level =
+      levels.get(
+        priceKey
+      );
+
+    /*
+     * Bybit public trade side:
+     * Buy  = aggressive buyer
+     * Sell = aggressive seller
+     */
+    if (
+      String(
+        trade.side
+      ).toLowerCase() ===
+      "buy"
+    ) {
+      level.buy +=
+        qty;
+    } else {
+      level.sell +=
+        qty;
+    }
+
+    level.total +=
+      qty;
+
+    level.trades++;
   }
 
+  /*
+   * =======================================================
+   * SERIALIZE FOOTPRINT MINUTES
+   * =======================================================
+   */
+
   const minuteTests = [];
+
+  let footprintRawTotal =
+    0;
+
+  let footprintGzipTotal =
+    0;
+
+  let gzipAvailable =
+    true;
+
+  let totalLevels =
+    0;
+
+  let totalMinutes =
+    0;
 
   for (
     const [
       minute,
-      minuteTrades
+      levels
     ]
     of minuteMap
   ) {
+    const levelArray =
+      Array.from(
+        levels.values()
+      )
+      .sort(
+        (a, b) =>
+          Number(a.p) -
+          Number(b.p)
+      )
+      .map(
+        level => ({
+          p:
+            level.p,
+
+          buy:
+            Number(
+              level.buy.toFixed(
+                8
+              )
+            ),
+
+          sell:
+            Number(
+              level.sell.toFixed(
+                8
+              )
+            ),
+
+          total:
+            Number(
+              level.total.toFixed(
+                8
+              )
+            ),
+
+          delta:
+            Number(
+              (
+                level.buy -
+                level.sell
+              ).toFixed(
+                8
+              )
+            ),
+
+          trades:
+            level.trades
+        })
+      );
+
+    const footprint =
+      {
+        m:
+          minute,
+
+        l:
+          levelArray
+      };
+
     const payload =
       JSON.stringify(
-        minuteTrades
+        footprint
       );
 
     const rawBytes =
@@ -1432,6 +1598,26 @@ async function testVolume(
         payload
       );
 
+    totalLevels +=
+      levelArray.length;
+
+    totalMinutes++;
+
+    footprintRawTotal +=
+      rawBytes;
+
+    if (
+      Number.isFinite(
+        gzipBytes
+      )
+    ) {
+      footprintGzipTotal +=
+        gzipBytes;
+    } else {
+      gzipAvailable =
+        false;
+    }
+
     minuteTests.push({
       minute,
 
@@ -1441,7 +1627,18 @@ async function testVolume(
         ).toISOString(),
 
       trades:
-        minuteTrades.length,
+        levelArray.reduce(
+          (
+            sum,
+            level
+          ) =>
+            sum +
+            level.trades,
+          0
+        ),
+
+      levels:
+        levelArray.length,
 
       rawBytes,
 
@@ -1455,21 +1652,30 @@ async function testVolume(
           rawBytes
         ),
 
-      gzipBytes,
+      gzipBytes:
+        Number.isFinite(
+          gzipBytes
+        )
+          ? gzipBytes
+          : null,
 
       gzipKB:
-        gzipBytes === null
-          ? null
-          : bytesToKB(
+        Number.isFinite(
+          gzipBytes
+        )
+          ? bytesToKB(
               gzipBytes
-            ),
+            )
+          : null,
 
       gzipMB:
-        gzipBytes === null
-          ? null
-          : bytesToMB(
+        Number.isFinite(
+          gzipBytes
+        )
+          ? bytesToMB(
               gzipBytes
-            ),
+            )
+          : null,
 
       compression:
         compressionInfo(
@@ -1485,157 +1691,242 @@ async function testVolume(
       b.minute
   );
 
-  const coveredMinutes =
-    minuteTests.length;
-
-  const totalTrades =
-    trades.length;
+  /*
+   * =======================================================
+   * BUILD COMPLETE HOUR PAYLOAD
+   *
+   * This represents the structure that can later be
+   * stored as one hourly object/row.
+   * =======================================================
+   */
 
   const firstTradeTime =
     Math.min(
       ...trades.map(
-        t => t.time
+        t =>
+          t.time
       )
     );
 
   const lastTradeTime =
     Math.max(
       ...trades.map(
-        t => t.time
+        t =>
+          t.time
       )
     );
 
-  const elapsedDataMinutes =
-    Math.max(
-      1,
-      Math.ceil(
-        (
-          lastTradeTime -
-          firstTradeTime
-        ) /
-          MINUTE_MS
-      ) + 1
+  const hourStart =
+    hourStartOf(
+      firstTradeTime
+    );
+
+  const hourPayload =
+    {
+      v:
+        1,
+
+      s:
+        symbol,
+
+      h:
+        hourStart,
+
+      m:
+        minuteTests.map(
+          item => ({
+            t:
+              item.minute,
+
+            l:
+              item.levels,
+
+            b:
+              item.rawBytes,
+
+            g:
+              item.gzipBytes
+          })
+        )
+    };
+
+  const hourPayloadText =
+    JSON.stringify(
+      hourPayload
+    );
+
+  const hourRawBytes =
+    utf8ByteLength(
+      hourPayloadText
+    );
+
+  const hourGzipBytes =
+    await gzipByteLength(
+      hourPayloadText
     );
 
   /*
-   * Actual average based on received sample.
+   * =======================================================
+   * AVERAGES
+   * =======================================================
    */
+
+  const averageLevelsPerMinute =
+    totalMinutes > 0
+      ? totalLevels /
+        totalMinutes
+      : 0;
+
   const averageRawPerMinute =
-    rawTradeBytes /
-    elapsedDataMinutes;
+    totalMinutes > 0
+      ? footprintRawTotal /
+        totalMinutes
+      : 0;
 
   const averageGzipPerMinute =
-    gzipTradeBytes === null
-      ? null
-      : gzipTradeBytes /
-        elapsedDataMinutes;
+    totalMinutes > 0 &&
+    gzipAvailable
+      ? footprintGzipTotal /
+        totalMinutes
+      : null;
 
   /*
-   * Projection for one hour.
+   * =======================================================
+   * HOUR PROJECTION
+   *
+   * Uses actual Footprint minute data.
+   * =======================================================
    */
+
   const estimatedHourRaw =
     averageRawPerMinute *
     60;
 
   const estimatedHourGzip =
-    averageGzipPerMinute === null
+    averageGzipPerMinute ===
+    null
       ? null
       : averageGzipPerMinute *
         60;
 
   /*
-   * Projection for 20,000 hour rows.
-   *
-   * This is only a size estimate.
-   * Actual rows differ by symbol/activity.
+   * =======================================================
+   * 20,000 HOURLY ROW PROJECTION
+   * =======================================================
    */
+
   const estimated20KRaw =
     estimatedHourRaw *
     MAX_ROWS;
 
   const estimated20KGzip =
-    estimatedHourGzip === null
+    estimatedHourGzip ===
+    null
       ? null
       : estimatedHourGzip *
         MAX_ROWS;
 
   /*
-   * Also calculate average size
-   * of one minute from grouped data.
+   * =======================================================
+   * MULTI SYMBOL PROJECTION
+   * =======================================================
    */
-  let groupedRawTotal = 0;
-  let groupedGzipTotal = 0;
-  let groupedGzipAvailable = true;
 
-  let minRaw =
-    Number.POSITIVE_INFINITY;
+  const symbolCounts = [
+    10,
+    20,
+    50,
+    100,
+    200,
+    500
+  ];
 
-  let maxRaw = 0;
+  const symbolStorage =
+    symbolCounts.map(
+      count => ({
+        symbols:
+          count,
 
-  let minGzip =
-    Number.POSITIVE_INFINITY;
+        oneHourRawBytes:
+          Math.round(
+            estimatedHourRaw *
+            count
+          ),
 
-  let maxGzip = 0;
+        oneHourRawMB:
+          bytesToMB(
+            estimatedHourRaw *
+            count
+          ),
 
-  for (const item of minuteTests) {
-    groupedRawTotal +=
-      item.rawBytes;
+        oneHourGzipBytes:
+          estimatedHourGzip ===
+          null
+            ? null
+            : Math.round(
+                estimatedHourGzip *
+                count
+              ),
 
-    if (
-      Number.isFinite(
-        item.gzipBytes
-      )
-    ) {
-      groupedGzipTotal +=
-        item.gzipBytes;
+        oneHourGzipMB:
+          estimatedHourGzip ===
+          null
+            ? null
+            : bytesToMB(
+                estimatedHourGzip *
+                count
+              ),
 
-      minGzip =
-        Math.min(
-          minGzip,
-          item.gzipBytes
-        );
+        oneDayRawGB:
+          bytesToGB(
+            estimatedHourRaw *
+            count *
+            24
+          ),
 
-      maxGzip =
-        Math.max(
-          maxGzip,
-          item.gzipBytes
-        );
-    } else {
-      groupedGzipAvailable =
-        false;
-    }
+        oneDayGzipGB:
+          estimatedHourGzip ===
+          null
+            ? null
+            : bytesToGB(
+                estimatedHourGzip *
+                count *
+                24
+              ),
 
-    minRaw =
-      Math.min(
-        minRaw,
-        item.rawBytes
-      );
+        oneMonthRawGB:
+          bytesToGB(
+            estimatedHourRaw *
+            count *
+            24 *
+            30
+          ),
 
-    maxRaw =
-      Math.max(
-        maxRaw,
-        item.rawBytes
-      );
-  }
+        oneMonthGzipGB:
+          estimatedHourGzip ===
+          null
+            ? null
+            : bytesToGB(
+                estimatedHourGzip *
+                count *
+                24 *
+                30
+              )
+      })
+    );
 
-  const averageGroupedRaw =
-    coveredMinutes > 0
-      ? groupedRawTotal /
-        coveredMinutes
-      : 0;
-
-  const averageGroupedGzip =
-    coveredMinutes > 0 &&
-    groupedGzipAvailable
-      ? groupedGzipTotal /
-        coveredMinutes
-      : null;
+  /*
+   * =======================================================
+   * RETURN
+   * =======================================================
+   */
 
   return {
-    ok: true,
+    ok:
+      true,
 
     test:
-      "VOLUME_TEST",
+      "FOOTPRINT_STORAGE_TEST",
 
     version:
       VERSION,
@@ -1651,15 +1942,18 @@ async function testVolume(
     databaseModified:
       false,
 
+    readOnly:
+      true,
+
     compression:
       "GZIP lossless",
 
     compressionAvailable:
-      gzipTradeBytes !== null,
+      gzipAvailable,
 
     sample: {
       trades:
-        totalTrades,
+        trades.length,
 
       firstTradeTime,
 
@@ -1675,120 +1969,111 @@ async function testVolume(
           lastTradeTime
         ).toISOString(),
 
-      elapsedDataMinutes,
+      coveredMinutes:
+        totalMinutes,
 
-      coveredMinutes
+      footprintLevels:
+        totalLevels,
+
+      averageLevelsPerMinute:
+        Number(
+          averageLevelsPerMinute.toFixed(
+            2
+          )
+        )
     },
 
-    rawSample: {
-      bytes:
-        rawTradeBytes,
+    actualFootprint: {
+      rawBytes:
+        footprintRawTotal,
 
-      KB:
+      rawKB:
         bytesToKB(
-          rawTradeBytes
+          footprintRawTotal
         ),
 
-      MB:
+      rawMB:
         bytesToMB(
-          rawTradeBytes
-        )
-    },
-
-    gzipSample:
-      compressionInfo(
-        rawTradeBytes,
-        gzipTradeBytes
-      ),
-
-    minute: {
-      averageRawBytes:
-        Math.round(
-          averageRawPerMinute
+          footprintRawTotal
         ),
 
-      averageRawKB:
-        bytesToKB(
-          averageRawPerMinute
-        ),
-
-      averageRawMB:
-        bytesToMB(
-          averageRawPerMinute
-        ),
-
-      averageGzipBytes:
-        averageGzipPerMinute === null
-          ? null
-          : Math.round(
-              averageGzipPerMinute
-            ),
-
-      averageGzipKB:
-        averageGzipPerMinute === null
-          ? null
-          : bytesToKB(
-              averageGzipPerMinute
-            ),
-
-      averageGzipMB:
-        averageGzipPerMinute === null
-          ? null
-          : bytesToMB(
-              averageGzipPerMinute
-            )
-    },
-
-    groupedMinuteStats: {
-      averageRawBytes:
-        Math.round(
-          averageGroupedRaw
-        ),
-
-      averageRawKB:
-        bytesToKB(
-          averageGroupedRaw
-        ),
-
-      averageGzipBytes:
-        averageGroupedGzip === null
-          ? null
-          : Math.round(
-              averageGroupedGzip
-            ),
-
-      averageGzipKB:
-        averageGroupedGzip === null
-          ? null
-          : bytesToKB(
-              averageGroupedGzip
-            ),
-
-      minimumRawBytes:
-        Number.isFinite(
-          minRaw
-        )
-          ? minRaw
-          : 0,
-
-      maximumRawBytes:
-        maxRaw,
-
-      minimumGzipBytes:
-        groupedGzipAvailable &&
-        Number.isFinite(
-          minGzip
-        )
-          ? minGzip
+      gzipBytes:
+        gzipAvailable
+          ? footprintGzipTotal
           : null,
 
-      maximumGzipBytes:
-        groupedGzipAvailable
-          ? maxGzip
-          : null
+      gzipKB:
+        gzipAvailable
+          ? bytesToKB(
+              footprintGzipTotal
+            )
+          : null,
+
+      gzipMB:
+        gzipAvailable
+          ? bytesToMB(
+              footprintGzipTotal
+            )
+          : null,
+
+      compression:
+        compressionInfo(
+          footprintRawTotal,
+          gzipAvailable
+            ? footprintGzipTotal
+            : null
+        )
+    },
+
+    actualHourPayload: {
+      hourStart,
+
+      hourISO:
+        new Date(
+          hourStart
+        ).toISOString(),
+
+      rawBytes:
+        hourRawBytes,
+
+      rawKB:
+        bytesToKB(
+          hourRawBytes
+        ),
+
+      rawMB:
+        bytesToMB(
+          hourRawBytes
+        ),
+
+      gzipBytes:
+        hourGzipBytes,
+
+      gzipKB:
+        hourGzipBytes === null
+          ? null
+          : bytesToKB(
+              hourGzipBytes
+            ),
+
+      gzipMB:
+        hourGzipBytes === null
+          ? null
+          : bytesToMB(
+              hourGzipBytes
+            ),
+
+      compression:
+        compressionInfo(
+          hourRawBytes,
+          hourGzipBytes
+        )
     },
 
     estimatedHour: {
+      model:
+        "Actual Footprint minute structure projected to 60 minutes",
+
       rawBytes:
         Math.round(
           estimatedHourRaw
@@ -1805,21 +2090,24 @@ async function testVolume(
         ),
 
       gzipBytes:
-        estimatedHourGzip === null
+        estimatedHourGzip ===
+        null
           ? null
           : Math.round(
               estimatedHourGzip
             ),
 
       gzipKB:
-        estimatedHourGzip === null
+        estimatedHourGzip ===
+        null
           ? null
           : bytesToKB(
               estimatedHourGzip
             ),
 
       gzipMB:
-        estimatedHourGzip === null
+        estimatedHourGzip ===
+        null
           ? null
           : bytesToMB(
               estimatedHourGzip
@@ -1849,26 +2137,31 @@ async function testVolume(
         ),
 
       gzipBytes:
-        estimated20KGzip === null
+        estimated20KGzip ===
+        null
           ? null
           : Math.round(
               estimated20KGzip
             ),
 
       gzipMB:
-        estimated20KGzip === null
+        estimated20KGzip ===
+        null
           ? null
           : bytesToMB(
               estimated20KGzip
             ),
 
       gzipGB:
-        estimated20KGzip === null
+        estimated20KGzip ===
+        null
           ? null
           : bytesToGB(
               estimated20KGzip
             )
     },
+
+    symbolStorage,
 
     minuteTests,
 
@@ -1877,7 +2170,7 @@ async function testVolume(
       startedAt,
 
     note:
-      "This endpoint only measures data size. It never writes to Durable Object SQLite."
+      "Read-only test. Builds a real Footprint structure from Bybit trades in memory and measures serialized Raw/GZIP size. No Durable Object SQLite or external database is accessed."
   };
 }
 
