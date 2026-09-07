@@ -3974,9 +3974,586 @@ export class AbsorptionStorageV5 {
     return this.statusObject();
   }
 
-  /* =======================================================
-     STATUS
+/* ======================================================
+   STATUS
 ======================================================= */
+
+  async storageTest() {
+    const now =
+      Date.now();
+
+    const currentHour =
+      hourStartOf(now);
+
+    const currentMinute =
+      minuteStartOf(now);
+
+    const currentBlocks = [];
+    const dataSymbols =
+      new Set();
+
+    let totalCandles = 0;
+    let totalLevels = 0;
+
+    const minuteSet =
+      new Set();
+
+    /*
+      فقط RAM:
+      هیچ initDB()
+      هیچ SQL
+      هیچ write
+      هیچ mutation
+    */
+    for (
+      const [
+        key,
+        block
+      ]
+      of this.hourBlocks
+    ) {
+      if (
+        !block ||
+        block.hourStart !==
+          currentHour
+      ) {
+        continue;
+      }
+
+      if (
+        !block.candles ||
+        !block.candles.size
+      ) {
+        continue;
+      }
+
+      dataSymbols.add(
+        block.symbol
+      );
+
+      totalCandles +=
+        block.candles.size;
+
+      for (
+        const [
+          minute,
+          candle
+        ]
+        of block.candles
+      ) {
+        minuteSet.add(
+          Number(minute)
+        );
+
+        if (
+          candle &&
+          candle.levels
+        ) {
+          totalLevels +=
+            candle.levels.size;
+        }
+      }
+
+      let serialized;
+
+      try {
+        serialized =
+          this.serializeBlock(
+            block
+          );
+
+        if (
+          typeof serialized ===
+          "string"
+        ) {
+          serialized =
+            JSON.parse(
+              serialized
+            );
+        }
+      } catch (error) {
+        serialized = {
+          error:
+            String(
+              error?.message ||
+              error
+            )
+        };
+      }
+
+      currentBlocks.push(
+        serialized
+      );
+    }
+
+    /*
+      PAYLOAD واقعی ساعت جاری
+    */
+    const hourPayload =
+      JSON.stringify({
+        v: 1,
+
+        type:
+          "RAM_HOUR_TEST",
+
+        hour:
+          currentHour,
+
+        blocks:
+          currentBlocks
+      });
+
+    const hourRawBytes =
+      utf8ByteLength(
+        hourPayload
+      );
+
+    const hourGzipBytes =
+      await gzipByteLength(
+        hourPayload
+      );
+
+    /*
+      PAYLOAD دقیقه جاری
+      با همان serializeBlock واقعی
+    */
+    const currentMinuteBlocks =
+      [];
+
+    for (
+      const [
+        key,
+        block
+      ]
+      of this.hourBlocks
+    ) {
+      if (
+        !block ||
+        block.hourStart !==
+          currentHour
+      ) {
+        continue;
+      }
+
+      if (
+        !block.candles ||
+        !block.candles.has(
+          currentMinute
+        )
+      ) {
+        continue;
+      }
+
+      const candle =
+        block.candles.get(
+          currentMinute
+        );
+
+      if (!candle) {
+        continue;
+      }
+
+      const tempBlock = {
+        ...block,
+
+        candles:
+          new Map([
+            [
+              currentMinute,
+              candle
+            ]
+          ])
+      };
+
+      try {
+        let serialized =
+          this.serializeBlock(
+            tempBlock
+          );
+
+        if (
+          typeof serialized ===
+          "string"
+        ) {
+          serialized =
+            JSON.parse(
+              serialized
+            );
+        }
+
+        currentMinuteBlocks.push(
+          serialized
+        );
+      } catch (error) {
+        currentMinuteBlocks.push({
+          error:
+            String(
+              error?.message ||
+              error
+            )
+        });
+      }
+    }
+
+    let minuteRawBytes = 0;
+    let minuteGzipBytes = 0;
+
+    if (
+      currentMinuteBlocks.length
+    ) {
+      const minutePayload =
+        JSON.stringify({
+          v: 1,
+
+          type:
+            "RAM_MINUTE_TEST",
+
+          minute:
+            currentMinute,
+
+          blocks:
+            currentMinuteBlocks
+        });
+
+      minuteRawBytes =
+        utf8ByteLength(
+          minutePayload
+        );
+
+      minuteGzipBytes =
+        await gzipByteLength(
+          minutePayload
+        );
+    }
+
+    /*
+      اندازه واقعی RAM از دید payload
+    */
+    const observedMinutes =
+      Math.max(
+        1,
+        minuteSet.size
+      );
+
+    const hourElapsedMinutes =
+      Math.max(
+        1,
+        Math.min(
+          60,
+          Math.ceil(
+            (
+              now -
+              currentHour
+            ) /
+            MINUTE_MS
+          )
+        )
+      );
+
+    /*
+      تخمین یک ساعت کامل بر اساس
+      داده واقعی جمع‌شده تا این لحظه
+    */
+    const estimatedFullHourRaw =
+      Math.ceil(
+        hourRawBytes *
+        (
+          60 /
+          hourElapsedMinutes
+        )
+      );
+
+    const estimatedFullHourGzip =
+      Math.ceil(
+        hourGzipBytes *
+        (
+          60 /
+          hourElapsedMinutes
+        )
+      );
+
+    const projected24hRaw =
+      estimatedFullHourRaw *
+      24;
+
+    const projected24hGzip =
+      estimatedFullHourGzip *
+      24;
+
+    const projected7dRaw =
+      estimatedFullHourRaw *
+      24 *
+      7;
+
+    const projected7dGzip =
+      estimatedFullHourGzip *
+      24 *
+      7;
+
+    const projected30dRaw =
+      estimatedFullHourRaw *
+      24 *
+      30;
+
+    const projected30dGzip =
+      estimatedFullHourGzip *
+      24 *
+      30;
+
+    const compressionRatio =
+      hourGzipBytes > 0
+        ? (
+            hourRawBytes /
+            hourGzipBytes
+          )
+        : 0;
+
+    const compressionSavingPercent =
+      hourRawBytes > 0
+        ? (
+            1 -
+            (
+              hourGzipBytes /
+              hourRawBytes
+            )
+          ) *
+          100
+        : 0;
+
+    return {
+      ok: true,
+
+      test:
+        "ABSORPTION-RAM-STORAGE-TEST",
+
+      source:
+        "AbsorptionStorageV5.hourBlocks",
+
+      timestamp:
+        now,
+
+      databaseWrite:
+        false,
+
+      databaseModified:
+        false,
+
+      readOnly:
+        true,
+
+      collector: {
+        started:
+          this.started,
+
+        connected:
+          this.connected,
+
+        configuredSymbols:
+          this.symbols.length,
+
+        subscribedTopics:
+          this.subscribed.size,
+
+        symbolsWithCurrentHourData:
+          dataSymbols.size,
+
+        symbols:
+          Array.from(
+            dataSymbols
+          )
+      },
+
+      currentHour: {
+        hourStart:
+          currentHour,
+
+        hourStartISO:
+          new Date(
+            currentHour
+          ).toISOString(),
+
+        hourBlocks:
+          currentBlocks.length,
+
+        minutesWithData:
+          minuteSet.size,
+
+        candles:
+          totalCandles,
+
+        footprintLevels:
+          totalLevels,
+
+        elapsedMinutes:
+          hourElapsedMinutes,
+
+        observedMinutes:
+          observedMinutes
+      },
+
+      currentMinute: {
+        minuteStart:
+          currentMinute,
+
+        minuteStartISO:
+          new Date(
+            currentMinute
+          ).toISOString(),
+
+        blocks:
+          currentMinuteBlocks.length,
+
+        rawBytes:
+          minuteRawBytes,
+
+        gzipBytes:
+          minuteGzipBytes,
+
+        rawKB:
+          bytesToKB(
+            minuteRawBytes
+          ),
+
+        gzipKB:
+          bytesToKB(
+            minuteGzipBytes
+          )
+      },
+
+      measuredCurrentHour: {
+        rawBytes:
+          hourRawBytes,
+
+        gzipBytes:
+          hourGzipBytes,
+
+        rawKB:
+          bytesToKB(
+            hourRawBytes
+          ),
+
+        rawMB:
+          bytesToMB(
+            hourRawBytes
+          ),
+
+        gzipKB:
+          bytesToKB(
+            hourGzipBytes
+          ),
+
+        gzipMB:
+          bytesToMB(
+            hourGzipBytes
+          ),
+
+        compressionRatio:
+          Number(
+            compressionRatio.toFixed(
+              3
+            )
+          ),
+
+        compressionSavingPercent:
+          Number(
+            compressionSavingPercent.toFixed(
+              2
+            )
+          )
+      },
+
+      estimatedFullHour: {
+        rawBytes:
+          estimatedFullHourRaw,
+
+        gzipBytes:
+          estimatedFullHourGzip,
+
+        rawMB:
+          bytesToMB(
+            estimatedFullHourRaw
+          ),
+
+        gzipMB:
+          bytesToMB(
+            estimatedFullHourGzip
+          )
+      },
+
+      projection: {
+        basis:
+          "measured RAM current-hour data",
+
+        warning:
+          "Projection is an estimate because the current hour may be incomplete.",
+
+        hours24: {
+          rawBytes:
+            projected24hRaw,
+
+          gzipBytes:
+            projected24hGzip,
+
+          rawMB:
+            bytesToMB(
+              projected24hRaw
+            ),
+
+          gzipMB:
+            bytesToMB(
+              projected24hGzip
+            )
+        },
+
+        days7: {
+          rawBytes:
+            projected7dRaw,
+
+          gzipBytes:
+            projected7dGzip,
+
+          rawMB:
+            bytesToMB(
+              projected7dRaw
+            ),
+
+          gzipMB:
+            bytesToMB(
+              projected7dGzip
+            ),
+
+          gzipGB:
+            bytesToGB(
+              projected7dGzip
+            )
+        },
+
+        days30: {
+          rawBytes:
+            projected30dRaw,
+
+          gzipBytes:
+            projected30dGzip,
+
+          rawMB:
+            bytesToMB(
+              projected30dRaw
+            ),
+
+          gzipMB:
+            bytesToMB(
+              projected30dGzip
+            ),
+
+          gzipGB:
+            bytesToGB(
+              projected30dGzip
+            )
+        }
+      }
+    };
+  }
+
 
   statusObject() {
     let rows = 0;
@@ -4542,8 +5119,8 @@ export class AbsorptionStorageV5 {
     };
   }
 
-  /* =======================================================
-     INTERNAL FETCH
+    /* =======================================================
+   INTERNAL FETCH
 ======================================================= */
 
   async fetch(request) {
@@ -4556,7 +5133,6 @@ export class AbsorptionStorageV5 {
       url.pathname;
 
     try {
-      this.initDB();
 
       if (
         request.method ===
@@ -4570,6 +5146,29 @@ export class AbsorptionStorageV5 {
           }
         );
       }
+
+      /*
+        RAM STORAGE TEST
+        ----------------
+        کاملاً Read-Only
+        بدون initDB()
+        بدون SQL
+        بدون Database Write
+      */
+      if (
+        path ===
+        "/internal/storage-test"
+      ) {
+        return json(
+          await this.storageTest()
+        );
+      }
+
+      /*
+        مسیرهای عادی از اینجا به بعد
+        می‌توانند از SQLite استفاده کنند.
+      */
+      this.initDB();
 
       if (
         path ===
@@ -4665,7 +5264,9 @@ export class AbsorptionStorageV5 {
         },
         404
       );
+
     } catch (error) {
+
       this.lastError =
         String(
           error?.message ||
@@ -4696,7 +5297,8 @@ export class AbsorptionStorageV5 {
       );
     }
   }
-}
+}  
+
 
 /* =========================================================
    PUBLIC COLLECTOR FUNCTIONS
@@ -5066,8 +5668,8 @@ export default {
       }
 
       /* ===================================================
-         TEST
-      =================================================== */
+   TEST
+=================================================== */
 
       if (
         url.pathname ===
@@ -5083,10 +5685,57 @@ export default {
             Date.now(),
 
           volumeTest:
-            "/api/test/volume?symbol=BTCUSDT"
+            "/api/test/volume?symbol=BTCUSDT",
+
+          storageTest:
+            "/api/storage-test"
         });
       }
 
+      /* ===================================================
+         STORAGE TEST
+      =================================================== */
+
+      if (
+        url.pathname ===
+        "/api/storage-test"
+      ) {
+        const id =
+          env.TRADE_COLLECTOR_V5.idFromName(
+            "ABSORPTION-STORAGE-V5"
+          );
+
+        const stub =
+          env.TRADE_COLLECTOR_V5.get(
+            id
+          );
+
+        const response =
+          await stub.fetch(
+            new Request(
+              new URL(
+                "/internal/storage-test",
+                url.origin
+              ),
+              {
+                method:
+                  "GET"
+              }
+            )
+          );
+
+        return new Response(
+          response.body,
+          {
+            status:
+              response.status,
+
+            headers:
+              response.headers
+          }
+        );
+      }
+      
       /* ===================================================
          SYMBOLS
       =================================================== */
