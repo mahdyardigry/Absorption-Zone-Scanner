@@ -1313,10 +1313,9 @@ async function getBybitSymbols() {
       )
   );
 }
-
 /* =========================================================
    VOLUME TEST
-   REAL FOOTPRINT STORAGE TEST
+   REAL PROJECT FOOTPRINT STORAGE TEST
    NO DATABASE WRITE
 ========================================================= */
 
@@ -1328,6 +1327,12 @@ async function testVolume(
 
   symbol =
     normalizeSymbol(symbol);
+
+  /*
+   * -------------------------------------------------------
+   * دریافت معاملات واقعی Bybit
+   * -------------------------------------------------------
+   */
 
   const result =
     await bybit(
@@ -1350,7 +1355,8 @@ async function testVolume(
 
   if (!trades.length) {
     return {
-      ok: false,
+      ok:
+        false,
 
       test:
         "FOOTPRINT_STORAGE_TEST",
@@ -1364,6 +1370,786 @@ async function testVolume(
         VERSION
     };
   }
+
+  /*
+   * -------------------------------------------------------
+   * دریافت tickSize واقعی نماد
+   * -------------------------------------------------------
+   */
+
+  let tickSize =
+    0;
+
+  try {
+    const instrumentResult =
+      await bybit(
+        "/v5/market/instruments-info",
+        {
+          category:
+            "linear",
+
+          symbol
+        }
+      );
+
+    const instrument =
+      Array.isArray(
+        instrumentResult?.list
+      )
+        ? instrumentResult.list[0]
+        : null;
+
+    tickSize =
+      safeNumber(
+        instrument
+          ?.priceFilter
+          ?.tickSize,
+        0
+      );
+  } catch (
+    error
+  ) {
+    tickSize = 0;
+  }
+
+  /*
+   * -------------------------------------------------------
+   * Footprint واقعی پروژه
+   *
+   * دقیقاً همان تابعی که Scanner اصلی استفاده می‌کند.
+   * -------------------------------------------------------
+   */
+
+  const fullFootprint =
+    aggregateFootprint(
+      trades,
+      tickSize
+    );
+
+  /*
+   * -------------------------------------------------------
+   * گروه‌بندی معاملات بر اساس دقیقه
+   * -------------------------------------------------------
+   */
+
+  const minuteMap =
+    new Map();
+
+  for (
+    const trade of trades
+  ) {
+    const minute =
+      minuteStartOf(
+        trade.time
+      );
+
+    if (
+      !minuteMap.has(
+        minute
+      )
+    ) {
+      minuteMap.set(
+        minute,
+        []
+      );
+    }
+
+    minuteMap
+      .get(minute)
+      .push(trade);
+  }
+
+  /*
+   * -------------------------------------------------------
+   * Footprint واقعی هر دقیقه
+   * -------------------------------------------------------
+   */
+
+  const minuteTests =
+    [];
+
+  let footprintRawTotal =
+    0;
+
+  let footprintGzipTotal =
+    0;
+
+  let gzipAvailable =
+    true;
+
+  let totalLevels =
+    0;
+
+  let totalMinutes =
+    0;
+
+  for (
+    const [
+      minute,
+      minuteTrades
+    ]
+    of minuteMap
+  ) {
+    const minuteFootprint =
+      aggregateFootprint(
+        minuteTrades,
+        tickSize
+      );
+
+    /*
+     * این همان ساختار واقعی Footprint
+     * است که پروژه برای تحلیل استفاده می‌کند.
+     */
+
+    const payload =
+      JSON.stringify(
+        {
+          t:
+            minute,
+
+          f:
+            minuteFootprint
+        }
+      );
+
+    const rawBytes =
+      utf8ByteLength(
+        payload
+      );
+
+    const gzipBytes =
+      await gzipByteLength(
+        payload
+      );
+
+    totalMinutes++;
+
+    totalLevels +=
+      minuteFootprint.length;
+
+    footprintRawTotal +=
+      rawBytes;
+
+    if (
+      Number.isFinite(
+        gzipBytes
+      )
+    ) {
+      footprintGzipTotal +=
+        gzipBytes;
+    } else {
+      gzipAvailable =
+        false;
+    }
+
+    minuteTests.push({
+      minute,
+
+      iso:
+        new Date(
+          minute
+        ).toISOString(),
+
+      trades:
+        minuteTrades.length,
+
+      levels:
+        minuteFootprint.length,
+
+      rawBytes,
+
+      rawKB:
+        bytesToKB(
+          rawBytes
+        ),
+
+      rawMB:
+        bytesToMB(
+          rawBytes
+        ),
+
+      gzipBytes:
+        Number.isFinite(
+          gzipBytes
+        )
+          ? gzipBytes
+          : null,
+
+      gzipKB:
+        Number.isFinite(
+          gzipBytes
+        )
+          ? bytesToKB(
+              gzipBytes
+            )
+          : null,
+
+      gzipMB:
+        Number.isFinite(
+          gzipBytes
+        )
+          ? bytesToMB(
+              gzipBytes
+            )
+          : null,
+
+      compression:
+        compressionInfo(
+          rawBytes,
+          gzipBytes
+        )
+    });
+  }
+
+  minuteTests.sort(
+    (a, b) =>
+      a.minute -
+      b.minute
+  );
+
+  /*
+   * -------------------------------------------------------
+   * زمان نمونه
+   * -------------------------------------------------------
+   */
+
+  const firstTradeTime =
+    Math.min(
+      ...trades.map(
+        t =>
+          t.time
+      )
+    );
+
+  const lastTradeTime =
+    Math.max(
+      ...trades.map(
+        t =>
+          t.time
+      )
+    );
+
+  const hourStart =
+    hourStartOf(
+      firstTradeTime
+    );
+
+  /*
+   * -------------------------------------------------------
+   * ساخت Payload کامل یک ساعت
+   *
+   * مهم:
+   * اینجا خود Footprint levelها ذخیره می‌شوند،
+   * نه فقط اندازه آنها.
+   * -------------------------------------------------------
+   */
+
+  const hourMinutes =
+    [];
+
+  let hourRawBytesFromMinutes =
+    0;
+
+  for (
+    const [
+      minute,
+      minuteTrades
+    ]
+    of minuteMap
+  ) {
+    const minuteFootprint =
+      aggregateFootprint(
+        minuteTrades,
+        tickSize
+      );
+
+    hourMinutes.push({
+      t:
+        minute,
+
+      f:
+        minuteFootprint
+    });
+  }
+
+  hourMinutes.sort(
+    (a, b) =>
+      a.t -
+      b.t
+  );
+
+  const hourPayload =
+    {
+      v:
+        1,
+
+      s:
+        symbol,
+
+      h:
+        hourStart,
+
+      ts:
+        tickSize,
+
+      m:
+        hourMinutes
+    };
+
+  const hourPayloadText =
+    JSON.stringify(
+      hourPayload
+    );
+
+  const hourRawBytes =
+    utf8ByteLength(
+      hourPayloadText
+    );
+
+  const hourGzipBytes =
+    await gzipByteLength(
+      hourPayloadText
+    );
+
+  /*
+   * -------------------------------------------------------
+   * آمار واقعی Footprint
+   * -------------------------------------------------------
+   */
+
+  const averageLevelsPerMinute =
+    totalMinutes > 0
+      ? totalLevels /
+        totalMinutes
+      : 0;
+
+  const averageRawPerMinute =
+    totalMinutes > 0
+      ? footprintRawTotal /
+        totalMinutes
+      : 0;
+
+  const averageGzipPerMinute =
+    totalMinutes > 0 &&
+    gzipAvailable
+      ? footprintGzipTotal /
+        totalMinutes
+      : null;
+
+  /*
+   * -------------------------------------------------------
+   * برآورد یک ساعت
+   *
+   * بر اساس Footprint واقعی دریافت‌شده
+   * -------------------------------------------------------
+   */
+
+  const estimatedHourRaw =
+    averageRawPerMinute *
+    60;
+
+  const estimatedHourGzip =
+    averageGzipPerMinute ===
+    null
+      ? null
+      : averageGzipPerMinute *
+        60;
+
+  /*
+   * -------------------------------------------------------
+   * برآورد 20,000 ردیف
+   * -------------------------------------------------------
+   */
+
+  const estimated20KRaw =
+    hourRawBytes *
+    MAX_ROWS;
+
+  const estimated20KGzip =
+    Number.isFinite(
+      hourGzipBytes
+    )
+      ? hourGzipBytes *
+        MAX_ROWS
+      : null;
+
+  /*
+   * -------------------------------------------------------
+   * برآورد تعداد نمادها
+   * -------------------------------------------------------
+   */
+
+  const symbolCounts = [
+    10,
+    20,
+    50,
+    100,
+    200,
+    500
+  ];
+
+  const symbolStorage =
+    symbolCounts.map(
+      count => {
+        const oneHourRaw =
+          hourRawBytes *
+          count;
+
+        const oneHourGzip =
+          Number.isFinite(
+            hourGzipBytes
+          )
+            ? hourGzipBytes *
+              count
+            : null;
+
+        return {
+          symbols:
+            count,
+
+          oneHourRawBytes:
+            oneHourRaw,
+
+          oneHourRawMB:
+            bytesToMB(
+              oneHourRaw
+            ),
+
+          oneHourGzipBytes:
+            oneHourGzip,
+
+          oneHourGzipMB:
+            oneHourGzip === null
+              ? null
+              : bytesToMB(
+                  oneHourGzip
+                ),
+
+          oneDayRawGB:
+            bytesToGB(
+              oneHourRaw *
+              24
+            ),
+
+          oneDayGzipGB:
+            oneHourGzip === null
+              ? null
+              : bytesToGB(
+                  oneHourGzip *
+                  24
+                ),
+
+          oneMonthRawGB:
+            bytesToGB(
+              oneHourRaw *
+              24 *
+              30
+            ),
+
+          oneMonthGzipGB:
+            oneHourGzip === null
+              ? null
+              : bytesToGB(
+                  oneHourGzip *
+                  24 *
+                  30
+                )
+        };
+      }
+    );
+
+  /*
+   * -------------------------------------------------------
+   * خروجی
+   * -------------------------------------------------------
+   */
+
+  return {
+    ok:
+      true,
+
+    test:
+      "FOOTPRINT_STORAGE_TEST",
+
+    version:
+      VERSION,
+
+    symbol,
+
+    source:
+      "Bybit Linear Futures publicTrade",
+
+    databaseWrite:
+      false,
+
+    databaseModified:
+      false,
+
+    readOnly:
+      true,
+
+    tickSize,
+
+    compression:
+      "GZIP lossless",
+
+    compressionAvailable:
+      gzipAvailable,
+
+    sample: {
+      trades:
+        trades.length,
+
+      firstTradeTime,
+
+      firstTradeISO:
+        new Date(
+          firstTradeTime
+        ).toISOString(),
+
+      lastTradeTime,
+
+      lastTradeISO:
+        new Date(
+          lastTradeTime
+        ).toISOString(),
+
+      coveredMinutes:
+        totalMinutes,
+
+      footprintLevels:
+        totalLevels,
+
+      averageLevelsPerMinute:
+        Number(
+          averageLevelsPerMinute.toFixed(
+            2
+          )
+        )
+    },
+
+    /*
+     * Footprint واقعی تمام دقیقه‌های نمونه
+     */
+    actualFootprint: {
+      rawBytes:
+        footprintRawTotal,
+
+      rawKB:
+        bytesToKB(
+          footprintRawTotal
+        ),
+
+      rawMB:
+        bytesToMB(
+          footprintRawTotal
+        ),
+
+      gzipBytes:
+        gzipAvailable
+          ? footprintGzipTotal
+          : null,
+
+      gzipKB:
+        gzipAvailable
+          ? bytesToKB(
+              footprintGzipTotal
+            )
+          : null,
+
+      gzipMB:
+        gzipAvailable
+          ? bytesToMB(
+              footprintGzipTotal
+            )
+          : null,
+
+      compression:
+        compressionInfo(
+          footprintRawTotal,
+          gzipAvailable
+            ? footprintGzipTotal
+            : null
+        )
+    },
+
+    /*
+     * اندازه واقعی Payload کامل ساعت
+     */
+    actualHourPayload: {
+      hourStart,
+
+      hourISO:
+        new Date(
+          hourStart
+        ).toISOString(),
+
+      minutes:
+        hourMinutes.length,
+
+      levels:
+        totalLevels,
+
+      rawBytes:
+        hourRawBytes,
+
+      rawKB:
+        bytesToKB(
+          hourRawBytes
+        ),
+
+      rawMB:
+        bytesToMB(
+          hourRawBytes
+        ),
+
+      gzipBytes:
+        Number.isFinite(
+          hourGzipBytes
+        )
+          ? hourGzipBytes
+          : null,
+
+      gzipKB:
+        Number.isFinite(
+          hourGzipBytes
+        )
+          ? bytesToKB(
+              hourGzipBytes
+            )
+          : null,
+
+      gzipMB:
+        Number.isFinite(
+          hourGzipBytes
+        )
+          ? bytesToMB(
+              hourGzipBytes
+            )
+          : null,
+
+      compression:
+        compressionInfo(
+          hourRawBytes,
+          hourGzipBytes
+        )
+    },
+
+    /*
+     * برآورد یک ساعت کامل
+     */
+    estimatedHour: {
+      model:
+        "Actual project Footprint minute structure projected to 60 minutes",
+
+      rawBytes:
+        Math.round(
+          estimatedHourRaw
+        ),
+
+      rawKB:
+        bytesToKB(
+          estimatedHourRaw
+        ),
+
+      rawMB:
+        bytesToMB(
+          estimatedHourRaw
+        ),
+
+      gzipBytes:
+        estimatedHourGzip ===
+        null
+          ? null
+          : Math.round(
+              estimatedHourGzip
+            ),
+
+      gzipKB:
+        estimatedHourGzip ===
+        null
+          ? null
+          : bytesToKB(
+              estimatedHourGzip
+            ),
+
+      gzipMB:
+        estimatedHourGzip ===
+        null
+          ? null
+          : bytesToMB(
+              estimatedHourGzip
+            )
+    },
+
+    /*
+     * اندازه بر اساس Payload واقعی یک ساعت
+     */
+    estimatedStorage: {
+      model:
+        "1 symbol + 1 hour = 1 complete Footprint row",
+
+      maxRows:
+        MAX_ROWS,
+
+      rawBytes:
+        Math.round(
+          estimated20KRaw
+        ),
+
+      rawMB:
+        bytesToMB(
+          estimated20KRaw
+        ),
+
+      rawGB:
+        bytesToGB(
+          estimated20KRaw
+        ),
+
+      gzipBytes:
+        estimated20KGzip ===
+        null
+          ? null
+          : Math.round(
+              estimated20KGzip
+            ),
+
+      gzipMB:
+        estimated20KGzip ===
+        null
+          ? null
+          : bytesToMB(
+              estimated20KGzip
+            ),
+
+      gzipGB:
+        estimated20KGzip ===
+        null
+          ? null
+          : bytesToGB(
+              estimated20KGzip
+            )
+    },
+
+    /*
+     * ظرفیت بر اساس تعداد نماد
+     */
+    symbolStorage,
+
+    /*
+     * جزئیات هر دقیقه
+     */
+    minuteTests,
+
+    elapsedMs:
+      Date.now() -
+      startedAt,
+
+    note:
+      "Read-only test. Uses the project's real parseTrades() and aggregateFootprint() functions. Builds complete minute/hour Footprint payloads in memory. No Durable Object SQLite or external database is accessed."
+  };
+}
 
   /*
    * =======================================================
