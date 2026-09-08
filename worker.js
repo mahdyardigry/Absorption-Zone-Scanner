@@ -1,4 +1,4 @@
-const VERSION = "ABSORPTION-ZONE-V5-HOUR-BLOCK-20K-STORAGE-RAM-GZIP-TEST-V4";
+const VERSION = "ABSORPTION-ZONE-V5-HOUR-BLOCK-20K-STORAGE-RAM-GZIP-TEST-V5";
 
 const BYBIT = "https://api.bybit.com";
 const BYBIT_WS = "wss://stream.bybit.com/v5/public/linear";
@@ -4556,10 +4556,12 @@ export class AbsorptionStorageV5 {
     const symbols = this.symbols.length;
 
     let symbolsWithData = 0;
-    let rawBytes = 0;
-    let gzipBytes = 0;
-    let gzipAvailable = true;
+    const samples = [];
+    const SAMPLE_LIMIT = 16;
+    const YIELD_EVERY = 4;
 
+    // First pass is intentionally lightweight: only inspect Map membership.
+    // No serialization and no GZIP is performed for every symbol.
     for (const item of this.symbols) {
       const symbol = normalizeSymbol(
         typeof item === "string"
@@ -4576,24 +4578,57 @@ export class AbsorptionStorageV5 {
 
       symbolsWithData++;
 
-      const serialized = this.serializeBlock(block);
+      if (samples.length < SAMPLE_LIMIT) {
+        samples.push(block);
+      }
+    }
+
+    // Compress only a small representative sample. This endpoint must not
+    // monopolize the live Collector DO while the Bybit WebSocket is active.
+    let sampleRawBytes = 0;
+    let sampleGzipBytes = 0;
+    let gzipAvailable = true;
+
+    for (let i = 0; i < samples.length; i++) {
+      const serialized = this.serializeBlock(samples[i]);
       const raw = utf8ByteLength(serialized);
 
-      rawBytes += raw;
+      sampleRawBytes += raw;
 
       const gzip = await gzipByteLength(serialized);
 
       if (gzip === null) {
         gzipAvailable = false;
       } else {
-        gzipBytes += gzip;
+        sampleGzipBytes += gzip;
+      }
+
+      if ((i + 1) % YIELD_EVERY === 0) {
+        await new Promise(resolve => setTimeout(resolve, 0));
       }
     }
 
-    const currentGzip =
-      gzipAvailable
-        ? gzipBytes
+    const hasSample = samples.length > 0;
+    const rawPerSymbol =
+      hasSample
+        ? sampleRawBytes / samples.length
+        : 0;
+
+    const gzipPerSymbol =
+      hasSample && gzipAvailable
+        ? sampleGzipBytes / samples.length
         : null;
+
+    // Estimate the full current hour from the representative sample.
+    const rawBytes =
+      Math.round(rawPerSymbol * symbolsWithData);
+
+    const currentGzip =
+      gzipPerSymbol === null
+        ? null
+        : Math.round(
+            gzipPerSymbol * symbolsWithData
+          );
 
     const estimate = multiplier => ({
       rawBytes:
@@ -4703,6 +4738,9 @@ export class AbsorptionStorageV5 {
       databaseModifiedLabel:
         "FALSE",
 
+      databaseReadLabel:
+        "FALSE",
+
       ram: {
         hourBlocksInMemory:
           this.hourBlocks.size,
@@ -4711,7 +4749,13 @@ export class AbsorptionStorageV5 {
           symbolsWithData,
 
         currentHourOnly:
-          true
+          true,
+
+        sampledSymbols:
+          samples.length,
+
+        sampleLimit:
+          SAMPLE_LIMIT
       },
 
       storageModel:
@@ -4723,11 +4767,14 @@ export class AbsorptionStorageV5 {
       compression:
         "GZIP lossless",
 
+      estimateMethod:
+        "Representative current-hour RAM sample; no full-Collector GZIP sweep",
+
       elapsedMs:
         Date.now() - startedAt,
 
       note:
-        "READ-ONLY. No Durable Object SQLite read or write is performed."
+        "READ-ONLY. No Durable Object SQLite read or write is performed. GZIP is calculated on a small sample to avoid blocking the live Collector."
     };
   }
 
