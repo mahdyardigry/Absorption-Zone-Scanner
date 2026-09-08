@@ -7,7 +7,7 @@ IMPORTANT: This generated file is a benchmark build; it does not write to
 Supabase and should not replace the production Worker until tested.
 */
 
-const VERSION = "ABSORPTION-ZONE-V5-COMPREHENSIVE-DATA-BENCHMARK-READONLY";
+const VERSION = "ABSORPTION-ZONE-V5-COMPREHENSIVE-DATA-BENCHMARK-RAM-FIRST-V2";
 
 const BYBIT = "https://api.bybit.com";
 const BYBIT_WS = "wss://stream.bybit.com/v5/public/linear";
@@ -2192,6 +2192,8 @@ export class AbsorptionStorageV5 {
 
     this.dbInitialized = false;
     this.tableExists = null;
+    this.cachedRowCount = 0;
+    this.dbReadError = "";
 
     this.hourBlocks =
       new Map();
@@ -2255,14 +2257,16 @@ export class AbsorptionStorageV5 {
       this.tableExists =
         rows.length > 0;
     } catch (error) {
-      this.lastError =
+      this.dbReadError =
         String(
           error?.message ||
           error
         );
 
+      // Treat DB detection failure as "unknown", not as a Collector failure.
+      // The first real checkpoint can initialize the table when needed.
       this.tableExists =
-        false;
+        null;
     }
 
     this.dbInitialized =
@@ -3097,13 +3101,16 @@ export class AbsorptionStorageV5 {
 ======================================================= */
 
   persistClosedBlocks() {
+    // SQLite is intentionally touched only when a closed-hour block is
+    // actually written. Startup and live trade collection remain RAM-only.
+
     if (
       this.checkpointRunning
     ) {
       return {
         written: 0,
         rows:
-          this.getRowCount()
+          Number(this.cachedRowCount || 0)
       };
     }
 
@@ -3111,8 +3118,6 @@ export class AbsorptionStorageV5 {
       true;
 
     try {
-      this.initDB();
-
       const now =
         Date.now();
 
@@ -3222,14 +3227,18 @@ export class AbsorptionStorageV5 {
       }
 
       if (written > 0) {
-        this.enforceCapacity();
+        // Keep an in-memory estimate. Do not run COUNT(*) here; on the free
+        // Durable Objects tier a large row read can exhaust the quota.
+        this.cachedRowCount += written;
       }
 
+      // Capacity cleanup is deliberately deferred until an explicit storage
+      // maintenance path. The live Collector must never depend on a row scan.
       return {
         written,
 
         rows:
-          this.getRowCount()
+          Number(this.cachedRowCount || 0)
       };
     } catch (error) {
       this.lastError =
@@ -3242,7 +3251,7 @@ export class AbsorptionStorageV5 {
         written: 0,
 
         rows:
-          this.getRowCount(),
+          Number(this.cachedRowCount || 0),
 
         error:
           this.lastError
@@ -3955,10 +3964,8 @@ export class AbsorptionStorageV5 {
       false;
 
     try {
-      this.initDB();
-
-      this.loadRecentBlocks();
-
+      // RAM-first alarm path: checkpoint closed blocks without loading
+      // historical SQLite rows. This avoids free-tier row-read exhaustion.
       this.persistClosedBlocks();
 
       try {
@@ -4004,9 +4011,9 @@ export class AbsorptionStorageV5 {
     this.started =
       true;
 
-    this.initDB();
-
-    this.loadRecentBlocks();
+    // IMPORTANT: startup is RAM-first. Do not read SQLite here.
+    // The free Durable Objects tier can fail on historical row reads.
+    // Closed-hour persistence is handled later by the checkpoint path.
 
     if (
       !this.connected
@@ -4038,11 +4045,8 @@ export class AbsorptionStorageV5 {
       }
     }
 
-    if (
-      this.tableExists === true
-    ) {
-      this.enforceCapacity();
-    }
+    // No SQLite COUNT/cleanup on startup. This keeps Collector startup
+    // independent from the Durable Objects free-tier row-read quota.
 
     this.scheduleAlarm();
 
@@ -4054,19 +4058,14 @@ export class AbsorptionStorageV5 {
 ======================================================= */
 
   statusObject() {
-    let rows = 0;
-    let dbError = "";
-
-    try {
-      rows =
-        this.getRowCount();
-    } catch (error) {
-      dbError =
-        String(
-          error?.message ||
-          error
-        );
-    }
+    // Status must stay read-free. Calling SELECT COUNT(*) here can consume
+    // the Durable Objects free-tier row-read quota and prevent the Collector
+    // from starting. Row count is therefore cached only after a real write.
+    const rows =
+      Number(this.cachedRowCount || 0);
+    const dbError =
+      this.dbReadError ||
+      "";
 
     return {
       ok: true,
@@ -4888,8 +4887,6 @@ export class AbsorptionStorageV5 {
           await this.testStorageRAM()
         );
       }
-
-      this.initDB();
 
       if (
         path ===
