@@ -2190,6 +2190,12 @@ export class AbsorptionStorageV5 {
     this.dedupe =
       new Map();
 
+    // Keep WebSocket callbacks lightweight so HTTP status requests remain
+    // responsive while hundreds of Bybit trade streams are active.
+    this.wsMessageQueue = [];
+    this.wsMessageProcessing = false;
+    this.lastDedupeCleanupAt = 0;
+
     this.lastCleanupAt = 0;
 
     this.loadedRecentBlocks =
@@ -3267,45 +3273,48 @@ export class AbsorptionStorageV5 {
       Date.now()
     );
 
+    // Never scan the entire dedupe Map on every trade. With 750 symbols
+    // this could otherwise turn into repeated 60K-entry synchronous loops
+    // and starve the Durable Object event loop. Cleanup is rate-limited.
+    const now = Date.now();
+
     if (
-      this.dedupe.size >
-      60000
+      this.dedupe.size > 60000 &&
+      now - this.lastDedupeCleanupAt >= 30000
     ) {
+      this.lastDedupeCleanupAt = now;
+
       const cutoff =
-        Date.now() -
+        now -
         5 * 60 * 1000;
 
+      let checked = 0;
+      const MAX_CHECK = 5000;
+
       for (
-        const [
-          key,
-          time
-        ]
+        const [key, time]
         of this.dedupe
       ) {
-        if (
-          time < cutoff
-        ) {
-          this.dedupe.delete(
-            key
-          );
+        if (time < cutoff) {
+          this.dedupe.delete(key);
+        }
+
+        checked++;
+
+        if (checked >= MAX_CHECK) {
+          break;
         }
       }
 
-      if (
-        this.dedupe.size >
-        60000
-      ) {
+      while (this.dedupe.size > 60000) {
         const first =
-          this.dedupe
-            .keys()
-            .next()
-            .value;
+          this.dedupe.keys().next().value;
 
-        if (first) {
-          this.dedupe.delete(
-            first
-          );
+        if (!first) {
+          break;
         }
+
+        this.dedupe.delete(first);
       }
     }
 
@@ -3357,6 +3366,57 @@ export class AbsorptionStorageV5 {
           row.S || ""
         ).toUpperCase()
     };
+  }
+
+  /* =======================================================
+     WS MESSAGE QUEUE
+======================================================= */
+
+  enqueueWsMessage(raw) {
+    this.wsMessageQueue.push(raw);
+
+    if (!this.wsMessageProcessing) {
+      this.processWsMessageQueue();
+    }
+  }
+
+  async processWsMessageQueue() {
+    if (this.wsMessageProcessing) {
+      return;
+    }
+
+    this.wsMessageProcessing = true;
+
+    try {
+      let processed = 0;
+
+      while (this.wsMessageQueue.length) {
+        const raw = this.wsMessageQueue.shift();
+
+        try {
+          this.handleMessage(raw);
+        } catch (error) {
+          this.lastError =
+            String(error?.message || error);
+        }
+
+        processed++;
+
+        // Yield regularly so /status, alarms and other DO events can run.
+        if (processed >= 25) {
+          processed = 0;
+          await new Promise(resolve => setTimeout(resolve, 0));
+        }
+      }
+    } finally {
+      this.wsMessageProcessing = false;
+
+      // A message may have arrived between the final queue check and the
+      // flag reset. Make sure it is not left waiting.
+      if (this.wsMessageQueue.length) {
+        this.processWsMessageQueue();
+      }
+    }
   }
 
   /* =======================================================
@@ -3719,17 +3779,9 @@ export class AbsorptionStorageV5 {
       this.ws.addEventListener(
         "message",
         event => {
-          try {
-            this.handleMessage(
-              event.data
-            );
-          } catch (error) {
-            this.lastError =
-              String(
-                error?.message ||
-                error
-              );
-          }
+          this.enqueueWsMessage(
+            event.data
+          );
         }
       );
 
