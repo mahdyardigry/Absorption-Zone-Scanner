@@ -3999,20 +3999,34 @@ export class AbsorptionStorageV5 {
 
     this.loadRecentBlocks();
 
-    try {
-      await this.refreshSymbols();
-    } catch (error) {
-      this.lastError =
-        String(
-          error?.message ||
-          error
-        );
-    }
-
     if (
       !this.connected
     ) {
-      await this.connect();
+      const connectTask =
+        this.connect().catch(
+          error => {
+            this.connected =
+              false;
+
+            this.lastError =
+              String(
+                error?.message ||
+                error
+              );
+
+            this.scheduleReconnect();
+          }
+        );
+
+      if (
+        this.state &&
+        typeof this.state.waitUntil ===
+          "function"
+      ) {
+        this.state.waitUntil(
+          connectTask
+        );
+      }
     }
 
     if (
