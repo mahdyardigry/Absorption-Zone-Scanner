@@ -1,4 +1,13 @@
-const VERSION = "ABSORPTION-ZONE-V5-HOUR-BLOCK-20K-STORAGE-RAM-GZIP-TEST-V5";
+/*
+COMPREHENSIVE DATA BENCHMARK — READ ONLY
+Base: worker-storage-test-fixed-v5.txt
+Purpose: benchmark storage sizes for Trades, Order Book, OI, Funding,
+Liquidation, Footprint and Large Trades before choosing Supabase Storage.
+IMPORTANT: This generated file is a benchmark build; it does not write to
+Supabase and should not replace the production Worker until tested.
+*/
+
+const VERSION = "ABSORPTION-ZONE-V5-COMPREHENSIVE-DATA-BENCHMARK-READONLY";
 
 const BYBIT = "https://api.bybit.com";
 const BYBIT_WS = "wss://stream.bybit.com/v5/public/linear";
