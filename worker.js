@@ -1,71 +1,97 @@
-/*
-FINAL COMPREHENSIVE DATA BENCHMARK — READ ONLY
+const VERSION = "ABSORPTION-ZONE-V5-HOUR-BLOCK-20K-STORAGE-RAM-GZIP-TEST-V5";
 
-Purpose:
-  One-shot real-data benchmark before moving persistence to Supabase.
-
-IMPORTANT:
-  - NO Durable Object
-  - NO SQLite
-  - NO database writes
-  - NO Supabase writes
-  - NO RAM collector dependency
-  - Every /api/test/full request is independent
-  - Uses current real Bybit REST data
-  - Large trades, Footprint, Delta and Absorption are DERIVED from real trades
-  - Liquidation is reported as REST_UNAVAILABLE because Bybit's public liquidation
-    stream is WebSocket-based; this test does not fake liquidation data.
-
-Main endpoint:
-  /api/test/full?symbol=BTCUSDT
-
-Optional:
-  /api/test/full?symbol=BTCUSDT&tradeLimit=1000&bookLimit=50
-  /api/test/volume?symbol=BTCUSDT
-  /api/health
-
-The result reports:
-  Trades
-  Footprint / price levels
-  Delta
-  Large / Whale trades
-  Order Book / Liquidity
-  Absorption
-  OI
-  Funding
-  Klines
-  Ticker
-  Instrument metadata
-  Raw/GZIP size for every category
-  1m / 1h / 24h / 7d / 30d projections
-  20k / 100k / 200k hour-block projections
-  Coverage: REAL API vs DERIVED vs UNAVAILABLE
-*/
-
-const VERSION = "ABSORPTION-ZONE-V5-FINAL-COMPREHENSIVE-BENCHMARK-V1";
 const BYBIT = "https://api.bybit.com";
+const BYBIT_WS = "wss://stream.bybit.com/v5/public/linear";
+
 const DEFAULT_SYMBOL = "BTCUSDT";
-const DEFAULT_TRADE_LIMIT = 1000;
-const DEFAULT_BOOK_LIMIT = 50;
-const DEFAULT_KLINE_LIMIT = 200;
-const MAX_TRADE_LIMIT = 1000;
-const MAX_BOOK_LIMIT = 50;
+const DEFAULT_INTERVAL = "1";
+
+const KLINE_LIMIT = 200;
+const TRADE_LIMIT = 1000;
+const ORDERBOOK_LIMIT = 50;
+const SYMBOL_LIMIT = 1000;
+
 const HOUR_MS = 60 * 60 * 1000;
-const DAY_MS = 24 * HOUR_MS;
+const MINUTE_MS = 60 * 1000;
+const ALARM_MS = 60 * 60 * 1000;
+
+const MAX_ROWS = 20000;
+const CLEANUP_TARGET_ROWS = 19000;
+
+const TABLE_NAME = "hour_blocks_v5";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type",
-  "Cache-Control": "no-store, no-cache, must-revalidate",
-  "Content-Type": "application/json; charset=utf-8"
+  "Cache-Control": "no-store, no-cache, must-revalidate"
 };
+
+/* =========================================================
+   BASIC HELPERS
+========================================================= */
 
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
-    headers: CORS
+    headers: {
+      ...CORS,
+      "Content-Type": "application/json; charset=utf-8"
+    }
   });
+}
+
+function normalizeSymbol(value) {
+  let s = String(value || "").trim().toUpperCase();
+
+  if (!s) return DEFAULT_SYMBOL;
+
+  s = s.replace(/[^A-Z0-9]/g, "");
+
+  if (s === "BTC") return "BTCUSDT";
+  if (s === "BUSDT") return "BTCUSDT";
+
+  if (!s.endsWith("USDT")) {
+    s += "USDT";
+  }
+
+  return s;
+}
+
+function normalizeInterval(value) {
+  const allowed = [
+    "1",
+    "3",
+    "5",
+    "15",
+    "30",
+    "60",
+    "120",
+    "240",
+    "360",
+    "720",
+    "D",
+    "W",
+    "M"
+  ];
+
+  const v = String(
+    value || DEFAULT_INTERVAL
+  ).toUpperCase();
+
+  return allowed.includes(v)
+    ? v
+    : DEFAULT_INTERVAL;
+}
+
+function hourStartOf(time) {
+  const t = Number(time) || Date.now();
+  return Math.floor(t / HOUR_MS) * HOUR_MS;
+}
+
+function minuteStartOf(time) {
+  const t = Number(time) || Date.now();
+  return Math.floor(t / MINUTE_MS) * MINUTE_MS;
 }
 
 function safeNumber(v, fallback = 0) {
@@ -73,827 +99,5672 @@ function safeNumber(v, fallback = 0) {
   return Number.isFinite(n) ? n : fallback;
 }
 
-function normalizeSymbol(value) {
-  let s = String(value || DEFAULT_SYMBOL)
-    .trim()
-    .toUpperCase()
-    .replace(/[^A-Z0-9]/g, "");
+function percentile(values, p) {
+  if (!values.length) return 0;
 
-  if (!s) s = DEFAULT_SYMBOL;
-  if (s === "BTC") s = "BTCUSDT";
-  if (!s.endsWith("USDT")) s += "USDT";
-  return s;
+  const a = [...values].sort(
+    (x, y) => x - y
+  );
+
+  const index =
+    (a.length - 1) * p;
+
+  const lower =
+    Math.floor(index);
+
+  const upper =
+    Math.ceil(index);
+
+  if (lower === upper) {
+    return a[lower];
+  }
+
+  return (
+    a[lower] +
+    (a[upper] - a[lower]) *
+      (index - lower)
+  );
 }
 
-function clampInt(value, min, max, fallback) {
-  const n = Number.parseInt(value, 10);
-  if (!Number.isFinite(n)) return fallback;
-  return Math.max(min, Math.min(max, n));
-}
+/* =========================================================
+   BYTE / COMPRESSION HELPERS
+========================================================= */
 
-function utf8Bytes(text) {
+function utf8ByteLength(value) {
+  const text =
+    typeof value === "string"
+      ? value
+      : JSON.stringify(value);
+
   return new TextEncoder().encode(text).byteLength;
 }
 
-async function gzipBytes(text) {
-  try {
-    const input = new TextEncoder().encode(text);
-    const cs = new CompressionStream("gzip");
-    const writer = cs.writable.getWriter();
-    writer.write(input);
-    writer.close();
-    const buffer = await new Response(cs.readable).arrayBuffer();
-    return buffer.byteLength;
-  } catch (e) {
-    return null;
-  }
+function bytesToKB(bytes) {
+  return Number(
+    (Number(bytes || 0) / 1024).toFixed(3)
+  );
 }
 
-async function bybit(path, params = {}) {
-  const url = new URL(BYBIT + path);
-  for (const [key, value] of Object.entries(params)) {
-    if (value !== undefined && value !== null && value !== "") {
-      url.searchParams.set(key, String(value));
-    }
+function bytesToMB(bytes) {
+  return Number(
+    (Number(bytes || 0) / 1024 / 1024).toFixed(6)
+  );
+}
+
+function bytesToGB(bytes) {
+  return Number(
+    (
+      Number(bytes || 0) /
+      1024 /
+      1024 /
+      1024
+    ).toFixed(6)
+  );
+}
+
+async function gzipByteLength(value) {
+  const text =
+    typeof value === "string"
+      ? value
+      : JSON.stringify(value);
+
+  const input =
+    new TextEncoder().encode(text);
+
+  if (
+    typeof CompressionStream !==
+    "function"
+  ) {
+    return null;
   }
 
-  const started = Date.now();
-  const response = await fetch(url.toString(), {
-    method: "GET",
-    headers: {
-      "Accept": "application/json"
-    }
-  });
+  const stream =
+    new Blob([input])
+      .stream()
+      .pipeThrough(
+        new CompressionStream("gzip")
+      );
 
-  const text = await response.text();
-  let data = null;
-  try {
-    data = JSON.parse(text);
-  } catch {
-    throw new Error(`Bybit non-JSON response ${response.status}`);
+  const buffer =
+    await new Response(
+      stream
+    ).arrayBuffer();
+
+  return buffer.byteLength;
+}
+
+function compressionInfo(
+  rawBytes,
+  gzipBytes
+) {
+  if (
+    !Number.isFinite(gzipBytes) ||
+    gzipBytes <= 0 ||
+    rawBytes <= 0
+  ) {
+    return {
+      available: false,
+      rawBytes,
+      compressedBytes: null,
+      savedBytes: null,
+      savedPercent: null,
+      ratio: null
+    };
   }
 
-  if (!response.ok) {
-    throw new Error(`Bybit HTTP ${response.status}: ${text.slice(0, 300)}`);
-  }
+  const saved =
+    rawBytes - gzipBytes;
 
-  if (safeNumber(data?.retCode, 0) !== 0) {
-    throw new Error(`Bybit retCode ${data?.retCode}: ${data?.retMsg || "unknown"}`);
-  }
+  const savedPercent =
+    (saved / rawBytes) * 100;
+
+  const ratio =
+    rawBytes / gzipBytes;
 
   return {
-    data: data?.result || {},
-    elapsedMs: Date.now() - started
+    available: true,
+
+    rawBytes,
+
+    compressedBytes:
+      gzipBytes,
+
+    savedBytes:
+      saved,
+
+    savedPercent:
+      Number(
+        savedPercent.toFixed(2)
+      ),
+
+    ratio:
+      Number(
+        ratio.toFixed(3)
+      )
   };
 }
 
-function parseTrades(list) {
-  if (!Array.isArray(list)) return [];
+/* =========================================================
+   BYBIT REST
+========================================================= */
 
-  return list.map((row, index) => {
-    const price = safeNumber(row?.p);
-    const size = safeNumber(row?.v);
-    const side = String(row?.S || "").toUpperCase() === "BUY" ? "BUY" : "SELL";
-    const time = safeNumber(row?.T, Date.now());
-    const value = price * size;
+async function bybit(path, params = {}) {
+  const url =
+    new URL(BYBIT + path);
+
+  for (
+    const [key, value]
+    of Object.entries(params)
+  ) {
+    if (
+      value !== undefined &&
+      value !== null &&
+      value !== ""
+    ) {
+      url.searchParams.set(
+        key,
+        String(value)
+      );
+    }
+  }
+
+  const response =
+    await fetch(
+      url.toString(),
+      {
+        method: "GET",
+
+        headers: {
+          "Accept":
+            "application/json"
+        }
+      }
+    );
+
+  if (!response.ok) {
+    let detail = "";
+
+    try {
+      detail =
+        await response.text();
+    } catch (_) {}
+
+    throw new Error(
+      `Bybit HTTP ${response.status}${
+        detail
+          ? `: ${detail.slice(0, 500)}`
+          : ""
+      }`
+    );
+  }
+
+  const data =
+    await response.json();
+
+  if (
+    Number(data.retCode) !== 0
+  ) {
+    throw new Error(
+      data.retMsg ||
+      "Bybit API error"
+    );
+  }
+
+  return data.result;
+}
+
+/* =========================================================
+   BYBIT DIRECT DEBUG
+========================================================= */
+
+async function debugBybit() {
+  const startedAt =
+    Date.now();
+
+  const target =
+    new URL(
+      BYBIT +
+      "/v5/market/instruments-info"
+    );
+
+  target.searchParams.set(
+    "category",
+    "linear"
+  );
+
+  target.searchParams.set(
+    "status",
+    "Trading"
+  );
+
+  target.searchParams.set(
+    "limit",
+    "10"
+  );
+
+  let response = null;
+  let body = "";
+  let parsed = null;
+
+  try {
+    response =
+      await fetch(
+        target.toString(),
+        {
+          method: "GET",
+
+          headers: {
+            "Accept":
+              "application/json",
+
+            "User-Agent":
+              "Absorption-Zone-Scanner"
+          }
+        }
+      );
+
+    body =
+      await response.text();
+
+    try {
+      parsed =
+        JSON.parse(body);
+    } catch (_) {
+      parsed = null;
+    }
+
+    const list =
+      Array.isArray(
+        parsed?.result?.list
+      )
+        ? parsed.result.list
+        : [];
 
     return {
-      id: String(row?.i || row?.execId || `${time}-${index}`),
-      time,
-      price,
-      size,
-      value,
-      side
+      ok: true,
+
+      test:
+        "Cloudflare Worker -> Bybit",
+
+      reachable: true,
+
+      httpStatus:
+        response.status,
+
+      httpOk:
+        response.ok,
+
+      bybitRetCode:
+        parsed?.retCode ?? null,
+
+      bybitRetMsg:
+        parsed?.retMsg ?? null,
+
+      symbolsReceived:
+        list.length,
+
+      sampleSymbols:
+        list
+          .slice(0, 10)
+          .map(
+            row =>
+              row?.symbol || null
+          )
+          .filter(Boolean),
+
+      sampleContractTypes:
+        [
+          ...new Set(
+            list
+              .map(
+                row =>
+                  row?.contractType ||
+                  null
+              )
+              .filter(Boolean)
+          )
+        ],
+
+      sampleQuoteCoins:
+        [
+          ...new Set(
+            list
+              .map(
+                row =>
+                  row?.quoteCoin ||
+                  null
+              )
+              .filter(Boolean)
+          )
+        ],
+
+      sampleSettleCoins:
+        [
+          ...new Set(
+            list
+              .map(
+                row =>
+                  row?.settleCoin ||
+                  null
+              )
+              .filter(Boolean)
+          )
+        ],
+
+      responseContentType:
+        response.headers.get(
+          "content-type"
+        ) || "",
+
+      responseServer:
+        response.headers.get(
+          "server"
+        ) || "",
+
+      elapsedMs:
+        Date.now() -
+        startedAt,
+
+      target:
+        target.toString(),
+
+      rawBody:
+        body.slice(0, 5000),
+
+      diagnosis:
+        response.status === 200 &&
+        Number(parsed?.retCode) === 0
+          ? (
+              list.length > 0
+                ? "BYBIT_OK_SYMBOLS_RECEIVED"
+                : "BYBIT_REACHABLE_BUT_ZERO_SYMBOLS"
+            )
+          : (
+              response.status === 403
+                ? "BYBIT_OR_CLOUDFRONT_BLOCKED_403"
+                : "BYBIT_REQUEST_FAILED"
+            )
     };
-  }).filter(t => t.price > 0 && t.size > 0);
+  } catch (error) {
+    return {
+      ok: false,
+
+      test:
+        "Cloudflare Worker -> Bybit",
+
+      reachable: false,
+
+      httpStatus:
+        response?.status ?? null,
+
+      httpOk:
+        response?.ok ?? false,
+
+      bybitRetCode:
+        parsed?.retCode ?? null,
+
+      bybitRetMsg:
+        parsed?.retMsg ?? null,
+
+      symbolsReceived: 0,
+
+      sampleSymbols: [],
+
+      sampleContractTypes: [],
+
+      sampleQuoteCoins: [],
+
+      sampleSettleCoins: [],
+
+      elapsedMs:
+        Date.now() -
+        startedAt,
+
+      target:
+        target.toString(),
+
+      rawBody:
+        body
+          ? body.slice(0, 5000)
+          : "",
+
+      error:
+        String(
+          error?.message ||
+          error
+        ),
+
+      errorName:
+        error?.name ||
+        "Error",
+
+      diagnosis:
+        "WORKER_TO_BYBIT_FETCH_FAILED"
+    };
+  }
 }
 
-function percentile(values, p) {
-  if (!values.length) return 0;
-  const a = [...values].sort((x, y) => x - y);
-  const index = (a.length - 1) * p;
-  const lo = Math.floor(index);
-  const hi = Math.ceil(index);
-  if (lo === hi) return a[lo];
-  return a[lo] + (a[hi] - a[lo]) * (index - lo);
+/* =========================================================
+   KLINES
+========================================================= */
+
+function parseKlines(rows) {
+  if (!Array.isArray(rows)) {
+    return [];
+  }
+
+  return rows
+    .map(row => ({
+      time: Number(row[0]),
+      open: Number(row[1]),
+      high: Number(row[2]),
+      low: Number(row[3]),
+      close: Number(row[4]),
+      volume: Number(row[5]),
+      turnover: Number(row[6])
+    }))
+    .filter(
+      x =>
+        Number.isFinite(x.time) &&
+        Number.isFinite(x.open)
+    )
+    .reverse();
 }
+
+/* =========================================================
+   TRADES
+========================================================= */
+
+function parseTrades(rows) {
+  if (!Array.isArray(rows)) {
+    return [];
+  }
+
+  return rows
+    .map((row, index) => {
+      const price =
+        safeNumber(row.price);
+
+      const size =
+        safeNumber(row.size);
+
+      return {
+        id: String(
+          row.execId ||
+          row.tradeId ||
+          row.id ||
+          `${row.time || Date.now()}-${index}-${price}-${size}`
+        ),
+
+        time:
+          safeNumber(row.time),
+
+        price,
+
+        size,
+
+        value:
+          price * size,
+
+        side:
+          String(
+            row.side || ""
+          ).toUpperCase()
+      };
+    })
+    .filter(
+      x =>
+        x.time > 0 &&
+        x.price > 0 &&
+        x.size > 0
+    );
+}
+
+/* =========================================================
+   TRADE STATS
+========================================================= */
 
 function tradeStats(trades) {
   let buyVolume = 0;
   let sellVolume = 0;
+
   let buyValue = 0;
   let sellValue = 0;
+
   let buyTrades = 0;
   let sellTrades = 0;
 
-  const notionals = [];
+  const values = [];
 
   for (const t of trades) {
-    notionals.push(t.value);
+    const value =
+      safeNumber(t.value);
+
+    values.push(value);
+
     if (t.side === "BUY") {
       buyVolume += t.size;
-      buyValue += t.value;
+      buyValue += value;
       buyTrades++;
-    } else {
+    } else if (
+      t.side === "SELL"
+    ) {
       sellVolume += t.size;
-      sellValue += t.value;
+      sellValue += value;
       sellTrades++;
     }
   }
 
-  const totalVolume = buyVolume + sellVolume;
-  const totalValue = buyValue + sellValue;
-  const delta = buyVolume - sellVolume;
-  const deltaValue = buyValue - sellValue;
-  const deltaPercent = totalVolume ? (delta / totalVolume) * 100 : 0;
-  const averageNotional = notionals.length
-    ? notionals.reduce((a, b) => a + b, 0) / notionals.length
-    : 0;
-  const p95 = percentile(notionals, 0.95);
-  const largeThreshold = Math.max(averageNotional * 5, p95);
+  const totalVolume =
+    buyVolume + sellVolume;
+
+  const totalValue =
+    buyValue + sellValue;
+
+  const delta =
+    buyVolume - sellVolume;
+
+  const deltaValue =
+    buyValue - sellValue;
+
+  const deltaPercent =
+    totalVolume > 0
+      ? (delta / totalVolume) * 100
+      : 0;
+
+  const averageNotional =
+    values.length
+      ? values.reduce(
+          (a, b) => a + b,
+          0
+        ) / values.length
+      : 0;
+
+  const p95 =
+    percentile(
+      values,
+      0.95
+    );
+
+  const largeThreshold =
+    Math.max(
+      averageNotional * 5,
+      p95
+    );
 
   let largeBuyVolume = 0;
   let largeSellVolume = 0;
+
   let largeBuyValue = 0;
   let largeSellValue = 0;
-  let largeBuyTrades = 0;
-  let largeSellTrades = 0;
 
   for (const t of trades) {
-    if (t.value < largeThreshold) continue;
+    if (
+      t.value <
+      largeThreshold
+    ) {
+      continue;
+    }
+
     if (t.side === "BUY") {
-      largeBuyVolume += t.size;
-      largeBuyValue += t.value;
-      largeBuyTrades++;
-    } else {
-      largeSellVolume += t.size;
-      largeSellValue += t.value;
-      largeSellTrades++;
+      largeBuyVolume +=
+        t.size;
+
+      largeBuyValue +=
+        t.value;
+    }
+
+    if (t.side === "SELL") {
+      largeSellVolume +=
+        t.size;
+
+      largeSellValue +=
+        t.value;
     }
   }
 
+  let pressure =
+    "NEUTRAL";
+
+  if (
+    deltaPercent >= 10
+  ) {
+    pressure =
+      "BUY_PRESSURE";
+  } else if (
+    deltaPercent <= -10
+  ) {
+    pressure =
+      "SELL_PRESSURE";
+  }
+
   return {
-    tradeCount: trades.length,
-    buyTrades,
-    sellTrades,
     buyVolume,
     sellVolume,
     totalVolume,
+
     buyValue,
     sellValue,
     totalValue,
+
+    buyTrades,
+    sellTrades,
+
     delta,
     deltaValue,
     deltaPercent,
+
     averageNotional,
-    p95Notional: p95,
+    p95,
     largeThreshold,
-    largeBuyTrades,
-    largeSellTrades,
+
     largeBuyVolume,
     largeSellVolume,
+
     largeBuyValue,
     largeSellValue,
-    pressure:
-      deltaPercent >= 10
-        ? "BUY_PRESSURE"
-        : deltaPercent <= -10
-          ? "SELL_PRESSURE"
-          : "NEUTRAL"
+
+    pressure
   };
 }
 
-function tickDecimals(tick) {
-  const s = String(tick || "");
-  if (!s.includes(".")) return 0;
-  return s.split(".")[1].replace(/0+$/, "").length;
+/* =========================================================
+   TICK / FOOTPRINT
+========================================================= */
+
+function decimalsFromTick(tick) {
+  const s =
+    String(tick);
+
+  if (!s.includes(".")) {
+    return 0;
+  }
+
+  return s
+    .split(".")[1]
+    .replace(/0+$/, "")
+    .length;
 }
 
-function roundToTick(price, tick) {
-  const t = Number(tick);
-  if (!Number.isFinite(t) || t <= 0) return Number(price);
-  return Number((Math.round(Number(price) / t) * t).toFixed(tickDecimals(t)));
+function roundToTick(
+  price,
+  tickSize
+) {
+  const tick =
+    Number(tickSize);
+
+  if (
+    !Number.isFinite(tick) ||
+    tick <= 0
+  ) {
+    return Number(price);
+  }
+
+  const n =
+    Math.round(
+      Number(price) / tick
+    ) * tick;
+
+  const decimals =
+    decimalsFromTick(tick);
+
+  return Number(
+    n.toFixed(decimals)
+  );
 }
 
-function aggregateFootprint(trades, tickSize) {
-  const levels = new Map();
+function aggregateFootprint(
+  trades,
+  tickSize
+) {
+  const levels =
+    new Map();
 
   for (const t of trades) {
-    const price = roundToTick(t.price, tickSize);
+    const price =
+      roundToTick(
+        t.price,
+        tickSize
+      );
+
     if (!levels.has(price)) {
       levels.set(price, {
         price,
+
         buyVolume: 0,
         sellVolume: 0,
+
         buyValue: 0,
         sellValue: 0,
+
         buyTrades: 0,
         sellTrades: 0
       });
     }
 
-    const level = levels.get(price);
+    const level =
+      levels.get(price);
+
     if (t.side === "BUY") {
-      level.buyVolume += t.size;
-      level.buyValue += t.value;
+      level.buyVolume +=
+        t.size;
+
+      level.buyValue +=
+        t.value;
+
       level.buyTrades++;
-    } else {
-      level.sellVolume += t.size;
-      level.sellValue += t.value;
+    } else if (
+      t.side === "SELL"
+    ) {
+      level.sellVolume +=
+        t.size;
+
+      level.sellValue +=
+        t.value;
+
       level.sellTrades++;
     }
   }
 
-  return [...levels.values()].sort((a, b) => a.price - b.price).map(x => ({
-    ...x,
-    delta: x.buyVolume - x.sellVolume,
-    deltaValue: x.buyValue - x.sellValue,
-    totalVolume: x.buyVolume + x.sellVolume,
-    imbalance: x.sellVolume > 0 ? x.buyVolume / x.sellVolume : x.buyVolume > 0 ? null : 0
-  }));
+  return [
+    ...levels.values()
+  ]
+    .sort(
+      (a, b) =>
+        a.price - b.price
+    )
+    .map(level => ({
+      ...level,
+
+      delta:
+        level.buyVolume -
+        level.sellVolume,
+
+      deltaValue:
+        level.buyValue -
+        level.sellValue,
+
+      totalVolume:
+        level.buyVolume +
+        level.sellVolume,
+
+      imbalance:
+        level.sellVolume > 0
+          ? level.buyVolume /
+            level.sellVolume
+          : level.buyVolume > 0
+            ? Infinity
+            : 0
+    }));
 }
 
-function orderbookStats(book) {
-  const bids = Array.isArray(book?.b) ? book.b : [];
-  const asks = Array.isArray(book?.a) ? book.a : [];
+/* =========================================================
+   ORDER BOOK
+========================================================= */
+
+function orderbookStats(data) {
+  const bids =
+    Array.isArray(data?.b)
+      ? data.b
+      : [];
+
+  const asks =
+    Array.isArray(data?.a)
+      ? data.a
+      : [];
 
   let buyLiquidity = 0;
   let sellLiquidity = 0;
+
   let buyValue = 0;
   let sellValue = 0;
 
   for (const row of bids) {
-    const price = safeNumber(row?.[0]);
-    const size = safeNumber(row?.[1]);
-    buyLiquidity += size;
-    buyValue += price * size;
+    const price =
+      safeNumber(row[0]);
+
+    const size =
+      safeNumber(row[1]);
+
+    buyLiquidity +=
+      size;
+
+    buyValue +=
+      price * size;
   }
 
   for (const row of asks) {
-    const price = safeNumber(row?.[0]);
-    const size = safeNumber(row?.[1]);
-    sellLiquidity += size;
-    sellValue += price * size;
+    const price =
+      safeNumber(row[0]);
+
+    const size =
+      safeNumber(row[1]);
+
+    sellLiquidity +=
+      size;
+
+    sellValue +=
+      price * size;
   }
 
-  const totalLiquidity = buyLiquidity + sellLiquidity;
-  const buyShare = totalLiquidity ? buyLiquidity / totalLiquidity * 100 : 0;
-  const sellShare = totalLiquidity ? sellLiquidity / totalLiquidity * 100 : 0;
-  const bestBid = bids.length ? safeNumber(bids[0][0]) : 0;
-  const bestAsk = asks.length ? safeNumber(asks[0][0]) : 0;
+  const totalLiquidity =
+    buyLiquidity +
+    sellLiquidity;
+
+  const buyShare =
+    totalLiquidity > 0
+      ? (
+          buyLiquidity /
+          totalLiquidity
+        ) * 100
+      : 0;
+
+  const sellShare =
+    totalLiquidity > 0
+      ? (
+          sellLiquidity /
+          totalLiquidity
+        ) * 100
+      : 0;
+
+  let pressure =
+    "NEUTRAL";
+
+  if (
+    buyShare >
+    sellShare + 8
+  ) {
+    pressure =
+      "BUY_PRESSURE";
+  } else if (
+    sellShare >
+    buyShare + 8
+  ) {
+    pressure =
+      "SELL_PRESSURE";
+  }
 
   return {
-    bidLevels: bids.length,
-    askLevels: asks.length,
     buyLiquidity,
     sellLiquidity,
     totalLiquidity,
+
     buyValue,
     sellValue,
+
     buyShare,
     sellShare,
-    bestBid,
-    bestAsk,
-    spread: bestBid && bestAsk ? bestAsk - bestBid : 0,
-    pressure:
-      buyShare > sellShare + 8
-        ? "BUY_PRESSURE"
-        : sellShare > buyShare + 8
-          ? "SELL_PRESSURE"
-          : "NEUTRAL",
+
+    bestBid:
+      bids.length
+        ? safeNumber(
+            bids[0][0]
+          )
+        : 0,
+
+    bestAsk:
+      asks.length
+        ? safeNumber(
+            asks[0][0]
+          )
+        : 0,
+
+    spread:
+      bids.length &&
+      asks.length
+        ? safeNumber(
+            asks[0][0]
+          ) -
+          safeNumber(
+            bids[0][0]
+          )
+        : 0,
+
+    pressure,
+
     bids,
     asks
   };
 }
 
-function parseKlines(list) {
-  if (!Array.isArray(list)) return [];
-  return list.map(row => ({
-    time: safeNumber(row?.[0]),
-    open: safeNumber(row?.[1]),
-    high: safeNumber(row?.[2]),
-    low: safeNumber(row?.[3]),
-    close: safeNumber(row?.[4]),
-    volume: safeNumber(row?.[5]),
-    turnover: safeNumber(row?.[6])
-  })).sort((a, b) => a.time - b.time);
-}
+/* =========================================================
+   ABSORPTION
+========================================================= */
 
-function detectAbsorption(trades, candles, bookStats) {
-  if (!trades.length || !candles.length) {
-    return { detected: false, type: "NONE", score: 0 };
+function detectAbsorption(
+  trades,
+  candles,
+  book
+) {
+  if (!candles.length) {
+    return {
+      detected: false,
+      type: "NONE",
+      score: 0
+    };
   }
 
-  const c = candles[candles.length - 1];
-  const range = c.high - c.low;
-  const body = Math.abs(c.close - c.open);
-  const bodyRatio = range > 0 ? body / range : 1;
-  const stats = tradeStats(trades);
+  const candle =
+    candles[
+      candles.length - 1
+    ];
+
+  const stats =
+    tradeStats(trades);
+
+  const range =
+    candle.high -
+    candle.low;
+
+  const body =
+    Math.abs(
+      candle.close -
+      candle.open
+    );
+
+  const bodyRatio =
+    range > 0
+      ? body / range
+      : 1;
 
   let score = 0;
   let type = "NONE";
 
-  if (stats.deltaPercent > 15 && bodyRatio < 0.35) {
-    score += 50;
-    type = "SELL_ABSORPTION";
+  if (
+    stats.pressure ===
+      "SELL_PRESSURE" &&
+    range > 0
+  ) {
+    const nearLow =
+      (
+        candle.close -
+        candle.low
+      ) / range;
+
+    if (
+      nearLow <= 0.25
+    ) {
+      score += 35;
+      type =
+        "BUY_ABSORPTION";
+    }
   }
-  if (stats.deltaPercent < -15 && bodyRatio < 0.35) {
-    score += 50;
-    type = "BUY_ABSORPTION";
+
+  if (
+    stats.pressure ===
+      "BUY_PRESSURE" &&
+    range > 0
+  ) {
+    const nearHigh =
+      (
+        candle.high -
+        candle.close
+      ) / range;
+
+    if (
+      nearHigh <= 0.25
+    ) {
+      score += 35;
+      type =
+        "SELL_ABSORPTION";
+    }
   }
-  if (bookStats.pressure !== "NEUTRAL") score += 20;
-  if (stats.totalValue > 0 && stats.largeThreshold > 0) score += 10;
+
+  if (
+    bodyRatio < 0.35
+  ) {
+    score += 20;
+  }
+
+  if (
+    book &&
+    type ===
+      "BUY_ABSORPTION" &&
+    book.pressure ===
+      "BUY_PRESSURE"
+  ) {
+    score += 20;
+  }
+
+  if (
+    book &&
+    type ===
+      "SELL_ABSORPTION" &&
+    book.pressure ===
+      "SELL_PRESSURE"
+  ) {
+    score += 20;
+  }
 
   return {
-    detected: score >= 50,
+    detected:
+      score >= 50,
+
     type,
-    score: Math.min(100, score),
-    candleBodyRatio: bodyRatio,
-    deltaPercent: stats.deltaPercent,
-    orderbookPressure: bookStats.pressure
+
+    score,
+
+    bodyRatio,
+
+    pressure:
+      stats.pressure
   };
 }
 
-function sizeOf(name, value) {
-  const text = JSON.stringify(value);
-  return {
-    name,
-    rawBytes: utf8Bytes(text),
-    rawKB: utf8Bytes(text) / 1024,
-    rawMB: utf8Bytes(text) / 1024 / 1024,
-    text
-  };
+/* =========================================================
+   BYBIT FUTURES SYMBOLS
+========================================================= */
+
+function isPerpetual(row) {
+  const contractType =
+    String(
+      row?.contractType ||
+      ""
+    )
+      .trim()
+      .toUpperCase();
+
+  const status =
+    String(
+      row?.status ||
+      ""
+    )
+      .trim()
+      .toUpperCase();
+
+  const quoteCoin =
+    String(
+      row?.quoteCoin ||
+      ""
+    )
+      .trim()
+      .toUpperCase();
+
+  const settleCoin =
+    String(
+      row?.settleCoin ||
+      ""
+    )
+      .trim()
+      .toUpperCase();
+
+  const perpetual =
+    contractType ===
+      "LINEARPERPETUAL" ||
+    contractType ===
+      "LINEAR_PERPETUAL" ||
+    contractType ===
+      "PERPETUAL" ||
+    contractType.includes(
+      "PERPETUAL"
+    );
+
+  const usdt =
+    quoteCoin === "USDT" ||
+    settleCoin === "USDT";
+
+  return (
+    status === "TRADING" &&
+    perpetual &&
+    usdt
+  );
 }
 
-async function measure(name, value) {
-  const x = sizeOf(name, value);
-  const gzipBytesValue = await gzipBytes(x.text);
-  return {
-    name,
-    rawBytes: x.rawBytes,
-    rawKB: x.rawKB,
-    rawMB: x.rawMB,
-    gzipBytes: gzipBytesValue,
-    gzipKB: gzipBytesValue == null ? null : gzipBytesValue / 1024,
-    gzipMB: gzipBytesValue == null ? null : gzipBytesValue / 1024 / 1024,
-    gzipSavedPercent:
-      gzipBytesValue == null || !x.rawBytes
-        ? null
-        : (1 - gzipBytesValue / x.rawBytes) * 100,
-    gzipRatio:
-      gzipBytesValue == null || !gzipBytesValue
-        ? null
-        : x.rawBytes / gzipBytesValue
-  };
-}
+async function getBybitSymbols() {
+  let cursor = "";
 
-function projection(bytesPerSample, sampleMinutes) {
-  const perMinute = bytesPerSample / Math.max(1, sampleMinutes);
-  const hours = perMinute * 60;
-  const day = hours * 24;
-  const week = day * 7;
-  const month = day * 30;
+  const output = [];
 
-  return {
-    basisSampleMinutes: sampleMinutes,
-    perMinute: bytesPerSample,
-    perHour: hours,
-    per24h: day,
-    per7d: week,
-    per30d: month
-  };
-}
+  for (
+    let page = 0;
+    page < 20;
+    page++
+  ) {
+    const result =
+      await bybit(
+        "/v5/market/instruments-info",
+        {
+          category:
+            "linear",
 
-function formatBytes(bytes) {
-  if (!Number.isFinite(bytes)) return null;
-  const units = ["B", "KB", "MB", "GB", "TB"];
-  let n = bytes;
-  let i = 0;
-  while (n >= 1024 && i < units.length - 1) {
-    n /= 1024;
-    i++;
+          status:
+            "Trading",
+
+          limit:
+            SYMBOL_LIMIT,
+
+          cursor
+        }
+      );
+
+    const list =
+      Array.isArray(
+        result?.list
+      )
+        ? result.list
+        : [];
+
+    for (const row of list) {
+      if (
+        !isPerpetual(row)
+      ) {
+        continue;
+      }
+
+      const symbol =
+        normalizeSymbol(
+          row.symbol
+        );
+
+      if (
+        !symbol.endsWith(
+          "USDT"
+        )
+      ) {
+        continue;
+      }
+
+      output.push({
+        symbol,
+
+        tickSize:
+          safeNumber(
+            row
+              ?.priceFilter
+              ?.tickSize,
+            0
+          ),
+
+        minOrderQty:
+          safeNumber(
+            row
+              ?.lotSizeFilter
+              ?.minOrderQty,
+            0
+          )
+      });
+    }
+
+    cursor =
+      result?.nextPageCursor ||
+      "";
+
+    if (!cursor) {
+      break;
+    }
   }
-  return `${n.toFixed(3)} ${units[i]}`;
+
+  const unique =
+    new Map();
+
+  for (const item of output) {
+    unique.set(
+      item.symbol,
+      item
+    );
+  }
+
+  return [
+    ...unique.values()
+  ].sort(
+    (a, b) =>
+      a.symbol.localeCompare(
+        b.symbol
+      )
+  );
 }
 
-function storageScaling(perHourBytes) {
-  const rows = [20000, 100000, 200000];
-  return rows.map(rowCount => ({
-    hourBlocks: rowCount,
-    rawBytes: perHourBytes.raw * rowCount,
-    rawHuman: formatBytes(perHourBytes.raw * rowCount),
-    gzipBytes: perHourBytes.gzip == null ? null : perHourBytes.gzip * rowCount,
-    gzipHuman: perHourBytes.gzip == null ? null : formatBytes(perHourBytes.gzip * rowCount)
-  }));
-}
+/* =========================================================
+   VOLUME TEST
+   NO DATABASE WRITE
+========================================================= */
 
-async function fetchInstrument(symbol) {
-  try {
-    const r = await bybit("/v5/market/instruments-info", {
-      category: "linear",
-      symbol
-    });
-    const row = Array.isArray(r.data?.list) ? r.data.list[0] : null;
+async function testVolume(
+  symbol
+) {
+  const startedAt =
+    Date.now();
+
+  symbol =
+    normalizeSymbol(symbol);
+
+  const result =
+    await bybit(
+      "/v5/market/recent-trade",
+      {
+        category:
+          "linear",
+
+        symbol,
+
+        limit:
+          TRADE_LIMIT
+      }
+    );
+
+  const trades =
+    parseTrades(
+      result?.list
+    );
+
+  if (!trades.length) {
     return {
-      ok: true,
-      elapsedMs: r.elapsedMs,
-      data: row ? {
-        symbol: row.symbol,
-        status: row.status,
-        baseCoin: row.baseCoin,
-        quoteCoin: row.quoteCoin,
-        settleCoin: row.settleCoin,
-        tickSize: row.priceFilter?.tickSize,
-        minOrderQty: row.lotSizeFilter?.minOrderQty,
-        maxOrderQty: row.lotSizeFilter?.maxOrderQty
-      } : null
-    };
-  } catch (error) {
-    return { ok: false, error: String(error?.message || error) };
-  }
-}
+      ok: false,
 
-async function fetchOiFunding(symbol) {
-  const out = {
-    openInterest: null,
-    funding: null,
-    ticker: null,
-    errors: []
-  };
+      test:
+        "VOLUME_TEST",
 
-  try {
-    const r = await bybit("/v5/market/open-interest", {
-      category: "linear",
       symbol,
-      intervalTime: "5min",
-      limit: 2
-    });
-    const list = Array.isArray(r.data?.list) ? r.data.list : [];
-    const latest = list[0] || {};
-    const previous = list[1] || {};
-    out.openInterest = {
-      latest: safeNumber(latest.openInterest),
-      previous: safeNumber(previous.openInterest),
-      change: safeNumber(latest.openInterest) - safeNumber(previous.openInterest),
-      rawRows: list
+
+      error:
+        "No valid trades received from Bybit",
+
+      version:
+        VERSION
     };
-  } catch (error) {
-    out.errors.push(`openInterest: ${String(error?.message || error)}`);
   }
 
-  try {
-    const r = await bybit("/v5/market/funding/history", {
-      category: "linear",
-      symbol,
-      limit: 2
+  /*
+   * Original normalized trade objects.
+   */
+  const rawTradePayload =
+    JSON.stringify(
+      trades
+    );
+
+  const rawTradeBytes =
+    utf8ByteLength(
+      rawTradePayload
+    );
+
+  const gzipTradeBytes =
+    await gzipByteLength(
+      rawTradePayload
+    );
+
+  /*
+   * Group trades by minute.
+   */
+  const minuteMap =
+    new Map();
+
+  for (const trade of trades) {
+    const minute =
+      minuteStartOf(
+        trade.time
+      );
+
+    if (
+      !minuteMap.has(minute)
+    ) {
+      minuteMap.set(
+        minute,
+        []
+      );
+    }
+
+    minuteMap
+      .get(minute)
+      .push(trade);
+  }
+
+  const minuteTests = [];
+
+  for (
+    const [
+      minute,
+      minuteTrades
+    ]
+    of minuteMap
+  ) {
+    const payload =
+      JSON.stringify(
+        minuteTrades
+      );
+
+    const rawBytes =
+      utf8ByteLength(
+        payload
+      );
+
+    const gzipBytes =
+      await gzipByteLength(
+        payload
+      );
+
+    minuteTests.push({
+      minute,
+
+      iso:
+        new Date(
+          minute
+        ).toISOString(),
+
+      trades:
+        minuteTrades.length,
+
+      rawBytes,
+
+      rawKB:
+        bytesToKB(
+          rawBytes
+        ),
+
+      rawMB:
+        bytesToMB(
+          rawBytes
+        ),
+
+      gzipBytes,
+
+      gzipKB:
+        gzipBytes === null
+          ? null
+          : bytesToKB(
+              gzipBytes
+            ),
+
+      gzipMB:
+        gzipBytes === null
+          ? null
+          : bytesToMB(
+              gzipBytes
+            ),
+
+      compression:
+        compressionInfo(
+          rawBytes,
+          gzipBytes
+        )
     });
-    const list = Array.isArray(r.data?.list) ? r.data.list : [];
-    const latest = list[0] || {};
-    const previous = list[1] || {};
-    out.funding = {
-      latest: safeNumber(latest.fundingRate),
-      previous: safeNumber(previous.fundingRate),
-      change: safeNumber(latest.fundingRate) - safeNumber(previous.fundingRate),
-      rawRows: list
-    };
-  } catch (error) {
-    out.errors.push(`funding: ${String(error?.message || error)}`);
   }
 
-  try {
-    const r = await bybit("/v5/market/tickers", {
-      category: "linear",
-      symbol
-    });
-    const row = Array.isArray(r.data?.list) ? r.data.list[0] : null;
-    out.ticker = row ? {
-      lastPrice: safeNumber(row.lastPrice),
-      markPrice: safeNumber(row.markPrice),
-      indexPrice: safeNumber(row.indexPrice),
-      turnover24h: safeNumber(row.turnover24h),
-      volume24h: safeNumber(row.volume24h),
-      price24hPcnt: safeNumber(row.price24hPcnt)
-    } : null;
-  } catch (error) {
-    out.errors.push(`ticker: ${String(error?.message || error)}`);
+  minuteTests.sort(
+    (a, b) =>
+      a.minute -
+      b.minute
+  );
+
+  const coveredMinutes =
+    minuteTests.length;
+
+  const totalTrades =
+    trades.length;
+
+  const firstTradeTime =
+    Math.min(
+      ...trades.map(
+        t => t.time
+      )
+    );
+
+  const lastTradeTime =
+    Math.max(
+      ...trades.map(
+        t => t.time
+      )
+    );
+
+  const elapsedDataMinutes =
+    Math.max(
+      1,
+      Math.ceil(
+        (
+          lastTradeTime -
+          firstTradeTime
+        ) /
+          MINUTE_MS
+      ) + 1
+    );
+
+  /*
+   * Actual average based on received sample.
+   */
+  const averageRawPerMinute =
+    rawTradeBytes /
+    elapsedDataMinutes;
+
+  const averageGzipPerMinute =
+    gzipTradeBytes === null
+      ? null
+      : gzipTradeBytes /
+        elapsedDataMinutes;
+
+  /*
+   * Projection for one hour.
+   */
+  const estimatedHourRaw =
+    averageRawPerMinute *
+    60;
+
+  const estimatedHourGzip =
+    averageGzipPerMinute === null
+      ? null
+      : averageGzipPerMinute *
+        60;
+
+  /*
+   * Projection for 20,000 hour rows.
+   *
+   * This is only a size estimate.
+   * Actual rows differ by symbol/activity.
+   */
+  const estimated20KRaw =
+    estimatedHourRaw *
+    MAX_ROWS;
+
+  const estimated20KGzip =
+    estimatedHourGzip === null
+      ? null
+      : estimatedHourGzip *
+        MAX_ROWS;
+
+  /*
+   * Also calculate average size
+   * of one minute from grouped data.
+   */
+  let groupedRawTotal = 0;
+  let groupedGzipTotal = 0;
+  let groupedGzipAvailable = true;
+
+  let minRaw =
+    Number.POSITIVE_INFINITY;
+
+  let maxRaw = 0;
+
+  let minGzip =
+    Number.POSITIVE_INFINITY;
+
+  let maxGzip = 0;
+
+  for (const item of minuteTests) {
+    groupedRawTotal +=
+      item.rawBytes;
+
+    if (
+      Number.isFinite(
+        item.gzipBytes
+      )
+    ) {
+      groupedGzipTotal +=
+        item.gzipBytes;
+
+      minGzip =
+        Math.min(
+          minGzip,
+          item.gzipBytes
+        );
+
+      maxGzip =
+        Math.max(
+          maxGzip,
+          item.gzipBytes
+        );
+    } else {
+      groupedGzipAvailable =
+        false;
+    }
+
+    minRaw =
+      Math.min(
+        minRaw,
+        item.rawBytes
+      );
+
+    maxRaw =
+      Math.max(
+        maxRaw,
+        item.rawBytes
+      );
   }
 
-  return out;
-}
+  const averageGroupedRaw =
+    coveredMinutes > 0
+      ? groupedRawTotal /
+        coveredMinutes
+      : 0;
 
-async function fetchLiquidationCoverage(symbol) {
+  const averageGroupedGzip =
+    coveredMinutes > 0 &&
+    groupedGzipAvailable
+      ? groupedGzipTotal /
+        coveredMinutes
+      : null;
+
   return {
-    available: false,
-    mode: "REST_UNAVAILABLE",
+    ok: true,
+
+    test:
+      "VOLUME_TEST",
+
+    version:
+      VERSION,
+
     symbol,
-    reason: "Public liquidation events are not included in this REST snapshot benchmark. They must be collected from the Bybit public liquidation WebSocket stream for real historical/live storage.",
-    fakeDataUsed: false
+
+    source:
+      "Bybit Linear Futures publicTrade",
+
+    databaseWrite:
+      false,
+
+    databaseModified:
+      false,
+
+    compression:
+      "GZIP lossless",
+
+    compressionAvailable:
+      gzipTradeBytes !== null,
+
+    sample: {
+      trades:
+        totalTrades,
+
+      firstTradeTime,
+
+      firstTradeISO:
+        new Date(
+          firstTradeTime
+        ).toISOString(),
+
+      lastTradeTime,
+
+      lastTradeISO:
+        new Date(
+          lastTradeTime
+        ).toISOString(),
+
+      elapsedDataMinutes,
+
+      coveredMinutes
+    },
+
+    rawSample: {
+      bytes:
+        rawTradeBytes,
+
+      KB:
+        bytesToKB(
+          rawTradeBytes
+        ),
+
+      MB:
+        bytesToMB(
+          rawTradeBytes
+        )
+    },
+
+    gzipSample:
+      compressionInfo(
+        rawTradeBytes,
+        gzipTradeBytes
+      ),
+
+    minute: {
+      averageRawBytes:
+        Math.round(
+          averageRawPerMinute
+        ),
+
+      averageRawKB:
+        bytesToKB(
+          averageRawPerMinute
+        ),
+
+      averageRawMB:
+        bytesToMB(
+          averageRawPerMinute
+        ),
+
+      averageGzipBytes:
+        averageGzipPerMinute === null
+          ? null
+          : Math.round(
+              averageGzipPerMinute
+            ),
+
+      averageGzipKB:
+        averageGzipPerMinute === null
+          ? null
+          : bytesToKB(
+              averageGzipPerMinute
+            ),
+
+      averageGzipMB:
+        averageGzipPerMinute === null
+          ? null
+          : bytesToMB(
+              averageGzipPerMinute
+            )
+    },
+
+    groupedMinuteStats: {
+      averageRawBytes:
+        Math.round(
+          averageGroupedRaw
+        ),
+
+      averageRawKB:
+        bytesToKB(
+          averageGroupedRaw
+        ),
+
+      averageGzipBytes:
+        averageGroupedGzip === null
+          ? null
+          : Math.round(
+              averageGroupedGzip
+            ),
+
+      averageGzipKB:
+        averageGroupedGzip === null
+          ? null
+          : bytesToKB(
+              averageGroupedGzip
+            ),
+
+      minimumRawBytes:
+        Number.isFinite(
+          minRaw
+        )
+          ? minRaw
+          : 0,
+
+      maximumRawBytes:
+        maxRaw,
+
+      minimumGzipBytes:
+        groupedGzipAvailable &&
+        Number.isFinite(
+          minGzip
+        )
+          ? minGzip
+          : null,
+
+      maximumGzipBytes:
+        groupedGzipAvailable
+          ? maxGzip
+          : null
+    },
+
+    estimatedHour: {
+      rawBytes:
+        Math.round(
+          estimatedHourRaw
+        ),
+
+      rawKB:
+        bytesToKB(
+          estimatedHourRaw
+        ),
+
+      rawMB:
+        bytesToMB(
+          estimatedHourRaw
+        ),
+
+      gzipBytes:
+        estimatedHourGzip === null
+          ? null
+          : Math.round(
+              estimatedHourGzip
+            ),
+
+      gzipKB:
+        estimatedHourGzip === null
+          ? null
+          : bytesToKB(
+              estimatedHourGzip
+            ),
+
+      gzipMB:
+        estimatedHourGzip === null
+          ? null
+          : bytesToMB(
+              estimatedHourGzip
+            )
+    },
+
+    estimatedStorage: {
+      model:
+        "1 symbol + 1 hour = 1 row",
+
+      maxRows:
+        MAX_ROWS,
+
+      rawBytes:
+        Math.round(
+          estimated20KRaw
+        ),
+
+      rawMB:
+        bytesToMB(
+          estimated20KRaw
+        ),
+
+      rawGB:
+        bytesToGB(
+          estimated20KRaw
+        ),
+
+      gzipBytes:
+        estimated20KGzip === null
+          ? null
+          : Math.round(
+              estimated20KGzip
+            ),
+
+      gzipMB:
+        estimated20KGzip === null
+          ? null
+          : bytesToMB(
+              estimated20KGzip
+            ),
+
+      gzipGB:
+        estimated20KGzip === null
+          ? null
+          : bytesToGB(
+              estimated20KGzip
+            )
+    },
+
+    minuteTests,
+
+    elapsedMs:
+      Date.now() -
+      startedAt,
+
+    note:
+      "This endpoint only measures data size. It never writes to Durable Object SQLite."
   };
 }
 
-async function testFull(symbol, tradeLimit, bookLimit) {
-  const startedAt = Date.now();
-  symbol = normalizeSymbol(symbol);
+/* =========================================================
+   ON-DEMAND MARKET DATA
+========================================================= */
 
-  const tasks = await Promise.allSettled([
-    bybit("/v5/market/recent-trade", { category: "linear", symbol, limit: tradeLimit }),
-    bybit("/v5/market/orderbook", { category: "linear", symbol, limit: bookLimit }),
-    bybit("/v5/market/kline", { category: "linear", symbol, interval: "1", limit: DEFAULT_KLINE_LIMIT }),
-    bybit("/v5/market/tickers", { category: "linear", symbol }),
-    fetchInstrument(symbol),
-    fetchOiFunding(symbol),
-    fetchLiquidationCoverage(symbol)
+async function getMarket(
+  symbol,
+  interval
+) {
+  symbol =
+    normalizeSymbol(symbol);
+
+  interval =
+    normalizeInterval(interval);
+
+  const [
+    klineResult,
+    tickerResult,
+    orderbookResult,
+    tradeResult,
+    instrumentResult
+  ] = await Promise.all([
+    bybit(
+      "/v5/market/kline",
+      {
+        category:
+          "linear",
+
+        symbol,
+
+        interval,
+
+        limit:
+          KLINE_LIMIT
+      }
+    ),
+
+    bybit(
+      "/v5/market/tickers",
+      {
+        category:
+          "linear",
+
+        symbol
+      }
+    ),
+
+    bybit(
+      "/v5/market/orderbook",
+      {
+        category:
+          "linear",
+
+        symbol,
+
+        limit:
+          ORDERBOOK_LIMIT
+      }
+    ),
+
+    bybit(
+      "/v5/market/recent-trade",
+      {
+        category:
+          "linear",
+
+        symbol,
+
+        limit:
+          TRADE_LIMIT
+      }
+    ),
+
+    bybit(
+      "/v5/market/instruments-info",
+      {
+        category:
+          "linear",
+
+        symbol
+      }
+    )
   ]);
 
-  const unwrap = (i, fallback) => {
-    if (i.status === "fulfilled") return i.value;
-    return fallback;
-  };
+  const candles =
+    parseKlines(
+      klineResult?.list
+    );
 
-  const tradeResponse = unwrap(tasks[0], { data: {}, error: "recent-trade failed" });
-  const bookResponse = unwrap(tasks[1], { data: {}, error: "orderbook failed" });
-  const klineResponse = unwrap(tasks[2], { data: {}, error: "kline failed" });
-  const tickerResponse = unwrap(tasks[3], { data: {}, error: "ticker failed" });
-  const instrumentResponse = unwrap(tasks[4], { ok: false, error: "instrument failed" });
-  const oiFundingResponse = unwrap(tasks[5], { openInterest: null, funding: null, ticker: null, errors: ["OI/Funding failed"] });
-  const liquidationResponse = unwrap(tasks[6], { available: false, mode: "REST_UNAVAILABLE", fakeDataUsed: false });
+  const trades =
+    parseTrades(
+      tradeResult?.list
+    );
 
-  const trades = parseTrades(tradeResponse?.data?.list);
-  const klines = parseKlines(klineResponse?.data?.list);
-  const book = orderbookStats(bookResponse?.data);
-  const stats = tradeStats(trades);
-  const tickSize = instrumentResponse?.data?.tickSize || "0.01";
-  const footprint = aggregateFootprint(trades, tickSize);
-  const absorption = detectAbsorption(trades, klines, book);
-  const ticker = Array.isArray(tickerResponse?.data?.list) ? tickerResponse.data.list[0] : null;
+  const ticker =
+    Array.isArray(
+      tickerResult?.list
+    )
+      ? tickerResult.list[0]
+      : null;
 
-  const minTime = trades.length ? Math.min(...trades.map(t => t.time)) : Date.now();
-  const maxTime = trades.length ? Math.max(...trades.map(t => t.time)) : Date.now();
-  const sampleMinutes = Math.max(1, Math.ceil((maxTime - minTime + 1) / 60000));
+  const instrument =
+    Array.isArray(
+      instrumentResult?.list
+    )
+      ? instrumentResult.list[0]
+      : null;
 
-  const rawCategories = {
+  const tickSize =
+    safeNumber(
+      instrument
+        ?.priceFilter
+        ?.tickSize,
+      0
+    );
+
+  const stats =
+    tradeStats(
+      trades
+    );
+
+  const footprint =
+    aggregateFootprint(
+      trades,
+      tickSize
+    );
+
+  const orderbook =
+    orderbookStats(
+      orderbookResult
+    );
+
+  const absorption =
+    detectAbsorption(
+      trades,
+      candles,
+      orderbook
+    );
+
+  return {
+    version:
+      VERSION,
+
+    symbol,
+
+    interval,
+
+    candles,
+
     trades,
-    footprint,
-    largeTrades: {
-      threshold: stats.largeThreshold,
-      buyTrades: stats.largeBuyTrades,
-      sellTrades: stats.largeSellTrades,
-      buyVolume: stats.largeBuyVolume,
-      sellVolume: stats.largeSellVolume,
-      buyValue: stats.largeBuyValue,
-      sellValue: stats.largeSellValue
-    },
-    orderBook: book,
-    absorption,
-    oi: oiFundingResponse.openInterest,
-    funding: oiFundingResponse.funding,
-    ticker: ticker ? {
-      lastPrice: ticker.lastPrice,
-      markPrice: ticker.markPrice,
-      indexPrice: ticker.indexPrice,
-      volume24h: ticker.volume24h,
-      turnover24h: ticker.turnover24h,
-      price24hPcnt: ticker.price24hPcnt
-    } : oiFundingResponse.ticker,
-    klines,
-    instrument: instrumentResponse?.data || null,
-    liquidation: liquidationResponse
-  };
 
-  const measured = {};
-  for (const [name, value] of Object.entries(rawCategories)) {
-    measured[name] = await measure(name, value);
+    ticker,
+
+    stats,
+
+    footprint,
+
+    orderbook,
+
+    absorption,
+
+    instrument: {
+      tickSize,
+
+      minOrderQty:
+        safeNumber(
+          instrument
+            ?.lotSizeFilter
+            ?.minOrderQty,
+          0
+        )
+    }
+  };
+}
+
+/* =========================================================
+   DURABLE OBJECT BINDINGS
+========================================================= */
+
+function collectorId(env) {
+  if (
+    !env ||
+    !env.TRADE_COLLECTOR_V5
+  ) {
+    throw new Error(
+      "TRADE_COLLECTOR_V5 binding پیدا نشد"
+    );
   }
 
-  const totalPayload = JSON.stringify(rawCategories);
-  const totalRaw = utf8Bytes(totalPayload);
-  const totalGzip = await gzipBytes(totalPayload);
+  return env
+    .TRADE_COLLECTOR_V5
+    .idFromName(
+      "absorption-storage-v5-global"
+    );
+}
 
-  const tradeRawPerMinute = measured.trades.rawBytes / sampleMinutes;
-  const tradeGzipPerMinute = measured.trades.gzipBytes == null ? null : measured.trades.gzipBytes / sampleMinutes;
-  const totalRawPerMinute = totalRaw / sampleMinutes;
-  const totalGzipPerMinute = totalGzip == null ? null : totalGzip / sampleMinutes;
+function collectorStub(env) {
+  return env
+    .TRADE_COLLECTOR_V5
+    .get(
+      collectorId(env)
+    );
+}
 
-  const rawPerHour = totalRawPerMinute * 60;
-  const gzipPerHour = totalGzipPerMinute == null ? null : totalGzipPerMinute * 60;
+/* =========================================================
+   LEGACY TRADE COLLECTOR
+========================================================= */
 
-  const categoryProjection = {};
-  for (const [name, m] of Object.entries(measured)) {
-    categoryProjection[name] = {
-      raw: projection(m.rawBytes, sampleMinutes),
-      gzip: m.gzipBytes == null ? null : projection(m.gzipBytes, sampleMinutes)
+export class TradeCollector {
+  constructor(
+    state,
+    env
+  ) {
+    this.state = state;
+    this.env = env;
+  }
+
+  async fetch(request) {
+    const url =
+      new URL(
+        request.url
+      );
+
+    if (
+      request.method ===
+      "OPTIONS"
+    ) {
+      return new Response(
+        null,
+        {
+          status: 204,
+          headers: CORS
+        }
+      );
+    }
+
+    return json({
+      ok: true,
+
+      legacy: true,
+
+      collector:
+        "TradeCollector",
+
+      writeEnabled:
+        false,
+
+      message:
+        "Legacy storage preserved. New writes disabled.",
+
+      path:
+        url.pathname,
+
+      version:
+        VERSION
+    });
+  }
+
+  async alarm() {
+    return;
+  }
+}
+
+/* =========================================================
+   ABSORPTION STORAGE V5
+========================================================= */
+
+export class AbsorptionStorageV5 {
+  constructor(
+    state,
+    env
+  ) {
+    this.state = state;
+    this.env = env;
+
+    this.ws = null;
+
+    this.started = false;
+    this.connected = false;
+
+    this.symbols = [];
+
+    this.symbolMeta =
+      new Map();
+
+    this.subscribed =
+      new Set();
+
+    this.lastMessageAt = 0;
+    this.lastTradeAt = 0;
+    this.wsStartedAt = 0;
+
+    this.lastError = "";
+
+    this.reconnectAttempt = 0;
+
+    this.reconnectTimer = null;
+    this.pingTimer = null;
+
+    this.alarmScheduled = false;
+
+    this.dbInitialized = false;
+    this.tableExists = null;
+
+    this.hourBlocks =
+      new Map();
+
+    this.dedupe =
+      new Map();
+
+    // Keep WebSocket callbacks lightweight so HTTP status requests remain
+    // responsive while hundreds of Bybit trade streams are active.
+    this.wsMessageQueue = [];
+    this.wsMessageProcessing = false;
+    this.lastDedupeCleanupAt = 0;
+
+    this.lastCleanupAt = 0;
+
+    this.loadedRecentBlocks =
+      false;
+
+    this.checkpointRunning =
+      false;
+
+    this.lastCheckpointAt = 0;
+
+    this.totalMessages = 0;
+    this.totalTrades = 0;
+    this.totalDuplicates = 0;
+    this.totalInvalidTrades = 0;
+    this.totalPersistedBlocks = 0;
+    this.totalDeletedRows = 0;
+  }
+
+  /* =======================================================
+     DATABASE DETECTION
+  ======================================================= */
+
+  initDB() {
+    if (
+      this.dbInitialized
+    ) {
+      return;
+    }
+
+    const sql =
+      this.state.storage.sql;
+
+    try {
+      const rows =
+        sql
+          .exec(
+            `
+            SELECT name
+            FROM sqlite_master
+            WHERE type = 'table'
+            AND name = ?
+            LIMIT 1
+            `,
+            TABLE_NAME
+          )
+          .toArray();
+
+      this.tableExists =
+        rows.length > 0;
+    } catch (error) {
+      this.lastError =
+        String(
+          error?.message ||
+          error
+        );
+
+      this.tableExists =
+        false;
+    }
+
+    this.dbInitialized =
+      true;
+  }
+
+  /* =======================================================
+     CREATE STORAGE ONLY ON REAL CHECKPOINT
+======================================================= */
+
+  ensureDBForWrite() {
+    if (
+      this.tableExists === true
+    ) {
+      return;
+    }
+
+    const sql =
+      this.state.storage.sql;
+
+    sql.exec(
+      `
+      CREATE TABLE IF NOT EXISTS hour_blocks_v5 (
+        symbol TEXT NOT NULL,
+        hour_start INTEGER NOT NULL,
+        data TEXT NOT NULL,
+        updated_at INTEGER NOT NULL,
+        PRIMARY KEY(symbol, hour_start)
+      )
+      `
+    );
+
+    this.tableExists =
+      true;
+
+    this.dbInitialized =
+      true;
+  }
+
+  /* =======================================================
+     ROW COUNT
+======================================================= */
+
+  getRowCount() {
+    this.initDB();
+
+    if (
+      this.tableExists !== true
+    ) {
+      return 0;
+    }
+
+    try {
+      const rows =
+        this.state.storage.sql
+          .exec(
+            `
+            SELECT COUNT(*) AS count
+            FROM hour_blocks_v5
+            `
+          )
+          .toArray();
+
+      return Number(
+        rows[0]?.count || 0
+      );
+    } catch (error) {
+      this.lastError =
+        String(
+          error?.message ||
+          error
+        );
+
+      return 0;
+    }
+  }
+
+  /* =======================================================
+     CAPACITY
+======================================================= */
+
+  enforceCapacity() {
+    this.initDB();
+
+    if (
+      this.tableExists !== true
+    ) {
+      return {
+        deleted: 0,
+        rows: 0,
+        tableExists: false,
+        protectedCurrentHour: true
+      };
+    }
+
+    const count =
+      this.getRowCount();
+
+    if (
+      count < MAX_ROWS
+    ) {
+      return {
+        deleted: 0,
+        rows: count,
+        protectedCurrentHour: true
+      };
+    }
+
+    const target =
+      Math.max(
+        0,
+        Math.min(
+          CLEANUP_TARGET_ROWS,
+          MAX_ROWS - 1
+        )
+      );
+
+    const deleteCount =
+      Math.max(
+        0,
+        count - target
+      );
+
+    if (
+      deleteCount <= 0
+    ) {
+      return {
+        deleted: 0,
+        rows: count,
+        protectedCurrentHour: true
+      };
+    }
+
+    const currentHour =
+      hourStartOf(
+        Date.now()
+      );
+
+    const availableRows =
+      this.state.storage.sql
+        .exec(
+          `
+          SELECT COUNT(*) AS count
+          FROM hour_blocks_v5
+          WHERE hour_start < ?
+          `,
+          currentHour
+        )
+        .toArray();
+
+    const deletable =
+      Number(
+        availableRows[0]?.count ||
+        0
+      );
+
+    const actualDelete =
+      Math.min(
+        deleteCount,
+        deletable
+      );
+
+    if (
+      actualDelete <= 0
+    ) {
+      return {
+        deleted: 0,
+        rows: count,
+        protectedCurrentHour: true
+      };
+    }
+
+    this.state.storage.sql.exec(
+      `
+      DELETE FROM hour_blocks_v5
+      WHERE rowid IN (
+        SELECT rowid
+        FROM hour_blocks_v5
+        WHERE hour_start < ?
+        ORDER BY hour_start ASC, rowid ASC
+        LIMIT ${actualDelete}
+      )
+      `,
+      currentHour
+    );
+
+    this.totalDeletedRows +=
+      actualDelete;
+
+    this.lastCleanupAt =
+      Date.now();
+
+    for (
+      const [
+        key,
+        block
+      ]
+      of this.hourBlocks
+    ) {
+      if (
+        block.hourStart <
+        currentHour
+      ) {
+        this.hourBlocks.delete(
+          key
+        );
+      }
+    }
+
+    const newCount =
+      this.getRowCount();
+
+    return {
+      deleted:
+        actualDelete,
+
+      rows:
+        newCount,
+
+      protectedCurrentHour:
+        true
     };
   }
 
-  const errors = [];
-  for (const [index, task] of tasks.entries()) {
-    if (task.status === "rejected") {
-      errors.push({ task: index, error: String(task.reason?.message || task.reason) });
+  /* =======================================================
+     LOAD RECENT BLOCKS
+======================================================= */
+
+  loadRecentBlocks() {
+    if (
+      this.loadedRecentBlocks
+    ) {
+      return;
+    }
+
+    this.initDB();
+
+    if (
+      this.tableExists !== true
+    ) {
+      this.loadedRecentBlocks =
+        true;
+
+      return;
+    }
+
+    const now =
+      Date.now();
+
+    const currentHour =
+      hourStartOf(now);
+
+    const from =
+      currentHour -
+      2 * HOUR_MS;
+
+    const rows =
+      this.state.storage.sql
+        .exec(
+          `
+          SELECT
+            symbol,
+            hour_start,
+            data,
+            updated_at
+          FROM hour_blocks_v5
+          WHERE hour_start >= ?
+          ORDER BY hour_start ASC
+          `,
+          from
+        )
+        .toArray();
+
+    for (const row of rows) {
+      try {
+        const block =
+          this.deserializeBlock(
+            row
+          );
+
+        if (!block) {
+          continue;
+        }
+
+        this.hourBlocks.set(
+          `${block.symbol}:${block.hourStart}`,
+          block
+        );
+      } catch (error) {
+        this.lastError =
+          String(
+            error?.message ||
+            error
+          );
+      }
+    }
+
+    this.loadedRecentBlocks =
+      true;
+  }
+
+  /* =======================================================
+     BLOCKS
+======================================================= */
+
+  createBlock(
+    symbol,
+    hourStart
+  ) {
+    return {
+      v: 1,
+
+      symbol,
+
+      hourStart,
+
+      hourEnd:
+        hourStart +
+        HOUR_MS,
+
+      candles:
+        new Map(),
+
+      dirty: true,
+
+      loaded: false
+    };
+  }
+
+  getOrCreateBlock(
+    symbol,
+    hourStart
+  ) {
+    const key =
+      `${symbol}:${hourStart}`;
+
+    let block =
+      this.hourBlocks.get(
+        key
+      );
+
+    if (!block) {
+      block =
+        this.createBlock(
+          symbol,
+          hourStart
+        );
+
+      this.hourBlocks.set(
+        key,
+        block
+      );
+    }
+
+    return block;
+  }
+
+  currentHourForSymbol(
+    symbol
+  ) {
+    let latest = null;
+
+    for (
+      const block
+      of this.hourBlocks.values()
+    ) {
+      if (
+        block.symbol !==
+        symbol
+      ) {
+        continue;
+      }
+
+      if (
+        latest === null ||
+        block.hourStart >
+          latest
+      ) {
+        latest =
+          block.hourStart;
+      }
+    }
+
+    return latest;
+  }
+
+  /* =======================================================
+     TRADE AGGREGATION
+======================================================= */
+
+  aggregateTrade(
+    trade
+  ) {
+    const symbol =
+      normalizeSymbol(
+        trade.symbol
+      );
+
+    const hourStart =
+      hourStartOf(
+        trade.time
+      );
+
+    const minuteStart =
+      minuteStartOf(
+        trade.time
+      );
+
+    const block =
+      this.getOrCreateBlock(
+        symbol,
+        hourStart
+      );
+
+    let candle =
+      block.candles.get(
+        minuteStart
+      );
+
+    if (!candle) {
+      candle = {
+        m: minuteStart,
+
+        o: trade.price,
+        h: trade.price,
+        l: trade.price,
+        c: trade.price,
+
+        v: 0,
+        t: 0,
+
+        b: 0,
+        s: 0,
+
+        bv: 0,
+        sv: 0,
+
+        bt: 0,
+        st: 0,
+
+        ot: trade.time,
+        ct: trade.time,
+
+        levels:
+          new Map()
+      };
+
+      block.candles.set(
+        minuteStart,
+        candle
+      );
+    }
+
+    candle.h =
+      Math.max(
+        candle.h,
+        trade.price
+      );
+
+    candle.l =
+      Math.min(
+        candle.l,
+        trade.price
+      );
+
+    candle.c =
+      trade.price;
+
+    candle.v +=
+      trade.size;
+
+    candle.t +=
+      trade.value;
+
+    candle.ct =
+      Math.max(
+        candle.ct,
+        trade.time
+      );
+
+    if (
+      trade.side === "BUY"
+    ) {
+      candle.b +=
+        trade.value;
+
+      candle.bv +=
+        trade.size;
+
+      candle.bt++;
+    } else if (
+      trade.side === "SELL"
+    ) {
+      candle.s +=
+        trade.value;
+
+      candle.sv +=
+        trade.size;
+
+      candle.st++;
+    }
+
+    const meta =
+      this.symbolMeta.get(
+        symbol
+      );
+
+    const tickSize =
+      safeNumber(
+        meta?.tickSize,
+        0
+      );
+
+    const price =
+      roundToTick(
+        trade.price,
+        tickSize
+      );
+
+    let level =
+      candle.levels.get(
+        price
+      );
+
+    if (!level) {
+      level = {
+        price,
+
+        buyVolume: 0,
+        sellVolume: 0,
+
+        buyValue: 0,
+        sellValue: 0,
+
+        buyTrades: 0,
+        sellTrades: 0
+      };
+
+      candle.levels.set(
+        price,
+        level
+      );
+    }
+
+    if (
+      trade.side === "BUY"
+    ) {
+      level.buyVolume +=
+        trade.size;
+
+      level.buyValue +=
+        trade.value;
+
+      level.buyTrades++;
+    } else if (
+      trade.side === "SELL"
+    ) {
+      level.sellVolume +=
+        trade.size;
+
+      level.sellValue +=
+        trade.value;
+
+      level.sellTrades++;
+    }
+
+    block.dirty =
+      true;
+  }
+
+  /* =======================================================
+     SERIALIZE
+======================================================= */
+
+  serializeBlock(
+    block
+  ) {
+    const candles =
+      [
+        ...block.candles.values()
+      ]
+        .sort(
+          (a, b) =>
+            a.m - b.m
+        )
+        .map(
+          candle => ({
+            m: candle.m,
+
+            o: candle.o,
+            h: candle.h,
+            l: candle.l,
+            c: candle.c,
+
+            v: candle.v,
+            t: candle.t,
+
+            b: candle.b,
+            s: candle.s,
+
+            bv: candle.bv,
+            sv: candle.sv,
+
+            bt: candle.bt,
+            st: candle.st,
+
+            ot: candle.ot,
+            ct: candle.ct,
+
+            lvs:
+              [
+                ...candle.levels.values()
+              ]
+                .sort(
+                  (a, b) =>
+                    a.price -
+                    b.price
+                )
+                .map(
+                  level => [
+                    level.price,
+
+                    level.buyVolume,
+                    level.sellVolume,
+
+                    level.buyValue,
+                    level.sellValue,
+
+                    level.buyTrades,
+                    level.sellTrades
+                  ]
+                )
+          })
+        );
+
+    return JSON.stringify({
+      v: 1,
+
+      s:
+        block.symbol,
+
+      h:
+        block.hourStart,
+
+      c:
+        candles
+    });
+  }
+
+  /* =======================================================
+     DESERIALIZE
+======================================================= */
+
+  deserializeBlock(
+    row
+  ) {
+    const raw =
+      typeof row.data ===
+      "string"
+        ? JSON.parse(
+            row.data
+          )
+        : row.data;
+
+    const block = {
+      v:
+        Number(
+          raw.v || 1
+        ),
+
+      symbol:
+        normalizeSymbol(
+          raw.s ||
+          row.symbol
+        ),
+
+      hourStart:
+        Number(
+          raw.h ||
+          row.hour_start
+        ),
+
+      hourEnd:
+        Number(
+          raw.h ||
+          row.hour_start
+        ) +
+        HOUR_MS,
+
+      candles:
+        new Map(),
+
+      dirty: false,
+
+      loaded: true
+    };
+
+    const candles =
+      Array.isArray(raw.c)
+        ? raw.c
+        : [];
+
+    for (
+      const item
+      of candles
+    ) {
+      const candle = {
+        m:
+          Number(item.m),
+
+        o:
+          Number(item.o),
+
+        h:
+          Number(item.h),
+
+        l:
+          Number(item.l),
+
+        c:
+          Number(item.c),
+
+        v:
+          Number(item.v || 0),
+
+        t:
+          Number(item.t || 0),
+
+        b:
+          Number(item.b || 0),
+
+        s:
+          Number(item.s || 0),
+
+        bv:
+          Number(item.bv || 0),
+
+        sv:
+          Number(item.sv || 0),
+
+        bt:
+          Number(item.bt || 0),
+
+        st:
+          Number(item.st || 0),
+
+        ot:
+          Number(
+            item.ot ||
+            item.m
+          ),
+
+        ct:
+          Number(
+            item.ct ||
+            item.m
+          ),
+
+        levels:
+          new Map()
+      };
+
+      const levels =
+        Array.isArray(
+          item.lvs
+        )
+          ? item.lvs
+          : [];
+
+      for (
+        const lv
+        of levels
+      ) {
+        if (
+          !Array.isArray(lv)
+        ) {
+          continue;
+        }
+
+        const price =
+          Number(lv[0]);
+
+        candle.levels.set(
+          price,
+          {
+            price,
+
+            buyVolume:
+              Number(
+                lv[1] || 0
+              ),
+
+            sellVolume:
+              Number(
+                lv[2] || 0
+              ),
+
+            buyValue:
+              Number(
+                lv[3] || 0
+              ),
+
+            sellValue:
+              Number(
+                lv[4] || 0
+              ),
+
+            buyTrades:
+              Number(
+                lv[5] || 0
+              ),
+
+            sellTrades:
+              Number(
+                lv[6] || 0
+              )
+          }
+        );
+      }
+
+      block.candles.set(
+        candle.m,
+        candle
+      );
+    }
+
+    return block;
+  }
+
+  /* =======================================================
+     CLOSED HOUR CHECKPOINT
+======================================================= */
+
+  persistClosedBlocks() {
+    if (
+      this.checkpointRunning
+    ) {
+      return {
+        written: 0,
+        rows:
+          this.getRowCount()
+      };
+    }
+
+    this.checkpointRunning =
+      true;
+
+    try {
+      this.initDB();
+
+      const now =
+        Date.now();
+
+      const currentHour =
+        hourStartOf(now);
+
+      const sql =
+        this.state.storage.sql;
+
+      let written = 0;
+
+      let writeTableReady =
+        this.tableExists === true;
+
+      for (
+        const [
+          key,
+          block
+        ]
+        of this.hourBlocks
+      ) {
+        if (
+          block.hourStart >=
+          currentHour
+        ) {
+          continue;
+        }
+
+        if (!block.dirty) {
+          continue;
+        }
+
+        if (
+          !block.candles.size
+        ) {
+          block.dirty =
+            false;
+
+          continue;
+        }
+
+        if (
+          !writeTableReady
+        ) {
+          this.ensureDBForWrite();
+
+          writeTableReady =
+            true;
+        }
+
+        const data =
+          this.serializeBlock(
+            block
+          );
+
+        sql.exec(
+          `
+          INSERT INTO hour_blocks_v5
+          (
+            symbol,
+            hour_start,
+            data,
+            updated_at
+          )
+          VALUES (?, ?, ?, ?)
+          ON CONFLICT(symbol, hour_start)
+          DO UPDATE SET
+            data=excluded.data,
+            updated_at=excluded.updated_at
+          `,
+          block.symbol,
+          block.hourStart,
+          data,
+          now
+        );
+
+        block.dirty =
+          false;
+
+        written++;
+
+        this.totalPersistedBlocks++;
+      }
+
+      this.lastCheckpointAt =
+        now;
+
+      const removeBefore =
+        currentHour -
+        HOUR_MS;
+
+      for (
+        const [
+          key,
+          block
+        ]
+        of this.hourBlocks
+      ) {
+        if (
+          block.hourStart <
+          removeBefore
+        ) {
+          this.hourBlocks.delete(
+            key
+          );
+        }
+      }
+
+      if (written > 0) {
+        this.enforceCapacity();
+      }
+
+      return {
+        written,
+
+        rows:
+          this.getRowCount()
+      };
+    } catch (error) {
+      this.lastError =
+        String(
+          error?.message ||
+          error
+        );
+
+      return {
+        written: 0,
+
+        rows:
+          this.getRowCount(),
+
+        error:
+          this.lastError
+      };
+    } finally {
+      this.checkpointRunning =
+        false;
     }
   }
-  if (oiFundingResponse.errors?.length) errors.push(...oiFundingResponse.errors.map(error => ({ task: "oiFunding", error })));
-  if (instrumentResponse?.error) errors.push({ task: "instrument", error: instrumentResponse.error });
 
-  const allDataCoverage = {
-    trades: "REAL_BYBIT_REST",
-    footprint: "DERIVED_FROM_REAL_TRADES",
-    delta: "DERIVED_FROM_REAL_TRADES",
-    largeTrades: "DERIVED_FROM_REAL_TRADES",
-    orderBook: "REAL_BYBIT_REST",
-    liquidity: "DERIVED_FROM_REAL_ORDERBOOK",
-    heatmap: "DERIVED_FROM_ORDERBOOK_SNAPSHOTS; NOT_HISTORICAL_IN_THIS_ONE_SHOT_TEST",
-    absorption: "DERIVED_FROM_REAL_TRADES_AND_ORDERBOOK",
-    openInterest: "REAL_BYBIT_REST",
-    funding: "REAL_BYBIT_REST",
-    liquidation: liquidationResponse.available ? "REAL_BYBIT" : "UNAVAILABLE_IN_REST_TEST",
-    klines: "REAL_BYBIT_REST",
-    ticker: "REAL_BYBIT_REST",
-    instrument: "REAL_BYBIT_REST"
-  };
+  /* =======================================================
+     DEDUPE
+======================================================= */
 
-  return {
-    ok: true,
-    version: VERSION,
-    test: "FINAL_COMPREHENSIVE_READONLY",
-    databaseWrite: false,
-    databaseRead: false,
-    databaseModified: false,
-    symbol,
-    elapsedMs: Date.now() - startedAt,
-    sample: {
-      tradeCount: trades.length,
-      firstTradeAt: minTime,
-      lastTradeAt: maxTime,
-      firstTradeISO: new Date(minTime).toISOString(),
-      lastTradeISO: new Date(maxTime).toISOString(),
-      coveredMinutes: sampleMinutes,
-      requestedTradeLimit: tradeLimit,
-      requestedOrderBookLevels: bookLimit,
-      klineCount: klines.length,
-      footprintLevels: footprint.length
-    },
-    coverage: allDataCoverage,
-    stats,
-    footprint,
-    orderBook: book,
-    absorption,
-    oi: oiFundingResponse.openInterest,
-    funding: oiFundingResponse.funding,
-    ticker: rawCategories.ticker,
-    instrument: instrumentResponse?.data || null,
-    liquidation: liquidationResponse,
-    measurements: measured,
-    total: {
-      rawBytes: totalRaw,
-      rawKB: totalRaw / 1024,
-      rawMB: totalRaw / 1024 / 1024,
-      gzipBytes: totalGzip,
-      gzipKB: totalGzip == null ? null : totalGzip / 1024,
-      gzipMB: totalGzip == null ? null : totalGzip / 1024 / 1024,
-      gzipSavedPercent: totalGzip == null ? null : (1 - totalGzip / totalRaw) * 100,
-      gzipRatio: totalGzip ? totalRaw / totalGzip : null
-    },
-    projections: {
-      basis: "The current Bybit recent-trade sample is scaled linearly to time. This is an estimate, not a guarantee of future market activity.",
-      tradePayload: {
-        raw: projection(tradeRawPerMinute, 1),
-        gzip: tradeGzipPerMinute == null ? null : projection(tradeGzipPerMinute, 1)
-      },
-      allCategories: {
-        raw: projection(totalRawPerMinute, 1),
-        gzip: totalGzipPerMinute == null ? null : projection(totalGzipPerMinute, 1)
-      },
-      categories: categoryProjection
-    },
-    storageScaling: storageScaling({
-      raw: rawPerHour,
-      gzip: gzipPerHour
-    }),
-    notes: [
-      "This test is independent of Cloudflare Durable Object lifetime.",
-      "No SQLite read/write occurs.",
-      "No Supabase read/write occurs.",
-      "Footprint, Delta, Large Trades and Absorption are derived calculations, not extra API streams.",
-      "A true historical heatmap requires repeated order-book snapshots or a WebSocket order-book collector; one REST snapshot cannot represent historical heatmap storage.",
-      "Liquidation is not fabricated. It is explicitly marked unavailable in this REST-only benchmark because public liquidation collection requires the Bybit WebSocket stream.",
-      "The 20k/100k/200k figures are storage scaling for serialized hour-block equivalents using the measured complete payload size per hour; they are not a claim that Bybit sends exactly one such payload per hour."
-    ],
-    errors
-  };
-}
+  isDuplicate(
+    trade
+  ) {
+    const id =
+      String(
+        trade.id || ""
+      );
 
-async function testVolume(symbol) {
-  symbol = normalizeSymbol(symbol);
-  const r = await bybit("/v5/market/recent-trade", {
-    category: "linear",
-    symbol,
-    limit: DEFAULT_TRADE_LIMIT
-  });
-  const trades = parseTrades(r.data?.list);
-  const payload = JSON.stringify(trades);
-  const raw = utf8Bytes(payload);
-  const gzip = await gzipBytes(payload);
-  const first = trades.length ? Math.min(...trades.map(t => t.time)) : Date.now();
-  const last = trades.length ? Math.max(...trades.map(t => t.time)) : Date.now();
-  const minutes = Math.max(1, Math.ceil((last - first + 1) / 60000));
-
-  return {
-    ok: true,
-    version: VERSION,
-    test: "TRADE_VOLUME_READONLY",
-    symbol,
-    tradeCount: trades.length,
-    coveredMinutes: minutes,
-    rawBytes: raw,
-    gzipBytes: gzip,
-    gzipSavedPercent: gzip == null ? null : (1 - gzip / raw) * 100,
-    estimated: {
-      rawPerHour: raw / minutes * 60,
-      gzipPerHour: gzip == null ? null : gzip / minutes * 60,
-      raw24h: raw / minutes * 60 * 24,
-      gzip24h: gzip == null ? null : gzip / minutes * 60 * 24,
-      raw7d: raw / minutes * 60 * 24 * 7,
-      gzip7d: gzip == null ? null : gzip / minutes * 60 * 24 * 7,
-      raw30d: raw / minutes * 60 * 24 * 30,
-      gzip30d: gzip == null ? null : gzip / minutes * 60 * 24 * 30
-    },
-    databaseWrite: false,
-    databaseRead: false
-  };
-}
-
-async function health() {
-  return {
-    ok: true,
-    version: VERSION,
-    mode: "READ_ONLY",
-    databaseWrite: false,
-    databaseRead: false,
-    databaseModified: false,
-    bybit: BYBIT,
-    endpoints: {
-      full: "/api/test/full?symbol=BTCUSDT",
-      volume: "/api/test/volume?symbol=BTCUSDT",
-      health: "/api/health"
+    if (!id) {
+      return false;
     }
-  };
+
+    if (
+      this.dedupe.has(id)
+    ) {
+      this.totalDuplicates++;
+
+      return true;
+    }
+
+    this.dedupe.set(
+      id,
+      Date.now()
+    );
+
+    // Never scan the entire dedupe Map on every trade. With 750 symbols
+    // this could otherwise turn into repeated 60K-entry synchronous loops
+    // and starve the Durable Object event loop. Cleanup is rate-limited.
+    const now = Date.now();
+
+    if (
+      this.dedupe.size > 60000 &&
+      now - this.lastDedupeCleanupAt >= 30000
+    ) {
+      this.lastDedupeCleanupAt = now;
+
+      const cutoff =
+        now -
+        5 * 60 * 1000;
+
+      let checked = 0;
+      const MAX_CHECK = 5000;
+
+      for (
+        const [key, time]
+        of this.dedupe
+      ) {
+        if (time < cutoff) {
+          this.dedupe.delete(key);
+        }
+
+        checked++;
+
+        if (checked >= MAX_CHECK) {
+          break;
+        }
+      }
+
+      while (this.dedupe.size > 60000) {
+        const first =
+          this.dedupe.keys().next().value;
+
+        if (!first) {
+          break;
+        }
+
+        this.dedupe.delete(first);
+      }
+    }
+
+    return false;
+  }
+
+  /* =======================================================
+     WS TRADE PARSER
+======================================================= */
+
+  parseWsTrade(row) {
+    const price =
+      safeNumber(row.p);
+
+    const size =
+      safeNumber(row.v);
+
+    const time =
+      safeNumber(
+        row.T ||
+        row.ts ||
+        Date.now()
+      );
+
+    return {
+      symbol:
+        normalizeSymbol(
+          row.s
+        ),
+
+      id:
+        String(
+          row.i ||
+          row.execId ||
+          `${time}-${price}-${size}-${row.S || ""}`
+        ),
+
+      time,
+
+      price,
+
+      size,
+
+      value:
+        price * size,
+
+      side:
+        String(
+          row.S || ""
+        ).toUpperCase()
+    };
+  }
+
+  /* =======================================================
+     WS MESSAGE QUEUE
+======================================================= */
+
+  enqueueWsMessage(raw) {
+    this.wsMessageQueue.push(raw);
+
+    if (!this.wsMessageProcessing) {
+      this.processWsMessageQueue();
+    }
+  }
+
+  async processWsMessageQueue() {
+    if (this.wsMessageProcessing) {
+      return;
+    }
+
+    this.wsMessageProcessing = true;
+
+    try {
+      let processed = 0;
+
+      while (this.wsMessageQueue.length) {
+        const raw = this.wsMessageQueue.shift();
+
+        try {
+          this.handleMessage(raw);
+        } catch (error) {
+          this.lastError =
+            String(error?.message || error);
+        }
+
+        processed++;
+
+        // Yield regularly so /status, alarms and other DO events can run.
+        if (processed >= 25) {
+          processed = 0;
+          await new Promise(resolve => setTimeout(resolve, 0));
+        }
+      }
+    } finally {
+      this.wsMessageProcessing = false;
+
+      // A message may have arrived between the final queue check and the
+      // flag reset. Make sure it is not left waiting.
+      if (this.wsMessageQueue.length) {
+        this.processWsMessageQueue();
+      }
+    }
+  }
+
+  /* =======================================================
+     WS MESSAGE
+======================================================= */
+
+  handleMessage(
+    raw
+  ) {
+    this.lastMessageAt =
+      Date.now();
+
+    this.totalMessages++;
+
+    let message;
+
+    try {
+      message =
+        JSON.parse(raw);
+    } catch (_) {
+      return;
+    }
+
+    if (
+      message.op ===
+      "pong"
+    ) {
+      return;
+    }
+
+    if (
+      message.success ===
+      false
+    ) {
+      this.lastError =
+        message.ret_msg ||
+        message.retMsg ||
+        "WebSocket error";
+
+      return;
+    }
+
+    const topic =
+      String(
+        message.topic || ""
+      );
+
+    if (
+      !topic.startsWith(
+        "publicTrade."
+      )
+    ) {
+      return;
+    }
+
+    const rows =
+      Array.isArray(
+        message.data
+      )
+        ? message.data
+        : [];
+
+    let crossedHour =
+      false;
+
+    for (
+      const row
+      of rows
+    ) {
+      const trade =
+        this.parseWsTrade(
+          row
+        );
+
+      if (
+        !trade.symbol ||
+        !trade.time ||
+        trade.price <= 0 ||
+        trade.size <= 0 ||
+        ![
+          "BUY",
+          "SELL"
+        ].includes(
+          trade.side
+        )
+      ) {
+        this.totalInvalidTrades++;
+
+        continue;
+      }
+
+      if (
+        this.isDuplicate(
+          trade
+        )
+      ) {
+        continue;
+      }
+
+      const before =
+        this.currentHourForSymbol(
+          trade.symbol
+        );
+
+      this.aggregateTrade(
+        trade
+      );
+
+      const after =
+        hourStartOf(
+          trade.time
+        );
+
+      if (
+        before !== null &&
+        before !== after
+      ) {
+        crossedHour =
+          true;
+      }
+
+      this.lastTradeAt =
+        Date.now();
+
+      this.totalTrades++;
+    }
+
+    if (crossedHour) {
+      try {
+        this.persistClosedBlocks();
+      } catch (error) {
+        this.lastError =
+          String(
+            error?.message ||
+            error
+          );
+      }
+    }
+  }
+
+  /* =======================================================
+     SUBSCRIBE
+======================================================= */
+
+  async subscribeAll() {
+    if (
+      !this.ws ||
+      this.ws.readyState !== 1
+    ) {
+      return;
+    }
+
+    this.subscribed.clear();
+
+    const args =
+      this.symbols.map(
+        item =>
+          `publicTrade.${item.symbol}`
+      );
+
+    const chunks = [];
+
+    let current = [];
+    let length = 0;
+
+    for (
+      const topic
+      of args
+    ) {
+      const extra =
+        topic.length + 3;
+
+      if (
+        current.length >= 100 ||
+        length + extra > 16000
+      ) {
+        chunks.push(
+          current
+        );
+
+        current = [];
+        length = 0;
+      }
+
+      current.push(topic);
+
+      length += extra;
+    }
+
+    if (
+      current.length
+    ) {
+      chunks.push(
+        current
+      );
+    }
+
+    for (
+      const chunk
+      of chunks
+    ) {
+      try {
+        this.ws.send(
+          JSON.stringify({
+            op:
+              "subscribe",
+
+            args:
+              chunk
+          })
+        );
+
+        for (
+          const topic
+          of chunk
+        ) {
+          this.subscribed.add(
+            topic
+          );
+        }
+
+        await new Promise(
+          resolve =>
+            setTimeout(
+              resolve,
+              100
+            )
+        );
+      } catch (error) {
+        this.lastError =
+          String(
+            error?.message ||
+            error
+          );
+      }
+    }
+  }
+
+  /* =======================================================
+     PING
+======================================================= */
+
+  startPing() {
+    this.stopPing();
+
+    this.pingTimer =
+      setInterval(
+        () => {
+          try {
+            if (
+              this.ws &&
+              this.ws.readyState ===
+                1
+            ) {
+              this.ws.send(
+                JSON.stringify({
+                  op:
+                    "ping"
+                })
+              );
+            }
+          } catch (_) {}
+        },
+        20000
+      );
+  }
+
+  stopPing() {
+    if (
+      this.pingTimer
+    ) {
+      clearInterval(
+        this.pingTimer
+      );
+
+      this.pingTimer =
+        null;
+    }
+  }
+
+  /* =======================================================
+     CONNECT
+======================================================= */
+
+  async connect() {
+    if (!this.started) {
+      return;
+    }
+
+    if (
+      this.ws &&
+      (
+        this.ws.readyState === 0 ||
+        this.ws.readyState === 1
+      )
+    ) {
+      return;
+    }
+
+    try {
+      this.symbols =
+        await getBybitSymbols();
+
+      this.symbolMeta.clear();
+
+      for (
+        const item
+        of this.symbols
+      ) {
+        this.symbolMeta.set(
+          item.symbol,
+          item
+        );
+      }
+
+      if (
+        !this.symbols.length
+      ) {
+        throw new Error(
+          "هیچ قرارداد Futures USDT در Bybit پیدا نشد"
+        );
+      }
+
+      this.ws =
+        new WebSocket(
+          BYBIT_WS
+        );
+
+      this.wsStartedAt =
+        Date.now();
+
+      this.ws.addEventListener(
+        "open",
+        async () => {
+          this.connected =
+            true;
+
+          this.reconnectAttempt =
+            0;
+
+          this.lastError =
+            "";
+
+          try {
+            await this.subscribeAll();
+          } catch (error) {
+            this.lastError =
+              String(
+                error?.message ||
+                error
+              );
+          }
+
+          this.startPing();
+
+          this.scheduleAlarm();
+        }
+      );
+
+      this.ws.addEventListener(
+        "message",
+        event => {
+          this.enqueueWsMessage(
+            event.data
+          );
+        }
+      );
+
+      this.ws.addEventListener(
+        "close",
+        () => {
+          this.connected =
+            false;
+
+          this.stopPing();
+
+          if (
+            this.started
+          ) {
+            this.scheduleReconnect();
+          }
+        }
+      );
+
+      this.ws.addEventListener(
+        "error",
+        () => {
+          this.lastError =
+            "Bybit WebSocket error";
+
+          this.connected =
+            false;
+        }
+      );
+    } catch (error) {
+      this.connected =
+        false;
+
+      this.lastError =
+        String(
+          error?.message ||
+          error
+        );
+
+      this.scheduleReconnect();
+    }
+  }
+
+  /* =======================================================
+     RECONNECT
+======================================================= */
+
+  scheduleReconnect() {
+    if (!this.started) {
+      return;
+    }
+
+    if (
+      this.reconnectTimer
+    ) {
+      return;
+    }
+
+    this.reconnectAttempt++;
+
+    const delay =
+      Math.min(
+        30000,
+        1000 *
+          Math.pow(
+            2,
+            Math.min(
+              this.reconnectAttempt,
+              5
+            )
+          )
+      );
+
+    this.reconnectTimer =
+      setTimeout(
+        async () => {
+          this.reconnectTimer =
+            null;
+
+          await this.connect();
+        },
+        delay
+      );
+  }
+
+  /* =======================================================
+     REFRESH SYMBOLS
+======================================================= */
+
+  async refreshSymbols() {
+    const list =
+      await getBybitSymbols();
+
+    this.symbols =
+      list;
+
+    this.symbolMeta.clear();
+
+    for (
+      const item
+      of list
+    ) {
+      this.symbolMeta.set(
+        item.symbol,
+        item
+      );
+    }
+
+    if (
+      this.connected
+    ) {
+      try {
+        await this.subscribeAll();
+      } catch (error) {
+        this.lastError =
+          String(
+            error?.message ||
+            error
+          );
+      }
+    }
+
+    return {
+      count:
+        this.symbols.length
+    };
+  }
+
+  /* =======================================================
+     ALARM
+======================================================= */
+
+  scheduleAlarm() {
+    if (
+      this.alarmScheduled
+    ) {
+      return;
+    }
+
+    this.alarmScheduled =
+      true;
+
+    try {
+      this.state.storage.setAlarm(
+        Date.now() +
+          ALARM_MS
+      );
+    } catch (error) {
+      this.alarmScheduled =
+        false;
+
+      this.lastError =
+        String(
+          error?.message ||
+          error
+        );
+    }
+  }
+
+  async alarm() {
+    this.alarmScheduled =
+      false;
+
+    try {
+      this.initDB();
+
+      this.loadRecentBlocks();
+
+      this.persistClosedBlocks();
+
+      try {
+        await this.refreshSymbols();
+      } catch (error) {
+        this.lastError =
+          String(
+            error?.message ||
+            error
+          );
+      }
+
+      if (
+        !this.connected &&
+        this.started
+      ) {
+        await this.connect();
+      }
+
+      if (
+        this.connected &&
+        this.ws &&
+        this.ws.readyState === 1
+      ) {
+        await this.subscribeAll();
+      }
+    } catch (error) {
+      this.lastError =
+        String(
+          error?.message ||
+          error
+        );
+    }
+
+    this.scheduleAlarm();
+  }
+
+  /* =======================================================
+     START
+======================================================= */
+
+  async start() {
+    this.started =
+      true;
+
+    this.initDB();
+
+    this.loadRecentBlocks();
+
+    if (
+      !this.connected
+    ) {
+      const connectTask =
+        this.connect().catch(
+          error => {
+            this.connected =
+              false;
+
+            this.lastError =
+              String(
+                error?.message ||
+                error
+              );
+
+            this.scheduleReconnect();
+          }
+        );
+
+      if (
+        this.state &&
+        typeof this.state.waitUntil ===
+          "function"
+      ) {
+        this.state.waitUntil(
+          connectTask
+        );
+      }
+    }
+
+    if (
+      this.tableExists === true
+    ) {
+      this.enforceCapacity();
+    }
+
+    this.scheduleAlarm();
+
+    return this.statusObject();
+  }
+
+  /* =======================================================
+     STATUS
+======================================================= */
+
+  statusObject() {
+    let rows = 0;
+    let dbError = "";
+
+    try {
+      rows =
+        this.getRowCount();
+    } catch (error) {
+      dbError =
+        String(
+          error?.message ||
+          error
+        );
+    }
+
+    return {
+      ok: true,
+
+      version:
+        VERSION,
+
+      collector:
+        "AbsorptionStorageV5",
+
+      started:
+        this.started,
+
+      connected:
+        this.connected,
+
+      symbols:
+        this.symbols.length,
+
+      subscribed:
+        this.subscribed.size,
+
+      lastMessageAt:
+        this.lastMessageAt,
+
+      lastTradeAt:
+        this.lastTradeAt,
+
+      wsStartedAt:
+        this.wsStartedAt,
+
+      reconnectAttempt:
+        this.reconnectAttempt,
+
+      lastError:
+        this.lastError,
+
+      dbError,
+
+      counters: {
+        totalMessages:
+          this.totalMessages,
+
+        totalTrades:
+          this.totalTrades,
+
+        totalDuplicates:
+          this.totalDuplicates,
+
+        totalInvalidTrades:
+          this.totalInvalidTrades,
+
+        totalPersistedBlocks:
+          this.totalPersistedBlocks,
+
+        totalDeletedRows:
+          this.totalDeletedRows
+      },
+
+      storage:
+        "Durable Object SQLite",
+
+      storageName:
+        "AbsorptionStorageV5",
+
+      table:
+        TABLE_NAME,
+
+      tableExists:
+        this.tableExists === true,
+
+      storageModel:
+        "1 row = 1 symbol + 1 hour",
+
+      maxRows:
+        MAX_ROWS,
+
+      currentRows:
+        rows,
+
+      cleanupTarget:
+        CLEANUP_TARGET_ROWS,
+
+      checkpoint:
+        "closed hour only",
+
+      currentHour:
+        "RAM only until hour closes",
+
+      history:
+        "rolling 20000 hour blocks",
+
+      currentHourProtected:
+        true,
+
+      oldStorage:
+        "preserved / new writes disabled",
+
+      symbolSource:
+        "Bybit Linear USDT Perpetual",
+
+      marketData:
+        "Bybit",
+
+      hourBlocksInMemory:
+        this.hourBlocks.size,
+
+      lastCleanupAt:
+        this.lastCleanupAt,
+
+      lastCheckpointAt:
+        this.lastCheckpointAt,
+
+      alarmIntervalMs:
+        ALARM_MS,
+
+      writePolicy:
+        "no startup DB write; closed hour only",
+
+      now:
+        Date.now()
+    };
+  }
+
+  /* =======================================================
+     HISTORY
+======================================================= */
+
+  getHistory(
+    symbol,
+    from,
+    to
+  ) {
+    this.initDB();
+
+    symbol =
+      normalizeSymbol(
+        symbol
+      );
+
+    const start =
+      Number(from) ||
+      Date.now() -
+        24 * HOUR_MS;
+
+    const end =
+      Number(to) ||
+      Date.now();
+
+    const firstHour =
+      hourStartOf(start);
+
+    const lastHour =
+      hourStartOf(end);
+
+    const blocks =
+      new Map();
+
+    if (
+      this.tableExists === true
+    ) {
+      const rows =
+        this.state.storage.sql
+          .exec(
+            `
+            SELECT
+              symbol,
+              hour_start,
+              data,
+              updated_at
+            FROM hour_blocks_v5
+            WHERE symbol = ?
+            AND hour_start >= ?
+            AND hour_start <= ?
+            ORDER BY hour_start ASC
+            `,
+            symbol,
+            firstHour,
+            lastHour
+          )
+          .toArray();
+
+      for (
+        const row
+        of rows
+      ) {
+        try {
+          const block =
+            this.deserializeBlock(
+              row
+            );
+
+          blocks.set(
+            block.hourStart,
+            block
+          );
+        } catch (_) {}
+      }
+    }
+
+    for (
+      const block
+      of this.hourBlocks.values()
+    ) {
+      if (
+        block.symbol !==
+        symbol
+      ) {
+        continue;
+      }
+
+      if (
+        block.hourStart <
+          firstHour ||
+        block.hourStart >
+          lastHour
+      ) {
+        continue;
+      }
+
+      blocks.set(
+        block.hourStart,
+        block
+      );
+    }
+
+    const candles = [];
+
+    for (
+      const block
+      of [
+        ...blocks.values()
+      ].sort(
+        (a, b) =>
+          a.hourStart -
+          b.hourStart
+      )
+    ) {
+      for (
+        const candle
+        of block.candles.values()
+      ) {
+        if (
+          candle.m < start ||
+          candle.m > end
+        ) {
+          continue;
+        }
+
+        const buyVolume =
+          candle.bv;
+
+        const sellVolume =
+          candle.sv;
+
+        candles.push({
+          time:
+            candle.m,
+
+          open:
+            candle.o,
+
+          high:
+            candle.h,
+
+          low:
+            candle.l,
+
+          close:
+            candle.c,
+
+          volume:
+            candle.v,
+
+          turnover:
+            candle.t,
+
+          buyVolume,
+
+          sellVolume,
+
+          buyValue:
+            candle.b,
+
+          sellValue:
+            candle.s,
+
+          buyTrades:
+            candle.bt,
+
+          sellTrades:
+            candle.st,
+
+          delta:
+            buyVolume -
+            sellVolume,
+
+          deltaValue:
+            candle.b -
+            candle.s
+        });
+      }
+    }
+
+    candles.sort(
+      (a, b) =>
+        a.time -
+        b.time
+    );
+
+    return {
+      version:
+        VERSION,
+
+      symbol,
+
+      from:
+        start,
+
+      to:
+        end,
+
+      candles
+    };
+  }
+
+  /* =======================================================
+     FOOTPRINT HISTORY
+======================================================= */
+
+  getFootprint(
+    symbol,
+    minute
+  ) {
+    this.initDB();
+
+    symbol =
+      normalizeSymbol(
+        symbol
+      );
+
+    const target =
+      minuteStartOf(
+        Number(minute)
+      );
+
+    const hour =
+      hourStartOf(
+        target
+      );
+
+    const key =
+      `${symbol}:${hour}`;
+
+    let block =
+      this.hourBlocks.get(
+        key
+      );
+
+    if (
+      !block &&
+      this.tableExists === true
+    ) {
+      const rows =
+        this.state.storage.sql
+          .exec(
+            `
+            SELECT
+              symbol,
+              hour_start,
+              data,
+              updated_at
+            FROM hour_blocks_v5
+            WHERE symbol = ?
+            AND hour_start = ?
+            LIMIT 1
+            `,
+            symbol,
+            hour
+          )
+          .toArray();
+
+      if (rows.length) {
+        block =
+          this.deserializeBlock(
+            rows[0]
+          );
+      }
+    }
+
+    if (!block) {
+      return {
+        version:
+          VERSION,
+
+        symbol,
+
+        minute:
+          target,
+
+        found:
+          false,
+
+        candle:
+          null,
+
+        levels: []
+      };
+    }
+
+    const candle =
+      block.candles.get(
+        target
+      );
+
+    if (!candle) {
+      return {
+        version:
+          VERSION,
+
+        symbol,
+
+        minute:
+          target,
+
+        found:
+          false,
+
+        candle:
+          null,
+
+        levels: []
+      };
+    }
+
+    const levels =
+      [
+        ...candle.levels.values()
+      ]
+        .sort(
+          (a, b) =>
+            a.price -
+            b.price
+        )
+        .map(
+          level => ({
+            price:
+              level.price,
+
+            buyVolume:
+              level.buyVolume,
+
+            sellVolume:
+              level.sellVolume,
+
+            buyValue:
+              level.buyValue,
+
+            sellValue:
+              level.sellValue,
+
+            buyTrades:
+              level.buyTrades,
+
+            sellTrades:
+              level.sellTrades,
+
+            delta:
+              level.buyVolume -
+              level.sellVolume,
+
+            deltaValue:
+              level.buyValue -
+              level.sellValue,
+
+            totalVolume:
+              level.buyVolume +
+              level.sellVolume
+          })
+        );
+
+    const buyVolume =
+      candle.bv;
+
+    const sellVolume =
+      candle.sv;
+
+    return {
+      version:
+        VERSION,
+
+      symbol,
+
+      minute:
+        target,
+
+      found:
+        true,
+
+      candle: {
+        time:
+          candle.m,
+
+        open:
+          candle.o,
+
+        high:
+          candle.h,
+
+        low:
+          candle.l,
+
+        close:
+          candle.c,
+
+        volume:
+          candle.v,
+
+        turnover:
+          candle.t,
+
+        buyVolume,
+
+        sellVolume,
+
+        buyValue:
+          candle.b,
+
+        sellValue:
+          candle.s,
+
+        buyTrades:
+          candle.bt,
+
+        sellTrades:
+          candle.st,
+
+        delta:
+          buyVolume -
+          sellVolume,
+
+        deltaValue:
+          candle.b -
+          candle.s
+      },
+
+      levels
+    };
+  }
+
+  /* =======================================================
+     STORAGE RAM / GZIP READ-ONLY TEST
+     Measures the current Collector RAM only.
+     IMPORTANT: no SQLite read, CREATE, INSERT, UPDATE or DELETE.
+  ======================================================= */
+
+  async testStorageRAM() {
+    const startedAt = Date.now();
+    const now = Date.now();
+    const currentHour = hourStartOf(now);
+
+    const symbols = this.symbols.length;
+
+    let symbolsWithData = 0;
+    const samples = [];
+    const SAMPLE_LIMIT = 16;
+    const YIELD_EVERY = 4;
+
+    // First pass is intentionally lightweight: only inspect Map membership.
+    // No serialization and no GZIP is performed for every symbol.
+    for (const item of this.symbols) {
+      const symbol = normalizeSymbol(
+        typeof item === "string"
+          ? item
+          : item?.symbol
+      );
+
+      const key = `${symbol}:${currentHour}`;
+      const block = this.hourBlocks.get(key);
+
+      if (!block || !block.candles?.size) {
+        continue;
+      }
+
+      symbolsWithData++;
+
+      if (samples.length < SAMPLE_LIMIT) {
+        samples.push(block);
+      }
+    }
+
+    // Compress only a small representative sample. This endpoint must not
+    // monopolize the live Collector DO while the Bybit WebSocket is active.
+    let sampleRawBytes = 0;
+    let sampleGzipBytes = 0;
+    let gzipAvailable = true;
+
+    for (let i = 0; i < samples.length; i++) {
+      const serialized = this.serializeBlock(samples[i]);
+      const raw = utf8ByteLength(serialized);
+
+      sampleRawBytes += raw;
+
+      const gzip = await gzipByteLength(serialized);
+
+      if (gzip === null) {
+        gzipAvailable = false;
+      } else {
+        sampleGzipBytes += gzip;
+      }
+
+      if ((i + 1) % YIELD_EVERY === 0) {
+        await new Promise(resolve => setTimeout(resolve, 0));
+      }
+    }
+
+    const hasSample = samples.length > 0;
+    const rawPerSymbol =
+      hasSample
+        ? sampleRawBytes / samples.length
+        : 0;
+
+    const gzipPerSymbol =
+      hasSample && gzipAvailable
+        ? sampleGzipBytes / samples.length
+        : null;
+
+    // Estimate the full current hour from the representative sample.
+    const rawBytes =
+      Math.round(rawPerSymbol * symbolsWithData);
+
+    const currentGzip =
+      gzipPerSymbol === null
+        ? null
+        : Math.round(
+            gzipPerSymbol * symbolsWithData
+          );
+
+    const estimate = multiplier => ({
+      rawBytes:
+        Math.round(rawBytes * multiplier),
+
+      rawMB:
+        bytesToMB(rawBytes * multiplier),
+
+      rawGB:
+        bytesToGB(rawBytes * multiplier),
+
+      gzipBytes:
+        currentGzip === null
+          ? null
+          : Math.round(currentGzip * multiplier),
+
+      gzipMB:
+        currentGzip === null
+          ? null
+          : bytesToMB(currentGzip * multiplier),
+
+      gzipGB:
+        currentGzip === null
+          ? null
+          : bytesToGB(currentGzip * multiplier)
+    });
+
+    return {
+      ok: true,
+
+      test:
+        "STORAGE_RAM_GZIP_READONLY",
+
+      version:
+        VERSION,
+
+      symbols,
+
+      symbolsWithData,
+
+      currentHour: {
+        start:
+          currentHour,
+
+        startISO:
+          new Date(
+            currentHour
+          ).toISOString(),
+
+        end:
+          currentHour + HOUR_MS,
+
+        endISO:
+          new Date(
+            currentHour + HOUR_MS
+          ).toISOString(),
+
+        rawBytes,
+
+        rawKB:
+          bytesToKB(rawBytes),
+
+        rawMB:
+          bytesToMB(rawBytes),
+
+        gzipBytes:
+          currentGzip,
+
+        gzipKB:
+          currentGzip === null
+            ? null
+            : bytesToKB(currentGzip),
+
+        gzipMB:
+          currentGzip === null
+            ? null
+            : bytesToMB(currentGzip),
+
+        compression:
+          compressionInfo(
+            rawBytes,
+            currentGzip
+          )
+      },
+
+      estimated24h:
+        estimate(24),
+
+      estimated7d:
+        estimate(24 * 7),
+
+      estimated30d:
+        estimate(24 * 30),
+
+      databaseWrite:
+        false,
+
+      databaseModified:
+        false,
+
+      databaseRead:
+        false,
+
+      databaseWriteLabel:
+        "FALSE",
+
+      databaseModifiedLabel:
+        "FALSE",
+
+      databaseReadLabel:
+        "FALSE",
+
+      ram: {
+        hourBlocksInMemory:
+          this.hourBlocks.size,
+
+        currentHourBlocksWithData:
+          symbolsWithData,
+
+        currentHourOnly:
+          true,
+
+        sampledSymbols:
+          samples.length,
+
+        sampleLimit:
+          SAMPLE_LIMIT
+      },
+
+      storageModel:
+        "1 symbol + 1 hour = 1 serialized block",
+
+      source:
+        "Current Collector RAM",
+
+      compression:
+        "GZIP lossless",
+
+      estimateMethod:
+        "Representative current-hour RAM sample; no full-Collector GZIP sweep",
+
+      elapsedMs:
+        Date.now() - startedAt,
+
+      note:
+        "READ-ONLY. No Durable Object SQLite read or write is performed. GZIP is calculated on a small sample to avoid blocking the live Collector."
+    };
+  }
+
+  /* =======================================================
+     INTERNAL FETCH
+======================================================= */
+
+  async fetch(request) {
+    const url =
+      new URL(
+        request.url
+      );
+
+    const path =
+      url.pathname;
+
+    try {
+      if (
+        request.method ===
+        "OPTIONS"
+      ) {
+        return new Response(
+          null,
+          {
+            status: 204,
+            headers: CORS
+          }
+        );
+      }
+
+      if (
+        path ===
+        "/internal/test/storage"
+      ) {
+        return json(
+          await this.testStorageRAM()
+        );
+      }
+
+      this.initDB();
+
+      if (
+        path ===
+        "/internal/start"
+      ) {
+        return json(
+          await this.start()
+        );
+      }
+
+      if (
+        path ===
+        "/internal/status"
+      ) {
+        return json(
+          this.statusObject()
+        );
+      }
+
+      if (
+        path ===
+        "/internal/refresh"
+      ) {
+        const result =
+          await this.refreshSymbols();
+
+        return json({
+          ok: true,
+
+          ...result,
+
+          status:
+            this.statusObject()
+        });
+      }
+
+      if (
+        path ===
+        "/internal/history"
+      ) {
+        const symbol =
+          url.searchParams.get(
+            "symbol"
+          );
+
+        const from =
+          url.searchParams.get(
+            "from"
+          );
+
+        const to =
+          url.searchParams.get(
+            "to"
+          );
+
+        return json(
+          this.getHistory(
+            symbol,
+            from,
+            to
+          )
+        );
+      }
+
+      if (
+        path ===
+        "/internal/history/footprint"
+      ) {
+        const symbol =
+          url.searchParams.get(
+            "symbol"
+          );
+
+        const minute =
+          url.searchParams.get(
+            "minute"
+          );
+
+        return json(
+          this.getFootprint(
+            symbol,
+            minute
+          )
+        );
+      }
+
+      return json(
+        {
+          ok: false,
+
+          error:
+            "Internal route not found"
+        },
+        404
+      );
+    } catch (error) {
+      this.lastError =
+        String(
+          error?.message ||
+          error
+        );
+
+      return json(
+        {
+          ok: false,
+
+          error:
+            this.lastError,
+
+          errorName:
+            error?.name ||
+            "Error",
+
+          stack:
+            error?.stack ||
+            "",
+
+          version:
+            VERSION,
+
+          path
+        },
+        500
+      );
+    }
+  }
 }
+
+/* =========================================================
+   PUBLIC COLLECTOR FUNCTIONS
+========================================================= */
+
+async function startCollector(
+  env
+) {
+  try {
+    const stub =
+      collectorStub(env);
+
+    return stub.fetch(
+      "https://collector/internal/start"
+    );
+  } catch (error) {
+    return json(
+      {
+        ok: false,
+
+        error:
+          String(
+            error?.message ||
+            error
+          ),
+
+        errorName:
+          error?.name ||
+          "Error",
+
+        stack:
+          error?.stack ||
+          "",
+
+        version:
+          VERSION
+      },
+      500
+    );
+  }
+}
+
+async function collectorStatus(
+  env
+) {
+  try {
+    const stub =
+      collectorStub(env);
+
+    return stub.fetch(
+      "https://collector/internal/status"
+    );
+  } catch (error) {
+    return json(
+      {
+        ok: false,
+
+        error:
+          String(
+            error?.message ||
+            error
+          ),
+
+        errorName:
+          error?.name ||
+          "Error",
+
+        stack:
+          error?.stack ||
+          "",
+
+        version:
+          VERSION
+      },
+      500
+    );
+  }
+}
+
+async function collectorRefresh(
+  env
+) {
+  try {
+    const stub =
+      collectorStub(env);
+
+    return stub.fetch(
+      "https://collector/internal/refresh"
+    );
+  } catch (error) {
+    return json(
+      {
+        ok: false,
+
+        error:
+          String(
+            error?.message ||
+            error
+          ),
+
+        errorName:
+          error?.name ||
+          "Error",
+
+        stack:
+          error?.stack ||
+          "",
+
+        version:
+          VERSION
+      },
+      500
+    );
+  }
+}
+
+async function collectorHistory(
+  env,
+  url
+) {
+  try {
+    const stub =
+      collectorStub(env);
+
+    const target =
+      new URL(
+        "https://collector/internal/history"
+      );
+
+    for (
+      const key of [
+        "symbol",
+        "from",
+        "to"
+      ]
+    ) {
+      const value =
+        url.searchParams.get(
+          key
+        );
+
+      if (
+        value !== null
+      ) {
+        target.searchParams.set(
+          key,
+          value
+        );
+      }
+    }
+
+    return stub.fetch(
+      target.toString()
+    );
+  } catch (error) {
+    return json(
+      {
+        ok: false,
+
+        error:
+          String(
+            error?.message ||
+            error
+          ),
+
+        errorName:
+          error?.name ||
+          "Error",
+
+        stack:
+          error?.stack ||
+          "",
+
+        version:
+          VERSION
+      },
+      500
+    );
+  }
+}
+
+async function collectorStorageTest(env) {
+  try {
+    const stub = collectorStub(env);
+
+    const target =
+      new URL(
+        "https://collector/internal/test/storage"
+      );
+
+    return stub.fetch(
+      target.toString()
+    );
+  } catch (error) {
+    return json(
+      {
+        ok: false,
+        error: String(
+          error?.message ||
+          error
+        ),
+        errorName: error?.name || "Error",
+        stack: error?.stack || "",
+        version: VERSION
+      },
+      500
+    );
+  }
+}
+
+async function collectorFootprint(
+  env,
+  url
+) {
+  try {
+    const stub =
+      collectorStub(env);
+
+    const target =
+      new URL(
+        "https://collector/internal/history/footprint"
+      );
+
+    for (
+      const key of [
+        "symbol",
+        "minute"
+      ]
+    ) {
+      const value =
+        url.searchParams.get(
+          key
+        );
+
+      if (
+        value !== null
+      ) {
+        target.searchParams.set(
+          key,
+          value
+        );
+      }
+    }
+
+    return stub.fetch(
+      target.toString()
+    );
+  } catch (error) {
+    return json(
+      {
+        ok: false,
+
+        error:
+          String(
+            error?.message ||
+            error
+          ),
+
+        errorName:
+          error?.name ||
+          "Error",
+
+        stack:
+          error?.stack ||
+          "",
+
+        version:
+          VERSION
+      },
+      500
+    );
+  }
+}
+
+/* =========================================================
+   DEFAULT EXPORT
+========================================================= */
 
 export default {
-  async fetch(request) {
+  async fetch(
+    request,
+    env,
+    ctx
+  ) {
+    const url =
+      new URL(
+        request.url
+      );
+
     try {
-      if (request.method === "OPTIONS") {
-        return new Response(null, { status: 204, headers: CORS });
-      }
-
-      const url = new URL(request.url);
-
-      if (url.pathname === "/api/health") {
-        return json(await health());
-      }
-
-      if (url.pathname === "/api/test/volume") {
-        const symbol = normalizeSymbol(url.searchParams.get("symbol"));
-        return json(await testVolume(symbol));
-      }
-
-      if (url.pathname === "/api/test/full") {
-        const symbol = normalizeSymbol(url.searchParams.get("symbol"));
-        const tradeLimit = clampInt(
-          url.searchParams.get("tradeLimit"),
-          100,
-          MAX_TRADE_LIMIT,
-          DEFAULT_TRADE_LIMIT
+      if (
+        request.method ===
+        "OPTIONS"
+      ) {
+        return new Response(
+          null,
+          {
+            status: 204,
+            headers: CORS
+          }
         );
-        const bookLimit = clampInt(
-          url.searchParams.get("bookLimit"),
-          10,
-          MAX_BOOK_LIMIT,
-          DEFAULT_BOOK_LIMIT
-        );
-
-        return json(await testFull(symbol, tradeLimit, bookLimit));
       }
 
-      return json({
-        ok: false,
-        version: VERSION,
-        error: "NOT_FOUND",
-        available: [
-          "/api/health",
-          "/api/test/volume?symbol=BTCUSDT",
-          "/api/test/full?symbol=BTCUSDT"
-        ]
-      }, 404);
+      /* ===================================================
+         HEALTH
+      =================================================== */
+
+      if (
+        url.pathname ===
+        "/api/health"
+      ) {
+        return json({
+          ok: true,
+
+          version:
+            VERSION,
+
+          storage:
+            "AbsorptionStorageV5",
+
+          table:
+            TABLE_NAME,
+
+          maxRows:
+            MAX_ROWS,
+
+          cleanupTarget:
+            CLEANUP_TARGET_ROWS,
+
+          storageModel:
+            "1 symbol + 1 hour = 1 row",
+
+          currentHour:
+            "RAM only until hour closes",
+
+          currentHourProtected:
+            true,
+
+          oldStorage:
+            "preserved / new writes disabled",
+
+          symbolSource:
+            "Bybit Linear USDT Perpetual",
+
+          marketData:
+            "Bybit",
+
+          lbankFilter:
+            "disabled",
+
+          writePolicy:
+            "no startup DB write; closed hour only",
+
+          volumeTest:
+            "/api/test/volume?symbol=BTCUSDT",
+
+          storageTest:
+            "/api/test/storage",
+
+          compression:
+            "GZIP lossless"
+        });
+      }
+
+      /* ===================================================
+         DIRECT BYBIT DEBUG
+      =================================================== */
+
+      if (
+        url.pathname ===
+        "/api/debug/bybit"
+      ) {
+        return json(
+          await debugBybit()
+        );
+      }
+
+      /* ===================================================
+         VOLUME TEST
+      =================================================== */
+
+      if (
+        url.pathname ===
+        "/api/test/volume"
+      ) {
+        const symbol =
+          normalizeSymbol(
+            url.searchParams.get(
+              "symbol"
+            ) ||
+            DEFAULT_SYMBOL
+          );
+
+        return json(
+          await testVolume(
+            symbol
+          )
+        );
+      }
+
+      /* ===================================================
+         TEST
+      =================================================== */
+
+      if (
+        url.pathname ===
+        "/api/test"
+      ) {
+        return json({
+          ok: true,
+
+          version:
+            VERSION,
+
+          time:
+            Date.now(),
+
+          volumeTest:
+            "/api/test/volume?symbol=BTCUSDT",
+
+          storageTest:
+            "/api/test/storage"
+        });
+      }
+
+      /* ===================================================
+         STORAGE RAM / GZIP READ-ONLY TEST
+      =================================================== */
+
+      if (
+        url.pathname ===
+        "/api/test/storage"
+      ) {
+        return collectorStorageTest(env);
+      }
+
+      /* ===================================================
+         SYMBOLS
+      =================================================== */
+
+      if (
+        url.pathname ===
+        "/api/symbols"
+      ) {
+        const symbols =
+          await getBybitSymbols();
+
+        return json({
+          ok: true,
+
+          count:
+            symbols.length,
+
+          source:
+            "Bybit Linear USDT Perpetual",
+
+          symbols
+        });
+      }
+
+      /* ===================================================
+         COLLECTOR START
+      =================================================== */
+
+      if (
+        url.pathname ===
+        "/api/collector/start"
+      ) {
+        return startCollector(
+          env
+        );
+      }
+
+      /* ===================================================
+         COLLECTOR STATUS
+      =================================================== */
+
+      if (
+        url.pathname ===
+        "/api/collector/status"
+      ) {
+        return collectorStatus(
+          env
+        );
+      }
+
+      /* ===================================================
+         COLLECTOR REFRESH
+      =================================================== */
+
+      if (
+        url.pathname ===
+        "/api/collector/refresh"
+      ) {
+        return collectorRefresh(
+          env
+        );
+      }
+
+      /* ===================================================
+         HISTORY
+      =================================================== */
+
+      if (
+        url.pathname ===
+        "/api/history"
+      ) {
+        return collectorHistory(
+          env,
+          url
+        );
+      }
+
+      /* ===================================================
+         FOOTPRINT HISTORY
+      =================================================== */
+
+      if (
+        url.pathname ===
+        "/api/history/footprint"
+      ) {
+        return collectorFootprint(
+          env,
+          url
+        );
+      }
+
+      /* ===================================================
+         MARKET
+      =================================================== */
+
+      if (
+        url.pathname ===
+        "/api/market"
+      ) {
+        const symbol =
+          normalizeSymbol(
+            url.searchParams.get(
+              "symbol"
+            ) ||
+            DEFAULT_SYMBOL
+          );
+
+        const interval =
+          normalizeInterval(
+            url.searchParams.get(
+              "interval"
+            ) ||
+            DEFAULT_INTERVAL
+          );
+
+        return json(
+          await getMarket(
+            symbol,
+            interval
+          )
+        );
+      }
+
+      /* ===================================================
+         FOOTPRINT
+      =================================================== */
+
+      if (
+        url.pathname ===
+        "/api/footprint"
+      ) {
+        const symbol =
+          normalizeSymbol(
+            url.searchParams.get(
+              "symbol"
+            ) ||
+            DEFAULT_SYMBOL
+          );
+
+        const market =
+          await getMarket(
+            symbol,
+            "1"
+          );
+
+        return json({
+          version:
+            VERSION,
+
+          symbol,
+
+          footprint:
+            market.footprint,
+
+          stats:
+            market.stats,
+
+          absorption:
+            market.absorption
+        });
+      }
+
+      /* ===================================================
+         ORDERBOOK
+      =================================================== */
+
+      if (
+        url.pathname ===
+        "/api/orderbook"
+      ) {
+        const symbol =
+          normalizeSymbol(
+            url.searchParams.get(
+              "symbol"
+            ) ||
+            DEFAULT_SYMBOL
+          );
+
+        const result =
+          await bybit(
+            "/v5/market/orderbook",
+            {
+              category:
+                "linear",
+
+              symbol,
+
+              limit:
+                ORDERBOOK_LIMIT
+            }
+          );
+
+        return json({
+          version:
+            VERSION,
+
+          symbol,
+
+          orderbook:
+            orderbookStats(
+              result
+            )
+        });
+      }
+
+      /* ===================================================
+         CANDLES
+      =================================================== */
+
+      if (
+        url.pathname ===
+        "/api/candles"
+      ) {
+        const symbol =
+          normalizeSymbol(
+            url.searchParams.get(
+              "symbol"
+            ) ||
+            DEFAULT_SYMBOL
+          );
+
+        const interval =
+          normalizeInterval(
+            url.searchParams.get(
+              "interval"
+            ) ||
+            DEFAULT_INTERVAL
+          );
+
+        const result =
+          await bybit(
+            "/v5/market/kline",
+            {
+              category:
+                "linear",
+
+              symbol,
+
+              interval,
+
+              limit:
+                KLINE_LIMIT
+            }
+          );
+
+        return json({
+          version:
+            VERSION,
+
+          symbol,
+
+          interval,
+
+          candles:
+            parseKlines(
+              result.list
+            )
+        });
+      }
+
+      /* ===================================================
+         ASSETS
+      =================================================== */
+
+      if (
+        env.ASSETS
+      ) {
+        return env.ASSETS.fetch(
+          request
+        );
+      }
+
+      return json(
+        {
+          ok: false,
+
+          error:
+            "Route not found",
+
+          version:
+            VERSION
+        },
+        404
+      );
     } catch (error) {
-      return json({
-        ok: false,
-        version: VERSION,
-        error: String(error?.message || error),
-        databaseWrite: false,
-        databaseRead: false,
-        databaseModified: false
-      }, 500);
+      return json(
+        {
+          ok: false,
+
+          error:
+            String(
+              error?.message ||
+              error
+            ),
+
+          errorName:
+            error?.name ||
+            "Error",
+
+          stack:
+            error?.stack ||
+            "",
+
+          version:
+            VERSION,
+
+          path:
+            url.pathname
+        },
+        500
+      );
     }
+  },
+
+  async scheduled(
+    event,
+    env,
+    ctx
+  ) {
+    ctx.waitUntil(
+      startCollector(env)
+    );
   }
 };
