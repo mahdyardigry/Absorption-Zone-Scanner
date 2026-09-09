@@ -1,32 +1,4 @@
-name = "absorption-zone-scanner"
+name = "bybit-data-benchmark"
 main = "worker.js"
 compatibility_date = "2026-09-05"
-
 workers_dev = true
-
-[assets]
-directory = "./public"
-binding = "ASSETS"
-
-# Durable Object قدیمی — دست نخورده
-[[durable_objects.bindings]]
-name = "TRADE_COLLECTOR"
-class_name = "TradeCollector"
-
-# Durable Object جدید V5
-[[durable_objects.bindings]]
-name = "TRADE_COLLECTOR_V5"
-class_name = "AbsorptionStorageV5"
-
-# کلاس‌های Durable Object که این Worker صادر می‌کند
-[exports.TradeCollector]
-type = "durable-object"
-storage = "sqlite"
-
-[exports.AbsorptionStorageV5]
-type = "durable-object"
-storage = "sqlite"
-
-# Cron موقتاً خاموش است
-[triggers]
-crons = []
