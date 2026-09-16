@@ -3920,23 +3920,19 @@ function drawFootprintWorld(
   const deltaHistEnd =
     candleLeft-28;
 
-  const footprintColumnGap = 62;
-
   const askX =
     center-
-    footprintColumnGap;
+    candleWidth*.27;
 
   const priceX =
     center;
 
   const bidX =
     center+
-    footprintColumnGap;
+    candleWidth*.27;
 
   const deltaX =
-    center+
-    footprintColumnGap+
-    48;
+    candleRight+42;
 
   const deltaEnd =
     w-15;
@@ -4379,7 +4375,7 @@ function drawFootprintWorld(
       "right";
 
     ctx.font =
-      "bold 9px Tahoma";
+      "bold 10px Tahoma";
 
     ctx.fillStyle =
       row.ask>0
@@ -4408,10 +4404,10 @@ function drawFootprintWorld(
 
     const priceWidth =
       Math.max(
-        76,
+        58,
         ctx.measureText(
           priceText
-        ).width+18
+        ).width+12
       );
 
     ctx.fillStyle =
@@ -4457,7 +4453,7 @@ function drawFootprintWorld(
       "left";
 
     ctx.font =
-      "bold 9px Tahoma";
+      "bold 10px Tahoma";
 
     ctx.fillStyle =
       row.bid>0
@@ -4480,7 +4476,7 @@ function drawFootprintWorld(
       "left";
 
     ctx.font =
-      "bold 9px Tahoma";
+      "bold 10px Tahoma";
 
     if(
       row.delta>0
