@@ -4242,7 +4242,13 @@ function drawFootprintWorld(
     const row =
       fp.levels[i];
 
-    const levelStep = 22;
+    const levelStep = Math.min(
+  42,
+  Math.max(
+    18,
+    18 + (state.fpScale - 1) * 2.4
+  )
+);
     const levelTotalHeight = Math.max(
       bottom - top,
       (fp.levels.length - 1) * levelStep
