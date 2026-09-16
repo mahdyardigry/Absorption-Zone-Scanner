@@ -4238,12 +4238,13 @@ function drawFootprintWorld(
     const row =
       fp.levels[i];
 
-    const yy =
-      clamp(
-        y(row.price),
-        top,
-        bottom
-      );
+    const levelStep = 22;
+    const levelTotalHeight = Math.max(
+      bottom - top,
+      (fp.levels.length - 1) * levelStep
+    );
+    const levelStart = h / 2 - levelTotalHeight / 2;
+    const yy = levelStart + i * levelStep;
 
     /*
       LEVEL LINE
