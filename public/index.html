@@ -7762,6 +7762,16 @@ async function loadMarket(
             a.time-b.time
         );
 
+    console.log(
+      "CANDLE_ARRAY_DEBUG",
+      "raw=",
+      Array.isArray(data.candles) ? data.candles.length : -1,
+      "normalized=",
+      newCandles.length,
+      "first=",
+      newCandles[0]
+    );
+
     if(
       !newCandles.length
     ){
