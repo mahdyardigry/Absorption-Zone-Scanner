@@ -2801,6 +2801,14 @@ function drawChart(){
 
   updateChartZoomBadge();
 
+  document.title =
+    "CANDLES=" +
+    state.candles.length +
+    " | " +
+    state.symbol +
+    " | " +
+    state.interval;
+
   chartCtx.fillStyle = "#ff00ff";
   chartCtx.font = "bold 14px sans-serif";
   chartCtx.fillText(
