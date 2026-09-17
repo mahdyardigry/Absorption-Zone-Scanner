@@ -14,19 +14,33 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Build & Deploy Worker
-        uses: cloudflare/wrangler-action@v3
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: deploy
+          node-version: 22
+
+      - name: Install Wrangler
+        run: npm install --global wrangler@latest
+
+      - name: Deploy Worker
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set +e
+          wrangler deploy 2>&1 | tee deploy-output.log
+          status=${PIPESTATUS[0]}
+
+          {
+            echo "## Wrangler Deploy Output"
+            echo '```text'
+            cat deploy-output.log
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          exit "$status"
 
       - name: Deployment Summary
         if: always()
         run: |
-          {
-            echo "## Cloudflare Deployment"
-            echo ""
-            echo "Workflow reached the deployment step."
-            echo "See the Build & Deploy Worker step above for Wrangler output."
-          } >> "$GITHUB_STEP_SUMMARY"
+          echo "Deploy workflow finished."
