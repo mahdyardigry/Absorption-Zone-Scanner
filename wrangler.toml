@@ -1,5 +1,8 @@
 name = "absorption-zone-scanner"
 main = "worker.js"
 compatibility_date = "2026-09-05"
-
 workers_dev = true
+
+[assets]
+directory = "./public"
+binding = "ASSETS"
