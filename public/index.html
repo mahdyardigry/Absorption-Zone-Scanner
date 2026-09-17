@@ -349,6 +349,96 @@ button{
   overscroll-behavior:none;
 }
 
+
+/* =========================================================
+   FOOTPRINT DETAIL TABLE
+========================================================= */
+.fp-detail-table-wrap{
+  margin-top:10px;
+  border:1px solid rgba(120,145,158,.28);
+  border-radius:10px;
+  overflow:hidden;
+  background:rgba(7,16,24,.88);
+}
+
+.fp-detail-title{
+  padding:9px 12px;
+  font-size:11px;
+  font-weight:bold;
+  color:#dce8ee;
+  border-bottom:1px solid rgba(120,145,158,.20);
+}
+
+.fp-detail-scroll{
+  max-height:300px;
+  overflow-y:auto;
+  -webkit-overflow-scrolling:touch;
+}
+
+.fp-detail-table{
+  width:100%;
+  border-collapse:collapse;
+  table-layout:fixed;
+  font-size:11px;
+  direction:ltr;
+}
+
+.fp-detail-table th{
+  position:sticky;
+  top:0;
+  z-index:2;
+  padding:7px 4px;
+  background:#101d27;
+  color:#aebfc8;
+  border-bottom:1px solid rgba(120,145,158,.25);
+  font-weight:bold;
+}
+
+.fp-detail-table td{
+  padding:6px 4px;
+  text-align:center;
+  border-bottom:1px solid rgba(120,145,158,.10);
+  white-space:nowrap;
+  font-variant-numeric:tabular-nums;
+}
+
+.fp-detail-table td.price{
+  color:#f0f6fa;
+  font-weight:bold;
+}
+
+.fp-detail-table td.ask{
+  color:#39db92;
+  font-weight:bold;
+}
+
+.fp-detail-table td.bid{
+  color:#ef6875;
+  font-weight:bold;
+}
+
+.fp-detail-table td.delta-positive{
+  color:#39db92;
+  font-weight:bold;
+}
+
+.fp-detail-table td.delta-negative{
+  color:#ef6875;
+  font-weight:bold;
+}
+
+.fp-detail-table td.delta-zero{
+  color:#718895;
+  font-weight:bold;
+}
+
+.fp-detail-empty{
+  padding:14px;
+  text-align:center;
+  color:#718895;
+  font-size:11px;
+}
+
 #footprintCanvas{
   width:100%;
   height:100%;
@@ -783,6 +873,33 @@ body.landscape-chart-mode .chart-panel .tabs{
 
       <div class="fp-message" id="fpMessage"></div>
 
+    </div>
+
+    <div class="fp-detail-table-wrap">
+      <div class="fp-detail-title">
+        جزئیات سطوح قیمت — کندل انتخابی
+      </div>
+
+      <div class="fp-detail-scroll">
+        <table class="fp-detail-table">
+          <thead>
+            <tr>
+              <th>PRICE</th>
+              <th>ASK</th>
+              <th>BID</th>
+              <th>DELTA</th>
+            </tr>
+          </thead>
+
+          <tbody id="fpDetailBody">
+            <tr>
+              <td colspan="4" class="fp-detail-empty">
+                —
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </div>
 
     <div class="legend">
@@ -2369,6 +2486,87 @@ function updateStats(){
    SELECTED INFO
 ========================================================= */
 
+
+function updateFootprintDetailTable(fp){
+
+  const body =
+    $("fpDetailBody");
+
+  if(!body)
+    return;
+
+  body.innerHTML = "";
+
+  if(
+    !fp ||
+    !Array.isArray(fp.levels) ||
+    !fp.levels.length
+  ){
+    body.innerHTML =
+      `<tr>
+        <td colspan="4" class="fp-detail-empty">
+          داده‌ای برای این کندل وجود ندارد
+        </td>
+      </tr>`;
+
+    return;
+  }
+
+  const fragment =
+    document.createDocumentFragment();
+
+  for(const row of fp.levels){
+
+    const tr =
+      document.createElement("tr");
+
+    const price =
+      document.createElement("td");
+    price.className = "price";
+    price.textContent =
+      formatPrice(row.price);
+
+    const ask =
+      document.createElement("td");
+    ask.className = "ask";
+    ask.textContent =
+      row.ask > 0
+        ? fmt(row.ask)
+        : "0";
+
+    const bid =
+      document.createElement("td");
+    bid.className = "bid";
+    bid.textContent =
+      row.bid > 0
+        ? fmt(row.bid)
+        : "0";
+
+    const delta =
+      document.createElement("td");
+
+    delta.className =
+      row.delta > 0
+        ? "delta-positive"
+        : row.delta < 0
+          ? "delta-negative"
+          : "delta-zero";
+
+    delta.textContent =
+      (row.delta > 0 ? "+" : "") +
+      fmt(row.delta);
+
+    tr.appendChild(price);
+    tr.appendChild(ask);
+    tr.appendChild(bid);
+    tr.appendChild(delta);
+
+    fragment.appendChild(tr);
+  }
+
+  body.appendChild(fragment);
+}
+
 function updateSelectedInfo(){
 
   const candle =
@@ -2389,6 +2587,8 @@ function updateSelectedInfo(){
 
     $("selectedVolume").textContent =
       "Volume: —";
+
+    updateFootprintDetailTable(null);
 
     drawFootprint();
 
@@ -2441,6 +2641,8 @@ function updateSelectedInfo(){
     fmt(
       fp.totalVolume
     );
+
+  updateFootprintDetailTable(fp);
 
   $("selectedDelta").className =
     fp.totalDelta > 0
