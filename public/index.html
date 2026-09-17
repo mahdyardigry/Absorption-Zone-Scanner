@@ -1017,6 +1017,8 @@ const state = {
 
   loading:false,
 
+  loadRequestId:0,
+
   userSelectedHistorical:false,
 
   ws:null,
@@ -5766,13 +5768,32 @@ async function loadMarket(
   options={}
 ){
 
-  if(
-    state.loading
-  ){
+  const requestId =
+    ++state.loadRequestId;
 
-    return;
+  /*
+    Allow a new Symbol / Timeframe request to replace
+    the previous load instead of being silently ignored.
+  */
 
+  if(state.ws){
+    try{
+      state.ws.close();
+    }catch(e){}
+    state.ws = null;
   }
+
+  if(state.wsReconnectTimer){
+    clearTimeout(state.wsReconnectTimer);
+    state.wsReconnectTimer = null;
+  }
+
+  if(state.wsPingTimer){
+    clearInterval(state.wsPingTimer);
+    state.wsPingTimer = null;
+  }
+
+  state.wsConnected = false;
 
   const previousSelectedTime =
     state.candles[
@@ -5843,6 +5864,12 @@ async function loadMarket(
       await fetchJson(
         url
       );
+
+    if(
+      requestId !== state.loadRequestId
+    ){
+      return;
+    }
 
     if(
       !Array.isArray(
@@ -6007,8 +6034,12 @@ async function loadMarket(
 
   }finally{
 
-    state.loading =
-      false;
+    if(
+      requestId === state.loadRequestId
+    ){
+      state.loading =
+        false;
+    }
 
   }
 
