@@ -3379,6 +3379,682 @@ function drawMarketOverlay(info, px, py, volumeTop){
   chartCtx.stroke();
 
   /*
+    ORDER BOOK
+    Real current Bybit order-book snapshot.
+  */
+  if(
+    state.activeTab ===
+    "Order Book"
+  ){
+
+    const ob =
+      state.orderbook || {};
+
+    const bids =
+      Array.isArray(ob.bids)
+        ? ob.bids
+        : [];
+
+    const asks =
+      Array.isArray(ob.asks)
+        ? ob.asks
+        : [];
+
+    chartCtx.font =
+      "11px Tahoma";
+
+    chartCtx.fillStyle =
+      "rgba(230,240,250,.95)";
+
+    chartCtx.fillText(
+      "ORDER BOOK · CURRENT SNAPSHOT",
+      info.left + 8,
+      info.top + 20
+    );
+
+    chartCtx.fillStyle =
+      "rgba(70,220,150,.95)";
+
+    chartCtx.fillText(
+      "BID " +
+      formatMarketNumber(
+        ob.buyValue || 0
+      ),
+      info.left + 8,
+      info.top + 42
+    );
+
+    chartCtx.fillStyle =
+      "rgba(240,90,105,.95)";
+
+    chartCtx.fillText(
+      "ASK " +
+      formatMarketNumber(
+        ob.sellValue || 0
+      ),
+      info.left + 8,
+      info.top + 62
+    );
+
+    const rows =
+      Math.min(
+        8,
+        Math.max(
+          bids.length,
+          asks.length
+        )
+      );
+
+    for(
+      let i=0;
+      i<rows;
+      i++
+    ){
+
+      const y =
+        info.top +
+        88 +
+        i*22;
+
+      const bid =
+        bids[i];
+
+      const ask =
+        asks[i];
+
+      if(bid){
+
+        chartCtx.fillStyle =
+          "rgba(70,220,150,.90)";
+
+        chartCtx.fillText(
+          "B " +
+          Number(bid[0]).toFixed(4) +
+          " · " +
+          formatMarketNumber(
+            bid[1]
+          ),
+          info.left + 8,
+          y
+        );
+      }
+
+      if(ask){
+
+        chartCtx.fillStyle =
+          "rgba(240,90,105,.90)";
+
+        chartCtx.fillText(
+          "A " +
+          Number(ask[0]).toFixed(4) +
+          " · " +
+          formatMarketNumber(
+            ask[1]
+          ),
+          info.left + 190,
+          y
+        );
+      }
+    }
+
+    chartCtx.fillStyle =
+      "rgba(220,230,240,.9)";
+
+    chartCtx.fillText(
+      "SPREAD " +
+      formatMarketNumber(
+        ob.spread || 0
+      ) +
+      " · " +
+      (
+        ob.pressure ||
+        "NEUTRAL"
+      ),
+      info.left + 8,
+      info.top + 88 +
+      rows*22
+    );
+  }
+
+  /*
+    ABSORPTION
+    Real Worker absorption signal.
+    Calculated by detectAbsorption() for the latest Worker candle.
+  */
+  if(
+    state.activeTab ===
+    "Absorption"
+  ){
+
+    const a =
+      state.absorption;
+
+    chartCtx.font =
+      "11px Tahoma";
+
+    chartCtx.fillStyle =
+      "rgba(230,240,250,.95)";
+
+    chartCtx.fillText(
+      "ABSORPTION · REAL BYBIT DATA",
+      info.left + 8,
+      info.top + 20
+    );
+
+    if(!a){
+
+      chartCtx.fillStyle =
+        "rgba(220,230,240,.85)";
+
+      chartCtx.fillText(
+        "NO ABSORPTION DATA",
+        info.left + 8,
+        info.top + 44
+      );
+
+    }else{
+
+      const type =
+        String(
+          a.type ||
+          "NONE"
+        );
+
+      const score =
+        Number(a.score) || 0;
+
+      const bodyRatio =
+        Number(a.bodyRatio);
+
+      const pressure =
+        String(
+          a.pressure ||
+          "NONE"
+        );
+
+      chartCtx.fillStyle =
+        type === "BUY_ABSORPTION"
+          ? "rgba(70,220,150,.95)"
+          : type === "SELL_ABSORPTION"
+            ? "rgba(240,90,105,.95)"
+            : "rgba(220,230,240,.90)";
+
+      chartCtx.fillText(
+        type +
+        " · SCORE " +
+        score,
+        info.left + 8,
+        info.top + 44
+      );
+
+      chartCtx.fillStyle =
+        "rgba(220,230,240,.90)";
+
+      chartCtx.fillText(
+        "PRESSURE · " +
+        pressure,
+        info.left + 8,
+        info.top + 64
+      );
+
+      chartCtx.fillText(
+        "BODY RATIO · " +
+        (
+          Number.isFinite(bodyRatio)
+            ? bodyRatio.toFixed(3)
+            : "—"
+        ),
+        info.left + 8,
+        info.top + 84
+      );
+
+      chartCtx.fillStyle =
+        "rgba(180,200,215,.85)";
+
+      chartCtx.fillText(
+        "CURRENT SIGNAL · latest Worker candle",
+        info.left + 8,
+        info.top + 104
+      );
+    }
+  }
+
+  /*
+    LARGE TRADES
+    Real Bybit trades from selected candle.
+  */
+  if(
+    state.activeTab ===
+    "Large Trades"
+  ){
+
+    const large =
+      largeTradesForCandle();
+
+    chartCtx.font =
+      "11px Tahoma";
+
+    chartCtx.fillStyle =
+      "rgba(230,240,250,.95)";
+
+    chartCtx.fillText(
+      "LARGE TRADES · REAL BYBIT TRADES",
+      info.left + 8,
+      info.top + 20
+    );
+
+    chartCtx.fillText(
+      large.length +
+      " large trades",
+      info.left + 8,
+      info.top + 40
+    );
+
+    for(
+      const t of large.slice(0,20)
+    ){
+
+      const price =
+        Number(t.price);
+
+      const value =
+        Number(t.value) || 0;
+
+      if(
+        !Number.isFinite(price) ||
+        value <= 0
+      ){
+        continue;
+      }
+
+      const ratio =
+        Math.max(
+          0,
+          Math.min(
+            1,
+            (
+              t.time -
+              candle.time
+            ) /
+            candle.duration
+          )
+        );
+
+      const x =
+        info.left +
+        (
+          info.right -
+          info.left
+        ) *
+        ratio;
+
+      const y =
+        py(price);
+
+      if(
+        y < info.top ||
+        y > volumeTop
+      ){
+        continue;
+      }
+
+      const radius =
+        Math.min(
+          13,
+          5 +
+          Math.log10(
+            Math.max(
+              1,
+              value
+            )
+          )
+        );
+
+      chartCtx.beginPath();
+
+      chartCtx.arc(
+        x,
+        y,
+        radius,
+        0,
+        Math.PI*2
+      );
+
+      chartCtx.fillStyle =
+        t.side === "buy"
+          ? "rgba(70,220,150,.80)"
+          : "rgba(240,90,105,.80)";
+
+      chartCtx.fill();
+
+      chartCtx.strokeStyle =
+        "rgba(255,255,255,.55)";
+
+      chartCtx.stroke();
+
+      chartCtx.fillStyle =
+        "rgba(240,245,250,.95)";
+
+      chartCtx.fillText(
+        formatMarketNumber(value),
+        x + radius + 4,
+        y + 4
+      );
+    }
+  }
+
+  /*
+    DELTA / CVD
+    Real Bybit trades across loaded candles.
+  */
+  if(
+    state.activeTab ===
+    "Delta/CVD"
+  ){
+
+    let cumulative = 0;
+
+    const points = [];
+
+    for(
+      let i=0;
+      i<state.candles.length;
+      i++
+    ){
+
+      const c =
+        state.candles[i];
+
+      let delta = 0;
+
+      for(
+        const t of state.trades
+      ){
+
+        if(
+          t.time >= c.time &&
+          t.time <
+            c.time +
+            c.duration
+        ){
+
+          const size =
+            Number(t.size) || 0;
+
+          if(
+            t.side === "buy"
+          ){
+            delta += size;
+          }else{
+            delta -= size;
+          }
+        }
+      }
+
+      cumulative += delta;
+
+      points.push({
+        index:i,
+        delta,
+        cumulative
+      });
+    }
+
+    if(points.length){
+
+      const values =
+        points.map(
+          p => p.cumulative
+        );
+
+      const min =
+        Math.min(...values);
+
+      const max =
+        Math.max(...values);
+
+      const range =
+        Math.max(
+          1,
+          max-min
+        );
+
+      const baseY =
+        info.top +
+        72;
+
+      const chartH =
+        Math.max(
+          45,
+          Math.min(
+            100,
+            volumeTop -
+            baseY -
+            10
+          )
+        );
+
+      chartCtx.strokeStyle =
+        "rgba(130,160,180,.35)";
+
+      chartCtx.beginPath();
+
+      chartCtx.moveTo(
+        info.left,
+        baseY +
+        chartH/2
+      );
+
+      chartCtx.lineTo(
+        info.right,
+        baseY +
+        chartH/2
+      );
+
+      chartCtx.stroke();
+
+      chartCtx.beginPath();
+
+      points.forEach(
+        (p,n) => {
+
+          const x =
+            px(p.index);
+
+          const y =
+            baseY +
+            chartH -
+            (
+              (p.cumulative-min) /
+              range
+            ) *
+            chartH;
+
+          if(n===0){
+            chartCtx.moveTo(
+              x,y
+            );
+          }else{
+            chartCtx.lineTo(
+              x,y
+            );
+          }
+        }
+      );
+
+      chartCtx.strokeStyle =
+        "rgba(90,210,190,.95)";
+
+      chartCtx.lineWidth = 2;
+
+      chartCtx.stroke();
+
+      chartCtx.lineWidth = 1;
+
+      const selected =
+        points[
+          state.selectedIndex
+        ];
+
+      chartCtx.fillStyle =
+        "rgba(230,240,250,.95)";
+
+      chartCtx.font =
+        "11px Tahoma";
+
+      chartCtx.fillText(
+        "DELTA / CVD · REAL BYBIT TRADES",
+        info.left + 8,
+        info.top + 20
+      );
+
+      if(selected){
+
+        chartCtx.fillText(
+          "DELTA " +
+          formatMarketNumber(
+            selected.delta
+          ) +
+          " · CVD " +
+          formatMarketNumber(
+            selected.cumulative
+          ),
+          info.left + 8,
+          info.top + 40
+        );
+      }
+    }
+  }
+
+  /*
+    LIQUIDITY
+    Real current Bybit order-book snapshot.
+  */
+  if(
+    state.activeTab ===
+    "Liquidity"
+  ){
+
+    const ob =
+      state.orderbook || {};
+
+    const buy =
+      Number(ob.buyValue) || 0;
+
+    const sell =
+      Number(ob.sellValue) || 0;
+
+    const total =
+      buy + sell;
+
+    const buyPct =
+      total > 0
+        ? buy / total
+        : 0;
+
+    const sellPct =
+      total > 0
+        ? sell / total
+        : 0;
+
+    const y =
+      info.top + 55;
+
+    chartCtx.font =
+      "11px Tahoma";
+
+    chartCtx.fillStyle =
+      "rgba(230,240,250,.95)";
+
+    chartCtx.fillText(
+      "LIQUIDITY · CURRENT ORDER BOOK SNAPSHOT",
+      info.left + 8,
+      info.top + 20
+    );
+
+    chartCtx.fillText(
+      "BUY " +
+      formatMarketNumber(buy),
+      info.left + 8,
+      y
+    );
+
+    chartCtx.fillText(
+      "SELL " +
+      formatMarketNumber(sell),
+      info.left + 8,
+      y + 24
+    );
+
+    const barX =
+      info.left + 8;
+
+    const barW =
+      Math.min(
+        260,
+        info.right - barX - 20
+      );
+
+    chartCtx.fillStyle =
+      "rgba(90,110,130,.25)";
+
+    chartCtx.fillRect(
+      barX,
+      y + 10,
+      barW,
+      10
+    );
+
+    chartCtx.fillStyle =
+      "rgba(80,210,150,.75)";
+
+    chartCtx.fillRect(
+      barX,
+      y + 10,
+      barW * buyPct,
+      10
+    );
+
+    chartCtx.fillStyle =
+      "rgba(240,100,100,.75)";
+
+    chartCtx.fillRect(
+      barX +
+      barW * buyPct,
+      y + 10,
+      barW * sellPct,
+      10
+    );
+
+    chartCtx.fillStyle =
+      "rgba(230,240,250,.9)";
+
+    chartCtx.fillText(
+      "BID " +
+      formatMarketNumber(
+        ob.bestBid || 0
+      ) +
+      " · ASK " +
+      formatMarketNumber(
+        ob.bestAsk || 0
+      ) +
+      " · SPREAD " +
+      formatMarketNumber(
+        ob.spread || 0
+      ),
+      info.left + 8,
+      y + 45
+    );
+
+    chartCtx.fillText(
+      "PRESSURE · " +
+      (ob.pressure || "NEUTRAL"),
+      info.left + 8,
+      y + 65
+    );
+  }
+
+  /*
     HEATMAP
     Real Bybit trades grouped by price.
   */
