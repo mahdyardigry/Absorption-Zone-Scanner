@@ -3942,12 +3942,27 @@ function drawFootprintWorld(
     even on narrow mobile screens.
   */
 
+  /*
+    Fixed collision-safe footprint columns.
+    PRICE box is 76px minimum, so ASK/BID must
+    stay outside that box with a real safety gap.
+  */
+
+  const priceColumnWidth =
+    Math.max(
+      76,
+      Math.min(
+        104,
+        w * 0.20
+      )
+    );
+
   const sideGap =
     Math.max(
-      52,
+      priceColumnWidth / 2 + 24,
       Math.min(
-        78,
-        w * 0.10
+        96,
+        w * 0.14
       )
     );
 
@@ -3964,10 +3979,10 @@ function drawFootprintWorld(
 
   const deltaGap =
     Math.max(
-      58,
+      64,
       Math.min(
-        82,
-        w * 0.11
+        96,
+        w * 0.12
       )
     );
 
