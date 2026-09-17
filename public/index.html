@@ -5849,6 +5849,13 @@ function drawAbsorptionTab(){
 
 function drawActiveMarketTab(){
 
+  /*
+    Market tabs are rendered directly on the
+    main chart by drawMarketOverlay().
+
+    The lower canvas is reserved for Footprint.
+  */
+
   const active =
     document.querySelector(
       ".tab.active"
@@ -5858,21 +5865,11 @@ function drawActiveMarketTab(){
     return;
   }
 
-  const name =
-    active.textContent.trim();
-
-  if(name === "Heatmap"){
-    drawHeatmapTab();
-  }else if(name === "Liquidity"){
-    drawLiquidityTab();
-  }else if(name === "Order Book"){
-    drawOrderBookTab();
-  }else if(name === "Large Trades"){
-    drawLargeTradesTab();
-  }else if(name === "Delta / CVD"){
-    drawDeltaCvdTab();
-  }else if(name === "Absorption"){
-    drawAbsorptionTab();
+  if(
+    active.textContent.trim() ===
+    "Footprint"
+  ){
+    drawFootprint();
   }
 
 }
