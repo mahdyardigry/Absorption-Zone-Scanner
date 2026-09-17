@@ -2825,11 +2825,29 @@ function drawChart(){
   const info =
     visibleChartInfo();
 
+  /*
+    MAIN CHART LAYOUT
+    Top 80%  = PRICE
+    Bottom 20% = VOLUME
+  */
+
   const top =
     20;
 
+  const volumeHeight =
+    Math.max(
+      55,
+      Math.min(
+        110,
+        h*.20
+      )
+    );
+
+  const volumeTop =
+    h-40-volumeHeight;
+
   const bottom =
-    h-40;
+    volumeTop-8;
 
   const first =
     Math.max(
@@ -2979,6 +2997,135 @@ function drawChart(){
       4,
       y+3
     );
+
+  }
+
+  /*
+    VOLUME
+    Real Bybit candle volume
+  */
+
+  let maxVolume =
+    0;
+
+  for(
+    let i=first;
+    i<=last;
+    i++
+  ){
+
+    const v =
+      Number(
+        state.candles[i].volume
+      ) || 0;
+
+    if(
+      v > maxVolume
+    ){
+
+      maxVolume =
+        v;
+
+    }
+
+  }
+
+  if(
+    maxVolume > 0
+  ){
+
+    chartCtx.fillStyle =
+      "#142632";
+
+    chartCtx.fillRect(
+      info.left,
+      volumeTop,
+      info.right-info.left,
+      1
+    );
+
+    chartCtx.font =
+      "8px Tahoma";
+
+    chartCtx.textAlign =
+      "left";
+
+    chartCtx.fillStyle =
+      "#607888";
+
+    chartCtx.fillText(
+      "VOLUME",
+      info.left,
+      volumeTop+11
+    );
+
+    for(
+      let i=first;
+      i<=last;
+      i++
+    ){
+
+      const c =
+        state.candles[i];
+
+      const x =
+        px(i);
+
+      if(
+        x <
+          info.left-info.step ||
+        x >
+          info.right+info.step
+      ){
+
+        continue;
+
+      }
+
+      const volume =
+        Number(
+          c.volume
+        ) || 0;
+
+      const barH =
+        volume > 0
+          ? Math.max(
+              1,
+              (
+                volume/maxVolume
+              ) *
+              (
+                h-40-volumeTop-16
+              )
+            )
+          : 0;
+
+      const bullish =
+        c.close >=
+        c.open;
+
+      const bodyW =
+        Math.max(
+          2,
+          Math.min(
+            18,
+            info.step*.62
+          )
+        );
+
+      chartCtx.fillStyle =
+        bullish
+          ? "rgba(53,217,142,.55)"
+          : "rgba(239,104,117,.55)";
+
+      chartCtx.fillRect(
+        x-bodyW/2,
+        h-40-barH,
+        bodyW,
+        barH
+      );
+
+    }
 
   }
 
