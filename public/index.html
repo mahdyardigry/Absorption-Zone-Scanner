@@ -8029,6 +8029,17 @@ document
           state.activeTab =
             tab.textContent.trim();
 
+          console.log(
+            "TAB_DEBUG",
+            state.activeTab,
+            "selectedIndex=",
+            state.selectedIndex,
+            "candles=",
+            state.candles.length,
+            "trades=",
+            state.trades.length
+          );
+
           drawChart();
 
           if(
