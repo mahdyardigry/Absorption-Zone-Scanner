@@ -4145,6 +4145,772 @@ function roundedRect(
 }
 
 /* =========================================================
+   MARKET TAB ENGINE
+   REAL BYBIT DATA
+========================================================= */
+
+function selectedCandleTrades(){
+
+  const candle =
+    state.candles[
+      state.selectedIndex
+    ];
+
+  if(!candle){
+    return [];
+  }
+
+  return state.trades.filter(
+    t =>
+      t.time >= candle.time &&
+      t.time < candle.time + candle.duration
+  );
+
+}
+
+function largeTradesForCandle(){
+
+  const trades =
+    selectedCandleTrades();
+
+  if(!trades.length){
+    return [];
+  }
+
+  const values =
+    trades
+      .map(t => Number(t.value) || 0)
+      .filter(v => v > 0)
+      .sort((a,b) => a-b);
+
+  if(!values.length){
+    return [];
+  }
+
+  const index =
+    Math.max(
+      0,
+      Math.floor(values.length * .90)
+    );
+
+  const threshold =
+    values[index] || 0;
+
+  return trades
+    .filter(
+      t =>
+        (Number(t.value) || 0) >= threshold
+    )
+    .sort(
+      (a,b) =>
+        (Number(b.value)||0) -
+        (Number(a.value)||0)
+    )
+    .slice(0,50);
+
+}
+
+function formatMarketNumber(v){
+
+  const n =
+    Number(v) || 0;
+
+  if(Math.abs(n) >= 1000000){
+    return (n/1000000).toFixed(2)+"M";
+  }
+
+  if(Math.abs(n) >= 1000){
+    return (n/1000).toFixed(2)+"K";
+  }
+
+  return n.toFixed(2);
+
+}
+
+function marketTabTitle(text){
+
+  fpCtx.save();
+
+  fpCtx.fillStyle =
+    "#d7e2e8";
+
+  fpCtx.font =
+    "bold 12px Tahoma";
+
+  fpCtx.textAlign =
+    "left";
+
+  fpCtx.fillText(
+    text,
+    18,
+    24
+  );
+
+  fpCtx.restore();
+
+}
+
+function drawOrderBookTab(){
+
+  const {w,h} =
+    resizeCanvas(
+      fpCanvas,
+      fpCtx
+    );
+
+  fpCtx.clearRect(
+    0,
+    0,
+    w,
+    h
+  );
+
+  const ob =
+    state.orderbook || {};
+
+  const bids =
+    Array.isArray(ob.bids)
+      ? ob.bids
+      : [];
+
+  const asks =
+    Array.isArray(ob.asks)
+      ? ob.asks
+      : [];
+
+  marketTabTitle(
+    "ORDER BOOK · REAL BYBIT"
+  );
+
+  fpCtx.font =
+    "11px Tahoma";
+
+  fpCtx.fillStyle =
+    "#35d98e";
+
+  fpCtx.fillText(
+    "BID",
+    24,
+    52
+  );
+
+  fpCtx.fillStyle =
+    "#ef6875";
+
+  fpCtx.fillText(
+    "ASK",
+    w/2+20,
+    52
+  );
+
+  const maxRows =
+    Math.min(
+      18,
+      Math.max(
+        bids.length,
+        asks.length
+      )
+    );
+
+  for(
+    let i=0;
+    i<maxRows;
+    i++
+  ){
+
+    const y =
+      72+i*22;
+
+    const bid =
+      bids[i];
+
+    const ask =
+      asks[i];
+
+    if(bid){
+
+      fpCtx.fillStyle =
+        "rgba(53,217,142,.16)";
+
+      fpCtx.fillRect(
+        18,
+        y-13,
+        w/2-28,
+        18
+      );
+
+      fpCtx.fillStyle =
+        "#35d98e";
+
+      fpCtx.fillText(
+        `${Number(bid[0]).toFixed(4)}   ${formatMarketNumber(bid[1])}`,
+        24,
+        y
+      );
+
+    }
+
+    if(ask){
+
+      fpCtx.fillStyle =
+        "rgba(239,104,117,.16)";
+
+      fpCtx.fillRect(
+        w/2+8,
+        y-13,
+        w/2-26,
+        18
+      );
+
+      fpCtx.fillStyle =
+        "#ef6875";
+
+      fpCtx.fillText(
+        `${Number(ask[0]).toFixed(4)}   ${formatMarketNumber(ask[1])}`,
+        w/2+14,
+        y
+      );
+
+    }
+
+  }
+
+  fpCtx.fillStyle =
+    "#9aaab3";
+
+  fpCtx.fillText(
+    `BUY ${formatMarketNumber(ob.buyLiquidity)}   ${Number(ob.buyShare||0).toFixed(1)}%`,
+    24,
+    h-42
+  );
+
+  fpCtx.fillText(
+    `SELL ${formatMarketNumber(ob.sellLiquidity)}   ${Number(ob.sellShare||0).toFixed(1)}%`,
+    w/2+14,
+    h-42
+  );
+
+  fpCtx.fillText(
+    `Spread: ${Number(ob.spread||0).toFixed(6)}   ${ob.pressure || "NEUTRAL"}`,
+    24,
+    h-20
+  );
+
+}
+
+function drawLiquidityTab(){
+
+  const {w,h} =
+    resizeCanvas(
+      fpCanvas,
+      fpCtx
+    );
+
+  fpCtx.clearRect(
+    0,0,w,h
+  );
+
+  const ob =
+    state.orderbook || {};
+
+  const bids =
+    Array.isArray(ob.bids)
+      ? ob.bids
+      : [];
+
+  const asks =
+    Array.isArray(ob.asks)
+      ? ob.asks
+      : [];
+
+  marketTabTitle(
+    "LIQUIDITY · BID / ASK"
+  );
+
+  const rows =
+    Math.min(
+      20,
+      Math.max(
+        bids.length,
+        asks.length
+      )
+    );
+
+  let max =
+    0;
+
+  for(
+    let i=0;
+    i<rows;
+    i++
+  ){
+
+    max =
+      Math.max(
+        max,
+        Number(bids[i]?.[1]) || 0,
+        Number(asks[i]?.[1]) || 0
+      );
+
+  }
+
+  max =
+    max || 1;
+
+  for(
+    let i=0;
+    i<rows;
+    i++
+  ){
+
+    const y =
+      60+i*20;
+
+    const bid =
+      Number(bids[i]?.[1]) || 0;
+
+    const ask =
+      Number(asks[i]?.[1]) || 0;
+
+    fpCtx.fillStyle =
+      "rgba(53,217,142,.55)";
+
+    fpCtx.fillRect(
+      w/2-bid/max*(w*.42),
+      y,
+      bid/max*(w*.42),
+      10
+    );
+
+    fpCtx.fillStyle =
+      "rgba(239,104,117,.55)";
+
+    fpCtx.fillRect(
+      w/2,
+      y,
+      ask/max*(w*.42),
+      10
+    );
+
+    fpCtx.font =
+      "9px Tahoma";
+
+    fpCtx.fillStyle =
+      "#9aaab3";
+
+    fpCtx.textAlign =
+      "right";
+
+    fpCtx.fillText(
+      formatMarketNumber(bid),
+      w/2-8,
+      y+9
+    );
+
+    fpCtx.textAlign =
+      "left";
+
+    fpCtx.fillText(
+      formatMarketNumber(ask),
+      w/2+8,
+      y+9
+    );
+
+  }
+
+  fpCtx.textAlign =
+    "left";
+
+  fpCtx.fillStyle =
+    "#35d98e";
+
+  fpCtx.fillText(
+    `Bid ${Number(ob.buyShare||0).toFixed(1)}%`,
+    18,
+    h-22
+  );
+
+  fpCtx.fillStyle =
+    "#ef6875";
+
+  fpCtx.fillText(
+    `Ask ${Number(ob.sellShare||0).toFixed(1)}%`,
+    w-100,
+    h-22
+  );
+
+}
+
+function drawHeatmapTab(){
+
+  const {w,h} =
+    resizeCanvas(
+      fpCanvas,
+      fpCtx
+    );
+
+  fpCtx.clearRect(
+    0,0,w,h
+  );
+
+  const trades =
+    selectedCandleTrades();
+
+  marketTabTitle(
+    "HEATMAP · TRADE VOLUME"
+  );
+
+  if(!trades.length){
+
+    fpCtx.fillStyle =
+      "#71818b";
+
+    fpCtx.font =
+      "12px Tahoma";
+
+    fpCtx.fillText(
+      "برای این کندل Trade کافی وجود ندارد.",
+      18,
+      58
+    );
+
+    return;
+
+  }
+
+  const map =
+    new Map();
+
+  for(
+    const t of trades
+  ){
+
+    const price =
+      Number(t.price) || 0;
+
+    const size =
+      Number(t.size) || 0;
+
+    if(!price || !size){
+      continue;
+    }
+
+    const key =
+      price.toFixed(8);
+
+    map.set(
+      key,
+      (map.get(key)||0)+size
+    );
+
+  }
+
+  const rows =
+    [...map.entries()]
+      .sort(
+        (a,b) =>
+          Number(b[0])-Number(a[0])
+      )
+      .slice(0,50);
+
+  let max =
+    Math.max(
+      ...rows.map(x => x[1]),
+      1
+    );
+
+  const rowH =
+    Math.max(
+      12,
+      Math.min(
+        24,
+        (h-72)/Math.max(rows.length,1)
+      )
+    );
+
+  rows.forEach(
+    ([price,volume],i) => {
+
+      const y =
+        58+i*rowH;
+
+      const strength =
+        volume/max;
+
+      fpCtx.fillStyle =
+        `rgba(255,170,60,${0.12+strength*.60})`;
+
+      fpCtx.fillRect(
+        18,
+        y,
+        w-36,
+        Math.max(8,rowH-2)
+      );
+
+      fpCtx.fillStyle =
+        "#d7e2e8";
+
+      fpCtx.font =
+        "9px Tahoma";
+
+      fpCtx.fillText(
+        Number(price).toFixed(6),
+        24,
+        y+rowH-5
+      );
+
+      fpCtx.textAlign =
+        "right";
+
+      fpCtx.fillText(
+        formatMarketNumber(volume),
+        w-24,
+        y+rowH-5
+      );
+
+      fpCtx.textAlign =
+        "left";
+
+    }
+  );
+
+}
+
+function drawLargeTradesTab(){
+
+  const {w,h} =
+    resizeCanvas(
+      fpCanvas,
+      fpCtx
+    );
+
+  fpCtx.clearRect(
+    0,0,w,h
+  );
+
+  marketTabTitle(
+    "LARGE TRADES / WHALES · REAL BYBIT"
+  );
+
+  const rows =
+    largeTradesForCandle();
+
+  if(!rows.length){
+
+    fpCtx.fillStyle =
+      "#71818b";
+
+    fpCtx.font =
+      "12px Tahoma";
+
+    fpCtx.fillText(
+      "برای این کندل معامله بزرگ کافی وجود ندارد.",
+      18,
+      58
+    );
+
+    return;
+
+  }
+
+  fpCtx.font =
+    "10px Tahoma";
+
+  rows
+    .slice(0,18)
+    .forEach(
+      (t,i) => {
+
+        const y =
+          56+i*20;
+
+        fpCtx.fillStyle =
+          t.side === "buy"
+            ? "#35d98e"
+            : "#ef6875";
+
+        fpCtx.fillText(
+          t.side === "buy"
+            ? "BUY"
+            : "SELL",
+          18,
+          y
+        );
+
+        fpCtx.fillStyle =
+          "#d7e2e8";
+
+        fpCtx.fillText(
+          Number(t.price).toFixed(6),
+          68,
+          y
+        );
+
+        fpCtx.fillText(
+          `Qty ${formatMarketNumber(t.size)}`,
+          165,
+          y
+        );
+
+        fpCtx.fillText(
+          `Value ${formatMarketNumber(t.value)}`,
+          270,
+          y
+        );
+
+      }
+    );
+
+}
+
+function drawDeltaCvdTab(){
+
+  const {w,h} =
+    resizeCanvas(
+      fpCanvas,
+      fpCtx
+    );
+
+  fpCtx.clearRect(
+    0,0,w,h
+  );
+
+  marketTabTitle(
+    "DELTA / CVD"
+  );
+
+  const candle =
+    state.candles[
+      state.selectedIndex
+    ];
+
+  if(!candle){
+
+    return;
+
+  }
+
+  const trades =
+    selectedCandleTrades();
+
+  let buy = 0;
+  let sell = 0;
+
+  for(
+    const t of trades
+  ){
+
+    if(t.side === "buy"){
+      buy += Number(t.size)||0;
+    }else{
+      sell += Number(t.size)||0;
+    }
+
+  }
+
+  const delta =
+    buy-sell;
+
+  fpCtx.font =
+    "12px Tahoma";
+
+  fpCtx.fillStyle =
+    "#35d98e";
+
+  fpCtx.fillText(
+    `BUY ${formatMarketNumber(buy)}`,
+    18,
+    58
+  );
+
+  fpCtx.fillStyle =
+    "#ef6875";
+
+  fpCtx.fillText(
+    `SELL ${formatMarketNumber(sell)}`,
+    18,
+    82
+  );
+
+  fpCtx.fillStyle =
+    delta >= 0
+      ? "#35d98e"
+      : "#ef6875";
+
+  fpCtx.fillText(
+    `DELTA ${formatMarketNumber(delta)}`,
+    18,
+    110
+  );
+
+}
+
+function drawAbsorptionTab(){
+
+  const {w,h} =
+    resizeCanvas(
+      fpCanvas,
+      fpCtx
+    );
+
+  fpCtx.clearRect(
+    0,0,w,h
+  );
+
+  marketTabTitle(
+    "ABSORPTION"
+  );
+
+  const a =
+    state.absorption;
+
+  fpCtx.font =
+    "12px Tahoma";
+
+  fpCtx.fillStyle =
+    "#d7e2e8";
+
+  fpCtx.fillText(
+    a
+      ? JSON.stringify(a)
+      : "داده جذب از Bybit موجود نیست.",
+    18,
+    58
+  );
+
+}
+
+function drawActiveMarketTab(){
+
+  const active =
+    document.querySelector(
+      ".tab.active"
+    );
+
+  if(!active){
+    return;
+  }
+
+  const name =
+    active.textContent.trim();
+
+  if(name === "Heatmap"){
+    drawHeatmapTab();
+  }else if(name === "Liquidity"){
+    drawLiquidityTab();
+  }else if(name === "Order Book"){
+    drawOrderBookTab();
+  }else if(name === "Large Trades"){
+    drawLargeTradesTab();
+  }else if(name === "Delta / CVD"){
+    drawDeltaCvdTab();
+  }else if(name === "Absorption"){
+    drawAbsorptionTab();
+  }
+
+}
+
+/* =========================================================
    FOOTPRINT
 ========================================================= */
 
@@ -6076,6 +6842,27 @@ async function loadMarket(
       );
 
     /*
+      REAL BYBIT ORDER BOOK
+    */
+
+    state.orderbook =
+      data.orderbook || {
+        buyLiquidity:0,
+        sellLiquidity:0,
+        totalLiquidity:0,
+        buyValue:0,
+        sellValue:0,
+        buyShare:0,
+        sellShare:0,
+        bestBid:0,
+        bestAsk:0,
+        spread:0,
+        pressure:"NEUTRAL",
+        bids:[],
+        asks:[]
+      };
+
+    /*
       ذخیره REST tradeهای واقعی
     */
 
@@ -6157,6 +6944,8 @@ async function loadMarket(
     updateSelectedInfo();
 
     drawChart();
+
+    drawActiveMarketTab();
 
     connectWebSocket();
 
@@ -6315,6 +7104,19 @@ document
           tab.classList.add(
             "active"
           );
+
+          if(
+            tab.textContent.trim() !==
+            "Footprint"
+          ){
+
+            drawActiveMarketTab();
+
+          }else{
+
+            drawFootprint();
+
+          }
 
         }
       );
