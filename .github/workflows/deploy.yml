@@ -9,6 +9,7 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -19,3 +20,13 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: deploy
+
+      - name: Deployment Summary
+        if: always()
+        run: |
+          {
+            echo "## Cloudflare Deployment"
+            echo ""
+            echo "Workflow reached the deployment step."
+            echo "See the Build & Deploy Worker step above for Wrangler output."
+          } >> "$GITHUB_STEP_SUMMARY"
