@@ -1006,6 +1006,8 @@ const state = {
   chartNeedsDraw:false,
 
   fpScale:1,
+  activeTab:"Footprint",
+
 
   fpOffsetX:0,
 
@@ -3322,6 +3324,251 @@ function drawChart(){
     11
   );
 
+  drawMarketOverlay(info, px, py, volumeTop);
+
+}
+
+function drawMarketOverlay(info, px, py, volumeTop){
+
+  if(
+    !state.activeTab ||
+    state.activeTab === "Footprint"
+  ){
+    return;
+  }
+
+  const candle =
+    state.candles[state.selectedIndex];
+
+  if(!candle){
+    return;
+  }
+
+  const trades =
+    state.trades.filter(
+      t =>
+        t.time >= candle.time &&
+        t.time <
+          candle.time +
+          candle.duration
+    );
+
+  chartCtx.save();
+
+  /*
+    Selected candle marker
+  */
+  const selectedX =
+    px(state.selectedIndex);
+
+  chartCtx.strokeStyle =
+    "rgba(120,180,220,.35)";
+
+  chartCtx.beginPath();
+
+  chartCtx.moveTo(
+    selectedX,
+    info.top
+  );
+
+  chartCtx.lineTo(
+    selectedX,
+    volumeTop
+  );
+
+  chartCtx.stroke();
+
+  /*
+    HEATMAP
+    Real Bybit trades grouped by price.
+  */
+  if(
+    state.activeTab ===
+    "Heatmap"
+  ){
+
+    const levels =
+      new Map();
+
+    for(
+      const t of trades
+    ){
+
+      const price =
+        Number(t.price);
+
+      const value =
+        Number(t.value) || 0;
+
+      if(
+        !Number.isFinite(price) ||
+        value <= 0
+      ){
+        continue;
+      }
+
+      /*
+        Keep price precision from the
+        actual trade price.
+      */
+      const key =
+        String(t.price);
+
+      const old =
+        levels.get(key) || {
+          price,
+          value:0,
+          count:0
+        };
+
+      old.value += value;
+      old.count += 1;
+
+      levels.set(
+        key,
+        old
+      );
+    }
+
+    const rows =
+      [...levels.values()]
+        .sort(
+          (a,b) =>
+            b.value-a.value
+        )
+        .slice(0,12);
+
+    const maxValue =
+      rows.length
+        ? rows[0].value
+        : 0;
+
+    chartCtx.font =
+      "10px Tahoma";
+
+    chartCtx.textAlign =
+      "left";
+
+    for(
+      const row of rows
+    ){
+
+      const y =
+        py(row.price);
+
+      if(
+        y < info.top ||
+        y > volumeTop
+      ){
+        continue;
+      }
+
+      const strength =
+        maxValue > 0
+          ? row.value/maxValue
+          : 0;
+
+      /*
+        Bubble size represents
+        real traded value.
+      */
+      const radius =
+        5 +
+        Math.min(
+          17,
+          strength*17
+        );
+
+      chartCtx.beginPath();
+
+      chartCtx.arc(
+        selectedX,
+        y,
+        radius,
+        0,
+        Math.PI*2
+      );
+
+      chartCtx.fillStyle =
+        `rgba(255,170,60,${(
+          .12 +
+          strength*.35
+        ).toFixed(3)})`;
+
+      chartCtx.fill();
+
+      chartCtx.strokeStyle =
+        `rgba(255,205,100,${(
+          .35 +
+          strength*.55
+        ).toFixed(3)})`;
+
+      chartCtx.stroke();
+
+      /*
+        Horizontal heat line.
+      */
+      chartCtx.beginPath();
+
+      chartCtx.moveTo(
+        info.left,
+        y
+      );
+
+      chartCtx.lineTo(
+        Math.min(
+          info.right,
+          selectedX + 55
+        ),
+        y
+      );
+
+      chartCtx.strokeStyle =
+        `rgba(255,170,60,${(
+          .10 +
+          strength*.35
+        ).toFixed(3)})`;
+
+      chartCtx.stroke();
+
+      /*
+        Real information:
+        price + traded value + trade count.
+      */
+      chartCtx.fillStyle =
+        "rgba(245,235,205,.95)";
+
+      chartCtx.fillText(
+        row.price.toString() +
+        " · " +
+        formatMarketNumber(
+          row.value
+        ) +
+        " · " +
+        row.count +
+        " trades",
+        selectedX + radius + 7,
+        y + 4
+      );
+    }
+
+    chartCtx.fillStyle =
+      "rgba(230,240,250,.95)";
+
+    chartCtx.font =
+      "11px Tahoma";
+
+    chartCtx.fillText(
+      "HEATMAP · " +
+      trades.length +
+      " trades · " +
+      "selected candle",
+      info.left + 8,
+      info.top + 18
+    );
+  }
+
+  chartCtx.restore();
 }
 
 /* =========================================================
@@ -6945,8 +7192,6 @@ async function loadMarket(
 
     drawChart();
 
-    drawActiveMarketTab();
-
     connectWebSocket();
 
     setStatus(
@@ -7105,22 +7350,20 @@ document
             "active"
           );
 
+          state.activeTab =
+            tab.textContent.trim();
+
+          drawChart();
+
           if(
-            tab.textContent.trim() !==
+            state.activeTab ===
             "Footprint"
           ){
-
-            drawActiveMarketTab();
-
-          }else{
-
             drawFootprint();
-
           }
 
         }
       );
-
     }
   );
 
