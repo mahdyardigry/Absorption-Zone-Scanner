@@ -3346,96 +3346,71 @@ function drawChart(){
 
 function drawMarketOverlay(info, px, py, volumeTop){
 
-  chartCtx.save();
-  chartCtx.fillStyle = "#00ff00";
-  chartCtx.font = "bold 14px sans-serif";
-  chartCtx.fillText(
-    "OVERLAY ENTRY: " + state.activeTab,
-    info.left + 10,
-    info.top + 50
-  );
-  chartCtx.restore();
+  const active =
+    String(state.activeTab || "").trim();
 
-  chartCtx.save();
-  chartCtx.fillStyle = "#ffffff";
-  chartCtx.font = "bold 13px sans-serif";
-  chartCtx.fillText(
-    "TAB=" + state.activeTab +
-    " IDX=" + state.selectedIndex +
-    " CANDLES=" + state.candles.length +
-    " TRADES=" + state.trades.length,
-    info.left + 10,
-    info.top + 70
-  );
-  chartCtx.restore();
-
-  if(
-    !state.activeTab ||
-    state.activeTab === "Footprint"
-  ){
+  if(!active || active === "Footprint"){
     return;
   }
 
+  chartCtx.save();
+
+  chartCtx.font = "11px Tahoma";
+  chartCtx.textAlign = "left";
+  chartCtx.fillStyle = "rgba(230,240,250,.95)";
+
+  /*
+    Current selected candle.
+    Market overlays that use candle data must not
+    block independent overlays such as Order Book
+    and Liquidity when selectedIndex is unavailable.
+  */
   const candle =
     state.candles[state.selectedIndex];
 
-  if(!candle){
-    return;
-  }
+  let trades = [];
 
-  const trades =
-    state.trades.filter(
-      t =>
-        t.time >= candle.time &&
-        t.time <
-          candle.time +
-          candle.duration
+  if(candle){
+
+    trades =
+      state.trades.filter(
+        t =>
+          t.time >= candle.time &&
+          t.time <
+            candle.time +
+            candle.duration
+      );
+
+    const selectedX =
+      px(state.selectedIndex);
+
+    /*
+      Selected candle marker
+    */
+    chartCtx.strokeStyle =
+      "rgba(120,180,220,.35)";
+
+    chartCtx.beginPath();
+
+    chartCtx.moveTo(
+      selectedX,
+      info.top
     );
 
-  chartCtx.save();
+    chartCtx.lineTo(
+      selectedX,
+      volumeTop
+    );
 
-  chartCtx.fillStyle = "#ffffff";
-  chartCtx.font = "bold 14px sans-serif";
-  chartCtx.fillText(
-    "DEBUG TAB=" + state.activeTab +
-    " IDX=" + state.selectedIndex +
-    " C=" + state.candles.length +
-    " T=" + state.trades.length,
-    info.left + 10,
-    info.top + 30
-  );
+    chartCtx.stroke();
 
-  /*
-    Selected candle marker
-  */
-  const selectedX =
-    px(state.selectedIndex);
-
-  chartCtx.strokeStyle =
-    "rgba(120,180,220,.35)";
-
-  chartCtx.beginPath();
-
-  chartCtx.moveTo(
-    selectedX,
-    info.top
-  );
-
-  chartCtx.lineTo(
-    selectedX,
-    volumeTop
-  );
-
-  chartCtx.stroke();
+  }
 
   /*
     ORDER BOOK
-    Real current Bybit order-book snapshot.
+    Independent from selected candle.
   */
-  if(
-    state.activeTab ===
-    "Order Book"
-  ){
+  if(active === "Order Book"){
 
     const ob =
       state.orderbook || {};
@@ -3527,6 +3502,7 @@ function drawMarketOverlay(info, px, py, volumeTop){
           info.left + 8,
           y
         );
+
       }
 
       if(ask){
@@ -3544,7 +3520,9 @@ function drawMarketOverlay(info, px, py, volumeTop){
           info.left + 190,
           y
         );
+
       }
+
     }
 
     chartCtx.fillStyle =
@@ -3564,17 +3542,145 @@ function drawMarketOverlay(info, px, py, volumeTop){
       info.top + 88 +
       rows*22
     );
+
+  }
+
+  /*
+    LIQUIDITY
+    Independent from selected candle.
+  */
+  if(active === "Liquidity"){
+
+    const ob =
+      state.orderbook || {};
+
+    const buy =
+      Number(ob.buyValue) || 0;
+
+    const sell =
+      Number(ob.sellValue) || 0;
+
+    const total =
+      buy + sell;
+
+    const buyPct =
+      total > 0
+        ? buy / total
+        : 0;
+
+    const sellPct =
+      total > 0
+        ? sell / total
+        : 0;
+
+    const y =
+      info.top + 55;
+
+    chartCtx.font =
+      "11px Tahoma";
+
+    chartCtx.fillStyle =
+      "rgba(230,240,250,.95)";
+
+    chartCtx.fillText(
+      "LIQUIDITY · CURRENT ORDER BOOK",
+      info.left + 8,
+      info.top + 20
+    );
+
+    chartCtx.fillText(
+      "BUY " +
+      formatMarketNumber(buy),
+      info.left + 8,
+      y
+    );
+
+    chartCtx.fillText(
+      "SELL " +
+      formatMarketNumber(sell),
+      info.left + 8,
+      y + 24
+    );
+
+    const barX =
+      info.left + 8;
+
+    const barW =
+      Math.min(
+        260,
+        info.right -
+        barX -
+        20
+      );
+
+    chartCtx.fillStyle =
+      "rgba(90,110,130,.25)";
+
+    chartCtx.fillRect(
+      barX,
+      y + 10,
+      barW,
+      10
+    );
+
+    chartCtx.fillStyle =
+      "rgba(80,210,150,.75)";
+
+    chartCtx.fillRect(
+      barX,
+      y + 10,
+      barW * buyPct,
+      10
+    );
+
+    chartCtx.fillStyle =
+      "rgba(240,100,100,.75)";
+
+    chartCtx.fillRect(
+      barX +
+      barW * buyPct,
+      y + 10,
+      barW * sellPct,
+      10
+    );
+
+    chartCtx.fillStyle =
+      "rgba(230,240,250,.9)";
+
+    chartCtx.fillText(
+      "BID " +
+      formatMarketNumber(
+        ob.bestBid || 0
+      ) +
+      " · ASK " +
+      formatMarketNumber(
+        ob.bestAsk || 0
+      ) +
+      " · SPREAD " +
+      formatMarketNumber(
+        ob.spread || 0
+      ),
+      info.left + 8,
+      y + 45
+    );
+
+    chartCtx.fillText(
+      "PRESSURE · " +
+      (
+        ob.pressure ||
+        "NEUTRAL"
+      ),
+      info.left + 8,
+      y + 65
+    );
+
   }
 
   /*
     ABSORPTION
-    Real Worker absorption signal.
-    Calculated by detectAbsorption() for the latest Worker candle.
+    Independent from selected candle.
   */
-  if(
-    state.activeTab ===
-    "Absorption"
-  ){
+  if(active === "Absorption"){
 
     const a =
       state.absorption;
@@ -3658,25 +3764,24 @@ function drawMarketOverlay(info, px, py, volumeTop){
         info.top + 84
       );
 
-      chartCtx.fillStyle =
-        "rgba(180,200,215,.85)";
-
-      chartCtx.fillText(
-        "CURRENT SIGNAL · latest Worker candle",
-        info.left + 8,
-        info.top + 104
-      );
     }
+
+  }
+
+  /*
+    Candle-dependent overlays.
+  */
+  if(!candle){
+
+    chartCtx.restore();
+    return;
+
   }
 
   /*
     LARGE TRADES
-    Real Bybit trades from selected candle.
   */
-  if(
-    state.activeTab ===
-    "Large Trades"
-  ){
+  if(active === "Large Trades"){
 
     const large =
       largeTradesForCandle();
@@ -3782,24 +3887,17 @@ function drawMarketOverlay(info, px, py, volumeTop){
 
       chartCtx.stroke();
 
-      chartCtx.fillStyle =
-        "rgba(240,245,250,.95)";
-
-      chartCtx.fillText(
-        formatMarketNumber(value),
-        x + radius + 4,
-        y + 4
-      );
     }
+
   }
 
   /*
     DELTA / CVD
-    Real Bybit trades across loaded candles.
+    Accept both possible tab labels.
   */
   if(
-    state.activeTab ===
-    "Delta/CVD"
+    active === "Delta/CVD" ||
+    active === "Delta / CVD"
   ){
 
     let cumulative = 0;
@@ -3831,14 +3929,14 @@ function drawMarketOverlay(info, px, py, volumeTop){
           const size =
             Number(t.size) || 0;
 
-          if(
-            t.side === "buy"
-          ){
+          if(t.side === "buy"){
             delta += size;
           }else{
             delta -= size;
           }
+
         }
+
       }
 
       cumulative += delta;
@@ -3848,6 +3946,7 @@ function drawMarketOverlay(info, px, py, volumeTop){
         delta,
         cumulative
       });
+
     }
 
     if(points.length){
@@ -3870,8 +3969,7 @@ function drawMarketOverlay(info, px, py, volumeTop){
         );
 
       const baseY =
-        info.top +
-        72;
+        info.top + 72;
 
       const chartH =
         Math.max(
@@ -3915,20 +4013,26 @@ function drawMarketOverlay(info, px, py, volumeTop){
             baseY +
             chartH -
             (
-              (p.cumulative-min) /
+              (
+                p.cumulative -
+                min
+              ) /
               range
             ) *
             chartH;
 
-          if(n===0){
+          if(n === 0){
             chartCtx.moveTo(
-              x,y
+              x,
+              y
             );
           }else{
             chartCtx.lineTo(
-              x,y
+              x,
+              y
             );
           }
+
         }
       );
 
@@ -3972,147 +4076,17 @@ function drawMarketOverlay(info, px, py, volumeTop){
           info.left + 8,
           info.top + 40
         );
+
       }
+
     }
-  }
 
-  /*
-    LIQUIDITY
-    Real current Bybit order-book snapshot.
-  */
-  if(
-    state.activeTab ===
-    "Liquidity"
-  ){
-
-    const ob =
-      state.orderbook || {};
-
-    const buy =
-      Number(ob.buyValue) || 0;
-
-    const sell =
-      Number(ob.sellValue) || 0;
-
-    const total =
-      buy + sell;
-
-    const buyPct =
-      total > 0
-        ? buy / total
-        : 0;
-
-    const sellPct =
-      total > 0
-        ? sell / total
-        : 0;
-
-    const y =
-      info.top + 55;
-
-    chartCtx.font =
-      "11px Tahoma";
-
-    chartCtx.fillStyle =
-      "rgba(230,240,250,.95)";
-
-    chartCtx.fillText(
-      "LIQUIDITY · CURRENT ORDER BOOK SNAPSHOT",
-      info.left + 8,
-      info.top + 20
-    );
-
-    chartCtx.fillText(
-      "BUY " +
-      formatMarketNumber(buy),
-      info.left + 8,
-      y
-    );
-
-    chartCtx.fillText(
-      "SELL " +
-      formatMarketNumber(sell),
-      info.left + 8,
-      y + 24
-    );
-
-    const barX =
-      info.left + 8;
-
-    const barW =
-      Math.min(
-        260,
-        info.right - barX - 20
-      );
-
-    chartCtx.fillStyle =
-      "rgba(90,110,130,.25)";
-
-    chartCtx.fillRect(
-      barX,
-      y + 10,
-      barW,
-      10
-    );
-
-    chartCtx.fillStyle =
-      "rgba(80,210,150,.75)";
-
-    chartCtx.fillRect(
-      barX,
-      y + 10,
-      barW * buyPct,
-      10
-    );
-
-    chartCtx.fillStyle =
-      "rgba(240,100,100,.75)";
-
-    chartCtx.fillRect(
-      barX +
-      barW * buyPct,
-      y + 10,
-      barW * sellPct,
-      10
-    );
-
-    chartCtx.fillStyle =
-      "rgba(230,240,250,.9)";
-
-    chartCtx.fillText(
-      "BID " +
-      formatMarketNumber(
-        ob.bestBid || 0
-      ) +
-      " · ASK " +
-      formatMarketNumber(
-        ob.bestAsk || 0
-      ) +
-      " · SPREAD " +
-      formatMarketNumber(
-        ob.spread || 0
-      ),
-      info.left + 8,
-      y + 45
-    );
-
-    chartCtx.fillText(
-      "PRESSURE · " +
-      (ob.pressure || "NEUTRAL"),
-      info.left + 8,
-      y + 65
-    );
   }
 
   /*
     HEATMAP
-    Real Bybit trades grouped by price.
-    Main-chart overlay.
   */
-  if(
-    state.activeTab ===
-    "Heatmap"
-  ){
+  if(active === "Heatmap"){
 
     const levels =
       new Map();
@@ -4151,6 +4125,7 @@ function drawMarketOverlay(info, px, py, volumeTop){
         key,
         old
       );
+
     }
 
     const rows =
@@ -4169,8 +4144,8 @@ function drawMarketOverlay(info, px, py, volumeTop){
     chartCtx.font =
       "10px Tahoma";
 
-    chartCtx.textAlign =
-      "left";
+    const selectedX =
+      px(state.selectedIndex);
 
     for(
       const row of rows
@@ -4249,8 +4224,7 @@ function drawMarketOverlay(info, px, py, volumeTop){
           strength*.55
         ).toFixed(3)})`;
 
-      chartCtx.lineWidth =
-        1;
+      chartCtx.lineWidth = 1;
 
       chartCtx.stroke();
 
@@ -4271,6 +4245,7 @@ function drawMarketOverlay(info, px, py, volumeTop){
         7,
         y + 4
       );
+
     }
 
     chartCtx.fillStyle =
@@ -4286,9 +4261,11 @@ function drawMarketOverlay(info, px, py, volumeTop){
       info.left + 8,
       info.top + 18
     );
+
   }
 
   chartCtx.restore();
+
 }
 
 /* =========================================================
