@@ -3330,6 +3330,16 @@ function drawChart(){
 
 function drawMarketOverlay(info, px, py, volumeTop){
 
+  chartCtx.save();
+  chartCtx.fillStyle = "#00ff00";
+  chartCtx.font = "bold 14px sans-serif";
+  chartCtx.fillText(
+    "OVERLAY ENTRY: " + state.activeTab,
+    info.left + 10,
+    info.top + 50
+  );
+  chartCtx.restore();
+
   if(
     !state.activeTab ||
     state.activeTab === "Footprint"
