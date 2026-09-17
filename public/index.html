@@ -3356,6 +3356,19 @@ function drawMarketOverlay(info, px, py, volumeTop){
   );
   chartCtx.restore();
 
+  chartCtx.save();
+  chartCtx.fillStyle = "#ffffff";
+  chartCtx.font = "bold 13px sans-serif";
+  chartCtx.fillText(
+    "TAB=" + state.activeTab +
+    " IDX=" + state.selectedIndex +
+    " CANDLES=" + state.candles.length +
+    " TRADES=" + state.trades.length,
+    info.left + 10,
+    info.top + 70
+  );
+  chartCtx.restore();
+
   if(
     !state.activeTab ||
     state.activeTab === "Footprint"
