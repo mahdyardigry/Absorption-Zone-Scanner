@@ -856,6 +856,7 @@ const MAX_MEMORY_TRADES =
   30000;
 
 const state = {
+  symbolMeta: {},
 
   symbol:"BTCUSDT",
 
@@ -1356,6 +1357,18 @@ async function loadFuturesSymbols(){
         )
       ){
 
+        state.symbolMeta = {};
+
+        for(const item of workerData.symbols){
+          if(item && typeof item === "object" && item.symbol){
+            const symbol = String(item.symbol).toUpperCase();
+            state.symbolMeta[symbol] = {
+              tickSize: Number(item.tickSize) || 0,
+              minOrderQty: Number(item.minOrderQty) || 0
+            };
+          }
+        }
+
         symbols =
           workerData.symbols;
 
@@ -1667,10 +1680,13 @@ function buildFootprint(
       candle
     );
 
+  const meta =
+    state.symbolMeta[
+      String(state.symbol).toUpperCase()
+    ] || {};
+
   const tick =
-    detectTick(
-      trades
-    );
+    Number(meta.tickSize) || 0;
 
   const map =
     new Map();
@@ -3920,26 +3936,47 @@ function drawFootprintWorld(
   const deltaHistEnd =
     candleLeft-28;
 
-  const footprintColumnGap = 62;
+  /*
+    Responsive footprint columns.
+    Keep ASK / PRICE / BID / DELTA separated
+    even on narrow mobile screens.
+  */
+
+  const sideGap =
+    Math.max(
+      52,
+      Math.min(
+        78,
+        w * 0.10
+      )
+    );
 
   const askX =
-    center-
-    footprintColumnGap;
+    center -
+    sideGap;
 
   const priceX =
     center;
 
   const bidX =
-    center+
-    footprintColumnGap;
+    center +
+    sideGap;
+
+  const deltaGap =
+    Math.max(
+      58,
+      Math.min(
+        82,
+        w * 0.11
+      )
+    );
 
   const deltaX =
-    center+
-    footprintColumnGap+
-    48;
+    bidX +
+    deltaGap;
 
   const deltaEnd =
-    w-15;
+    w - 15;
 
   let rangeHigh =
     candle.high;
@@ -4249,12 +4286,7 @@ function drawFootprintWorld(
     18 + (state.fpScale - 1) * 2.4
   )
 );
-    const levelTotalHeight = Math.max(
-      bottom - top,
-      (fp.levels.length - 1) * levelStep
-    );
-    const levelStart = h / 2 - levelTotalHeight / 2;
-    const yy = levelStart + i * levelStep;
+    const yy = y(row.price);
 
     /*
       LEVEL LINE
