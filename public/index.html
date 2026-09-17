@@ -3355,6 +3355,17 @@ function drawMarketOverlay(info, px, py, volumeTop){
 
   chartCtx.save();
 
+  chartCtx.fillStyle = "#ffffff";
+  chartCtx.font = "bold 14px sans-serif";
+  chartCtx.fillText(
+    "DEBUG TAB=" + state.activeTab +
+    " IDX=" + state.selectedIndex +
+    " C=" + state.candles.length +
+    " T=" + state.trades.length,
+    info.left + 10,
+    info.top + 30
+  );
+
   /*
     Selected candle marker
   */
