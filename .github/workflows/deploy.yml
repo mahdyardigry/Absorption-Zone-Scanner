@@ -23,7 +23,10 @@ jobs:
           exit ${PIPESTATUS[0]}
       - name: Show Wrangler log
         if: always()
-        run: cat deploy-error.log
+        run: |
+          echo "## Wrangler Deploy Log" >> "$GITHUB_STEP_SUMMARY"
+          cat deploy-error.log >> "$GITHUB_STEP_SUMMARY"
+          cat deploy-error.log
       - name: Upload Wrangler log
         if: always()
         uses: actions/upload-artifact@v4
