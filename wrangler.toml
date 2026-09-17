@@ -1,3 +1,4 @@
+id = "kjcylu"
 name = "absorption-zone-scanner"
 main = "worker.js"
 compatibility_date = "2026-09-05"
@@ -6,3 +7,19 @@ workers_dev = true
 [assets]
 directory = "./public"
 binding = "ASSETS"
+
+[[durable_objects.bindings]]
+name = "ABSORPTION_STORAGE"
+class_name = "AbsorptionStorageV5"
+
+[[durable_objects.bindings]]
+name = "TRADE_COLLECTOR"
+class_name = "TradeCollector"
+
+[exports.AbsorptionStorageV5]
+type = "durable-object"
+storage = "sqlite"
+
+[exports.TradeCollector]
+type = "durable-object"
+storage = "sqlite"
