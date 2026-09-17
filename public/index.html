@@ -4094,6 +4094,7 @@ function drawMarketOverlay(info, px, py, volumeTop){
   /*
     HEATMAP
     Real Bybit trades grouped by price.
+    Main-chart overlay.
   */
   if(
     state.activeTab ===
@@ -4120,10 +4121,6 @@ function drawMarketOverlay(info, px, py, volumeTop){
         continue;
       }
 
-      /*
-        Keep price precision from the
-        actual trade price.
-      */
       const key =
         String(t.price);
 
@@ -4149,7 +4146,7 @@ function drawMarketOverlay(info, px, py, volumeTop){
           (a,b) =>
             b.value-a.value
         )
-        .slice(0,12);
+        .slice(0,20);
 
     const maxValue =
       rows.length
@@ -4181,16 +4178,39 @@ function drawMarketOverlay(info, px, py, volumeTop){
           ? row.value/maxValue
           : 0;
 
-      /*
-        Bubble size represents
-        real traded value.
-      */
       const radius =
         5 +
         Math.min(
-          17,
-          strength*17
+          18,
+          strength*18
         );
+
+      chartCtx.beginPath();
+
+      chartCtx.moveTo(
+        info.left,
+        y
+      );
+
+      chartCtx.lineTo(
+        Math.min(
+          info.right,
+          selectedX + 110
+        ),
+        y
+      );
+
+      chartCtx.strokeStyle =
+        `rgba(255,150,40,${(
+          .12 +
+          strength*.42
+        ).toFixed(3)})`;
+
+      chartCtx.lineWidth =
+        1 +
+        strength*2;
+
+      chartCtx.stroke();
 
       chartCtx.beginPath();
 
@@ -4203,51 +4223,24 @@ function drawMarketOverlay(info, px, py, volumeTop){
       );
 
       chartCtx.fillStyle =
-        `rgba(255,170,60,${(
-          .12 +
-          strength*.35
+        `rgba(255,145,35,${(
+          .16 +
+          strength*.42
         ).toFixed(3)})`;
 
       chartCtx.fill();
 
       chartCtx.strokeStyle =
-        `rgba(255,205,100,${(
+        `rgba(255,220,120,${(
           .35 +
           strength*.55
         ).toFixed(3)})`;
 
-      chartCtx.stroke();
-
-      /*
-        Horizontal heat line.
-      */
-      chartCtx.beginPath();
-
-      chartCtx.moveTo(
-        info.left,
-        y
-      );
-
-      chartCtx.lineTo(
-        Math.min(
-          info.right,
-          selectedX + 55
-        ),
-        y
-      );
-
-      chartCtx.strokeStyle =
-        `rgba(255,170,60,${(
-          .10 +
-          strength*.35
-        ).toFixed(3)})`;
+      chartCtx.lineWidth =
+        1;
 
       chartCtx.stroke();
 
-      /*
-        Real information:
-        price + traded value + trade count.
-      */
       chartCtx.fillStyle =
         "rgba(245,235,205,.95)";
 
@@ -4260,7 +4253,9 @@ function drawMarketOverlay(info, px, py, volumeTop){
         " · " +
         row.count +
         " trades",
-        selectedX + radius + 7,
+        selectedX +
+        radius +
+        7,
         y + 4
       );
     }
@@ -4274,8 +4269,7 @@ function drawMarketOverlay(info, px, py, volumeTop){
     chartCtx.fillText(
       "HEATMAP · " +
       trades.length +
-      " trades · " +
-      "selected candle",
+      " trades · selected candle",
       info.left + 8,
       info.top + 18
     );
