@@ -13,23 +13,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Deploy to Cloudflare
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-        run: |
-          set +e
-          npx wrangler@latest deploy 2>&1 | tee deploy-error.log
-          exit ${PIPESTATUS[0]}
-      - name: Show Wrangler log
-        if: always()
-        run: |
-          echo "## Wrangler Deploy Log" >> "$GITHUB_STEP_SUMMARY"
-          cat deploy-error.log >> "$GITHUB_STEP_SUMMARY"
-          cat deploy-error.log
-      - name: Upload Wrangler log
-        if: always()
-        uses: actions/upload-artifact@v4
+      - name: Build & Deploy Worker
+        uses: cloudflare/wrangler-action@v3
         with:
-          name: wrangler-deploy-log
-          path: deploy-error.log
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: deploy
