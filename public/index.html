@@ -3355,6 +3355,20 @@ function drawMarketOverlay(info, px, py, volumeTop){
 
   chartCtx.save();
 
+  /* OVERLAY LINE TEST */
+  chartCtx.beginPath();
+  chartCtx.moveTo(
+    info.left,
+    (info.top + volumeTop) / 2
+  );
+  chartCtx.lineTo(
+    info.right,
+    (info.top + volumeTop) / 2
+  );
+  chartCtx.strokeStyle = "#ff0000";
+  chartCtx.lineWidth = 4;
+  chartCtx.stroke();
+
   chartCtx.font = "11px Tahoma";
   chartCtx.textAlign = "left";
   chartCtx.fillStyle = "rgba(230,240,250,.95)";
