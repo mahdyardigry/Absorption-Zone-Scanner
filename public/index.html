@@ -1037,7 +1037,15 @@ const state = {
 
   indexedDb:null,
 
-  dbReady:false
+  dbReady:false,
+
+  analysisDb:null,
+
+  analysisDbReady:false,
+
+  analysisEvents:[],
+
+  analysisEventIds:new Set()
 
 };
 
@@ -2809,43 +2817,6 @@ function drawChart(){
     " | " +
     state.interval;
 
-  chartCtx.fillStyle = "#ff00ff";
-  chartCtx.font = "bold 14px sans-serif";
-
-  if(state.activeTab === "Heatmap"){
-    const testY = h / 2;
-
-    chartCtx.beginPath();
-    chartCtx.moveTo(20, testY);
-    chartCtx.lineTo(chartCanvas.width - 20, testY);
-    chartCtx.strokeStyle = "#ff0000";
-    chartCtx.lineWidth = 4;
-    chartCtx.stroke();
-
-    chartCtx.beginPath();
-    chartCtx.arc(
-      chartCanvas.width / 2,
-      testY,
-      14,
-      0,
-      Math.PI * 2
-    );
-    chartCtx.fillStyle = "rgba(255,80,0,.8)";
-    chartCtx.fill();
-    chartCtx.strokeStyle = "#ffff00";
-    chartCtx.lineWidth = 2;
-    chartCtx.stroke();
-
-    chartCtx.fillStyle = "#ff00ff";
-    chartCtx.fillText("HEATMAP TEST", 10, 20);
-  }else{
-    chartCtx.fillText(
-      "CANDLE DEBUG: " + state.candles.length,
-      10,
-      20
-    );
-  }
-
   if(
     !state.candles.length
   ){
@@ -3368,6 +3339,185 @@ function drawChart(){
     info.left,
     11
   );
+
+  /* =====================================================
+     HISTORICAL ANALYSIS EVENT MARKERS
+     Events stay attached to their original candle/price.
+  ===================================================== */
+
+  if(
+    Array.isArray(state.analysisEvents) &&
+    state.analysisEvents.length
+  ){
+
+    const visibleEvents =
+      state.analysisEvents.filter(
+        event => {
+
+          const t =
+            Number(event.candleTime);
+
+          if(!Number.isFinite(t)){
+            return false;
+          }
+
+          return (
+            t >= state.candles[first]?.time &&
+            t <= state.candles[last]?.time
+          );
+
+        }
+      );
+
+    for(
+      const event of visibleEvents
+    ){
+
+      const eventIndex =
+        state.candles.findIndex(
+          c =>
+            Number(c.time) ===
+            Number(event.candleTime)
+        );
+
+      if(eventIndex < first || eventIndex > last){
+        continue;
+      }
+
+      const eventX =
+        px(eventIndex);
+
+      let eventPrice =
+        Number(event.price);
+
+      if(!Number.isFinite(eventPrice) || eventPrice <= 0){
+
+        const candle =
+          state.candles[eventIndex];
+
+        eventPrice =
+          Number(candle.close);
+
+      }
+
+      const eventY =
+        py(eventPrice);
+
+      if(
+        eventX < info.left-info.step ||
+        eventX > info.right+info.step
+      ){
+        continue;
+      }
+
+      const direction =
+        String(
+          event.direction || ""
+        ).toUpperCase();
+
+      const type =
+        String(
+          event.type || "EVENT"
+        );
+
+      const bullish =
+        direction === "BULLISH" ||
+        direction === "BUY";
+
+      const bearish =
+        direction === "BEARISH" ||
+        direction === "SELL";
+
+      const color =
+        bullish
+          ? "#39db92"
+          : bearish
+            ? "#ef6875"
+            : "#53a9ff";
+
+      chartCtx.save();
+
+      /*
+        Event marker
+      */
+      chartCtx.fillStyle =
+        color;
+
+      chartCtx.strokeStyle =
+        "#071018";
+
+      chartCtx.lineWidth =
+        2;
+
+      chartCtx.beginPath();
+
+      chartCtx.arc(
+        eventX,
+        eventY,
+        5,
+        0,
+        Math.PI*2
+      );
+
+      chartCtx.fill();
+      chartCtx.stroke();
+
+      /*
+        Small vertical event stem
+      */
+      chartCtx.strokeStyle =
+        color;
+
+      chartCtx.lineWidth =
+        1;
+
+      chartCtx.beginPath();
+
+      chartCtx.moveTo(
+        eventX,
+        eventY+6
+      );
+
+      chartCtx.lineTo(
+        eventX,
+        Math.min(
+          volumeTop-4,
+          eventY+20
+        )
+      );
+
+      chartCtx.stroke();
+
+      /*
+        Label only when zoom gives enough room.
+      */
+      if(info.step >= 28){
+
+        chartCtx.font =
+          "bold 8px Tahoma";
+
+        chartCtx.textAlign =
+          "center";
+
+        chartCtx.fillStyle =
+          color;
+
+        chartCtx.fillText(
+          type.replaceAll("_"," "),
+          eventX,
+          Math.max(
+            12,
+            eventY-9
+          )
+        );
+
+      }
+
+      chartCtx.restore();
+
+    }
+
+  }
 
   /* =====================================================
      DIRECT MARKET TAB OVERLAY
@@ -5947,6 +6097,1077 @@ function roundedRect(
 
 }
 
+
+/* =========================================================
+   ANALYSIS EVENT ENGINE V1
+   HISTORICAL / NO LOOK-AHEAD
+========================================================= */
+
+const ANALYSIS_DB_NAME = "AbsorptionZoneAnalysis";
+const ANALYSIS_DB_VERSION = 1;
+
+function analysisTimeframe(){
+  return String(
+    state.interval ||
+    document.querySelector("#interval")?.value ||
+    "5"
+  );
+}
+
+function analysisSymbol(){
+  return String(
+    state.symbol ||
+    document.querySelector("#symbol")?.value ||
+    ""
+  ).trim();
+}
+
+function openAnalysisDB(){
+
+  return new Promise(resolve => {
+
+    if(!("indexedDB" in window)){
+      resolve(null);
+      return;
+    }
+
+    const request =
+      indexedDB.open(
+        ANALYSIS_DB_NAME,
+        ANALYSIS_DB_VERSION
+      );
+
+    request.onupgradeneeded = () => {
+
+      const db = request.result;
+
+      if(
+        !db.objectStoreNames.contains(
+          "analysisEvents"
+        )
+      ){
+
+        const store =
+          db.createObjectStore(
+            "analysisEvents",
+            {
+              keyPath:"id"
+            }
+          );
+
+        store.createIndex(
+          "symbolTime",
+          ["symbol","candleTime"],
+          {unique:false}
+        );
+
+        store.createIndex(
+          "symbolTf",
+          ["symbol","timeframe"],
+          {unique:false}
+        );
+
+        store.createIndex(
+          "candleTime",
+          "candleTime",
+          {unique:false}
+        );
+
+        store.createIndex(
+          "type",
+          "type",
+          {unique:false}
+        );
+
+      }
+
+    };
+
+    request.onsuccess = () => {
+      state.analysisDb = request.result;
+      state.analysisDbReady = true;
+      resolve(request.result);
+    };
+
+    request.onerror = () => {
+      console.warn(
+        "ANALYSIS_DB_OPEN_ERROR",
+        request.error
+      );
+      resolve(null);
+    };
+
+  });
+
+}
+
+function analysisEventId(
+  symbol,
+  timeframe,
+  candleTime,
+  type,
+  subtype,
+  price
+){
+
+  return [
+    symbol,
+    timeframe,
+    candleTime,
+    type,
+    subtype || "",
+    Number(price || 0).toFixed(8)
+  ].join("|");
+
+}
+
+function saveAnalysisEvent(event){
+
+  const db = state.analysisDb;
+
+  if(!db){
+    return;
+  }
+
+  try{
+
+    const tx =
+      db.transaction(
+        "analysisEvents",
+        "readwrite"
+      );
+
+    tx.objectStore(
+      "analysisEvents"
+    ).put(event);
+
+  }catch(err){
+
+    console.warn(
+      "ANALYSIS_EVENT_SAVE_ERROR",
+      err
+    );
+
+  }
+
+}
+
+function getAnalysisEvents(){
+
+  return new Promise(resolve => {
+
+    const db = state.analysisDb;
+
+    if(!db){
+      resolve([]);
+      return;
+    }
+
+    try{
+
+      const tx =
+        db.transaction(
+          "analysisEvents",
+          "readonly"
+        );
+
+      const request =
+        tx.objectStore(
+          "analysisEvents"
+        ).getAll();
+
+      request.onsuccess = () =>
+        resolve(
+          Array.isArray(request.result)
+            ? request.result
+            : []
+        );
+
+      request.onerror = () =>
+        resolve([]);
+
+    }catch(err){
+
+      resolve([]);
+
+    }
+
+  });
+
+}
+
+async function restoreAnalysisEvents(){
+
+  state.analysisEvents =
+    await getAnalysisEvents();
+
+  if(
+    !Array.isArray(state.analysisEvents)
+  ){
+    state.analysisEvents = [];
+  }
+
+  console.log(
+    "ANALYSIS_EVENTS_RESTORED",
+    state.analysisEvents.length
+  );
+
+}
+
+function emitAnalysisEvent({
+  candle,
+  type,
+  subtype="",
+  direction="",
+  price=0,
+  priceHigh=0,
+  priceLow=0,
+  score=0,
+  evidence=[],
+  explanation=""
+}){
+
+  if(!candle){
+    return null;
+  }
+
+  const symbol =
+    analysisSymbol();
+
+  const timeframe =
+    analysisTimeframe();
+
+  const id =
+    analysisEventId(
+      symbol,
+      timeframe,
+      candle.time,
+      type,
+      subtype,
+      price
+    );
+
+  if(
+    state.analysisEventIds &&
+    state.analysisEventIds.has(id)
+  ){
+    return null;
+  }
+
+  const event = {
+
+    id,
+
+    symbol,
+
+    timeframe,
+
+    candleTime:
+      candle.time,
+
+    candleEnd:
+      candle.time +
+      Number(candle.duration || 0),
+
+    price:
+      Number(price || candle.close || 0),
+
+    priceHigh:
+      Number(
+        priceHigh ||
+        candle.high ||
+        candle.close ||
+        0
+      ),
+
+    priceLow:
+      Number(
+        priceLow ||
+        candle.low ||
+        candle.close ||
+        0
+      ),
+
+    type,
+
+    subtype,
+
+    direction,
+
+    score:
+      Number(score || 0),
+
+    evidence:
+      Array.isArray(evidence)
+        ? evidence
+        : [],
+
+    explanation,
+
+    analysisTime:
+      Date.now(),
+
+    status:
+      "historical-analysis",
+
+    outcomeEvaluated:false
+
+  };
+
+  if(!state.analysisEvents){
+    state.analysisEvents = [];
+  }
+
+  if(!state.analysisEventIds){
+    state.analysisEventIds = new Set();
+  }
+
+  state.analysisEventIds.add(id);
+
+  state.analysisEvents.push(event);
+
+  saveAnalysisEvent(event);
+
+  return event;
+
+}
+
+function candleBody(c){
+  return Math.abs(
+    Number(c.close) -
+    Number(c.open)
+  );
+}
+
+function candleRange(c){
+  return Math.max(
+    Number(c.high)-Number(c.low),
+    0
+  );
+}
+
+function detectPriceActionEvent(i){
+
+  const c =
+    state.candles[i];
+
+  const prev =
+    state.candles[i-1];
+
+  if(!c || !prev){
+    return;
+  }
+
+  const range =
+    candleRange(c);
+
+  if(range <= 0){
+    return;
+  }
+
+  const body =
+    candleBody(c);
+
+  const upper =
+    Number(c.high) -
+    Math.max(
+      Number(c.open),
+      Number(c.close)
+    );
+
+  const lower =
+    Math.min(
+      Number(c.open),
+      Number(c.close)
+    ) -
+    Number(c.low);
+
+  const closePos =
+    (
+      Number(c.close) -
+      Number(c.low)
+    ) / range;
+
+  if(
+    body > range * .65
+  ){
+
+    emitAnalysisEvent({
+      candle:c,
+      type:"PRICE_ACTION",
+      subtype:"MOMENTUM",
+      direction:
+        Number(c.close) >= Number(c.open)
+          ? "bullish"
+          : "bearish",
+      price:c.close,
+      score:70,
+      evidence:[
+        "body/range >= 65%",
+        "strong directional close"
+      ],
+      explanation:
+        "کندل دارای بدنه نسبتاً بزرگ و بسته‌شدن جهت‌دار است؛ به‌عنوان Momentum Candle ثبت شد."
+    });
+
+  }
+
+  if(
+    lower > body * 1.5 &&
+    closePos > .55
+  ){
+
+    emitAnalysisEvent({
+      candle:c,
+      type:"PRICE_ACTION",
+      subtype:"LOWER_REJECTION",
+      direction:"bullish",
+      price:c.low,
+      score:65,
+      evidence:[
+        "long lower wick",
+        "close above lower half"
+      ],
+      explanation:
+        "سایه پایینی نسبتاً بزرگ است و قیمت در نیمه بالایی کندل بسته شده؛ رد قیمت پایین ثبت شد."
+    });
+
+  }
+
+  if(
+    upper > body * 1.5 &&
+    closePos < .45
+  ){
+
+    emitAnalysisEvent({
+      candle:c,
+      type:"PRICE_ACTION",
+      subtype:"UPPER_REJECTION",
+      direction:"bearish",
+      price:c.high,
+      score:65,
+      evidence:[
+        "long upper wick",
+        "close below upper half"
+      ],
+      explanation:
+        "سایه بالایی نسبتاً بزرگ است و قیمت در نیمه پایینی کندل بسته شده؛ رد قیمت بالا ثبت شد."
+    });
+
+  }
+
+  if(
+    Number(c.high) > Number(prev.high) &&
+    Number(c.low) < Number(prev.low) &&
+    Number(c.close) > Number(prev.close)
+  ){
+
+    emitAnalysisEvent({
+      candle:c,
+      type:"PRICE_ACTION",
+      subtype:"OUTSIDE_BULLISH",
+      direction:"bullish",
+      price:c.close,
+      score:72,
+      evidence:[
+        "higher high",
+        "lower low",
+        "bullish close"
+      ],
+      explanation:
+        "کندل هم سقف بالاتر و هم کف پایین‌تر از کندل قبل ساخته و بالاتر بسته شده است."
+    });
+
+  }
+
+  if(
+    Number(c.high) > Number(prev.high) &&
+    Number(c.low) < Number(prev.low) &&
+    Number(c.close) < Number(prev.close)
+  ){
+
+    emitAnalysisEvent({
+      candle:c,
+      type:"PRICE_ACTION",
+      subtype:"OUTSIDE_BEARISH",
+      direction:"bearish",
+      price:c.close,
+      score:72,
+      evidence:[
+        "higher high",
+        "lower low",
+        "bearish close"
+      ],
+      explanation:
+        "کندل هم سقف بالاتر و هم کف پایین‌تر از کندل قبل ساخته و پایین‌تر بسته شده است."
+    });
+
+  }
+
+}
+
+function detectStructureEvents(i){
+
+  if(i < 3){
+    return;
+  }
+
+  const c =
+    state.candles[i];
+
+  const p1 =
+    state.candles[i-1];
+
+  const p2 =
+    state.candles[i-2];
+
+  const p3 =
+    state.candles[i-3];
+
+  if(!c || !p1 || !p2 || !p3){
+    return;
+  }
+
+  const pivotHigh =
+    Number(p2.high) >
+      Number(p1.high) &&
+    Number(p2.high) >
+      Number(p3.high);
+
+  const pivotLow =
+    Number(p2.low) <
+      Number(p1.low) &&
+    Number(p2.low) <
+      Number(p3.low);
+
+  if(pivotHigh){
+
+    emitAnalysisEvent({
+      candle:p2,
+      type:"SMC",
+      subtype:"SWING_HIGH",
+      direction:"bearish",
+      price:p2.high,
+      priceHigh:p2.high,
+      priceLow:p2.low,
+      score:60,
+      evidence:[
+        "pivot high",
+        "higher than adjacent highs"
+      ],
+      explanation:
+        "یک Swing High سه‌ کندلی شناسایی شد."
+    });
+
+  }
+
+  if(pivotLow){
+
+    emitAnalysisEvent({
+      candle:p2,
+      type:"SMC",
+      subtype:"SWING_LOW",
+      direction:"bullish",
+      price:p2.low,
+      priceHigh:p2.high,
+      priceLow:p2.low,
+      score:60,
+      evidence:[
+        "pivot low",
+        "lower than adjacent lows"
+      ],
+      explanation:
+        "یک Swing Low سه‌ کندلی شناسایی شد."
+    });
+
+  }
+
+  const previousHighs =
+    state.candles
+      .slice(0,i-2)
+      .map(x => Number(x.high))
+      .filter(x => x>0);
+
+  const previousLows =
+    state.candles
+      .slice(0,i-2)
+      .map(x => Number(x.low))
+      .filter(x => x>0);
+
+  if(previousHighs.length){
+
+    const maxHigh =
+      Math.max(...previousHighs);
+
+    if(
+      Number(c.close) > maxHigh
+    ){
+
+      emitAnalysisEvent({
+        candle:c,
+        type:"SMC",
+        subtype:"BOS_BULLISH",
+        direction:"bullish",
+        price:c.close,
+        score:78,
+        evidence:[
+          "close above previous structure high",
+          "structure break"
+        ],
+        explanation:
+          "بسته‌شدن قیمت بالاتر از سقف ساختاری قبلی به‌عنوان شکست ساختار صعودی ثبت شد."
+      });
+
+    }
+
+  }
+
+  if(previousLows.length){
+
+    const minLow =
+      Math.min(...previousLows);
+
+    if(
+      Number(c.close) < minLow
+    ){
+
+      emitAnalysisEvent({
+        candle:c,
+        type:"SMC",
+        subtype:"BOS_BEARISH",
+        direction:"bearish",
+        price:c.close,
+        score:78,
+        evidence:[
+          "close below previous structure low",
+          "structure break"
+        ],
+        explanation:
+          "بسته‌شدن قیمت پایین‌تر از کف ساختاری قبلی به‌عنوان شکست ساختار نزولی ثبت شد."
+      });
+
+    }
+
+  }
+
+}
+
+function detectICTEvents(i){
+
+  if(i < 2){
+    return;
+  }
+
+  const a =
+    state.candles[i-2];
+
+  const b =
+    state.candles[i-1];
+
+  const c =
+    state.candles[i];
+
+  if(!a || !b || !c){
+    return;
+  }
+
+  /*
+    FVG:
+    bullish = current low > candle two-bars-back high
+    bearish = current high < candle two-bars-back low
+  */
+
+  if(
+    Number(c.low) >
+    Number(a.high)
+  ){
+
+    emitAnalysisEvent({
+      candle:c,
+      type:"ICT",
+      subtype:"BULLISH_FVG",
+      direction:"bullish",
+      price:(Number(c.low)+Number(a.high))/2,
+      priceHigh:c.low,
+      priceLow:a.high,
+      score:75,
+      evidence:[
+        "current low above prior high",
+        "three-candle imbalance"
+      ],
+      explanation:
+        "بین کندل اول و سوم یک عدم‌تعادل صعودی سه‌ کندلی تشکیل شده است."
+    });
+
+  }
+
+  if(
+    Number(c.high) <
+    Number(a.low)
+  ){
+
+    emitAnalysisEvent({
+      candle:c,
+      type:"ICT",
+      subtype:"BEARISH_FVG",
+      direction:"bearish",
+      price:(Number(c.high)+Number(a.low))/2,
+      priceHigh:a.low,
+      priceLow:c.high,
+      score:75,
+      evidence:[
+        "current high below prior low",
+        "three-candle imbalance"
+      ],
+      explanation:
+        "بین کندل اول و سوم یک عدم‌تعادل نزولی سه‌ کندلی تشکیل شده است."
+    });
+
+  }
+
+  const avgRange =
+    state.candles
+      .slice(
+        Math.max(0,i-20),
+        i
+      )
+      .map(candleRange)
+      .filter(x => x>0);
+
+  if(avgRange.length){
+
+    const avg =
+      avgRange.reduce(
+        (a,b)=>a+b,
+        0
+      ) / avgRange.length;
+
+    if(
+      candleRange(c) >
+      avg * 1.8 &&
+      candleBody(c) >
+      candleRange(c) * .60
+    ){
+
+      emitAnalysisEvent({
+        candle:c,
+        type:"ICT",
+        subtype:"DISPLACEMENT",
+        direction:
+          Number(c.close) >= Number(c.open)
+            ? "bullish"
+            : "bearish",
+        price:c.close,
+        score:80,
+        evidence:[
+          "range > 1.8x recent average",
+          "body > 60% of range"
+        ],
+        explanation:
+          "دامنه و بدنه کندل نسبت به میانگین اخیر بزرگ است؛ Displacement ثبت شد."
+      });
+
+    }
+
+  }
+
+}
+
+function detectLiquiditySweep(i){
+
+  if(i < 5){
+    return;
+  }
+
+  const c =
+    state.candles[i];
+
+  const prior =
+    state.candles.slice(
+      Math.max(0,i-5),
+      i
+    );
+
+  if(!c || !prior.length){
+    return;
+  }
+
+  const high =
+    Math.max(
+      ...prior.map(x=>Number(x.high))
+    );
+
+  const low =
+    Math.min(
+      ...prior.map(x=>Number(x.low))
+    );
+
+  if(
+    Number(c.high) > high &&
+    Number(c.close) < high
+  ){
+
+    emitAnalysisEvent({
+      candle:c,
+      type:"ICT",
+      subtype:"BUY_SIDE_LIQUIDITY_SWEEP",
+      direction:"bearish",
+      price:c.high,
+      score:76,
+      evidence:[
+        "high above previous 5-candle high",
+        "close back below liquidity level"
+      ],
+      explanation:
+        "قیمت سقف پنج کندل قبل را گرفت اما زیر آن بسته شد؛ به‌عنوان Buy-Side Liquidity Sweep ثبت شد."
+    });
+
+  }
+
+  if(
+    Number(c.low) < low &&
+    Number(c.close) > low
+  ){
+
+    emitAnalysisEvent({
+      candle:c,
+      type:"ICT",
+      subtype:"SELL_SIDE_LIQUIDITY_SWEEP",
+      direction:"bullish",
+      price:c.low,
+      score:76,
+      evidence:[
+        "low below previous 5-candle low",
+        "close back above liquidity level"
+      ],
+      explanation:
+        "قیمت کف پنج کندل قبل را گرفت اما بالای آن بسته شد؛ به‌عنوان Sell-Side Liquidity Sweep ثبت شد."
+    });
+
+  }
+
+}
+
+function detectTradeEvents(i){
+
+  const candle =
+    state.candles[i];
+
+  if(!candle){
+    return;
+  }
+
+  const trades =
+    state.trades.filter(
+      t =>
+        t.time >= candle.time &&
+        t.time <
+          candle.time +
+          Number(candle.duration || 0)
+    );
+
+  if(!trades.length){
+    return;
+  }
+
+  const values =
+    trades
+      .map(t=>Number(t.value)||0)
+      .filter(v=>v>0)
+      .sort((a,b)=>a-b);
+
+  if(values.length >= 10){
+
+    const threshold =
+      values[
+        Math.floor(
+          values.length*.90
+        )
+      ] || 0;
+
+    const large =
+      trades.filter(
+        t =>
+          (Number(t.value)||0) >= threshold
+      );
+
+    if(large.length){
+
+      const biggest =
+        large.reduce(
+          (a,b)=>
+            (Number(a.value)||0) >
+            (Number(b.value)||0)
+              ? a
+              : b
+        );
+
+      emitAnalysisEvent({
+        candle,
+        type:"ORDER_FLOW",
+        subtype:"LARGE_TRADE",
+        direction:
+          biggest.side === "buy"
+            ? "bullish"
+            : "bearish",
+        price:biggest.price,
+        score:68,
+        evidence:[
+          "trade value >= 90th percentile",
+          "real Bybit trade",
+          "side="+biggest.side
+        ],
+        explanation:
+          "یک معامله با ارزش بالا در داده واقعی Bybit ثبت شد."
+      });
+
+    }
+
+  }
+
+  let buy = 0;
+  let sell = 0;
+
+  for(const t of trades){
+
+    const size =
+      Number(t.size)||0;
+
+    if(t.side === "buy"){
+      buy += size;
+    }else{
+      sell += size;
+    }
+
+  }
+
+  const total =
+    buy + sell;
+
+  if(total > 0){
+
+    const delta =
+      buy-sell;
+
+    if(
+      Math.abs(delta) >
+      total*.60
+    ){
+
+      emitAnalysisEvent({
+        candle,
+        type:"ORDER_FLOW",
+        subtype:"EXTREME_DELTA",
+        direction:
+          delta > 0
+            ? "bullish"
+            : "bearish",
+        price:candle.close,
+        score:64,
+        evidence:[
+          "absolute delta > 60% of total traded size"
+        ],
+        explanation:
+          "عدم‌تعادل قابل‌توجه بین معاملات Buy و Sell در این کندل ثبت شد."
+      });
+
+    }
+
+  }
+
+}
+
+function runAnalysisForCandle(i){
+
+  if(
+    i < 0 ||
+    i >= state.candles.length
+  ){
+    return;
+  }
+
+  /*
+    فقط کندل‌های بسته‌شده.
+    کندل جاری دوباره تحلیل نمی‌شود تا look-ahead
+    و تغییر مداوم Event تاریخی ایجاد نشود.
+  */
+
+  if(
+    i >= state.candles.length-1
+  ){
+    return;
+  }
+
+  detectPriceActionEvent(i);
+  detectStructureEvents(i);
+  detectICTEvents(i);
+  detectLiquiditySweep(i);
+  detectTradeEvents(i);
+
+}
+
+function rebuildAnalysisEventIds(){
+
+  state.analysisEventIds =
+    new Set(
+      (state.analysisEvents || [])
+        .map(e=>e.id)
+        .filter(Boolean)
+    );
+
+}
+
+async function initializeAnalysisEngine(){
+
+  if(!state.analysisEvents){
+    state.analysisEvents = [];
+  }
+
+  if(!state.analysisEventIds){
+    state.analysisEventIds = new Set();
+  }
+
+  await openAnalysisDB();
+  await restoreAnalysisEvents();
+
+  rebuildAnalysisEventIds();
+
+  /*
+    فقط Eventهای موجود ساخته می‌شوند.
+    Event جدید برای همان کندل/نوع دوباره ساخته نمی‌شود.
+  */
+
+  const start =
+    Math.max(
+      0,
+      state.candles.length - 500
+    );
+
+  for(
+    let i=start;
+    i<state.candles.length-1;
+    i++
+  ){
+
+    runAnalysisForCandle(i);
+
+  }
+
+  console.log(
+    "ANALYSIS_ENGINE_READY",
+    "events=",
+    state.analysisEvents.length,
+    "candles=",
+    state.candles.length
+  );
+
+}
+
+/* =========================================================
+   END ANALYSIS EVENT ENGINE V1
+========================================================= */
+
+
 /* =========================================================
    MARKET TAB ENGINE
    REAL BYBIT DATA
@@ -6685,13 +7906,6 @@ function drawAbsorptionTab(){
 
 function drawActiveMarketTab(){
 
-  /*
-    Market tabs are rendered directly on the
-    main chart by drawMarketOverlay().
-
-    The lower canvas is reserved for Footprint.
-  */
-
   const active =
     document.querySelector(
       ".tab.active"
@@ -6701,12 +7915,247 @@ function drawActiveMarketTab(){
     return;
   }
 
-  if(
-    active.textContent.trim() ===
-    "Footprint"
-  ){
+  const tab =
+    active.textContent.trim();
+
+  if(tab === "Footprint"){
     drawFootprint();
+    return;
   }
+
+  drawHistoricalAnalysisPanel(tab);
+
+}
+
+function drawHistoricalAnalysisPanel(tab){
+
+  const {
+    w,
+    h
+  } =
+  resizeCanvas(
+    fpCanvas,
+    fpCtx
+  );
+
+  fpCtx.clearRect(
+    0,
+    0,
+    w,
+    h
+  );
+
+  const candle =
+    state.candles[
+      state.selectedIndex
+    ];
+
+  fpMessage.style.display =
+    "none";
+
+  if(!candle){
+
+    fpMessage.style.display =
+      "flex";
+
+    fpMessage.textContent =
+      "یک کندل از نمودار بالا انتخاب کنید";
+
+    return;
+
+  }
+
+  const events =
+    (state.analysisEvents || [])
+      .filter(
+        e =>
+          e.symbol === analysisSymbol() &&
+          e.timeframe === analysisTimeframe() &&
+          Number(e.candleTime) === Number(candle.time)
+      )
+      .sort(
+        (a,b) =>
+          Number(b.score || 0) -
+          Number(a.score || 0)
+      );
+
+  fpCtx.save();
+
+  fpCtx.fillStyle =
+    "#d7e2e8";
+
+  fpCtx.font =
+    "bold 14px Tahoma";
+
+  fpCtx.textAlign =
+    "left";
+
+  fpCtx.fillText(
+    "HISTORICAL ANALYSIS · " + tab,
+    18,
+    24
+  );
+
+  fpCtx.font =
+    "11px Tahoma";
+
+  fpCtx.fillStyle =
+    "#8fa4af";
+
+  fpCtx.fillText(
+    "کندل: " +
+    new Date(candle.time)
+      .toLocaleString(
+        "fa-IR",
+        {
+          month:"2-digit",
+          day:"2-digit",
+          hour:"2-digit",
+          minute:"2-digit"
+        }
+      ),
+    18,
+    46
+  );
+
+  fpCtx.fillText(
+    "O " + Number(candle.open).toFixed(4) +
+    "   H " + Number(candle.high).toFixed(4) +
+    "   L " + Number(candle.low).toFixed(4) +
+    "   C " + Number(candle.close).toFixed(4),
+    18,
+    64
+  );
+
+  if(!events.length){
+
+    fpCtx.fillStyle =
+      "#82939d";
+
+    fpCtx.font =
+      "12px Tahoma";
+
+    fpCtx.fillText(
+      "برای این کندل Event تاریخی ثبت نشده است.",
+      18,
+      94
+    );
+
+    fpCtx.restore();
+
+    return;
+
+  }
+
+  let y = 94;
+
+  for(
+    const event of events.slice(0,12)
+  ){
+
+    const direction =
+      event.direction || "NEUTRAL";
+
+    const color =
+      direction === "BULLISH"
+        ? "#39db92"
+        : direction === "BEARISH"
+          ? "#ef6875"
+          : "#53a9ff";
+
+    fpCtx.fillStyle =
+      color;
+
+    fpCtx.font =
+      "bold 12px Tahoma";
+
+    fpCtx.fillText(
+      String(event.type || "EVENT"),
+      18,
+      y
+    );
+
+    fpCtx.fillStyle =
+      "#d7e2e8";
+
+    fpCtx.font =
+      "11px Tahoma";
+
+    fpCtx.fillText(
+      "Direction: " +
+      direction +
+      "   Score: " +
+      Number(event.score || 0).toFixed(1),
+      190,
+      y
+    );
+
+    y += 20;
+
+    if(event.price){
+
+      fpCtx.fillStyle =
+        "#9db0ba";
+
+      fpCtx.fillText(
+        "Price: " +
+        Number(event.price).toFixed(8),
+        30,
+        y
+      );
+
+      y += 18;
+
+    }
+
+    if(event.explanation){
+
+      fpCtx.fillStyle =
+        "#c7d3d9";
+
+      const text =
+        String(event.explanation);
+
+      const maxChars =
+        Math.max(
+          45,
+          Math.floor((w - 45) / 7)
+        );
+
+      for(
+        let pos=0;
+        pos<text.length;
+        pos += maxChars
+      ){
+
+        fpCtx.fillText(
+          text.slice(
+            pos,
+            pos + maxChars
+          ),
+          30,
+          y
+        );
+
+        y += 17;
+
+        if(y > h - 25){
+          break;
+        }
+
+      }
+
+    }
+
+    y += 12;
+
+    if(y > h - 25){
+      break;
+    }
+
+  }
+
+  fpCtx.restore();
 
 }
 
@@ -8632,6 +10081,13 @@ async function loadMarket(
 
     state.candles =
       newCandles;
+
+    /*
+      Historical analysis engine.
+      Events are created only from data available
+      up to each closed candle.
+    */
+    initializeAnalysisEngine();
 
     const restTrades =
       Array.isArray(
