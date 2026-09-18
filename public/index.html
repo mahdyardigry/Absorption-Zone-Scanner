@@ -3368,6 +3368,9 @@ function drawMarketOverlay(info, px, py, volumeTop){
   const candle =
     state.candles[state.selectedIndex];
 
+  const selectedX =
+    px(state.selectedIndex);
+
   let trades = [];
 
   if(candle){
@@ -3380,9 +3383,6 @@ function drawMarketOverlay(info, px, py, volumeTop){
             candle.time +
             candle.duration
       );
-
-    const selectedX =
-      px(state.selectedIndex);
 
     /*
       Selected candle marker
