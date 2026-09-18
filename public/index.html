@@ -2811,11 +2811,40 @@ function drawChart(){
 
   chartCtx.fillStyle = "#ff00ff";
   chartCtx.font = "bold 14px sans-serif";
-  chartCtx.fillText(
-    "CANDLE DEBUG: " + state.candles.length,
-    10,
-    20
-  );
+
+  if(state.activeTab === "Heatmap"){
+    const testY = 120;
+
+    chartCtx.beginPath();
+    chartCtx.moveTo(20, testY);
+    chartCtx.lineTo(chartCanvas.width - 20, testY);
+    chartCtx.strokeStyle = "#ff0000";
+    chartCtx.lineWidth = 4;
+    chartCtx.stroke();
+
+    chartCtx.beginPath();
+    chartCtx.arc(
+      chartCanvas.width / 2,
+      testY,
+      14,
+      0,
+      Math.PI * 2
+    );
+    chartCtx.fillStyle = "rgba(255,80,0,.8)";
+    chartCtx.fill();
+    chartCtx.strokeStyle = "#ffff00";
+    chartCtx.lineWidth = 2;
+    chartCtx.stroke();
+
+    chartCtx.fillStyle = "#ff00ff";
+    chartCtx.fillText("HEATMAP TEST", 10, 20);
+  }else{
+    chartCtx.fillText(
+      "CANDLE DEBUG: " + state.candles.length,
+      10,
+      20
+    );
+  }
 
   if(
     !state.candles.length
