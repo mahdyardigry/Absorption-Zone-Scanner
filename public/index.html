@@ -791,6 +791,22 @@ body.landscape-chart-mode .chart-panel .tabs{
 
     </div>
 
+    <div class="style-tabs">
+
+      <button class="style-tab active" data-style="PRICE_ACTION">
+        Price Action
+      </button>
+
+      <button class="style-tab" data-style="SMART_MONEY">
+        Smart Money
+      </button>
+
+      <button class="style-tab" data-style="ICT">
+        ICT
+      </button>
+
+    </div>
+
     <div class="tabs">
 
       <button class="tab active">
@@ -1007,7 +1023,8 @@ const state = {
 
   fpScale:1,
   activeTab:"Footprint",
-
+  activeView:"MARKET",
+  activeStyle:"PRICE_ACTION",
 
   fpOffsetX:0,
 
@@ -2663,7 +2680,7 @@ function updateSelectedInfo(){
         ? "red"
         : "";
 
-  drawFootprint();
+  drawActiveLowerPanel();
 
 }
 
@@ -3286,35 +3303,206 @@ function drawChart(){
 
     }
 
-    if(
-      info.step > 45
-    ){
+    {
+      const labelEvery = Math.max(
+        1,
+        Math.ceil(60 / Math.max(1, info.step))
+      );
+
+      if(i % labelEvery === 0){
+        chartCtx.fillStyle = "#647c8c";
+        chartCtx.font = "11px Tahoma";
+        chartCtx.textAlign = "center";
+
+        chartCtx.fillText(
+          new Date(c.time).toLocaleTimeString(
+            "fa-IR",
+            {
+              hour:"2-digit",
+              minute:"2-digit"
+            }
+          ),
+          x,
+          h-18
+        );
+      }
+    }
+
+  }
+
+
+  /* =======================================================
+     CROSSHAIR DRAW
+  ======================================================= */
+
+  if(
+    chartCrosshair.active &&
+    chartCrosshair.x >= info.left &&
+    chartCrosshair.x <= info.right &&
+    chartCrosshair.y >= top &&
+    chartCrosshair.y <= bottom
+  ){
+
+    const cx = chartCrosshair.x;
+    const cy = chartCrosshair.y;
+
+    chartCtx.save();
+
+    chartCtx.strokeStyle =
+      "rgba(220,235,245,.55)";
+
+    chartCtx.lineWidth = 1;
+
+    chartCtx.setLineDash([4,4]);
+
+    /* vertical time line */
+    chartCtx.beginPath();
+    chartCtx.moveTo(cx,top);
+    chartCtx.lineTo(cx,bottom);
+    chartCtx.stroke();
+
+    /* horizontal price line */
+    chartCtx.beginPath();
+    chartCtx.moveTo(info.left,cy);
+    chartCtx.lineTo(info.right,cy);
+    chartCtx.stroke();
+
+    chartCtx.setLineDash([]);
+
+    /*
+      Find candle under crosshair.
+      This uses the existing chart geometry,
+      so it does not create artificial coordinates.
+    */
+    const worldIndex =
+      info.startFloat +
+      (
+        (cx-info.left) /
+        Math.max(1,info.step)
+      );
+
+    const candleIndex =
+      Math.max(
+        0,
+        Math.min(
+          state.candles.length-1,
+          Math.floor(worldIndex)
+        )
+      );
+
+    const candle =
+      state.candles[candleIndex];
+
+    if(candle){
+
+      const candleStart =
+        Number(candle.time);
+
+      const duration =
+        Math.max(
+          1,
+          Number(candle.duration || 0)
+        );
+
+      const fraction =
+        clamp(
+          (
+            worldIndex-candleIndex
+          ),
+          0,
+          .999
+        );
+
+      const crossTime =
+        candleStart +
+        fraction*duration;
+
+      const priceRange =
+        maxPrice-minPrice;
+
+      const crossPrice =
+        priceRange > 0
+          ? maxPrice -
+            (
+              (cy-top) /
+              Math.max(1,bottom-top)
+            ) *
+            priceRange
+          : Number(candle.close || 0);
 
       chartCtx.fillStyle =
-        "#647c8c";
+        "rgba(8,12,17,.88)";
+
+      chartCtx.fillRect(
+        cx-42,
+        bottom+2,
+        84,
+        18
+      );
+
+      chartCtx.fillStyle =
+        "#d7e0ea";
 
       chartCtx.font =
-        "8px Tahoma";
+        "10px Tahoma";
 
       chartCtx.textAlign =
         "center";
 
       chartCtx.fillText(
         new Date(
-          c.time
+          crossTime
         ).toLocaleTimeString(
           "fa-IR",
           {
             hour:"2-digit",
-            minute:"2-digit"
+            minute:"2-digit",
+            second:"2-digit"
           }
         ),
-        x,
-        h-18
+        cx,
+        bottom+15
       );
 
+      chartCtx.fillStyle =
+        "rgba(8,12,17,.90)";
+
+      chartCtx.fillRect(
+        info.right+2,
+        cy-9,
+        68,
+        18
+      );
+
+      chartCtx.fillStyle =
+        "#d7e0ea";
+
+      chartCtx.textAlign =
+        "left";
+
+      chartCtx.fillText(
+        Number.isFinite(crossPrice)
+          ? crossPrice.toFixed(2)
+          : "-",
+        info.right+7,
+        cy+4
+      );
     }
 
+        /* + marker */
+    chartCtx.strokeStyle = "rgba(245,250,255,.95)";
+    chartCtx.lineWidth = 1.5;
+
+    const plusSize = 5;
+
+    chartCtx.beginPath();
+    chartCtx.moveTo(cx-plusSize,cy);
+    chartCtx.lineTo(cx+plusSize,cy);
+    chartCtx.moveTo(cx,cy-plusSize);
+    chartCtx.lineTo(cx,cy+plusSize);
+    chartCtx.stroke();
+
+chartCtx.restore();
   }
 
   chartCtx.textAlign =
@@ -3350,6 +3538,11 @@ function drawChart(){
     state.analysisEvents.length
   ){
 
+    const activeStyle =
+      typeof activeAnalysisStyle === "function"
+        ? activeAnalysisStyle()
+        : "PRICE_ACTION";
+
     const visibleEvents =
       state.analysisEvents.filter(
         event => {
@@ -3358,6 +3551,22 @@ function drawChart(){
             Number(event.candleTime);
 
           if(!Number.isFinite(t)){
+            return false;
+          }
+
+          const eventStyle =
+            String(
+              event.style ||
+              analysisStyleForEvent(
+                event.type,
+                event.subtype
+              ) ||
+              ""
+            )
+            .trim()
+            .toUpperCase();
+
+          if(eventStyle !== activeStyle){
             return false;
           }
 
@@ -3451,13 +3660,7 @@ function drawChart(){
 
       chartCtx.beginPath();
 
-      chartCtx.arc(
-        eventX,
-        eventY,
-        5,
-        0,
-        Math.PI*2
-      );
+
 
       chartCtx.fill();
       chartCtx.stroke();
@@ -3661,22 +3864,45 @@ function drawChart(){
             ? value/maxValue
             : 0;
 
-        const radius =
-          5 +
-          Math.min(
-            11,
-            strength*11
+        const lineWidth =
+          Math.max(
+            8,
+            Math.min(
+              info.step*.72,
+              8 + strength*info.step*.72
+            )
           );
 
         chartCtx.beginPath();
 
-        chartCtx.arc(
-          x,
-          y,
-          radius,
-          0,
-          Math.PI*2
+        chartCtx.moveTo(
+          x-lineWidth/2,
+          y
         );
+
+        chartCtx.lineTo(
+          x+lineWidth/2,
+          y
+        );
+
+        chartCtx.strokeStyle =
+          "rgba(255,175,55," +
+          (
+            .22 +
+            strength*.68
+          ).toFixed(3) +
+          ")";
+
+        chartCtx.lineWidth =
+          Math.max(
+            1.5,
+            Math.min(
+              5,
+              1.5 + strength*3.5
+            )
+          );
+
+        chartCtx.stroke();
 
         chartCtx.fillStyle =
           t.side === "buy"
@@ -3692,21 +3918,7 @@ function drawChart(){
 
         chartCtx.stroke();
 
-        chartCtx.fillStyle =
-          "#ffffff";
 
-        chartCtx.fillText(
-          (
-            t.side === "buy"
-              ? "BUY "
-              : "SELL "
-          ) +
-          formatMarketNumber(
-            value
-          ),
-          x + radius + 4,
-          y + 3
-        );
 
       }
 
@@ -3731,173 +3943,286 @@ function drawChart(){
     */
     if(activeTab === "Heatmap"){
 
-      const levels =
-        new Map();
+      /*
+        LIGHT REAL TIME × PRICE HEATMAP
 
-      for(
-        const t of selectedTrades
-      ){
+        X = actual trade time
+        Y = actual trade price
+        intensity = trade value/size
 
-        const price =
-          Number(t.price);
+        Rendered as horizontal segments.
+        No circles.
+        No trade × candle nested scan.
+      */
 
-        const value =
-          Number(t.value) ||
-          Number(t.size) ||
-          0;
-
-        if(
-          !Number.isFinite(price) ||
-          value <= 0
-        ){
-          continue;
-        }
-
-        const key =
-          String(price);
-
-        const row =
-          levels.get(key) ||
-          {
-            price,
-            value:0,
-            count:0
-          };
-
-        row.value += value;
-        row.count += 1;
-
-        levels.set(
-          key,
-          row
+      const firstVisible =
+        Math.max(
+          0,
+          Math.floor(info.startFloat)
         );
 
-      }
-
-      const rows =
-        [...levels.values()]
-          .sort(
-            (a,b) =>
-              b.value-a.value
+      const lastVisible =
+        Math.min(
+          state.candles.length - 1,
+          Math.ceil(
+            info.startFloat + info.count
           )
-          .slice(0,30);
+        );
 
-      const maxValue =
-        rows.length
-          ? rows[0].value
-          : 0;
+      const firstCandle =
+        state.candles[firstVisible];
 
-      chartCtx.font =
-        "9px Tahoma";
+      const lastCandle =
+        state.candles[lastVisible];
 
-      for(
-        const row of rows
-      ){
+      if(firstCandle && lastCandle){
 
-        const y =
-          py(row.price);
+        const fromTime =
+          Number(firstCandle.time);
 
-        if(
-          y < top ||
-          y > bottom
-        ){
-          continue;
+        const toTime =
+          Number(lastCandle.time) +
+          Number(lastCandle.duration || 0);
+
+        const buckets =
+          new Map();
+
+        const maxBuckets = 260;
+
+        for(const t of state.trades){
+
+          const time =
+            Number(t.time);
+
+          const price =
+            Number(t.price);
+
+          const value =
+            Number(t.value) > 0
+              ? Number(t.value)
+              : Number(t.size);
+
+          if(
+            !Number.isFinite(time) ||
+            !Number.isFinite(price) ||
+            !Number.isFinite(value) ||
+            value <= 0 ||
+            time < fromTime ||
+            time > toTime
+          ){
+            continue;
+          }
+
+          const duration =
+            Math.max(
+              1,
+              Number(
+                firstCandle.duration || 60000
+              )
+            );
+
+          const rawIndex =
+            (time - fromTime) /
+            duration;
+
+          const candleIndex =
+            Math.max(
+              firstVisible,
+              Math.min(
+                lastVisible,
+                Math.floor(rawIndex)
+              )
+            );
+
+          const candle =
+            state.candles[candleIndex];
+
+          if(!candle) continue;
+
+          const candleStart =
+            Number(candle.time);
+
+          const candleDuration =
+            Math.max(
+              1,
+              Number(candle.duration || duration)
+            );
+
+          const fraction =
+            clamp(
+              (time-candleStart) /
+              candleDuration,
+              0,
+              .999
+            );
+
+          const timeBucket =
+            Math.floor(
+              fraction * 6
+            );
+
+          /*
+            Price bucket is deliberately coarse.
+            This keeps the chart responsive while
+            preserving the actual observed price area.
+          */
+          const priceStep =
+            Math.max(
+              Math.abs(
+                Number(candle.high || price) -
+                Number(candle.low || price)
+              ) / 24,
+              Math.abs(price)*0.00001,
+              0.00000001
+            );
+
+          const priceBucket =
+            Math.round(
+              price / priceStep
+            ) * priceStep;
+
+          const key =
+            candleIndex +
+            ":" +
+            timeBucket +
+            ":" +
+            priceBucket.toPrecision(12);
+
+          let row =
+            buckets.get(key);
+
+          if(!row){
+
+            if(buckets.size >= maxBuckets){
+              continue;
+            }
+
+            row = {
+              candleIndex,
+              timeBucket,
+              price:priceBucket,
+              volume:0
+            };
+
+            buckets.set(
+              key,
+              row
+            );
+          }
+
+          row.volume += value;
         }
 
-        const strength =
-          maxValue > 0
-            ? row.value/maxValue
+        const rows =
+          [...buckets.values()];
+
+        const maxVolume =
+          rows.length
+            ? Math.max(
+                ...rows.map(
+                  r => r.volume
+                )
+              )
             : 0;
 
-        const radius =
-          4 +
-          Math.min(
-            16,
-            strength*16
+        chartCtx.save();
+
+        for(const row of rows){
+
+          const strength =
+            maxVolume > 0
+              ? Math.sqrt(
+                  row.volume /
+                  maxVolume
+                )
+              : 0;
+
+          const candle =
+            state.candles[
+              row.candleIndex
+            ];
+
+          if(!candle) continue;
+
+          const x0 =
+            px(row.candleIndex) -
+            info.step/2 +
+            (
+              row.timeBucket /
+              6
+            ) *
+            info.step;
+
+          const x1 =
+            px(row.candleIndex) -
+            info.step/2 +
+            (
+              (row.timeBucket+1) /
+              6
+            ) *
+            info.step;
+
+          const y =
+            py(row.price);
+
+          if(
+            y < top ||
+            y > bottom
+          ){
+            continue;
+          }
+
+          chartCtx.beginPath();
+
+          chartCtx.moveTo(
+            x0,
+            y
           );
 
-        chartCtx.beginPath();
+          chartCtx.lineTo(
+            x1,
+            y
+          );
 
-        chartCtx.moveTo(
-          info.left,
-          y
-        );
+          chartCtx.strokeStyle =
+            `rgba(255,145,35,${
+              (
+                .10 +
+                strength*.65
+              ).toFixed(3)
+            })`;
 
-        chartCtx.lineTo(
-          info.right,
-          y
-        );
+          chartCtx.lineWidth =
+            Math.max(
+              1,
+              Math.min(
+                7,
+                1 +
+                strength*6
+              )
+            );
 
-        chartCtx.strokeStyle =
-          `rgba(255,145,35,${
-            (
-              .08 +
-              strength*.30
-            ).toFixed(3)
-          })`;
+          chartCtx.stroke();
+        }
 
-        chartCtx.lineWidth =
-          1 +
-          strength*2;
-
-        chartCtx.stroke();
-
-        chartCtx.beginPath();
-
-        chartCtx.arc(
-          selectedX,
-          y,
-          radius,
-          0,
-          Math.PI*2
-        );
+        chartCtx.restore();
 
         chartCtx.fillStyle =
-          `rgba(255,145,35,${
-            (
-              .18 +
-              strength*.45
-            ).toFixed(3)
-          })`;
+          "rgba(235,245,250,.95)";
 
-        chartCtx.fill();
+        chartCtx.font =
+          "11px Tahoma";
 
-        chartCtx.strokeStyle =
-          "rgba(255,225,130,.75)";
-
-        chartCtx.lineWidth = 1;
-
-        chartCtx.stroke();
-
-        chartCtx.fillStyle =
-          "rgba(245,235,210,.95)";
+        chartCtx.textAlign =
+          "left";
 
         chartCtx.fillText(
-          formatPrice(row.price) +
-          " · " +
-          formatMarketNumber(
-            row.value
-          ),
-          selectedX + radius + 5,
-          y + 3
+          "HEATMAP · TIME × PRICE · " +
+          rows.length,
+          info.left+8,
+          top+18
         );
-
       }
-
-      chartCtx.fillStyle =
-        "rgba(235,245,250,.95)";
-
-      chartCtx.font =
-        "11px Tahoma";
-
-      chartCtx.fillText(
-        "HEATMAP · " +
-        rows.length +
-        " price levels",
-        info.left + 8,
-        top + 18
-      );
-
     }
 
     /*
@@ -3912,67 +4237,147 @@ function drawChart(){
       if(a){
 
         const type =
-          String(
-            a.type || "NONE"
-          );
+          String(a.type || "NONE");
 
-        const price =
+        const centerPrice =
           Number(
             a.price ||
-            selectedCandle.close
+            selectedCandle.close ||
+            0
           );
 
-        const y =
-          py(price);
+        let priceLow =
+          Number(a.priceLow);
+
+        let priceHigh =
+          Number(a.priceHigh);
 
         if(
-          Number.isFinite(price) &&
-          y >= top &&
-          y <= bottom
+          !Number.isFinite(priceLow) ||
+          !Number.isFinite(priceHigh) ||
+          priceLow <= 0 ||
+          priceHigh <= 0
         ){
+          const candleRange =
+            Math.abs(
+              Number(selectedCandle.high || centerPrice) -
+              Number(selectedCandle.low || centerPrice)
+            );
 
-          chartCtx.beginPath();
+          const fallback =
+            Math.max(
+              candleRange * 0.08,
+              Math.abs(centerPrice) * 0.00015
+            );
 
-          chartCtx.arc(
-            selectedX,
-            y,
-            12,
-            0,
-            Math.PI*2
-          );
+          priceLow =
+            centerPrice - fallback;
 
-          chartCtx.fillStyle =
-            type === "BUY_ABSORPTION"
-              ? "rgba(50,220,150,.72)"
-              : type === "SELL_ABSORPTION"
-                ? "rgba(240,80,100,.72)"
-                : "rgba(230,190,70,.65)";
-
-          chartCtx.fill();
-
-          chartCtx.strokeStyle =
-            "#ffffff";
-
-          chartCtx.lineWidth = 2;
-
-          chartCtx.stroke();
-
-          chartCtx.fillStyle =
-            "#ffffff";
-
-          chartCtx.font =
-            "10px Tahoma";
-
-          chartCtx.fillText(
-            type,
-            selectedX + 17,
-            y + 4
-          );
-
+          priceHigh =
+            centerPrice + fallback;
         }
 
-      }
+        if(priceLow > priceHigh){
+          const tmp=priceLow;
+          priceLow=priceHigh;
+          priceHigh=tmp;
+        }
 
+        const yHigh=py(priceHigh);
+        const yLow=py(priceLow);
+
+        const zoneTop=
+          Math.max(
+            top,
+            Math.min(yHigh,yLow)
+          );
+
+        const zoneBottom=
+          Math.min(
+            bottom,
+            Math.max(yHigh,yLow)
+          );
+
+        if(
+          Number.isFinite(centerPrice) &&
+          zoneBottom > zoneTop
+        ){
+
+          const zoneColor =
+            type === "BUY_ABSORPTION"
+              ? "rgba(50,220,150,.18)"
+              : type === "SELL_ABSORPTION"
+                ? "rgba(240,80,100,.18)"
+                : "rgba(230,190,70,.16)";
+
+          const lineColor =
+            type === "BUY_ABSORPTION"
+              ? "rgba(50,220,150,.90)"
+              : type === "SELL_ABSORPTION"
+                ? "rgba(240,80,100,.90)"
+                : "rgba(230,190,70,.90)";
+
+          const zoneX =
+            selectedX -
+            Math.max(4,info.step*.48);
+
+          const zoneW =
+            Math.max(8,info.step*.96);
+
+          chartCtx.save();
+
+          chartCtx.fillStyle=zoneColor;
+
+          chartCtx.fillRect(
+            zoneX,
+            zoneTop,
+            zoneW,
+            Math.max(
+              2,
+              zoneBottom-zoneTop
+            )
+          );
+
+          chartCtx.strokeStyle=lineColor;
+          chartCtx.lineWidth=1.5;
+
+          chartCtx.strokeRect(
+            zoneX,
+            zoneTop,
+            zoneW,
+            Math.max(
+              2,
+              zoneBottom-zoneTop
+            )
+          );
+
+          const centerY=py(centerPrice);
+
+          if(
+            centerY>=top &&
+            centerY<=bottom
+          ){
+            chartCtx.beginPath();
+
+            chartCtx.moveTo(
+              zoneX,
+              centerY
+            );
+
+            chartCtx.lineTo(
+              zoneX+zoneW,
+              centerY
+            );
+
+            chartCtx.strokeStyle=lineColor;
+            chartCtx.lineWidth=1;
+
+            chartCtx.stroke();
+          }
+
+          chartCtx.restore();
+        }
+      }
     }
 
     /*
@@ -4335,7 +4740,6 @@ function drawChart(){
 
   }
 
-  drawMarketOverlay(info, px, py, volumeTop);
 
 }
 
@@ -4876,13 +5280,7 @@ function drawMarketOverlay(info, px, py, volumeTop){
 
       chartCtx.beginPath();
 
-      chartCtx.arc(
-        x,
-        y,
-        radius,
-        0,
-        Math.PI*2
-      );
+
 
       chartCtx.fillStyle =
         t.side === "buy"
@@ -5211,13 +5609,7 @@ function drawMarketOverlay(info, px, py, volumeTop){
 
       chartCtx.beginPath();
 
-      chartCtx.arc(
-        selectedX,
-        y,
-        radius,
-        0,
-        Math.PI*2
-      );
+
 
       chartCtx.fillStyle =
         `rgba(255,145,35,${(
@@ -5752,6 +6144,97 @@ function mainPointerUp(e){
   }
 
 }
+
+
+/* =========================================================
+   LIGHT CHART CROSSHAIR
+   X = time
+   Y = price
+   Does not modify chart pan/zoom state.
+========================================================= */
+
+let chartCrosshair = {
+  active:false,
+  x:0,
+  y:0,
+  raf:0
+};
+
+function drawChartCrosshair(){
+  chartCrosshair.raf = 0;
+
+  if(!chartCrosshair.active){
+    requestChartDraw();
+    return;
+  }
+
+  const info = visibleChartInfo();
+  if(!info || !state.candles.length){
+    return;
+  }
+
+  requestChartDraw();
+}
+
+function updateChartCrosshair(e){
+  const r = chartCanvas.getBoundingClientRect();
+
+  const x =
+    Math.max(
+      0,
+      Math.min(
+        r.width,
+        e.clientX-r.left
+      )
+    );
+
+  const y =
+    Math.max(
+      0,
+      Math.min(
+        r.height,
+        e.clientY-r.top
+      )
+    );
+
+  chartCrosshair.active = true;
+  chartCrosshair.x = x;
+  chartCrosshair.y = y;
+
+  if(!chartCrosshair.raf){
+    chartCrosshair.raf =
+      requestAnimationFrame(
+        drawChartCrosshair
+      );
+  }
+}
+
+function hideChartCrosshair(){
+  chartCrosshair.active = false;
+
+  if(!chartCrosshair.raf){
+    chartCrosshair.raf =
+      requestAnimationFrame(
+        drawChartCrosshair
+      );
+  }
+}
+
+chartCanvas.addEventListener(
+  "pointermove",
+  updateChartCrosshair,
+  {
+    passive:true
+  }
+);
+
+chartCanvas.addEventListener(
+  "pointerleave",
+  hideChartCrosshair,
+  {
+    passive:true
+  }
+);
 
 chartCanvas.addEventListener(
   "pointerdown",
@@ -6307,6 +6790,21 @@ async function restoreAnalysisEvents(){
     state.analysisEvents = [];
   }
 
+  state.analysisEvents =
+    state.analysisEvents.map(
+      event => ({
+        ...event,
+        style:
+          String(
+            event.style ||
+            analysisStyleForEvent(
+              event.type,
+              event.subtype
+            )
+          )
+      })
+    );
+
   console.log(
     "ANALYSIS_EVENTS_RESTORED",
     state.analysisEvents.length
@@ -6314,10 +6812,64 @@ async function restoreAnalysisEvents(){
 
 }
 
+
+function analysisStyleForEvent(type, subtype){
+
+  const t =
+    String(type || "")
+      .trim()
+      .toUpperCase();
+
+  const st =
+    String(subtype || "")
+      .trim()
+      .toUpperCase();
+
+  if(
+    t === "PRICE_ACTION" ||
+    st.startsWith("OUTSIDE_") ||
+    st.includes("REJECTION") ||
+    st === "MOMENTUM"
+  ){
+    return "PRICE_ACTION";
+  }
+
+  if(
+    t === "STRUCTURE" ||
+    t === "SMART_MONEY" ||
+    st.startsWith("SWING_") ||
+    st.startsWith("BOS_") ||
+    st.includes("LIQUIDITY_SWEEP")
+  ){
+    return "SMART_MONEY";
+  }
+
+  if(
+    t === "ICT" ||
+    st.includes("FVG") ||
+    st === "DISPLACEMENT"
+  ){
+    return "ICT";
+  }
+
+  if(
+    t === "TRADE" ||
+    t === "ORDER_FLOW" ||
+    st === "LARGE_TRADE" ||
+    st === "EXTREME_DELTA" ||
+    st.includes("ABSORPTION")
+  ){
+    return "ORDER_FLOW";
+  }
+
+  return "OTHER";
+}
+
 function emitAnalysisEvent({
   candle,
   type,
   subtype="",
+  style="",
   direction="",
   price=0,
   priceHigh=0,
@@ -6389,6 +6941,15 @@ function emitAnalysisEvent({
       ),
 
     type,
+
+    style:
+      String(
+        style ||
+        analysisStyleForEvent(
+          type,
+          subtype
+        )
+      ),
 
     subtype,
 
@@ -7904,6 +8465,314 @@ function drawAbsorptionTab(){
 
 }
 
+
+function activeAnalysisStyle(){
+
+  const tab =
+    document.querySelector(
+      ".style-tab.active"
+    );
+
+  if(!tab){
+    return "PRICE_ACTION";
+  }
+
+  return String(
+    tab.dataset.style ||
+    "PRICE_ACTION"
+  )
+    .trim()
+    .toUpperCase();
+
+}
+
+function analysisEventsForActiveStyle(){
+
+  const style =
+    activeAnalysisStyle();
+
+  if(
+    !Array.isArray(
+      state.analysisEvents
+    )
+  ){
+    return [];
+  }
+
+  return state.analysisEvents.filter(
+    event => {
+
+      const eventStyle =
+        String(
+          event.style ||
+          analysisStyleForEvent(
+            event.type,
+            event.subtype
+          ) ||
+          ""
+        )
+        .trim()
+        .toUpperCase();
+
+      return eventStyle === style;
+
+    }
+  );
+
+}
+
+function drawStyleAnalysisPanel(){
+
+  const style =
+    activeAnalysisStyle();
+
+  const candle =
+    state.candles[
+      state.selectedIndex
+    ];
+
+  const {w,h} =
+    resizeCanvas(
+      fpCanvas,
+      fpCtx
+    );
+
+  fpCtx.clearRect(
+    0,
+    0,
+    w,
+    h
+  );
+
+  fpCtx.fillStyle =
+    "#0b0f14";
+
+  fpCtx.fillRect(
+    0,
+    0,
+    w,
+    h
+  );
+
+  fpCtx.fillStyle =
+    "#d7e0ea";
+
+  fpCtx.font =
+    "bold 13px sans-serif";
+
+  fpCtx.fillText(
+    style.replaceAll(
+      "_",
+      " "
+    ) +
+    " · HISTORICAL ANALYSIS",
+    14,
+    24
+  );
+
+  if(!candle){
+
+    fpCtx.fillStyle =
+      "#7f8b98";
+
+    fpCtx.font =
+      "12px sans-serif";
+
+    fpCtx.fillText(
+      "Select a candle to inspect analysis.",
+      14,
+      52
+    );
+
+    return;
+
+  }
+
+  const events =
+    analysisEventsForActiveStyle()
+      .filter(
+        event =>
+          Number(
+            event.candleTime
+          ) === Number(
+            candle.time
+          )
+      )
+      .sort(
+        (a,b) =>
+          Number(
+            b.score || 0
+          ) -
+          Number(
+            a.score || 0
+          )
+      );
+
+  if(!events.length){
+
+    fpCtx.fillStyle =
+      "#7f8b98";
+
+    fpCtx.font =
+      "12px sans-serif";
+
+    fpCtx.fillText(
+      "No events for this style on this candle.",
+      14,
+      52
+    );
+
+    return;
+
+  }
+
+  let y = 52;
+
+  for(
+    const event of events
+  ){
+
+    const direction =
+      String(
+        event.direction || ""
+      )
+      .toUpperCase();
+
+    const bullish =
+      direction === "BULLISH" ||
+      direction === "BUY";
+
+    const bearish =
+      direction === "BEARISH" ||
+      direction === "SELL";
+
+    fpCtx.fillStyle =
+      bullish
+        ? "#55d68a"
+        : bearish
+          ? "#ff6b6b"
+          : "#8ab4ff";
+
+    fpCtx.font =
+      "bold 12px sans-serif";
+
+    fpCtx.fillText(
+      String(
+        event.subtype ||
+        event.type ||
+        "EVENT"
+      ).replaceAll(
+        "_",
+        " "
+      ),
+      14,
+      y
+    );
+
+    y += 18;
+
+    fpCtx.fillStyle =
+      "#aeb9c5";
+
+    fpCtx.font =
+      "11px sans-serif";
+
+    const explanation =
+      String(
+        event.explanation || ""
+      );
+
+    const lines =
+      explanation.match(
+        /.{1,72}(?:\s|$)/g
+      ) ||
+      [explanation];
+
+    for(
+      const line of lines.slice(0,4)
+    ){
+
+      fpCtx.fillText(
+        line.trim(),
+        14,
+        y
+      );
+
+      y += 15;
+
+    }
+
+    fpCtx.fillStyle =
+      "#778494";
+
+    fpCtx.fillText(
+      "Score: " +
+      Number(
+        event.score || 0
+      ).toFixed(0),
+      14,
+      y
+    );
+
+    y += 24;
+
+    if(
+      y >
+      h - 20
+    ){
+      break;
+    }
+
+  }
+
+}
+
+
+function redrawLowerPanelFromInteraction(){
+
+  if(state.activeView === "STYLE"){
+    drawStyleAnalysisPanel();
+    return;
+  }
+
+  drawActiveLowerPanel();
+}
+
+function drawActiveLowerPanel(){
+
+  if(state.activeView === "STYLE"){
+
+    drawStyleAnalysisPanel();
+    return;
+
+  }
+
+  const active =
+    document.querySelector(
+      ".tab.active"
+    );
+
+  if(!active){
+
+    drawFootprint();
+    return;
+
+  }
+
+  const tab =
+    active.textContent.trim();
+
+  if(tab === "Footprint"){
+
+    drawFootprint();
+    return;
+
+  }
+
+  drawActiveMarketTab();
+
+}
+
 function drawActiveMarketTab(){
 
   const active =
@@ -9283,7 +10152,7 @@ function fpPointerMove(e){
         state.fpGesture.startY
       );
 
-    drawFootprint();
+    redrawLowerPanelFromInteraction();
 
     return;
 
@@ -9388,7 +10257,7 @@ function fpPointerMove(e){
       newBaseY-
       canvasH/2;
 
-    drawFootprint();
+    redrawLowerPanelFromInteraction();
 
   }
 
@@ -9531,7 +10400,7 @@ fpCanvas.addEventListener(
     state.fpOffsetY =
       newCy-r.height/2;
 
-    drawFootprint();
+    redrawLowerPanelFromInteraction();
 
   },
   {
@@ -9557,7 +10426,7 @@ $("fpReset")
       state.fpOffsetY =
         0;
 
-      drawFootprint();
+      redrawLowerPanelFromInteraction();
 
     }
   );
@@ -10343,6 +11212,65 @@ $("interval")
    TABS
 ========================================================= */
 
+
+document
+  .querySelectorAll(
+    ".style-tab"
+  )
+  .forEach(
+    tab => {
+
+      tab.addEventListener(
+        "click",
+        () => {
+
+          document
+            .querySelectorAll(
+              ".style-tab"
+            )
+            .forEach(
+              x =>
+                x.classList.remove(
+                  "active"
+                )
+            );
+
+          tab.classList.add(
+            "active"
+          );
+
+          document
+            .querySelectorAll(
+              ".tab"
+            )
+            .forEach(
+              x =>
+                x.classList.remove(
+                  "active"
+                )
+            );
+
+          state.activeView =
+            "STYLE";
+
+          state.activeStyle =
+            String(
+              tab.dataset.style ||
+              "PRICE_ACTION"
+            )
+            .trim()
+            .toUpperCase();
+
+          drawChart();
+
+          drawActiveLowerPanel();
+
+        }
+      );
+
+    }
+  );
+
 document
   .querySelectorAll(
     ".tab"
@@ -10369,6 +11297,20 @@ document
             "active"
           );
 
+          document
+            .querySelectorAll(
+              ".style-tab"
+            )
+            .forEach(
+              x =>
+                x.classList.remove(
+                  "active"
+                )
+            );
+
+          state.activeView =
+            "MARKET";
+
           state.activeTab =
             tab.textContent.trim();
 
@@ -10389,9 +11331,9 @@ document
             state.activeTab ===
             "Footprint"
           ){
-            drawFootprint();
+            drawActiveLowerPanel();
           }else{
-            drawActiveMarketTab();
+            drawActiveLowerPanel();
           }
 
         }
@@ -10517,7 +11459,7 @@ async function exitLandscape(){
 
       drawChart();
 
-      drawFootprint();
+      drawActiveLowerPanel();
 
     },
     100
@@ -10596,7 +11538,7 @@ window.addEventListener(
 
     requestChartDraw();
 
-    drawFootprint();
+    drawActiveLowerPanel();
 
   }
 );
@@ -10610,7 +11552,7 @@ window.addEventListener(
 
         drawChart();
 
-        drawFootprint();
+        drawActiveLowerPanel();
 
       },
       250
@@ -10679,7 +11621,7 @@ async function boot(){
 
       drawChart();
 
-      drawFootprint();
+      drawActiveLowerPanel();
 
     }
   );
