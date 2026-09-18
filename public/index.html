@@ -3164,6 +3164,92 @@ function drawChart(){
 
   }
 
+  /* ABSORPTION PRICE ZONES · HISTORICAL */
+  const absorptionHistory =
+    Array.isArray(state.absorptionHistory)
+      ? state.absorptionHistory
+      : [];
+
+  const absorptionEvents =
+    absorptionHistory.length
+      ? absorptionHistory
+      : (
+          state.absorption
+            ? [state.absorption]
+            : []
+        );
+
+  absorptionEvents.forEach(absorption=>{
+
+    if(
+      !absorption ||
+      !Number(absorption.candleTime) ||
+      !state.candles.some(
+        c=>Number(c.time)===Number(absorption.candleTime)
+      )
+    ) return;
+    const absorptionCandleIndex=state.candles.findIndex(
+      c=>Number(c.time)===Number(absorption.candleTime)
+    );
+
+    const zoneCandle=state.candles[absorptionCandleIndex];
+    const zoneX=px(absorptionCandleIndex);
+
+    if(
+      zoneCandle &&
+      zoneX>=info.left-info.step &&
+      zoneX<=info.right+info.step
+    ){
+      const zoneLow=Number(absorption.priceLow);
+      const zoneHigh=Number(absorption.priceHigh);
+
+      if(
+        Number.isFinite(zoneLow) &&
+        Number.isFinite(zoneHigh) &&
+        zoneHigh>zoneLow
+      ){
+        const zoneTop=py(zoneHigh);
+        const zoneBottom=py(zoneLow);
+        const zoneW=Math.max(
+          10,
+          Math.min(28,info.step*.82)
+        );
+
+        const buyZone=
+          String(absorption.type||"")
+            .toUpperCase()==="BUY_ABSORPTION";
+
+        chartCtx.save();
+
+        chartCtx.fillStyle=buyZone
+          ? "rgba(53,217,142,.20)"
+          : "rgba(239,104,117,.20)";
+
+        chartCtx.fillRect(
+          zoneX-zoneW/2,
+          zoneTop,
+          zoneW,
+          Math.max(2,zoneBottom-zoneTop)
+        );
+
+        chartCtx.strokeStyle=buyZone
+          ? "rgba(53,217,142,.85)"
+          : "rgba(239,104,117,.85)";
+
+        chartCtx.lineWidth=1.5;
+
+        chartCtx.strokeRect(
+          zoneX-zoneW/2+.5,
+          zoneTop+.5,
+          Math.max(1,zoneW-1),
+          Math.max(1,zoneBottom-zoneTop-1)
+        );
+
+        chartCtx.restore();
+      }
+    }
+    });
+
   /*
     CANDLES
   */
@@ -8431,40 +8517,146 @@ function drawDeltaCvdTab(){
 }
 
 function drawAbsorptionTab(){
+  const {w,h}=resizeCanvas(fpCanvas,fpCtx);
+  fpCtx.clearRect(0,0,w,h);
+  marketTabTitle("ABSORPTION");
 
-  const {w,h} =
-    resizeCanvas(
-      fpCanvas,
-      fpCtx
+  const selectedTime =
+    Number(
+      state.candles?.[
+        Number.isFinite(Number(state.selectedIndex))
+          ? Number(state.selectedIndex)
+          : -1
+      ]?.time
     );
 
-  fpCtx.clearRect(
-    0,0,w,h
+  const history =
+    Array.isArray(state.absorptionHistory)
+      ? state.absorptionHistory
+      : [];
+
+  let a =
+    Number.isFinite(selectedTime)
+      ? history.find(
+          x=>Number(x?.candleTime)===selectedTime
+        )
+      : null;
+
+  if(!a){
+    a=state.absorption;
+  }
+
+  if(!a || !a.priceLow || !a.priceHigh){
+    fpCtx.fillStyle="#71818b";
+    fpCtx.font="12px Tahoma";
+    fpCtx.fillText(
+      "برای این کندل زون جذب معتبر پیدا نشد.",
+      18,
+      58
+    );
+    return;
+  }
+
+  const low=Number(a.priceLow);
+  const high=Number(a.priceHigh);
+  const center=Number(
+    a.centerPrice || ((low+high)/2)
   );
 
-  marketTabTitle(
-    "ABSORPTION"
+  const top=58;
+  const bottom=h-28;
+  const zoneH=Math.max(
+    28,
+    Math.min(90,(bottom-top)*0.28)
   );
-
-  const a =
-    state.absorption;
-
-  fpCtx.font =
-    "12px Tahoma";
+  const zoneY=top+(bottom-top-zoneH)/2;
 
   fpCtx.fillStyle =
-    "#d7e2e8";
+    a.type==="BUY_ABSORPTION"
+      ? "rgba(40,190,120,.20)"
+      : "rgba(235,85,85,.20)";
 
-  fpCtx.fillText(
-    a
-      ? JSON.stringify(a)
-      : "داده جذب از Bybit موجود نیست.",
+  fpCtx.fillRect(
     18,
-    58
+    zoneY,
+    w-36,
+    zoneH
   );
 
-}
+  fpCtx.strokeStyle =
+    a.type==="BUY_ABSORPTION"
+      ? "rgba(40,190,120,.75)"
+      : "rgba(235,85,85,.75)";
 
+  fpCtx.lineWidth=1.5;
+
+  fpCtx.strokeRect(
+    18.5,
+    zoneY+.5,
+    w-37,
+    zoneH-1
+  );
+
+  fpCtx.fillStyle="#d7e2e8";
+  fpCtx.font="bold 12px Tahoma";
+
+  fpCtx.fillText(
+    a.type==="BUY_ABSORPTION"
+      ? "BUY ABSORPTION ZONE"
+      : "SELL ABSORPTION ZONE",
+    28,
+    zoneY+20
+  );
+
+  fpCtx.font="11px Tahoma";
+  fpCtx.fillStyle="#aebbc5";
+
+  fpCtx.fillText(
+    "LOW  "+formatMarketNumber(low),
+    28,
+    zoneY+42
+  );
+
+  fpCtx.fillText(
+    "HIGH "+formatMarketNumber(high),
+    28,
+    zoneY+59
+  );
+
+  fpCtx.fillText(
+    "CENTER "+formatMarketNumber(center),
+    28,
+    zoneY+76
+  );
+
+  fpCtx.textAlign="right";
+
+  fpCtx.fillText(
+    "SCORE "+String(
+      Math.round(Number(a.score)||0)
+    ),
+    w-28,
+    zoneY+20
+  );
+
+  fpCtx.fillText(
+    "VOL "+formatMarketNumber(
+      Number(a.volume)||0
+    ),
+    w-28,
+    zoneY+42
+  );
+
+  fpCtx.fillText(
+    "DELTA "+formatMarketNumber(
+      Number(a.delta)||0
+    ),
+    w-28,
+    zoneY+59
+  );
+
+  fpCtx.textAlign="left";
+}
 
 function activeAnalysisStyle(){
 
@@ -11017,6 +11209,11 @@ async function loadMarket(
 
     state.absorption =
       data.absorption;
+
+    state.absorptionHistory =
+      Array.isArray(data.absorptionHistory)
+        ? data.absorptionHistory
+        : [];
 
     /*
       Restore selected candle

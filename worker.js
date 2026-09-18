@@ -1034,121 +1034,427 @@ function orderbookStats(data) {
 function detectAbsorption(
   trades,
   candles,
-  book
+  book,
+  targetCandle=null
 ) {
-  if (!candles.length) {
+  if (
+    !Array.isArray(candles) ||
+    !candles.length ||
+    !Array.isArray(trades) ||
+    !trades.length
+  ) {
     return {
       detected: false,
       type: "NONE",
-      score: 0
+      score: 0,
+      priceLow: null,
+      priceHigh: null,
+      centerPrice: null,
+      volume: 0,
+      delta: 0,
+      buyVolume: 0,
+      sellVolume: 0,
+      levels: []
     };
   }
 
   const candle =
-    candles[
-      candles.length - 1
-    ];
+    targetCandle || candles[candles.length - 1];
 
-  const stats =
-    tradeStats(trades);
+  const candleRange =
+    Number(candle.high) -
+    Number(candle.low);
 
-  const range =
-    candle.high -
-    candle.low;
+  if (!(candleRange > 0)) {
+    return {
+      detected: false,
+      type: "NONE",
+      score: 0,
+      priceLow: null,
+      priceHigh: null,
+      centerPrice: null,
+      volume: 0,
+      delta: 0,
+      buyVolume: 0,
+      sellVolume: 0,
+      levels: []
+    };
+  }
 
-  const body =
-    Math.abs(
-      candle.close -
-      candle.open
+  /*
+    Build real price zones from trades inside
+    the current candle.
+
+    We deliberately use the observed trade prices
+    instead of inventing arbitrary chart levels.
+  */
+  const validTrades =
+    trades
+      .map(t => ({
+        price: Number(t.price) || 0,
+        size: Number(t.size) || 0,
+        value: Number(t.value) || 0,
+        side: String(t.side || "").toLowerCase()
+      }))
+      .filter(t =>
+        t.price > 0 &&
+        t.size > 0 &&
+        t.price >= Number(candle.low) &&
+        t.price <= Number(candle.high)
+      );
+
+  if (!validTrades.length) {
+    return {
+      detected: false,
+      type: "NONE",
+      score: 0,
+      priceLow: null,
+      priceHigh: null,
+      centerPrice: null,
+      volume: 0,
+      delta: 0,
+      buyVolume: 0,
+      sellVolume: 0,
+      levels: []
+    };
+  }
+
+  /*
+    Adaptive price bucket.
+
+    The bucket is based on the candle range so that
+    BTC and small-price contracts both produce usable
+    zones without assuming a universal tick size.
+  */
+  const rawStep =
+    candleRange / 32;
+
+  const step =
+    rawStep > 0
+      ? rawStep
+      : Math.max(Number(candle.low) * 0.00001, 0.00000001);
+
+  const levels = new Map();
+
+  for (const t of validTrades) {
+    const index =
+      Math.floor(
+        (t.price - Number(candle.low)) / step
+      );
+
+    const key = index;
+
+    if (!levels.has(key)) {
+      const low =
+        Number(candle.low) +
+        index * step;
+
+      levels.set(key, {
+        priceLow: low,
+        priceHigh: low + step,
+        buyVolume: 0,
+        sellVolume: 0,
+        volume: 0,
+        delta: 0,
+        trades: 0
+      });
+    }
+
+    const level = levels.get(key);
+
+    level.volume += t.size;
+    level.trades += 1;
+
+    if (
+      t.side === "buy" ||
+      t.side === "Buy".toLowerCase()
+    ) {
+      level.buyVolume += t.size;
+      level.delta += t.size;
+    } else {
+      level.sellVolume += t.size;
+      level.delta -= t.size;
+    }
+  }
+
+  const rows =
+    [...levels.values()]
+      .filter(x => x.volume > 0)
+      .sort(
+        (a,b) =>
+          b.volume - a.volume
+      );
+
+  if (!rows.length) {
+    return {
+      detected: false,
+      type: "NONE",
+      score: 0,
+      priceLow: null,
+      priceHigh: null,
+      centerPrice: null,
+      volume: 0,
+      delta: 0,
+      buyVolume: 0,
+      sellVolume: 0,
+      levels: []
+    };
+  }
+
+  const totalVolume =
+    rows.reduce(
+      (sum,x) => sum + x.volume,
+      0
     );
 
-  const bodyRatio =
-    range > 0
-      ? body / range
-      : 1;
+  const totalBuy =
+    rows.reduce(
+      (sum,x) => sum + x.buyVolume,
+      0
+    );
 
-  let score = 0;
+  const totalSell =
+    rows.reduce(
+      (sum,x) => sum + x.sellVolume,
+      0
+    );
+
+  const totalDelta =
+    totalBuy - totalSell;
+
+  const maxLevelVolume =
+    Math.max(
+      ...rows.map(x => x.volume),
+      1
+    );
+
+  /*
+    Absorption candidate:
+    unusually large volume at a price area +
+    strong one-sided aggression +
+    price closing away from continuation.
+  */
+  const candidates =
+    rows
+      .map(level => {
+        const volumeRatio =
+          level.volume /
+          Math.max(maxLevelVolume, 1);
+
+        const imbalance =
+          level.volume > 0
+            ? Math.abs(level.delta) /
+              level.volume
+            : 0;
+
+        const location =
+          (
+            (
+              (level.priceLow + level.priceHigh) / 2
+            ) -
+            Number(candle.low)
+          ) /
+          candleRange;
+
+        let score = 0;
+
+        if (volumeRatio >= 0.55) {
+          score += 25;
+        }
+
+        if (volumeRatio >= 0.75) {
+          score += 15;
+        }
+
+        if (imbalance >= 0.55) {
+          score += 20;
+        }
+
+        if (imbalance >= 0.70) {
+          score += 15;
+        }
+
+        /*
+          Sell aggression absorbed near the lower part
+          of the candle suggests buyers absorbing sells.
+        */
+        if (
+          level.delta < 0 &&
+          location <= 0.35
+        ) {
+          score += 20;
+        }
+
+        /*
+          Buy aggression absorbed near the upper part
+          of the candle suggests sellers absorbing buys.
+        */
+        if (
+          level.delta > 0 &&
+          location >= 0.65
+        ) {
+          score += 20;
+        }
+
+        return {
+          ...level,
+          volumeRatio,
+          imbalance,
+          location,
+          score
+        };
+      })
+      .sort(
+        (a,b) =>
+          b.score - a.score
+      );
+
+  const best =
+    candidates[0];
+
+  if (!best || best.score < 50) {
+    return {
+      detected: false,
+      type: "NONE",
+      score: best?.score || 0,
+      priceLow: best?.priceLow ?? null,
+      priceHigh: best?.priceHigh ?? null,
+      centerPrice:
+        best
+          ? (best.priceLow + best.priceHigh) / 2
+          : null,
+      volume: best?.volume || 0,
+      delta: best?.delta || 0,
+      buyVolume: best?.buyVolume || 0,
+      sellVolume: best?.sellVolume || 0,
+      levels: candidates.slice(0, 12)
+    };
+  }
+
   let type = "NONE";
 
   if (
-    stats.pressure ===
-      "SELL_PRESSURE" &&
-    range > 0
+    best.delta < 0 &&
+    best.location <= 0.35
   ) {
-    const nearLow =
-      (
-        candle.close -
-        candle.low
-      ) / range;
-
-    if (
-      nearLow <= 0.25
-    ) {
-      score += 35;
-      type =
-        "BUY_ABSORPTION";
-    }
+    type = "BUY_ABSORPTION";
+  } else if (
+    best.delta > 0 &&
+    best.location >= 0.65
+  ) {
+    type = "SELL_ABSORPTION";
   }
 
+  /*
+    Optional order-book confirmation.
+    It can increase confidence but cannot create
+    an absorption zone by itself.
+  */
   if (
-    stats.pressure ===
-      "BUY_PRESSURE" &&
-    range > 0
+    book &&
+    type === "BUY_ABSORPTION" &&
+    book.pressure === "BUY_PRESSURE"
   ) {
-    const nearHigh =
-      (
-        candle.high -
-        candle.close
-      ) / range;
-
-    if (
-      nearHigh <= 0.25
-    ) {
-      score += 35;
-      type =
-        "SELL_ABSORPTION";
-    }
-  }
-
-  if (
-    bodyRatio < 0.35
-  ) {
-    score += 20;
+    best.score += 10;
   }
 
   if (
     book &&
-    type ===
-      "BUY_ABSORPTION" &&
-    book.pressure ===
-      "BUY_PRESSURE"
+    type === "SELL_ABSORPTION" &&
+    book.pressure === "SELL_PRESSURE"
   ) {
-    score += 20;
-  }
-
-  if (
-    book &&
-    type ===
-      "SELL_ABSORPTION" &&
-    book.pressure ===
-      "SELL_PRESSURE"
-  ) {
-    score += 20;
+    best.score += 10;
   }
 
   return {
-    detected:
-      score >= 50,
-
+    detected: type !== "NONE",
     type,
-
-    score,
-
-    bodyRatio,
-
-    pressure:
-      stats.pressure
+    score: Math.min(100, best.score),
+    priceLow: best.priceLow,
+    priceHigh: best.priceHigh,
+    centerPrice:
+      (best.priceLow + best.priceHigh) / 2,
+    volume: best.volume,
+    delta: best.delta,
+    buyVolume: best.buyVolume,
+    sellVolume: best.sellVolume,
+    volumeRatio: best.volumeRatio,
+    imbalance: best.imbalance,
+    candleTime: candle.time,
+    levels: candidates.slice(0, 12)
   };
+}
+
+/* =========================================================
+   HISTORICAL ABSORPTION
+========================================================= */
+function intervalToMs(interval){
+  const n=Number(interval);
+
+  if(Number.isFinite(n) && n>0){
+    return n*60*1000;
+  }
+
+  const v=String(interval||"").toUpperCase();
+
+  if(v==="D") return 24*60*60*1000;
+  if(v==="W") return 7*24*60*60*1000;
+  if(v==="M") return 30*24*60*60*1000;
+
+  return 5*60*1000;
+}
+
+function detectAbsorptionHistory(trades,candles,interval){
+  if(
+    !Array.isArray(candles) ||
+    !candles.length ||
+    !Array.isArray(trades) ||
+    !trades.length
+  ){
+    return [];
+  }
+
+  const tfMs=intervalToMs(interval);
+  const byCandle=new Map();
+
+  for(const t of trades){
+    const time=Number(t.time);
+    if(!Number.isFinite(time)) continue;
+
+    const candleTime=Math.floor(time/tfMs)*tfMs;
+
+    if(!byCandle.has(candleTime)){
+      byCandle.set(candleTime,[]);
+    }
+
+    byCandle.get(candleTime).push(t);
+  }
+
+  const results=[];
+
+  for(const candle of candles){
+    const candleTime=Number(candle.time);
+    if(!Number.isFinite(candleTime)) continue;
+
+    const candleTrades=byCandle.get(candleTime);
+    if(!candleTrades?.length) continue;
+
+    const result=detectAbsorption(
+      candleTrades,
+      [candle],
+      null,
+      candle
+    );
+
+    if(result?.detected){
+      results.push({
+        ...result,
+        candleTime:candle.time
+      });
+    }
+  }
+
+  return results;
 }
 
 /* =========================================================
@@ -2019,6 +2325,13 @@ async function getMarket(
       orderbook
     );
 
+  const absorptionHistory =
+    detectAbsorptionHistory(
+      trades,
+      candles,
+      interval
+    );
+
   return {
     version:
       VERSION,
@@ -2040,6 +2353,7 @@ async function getMarket(
     orderbook,
 
     absorption,
+    absorptionHistory,
 
     instrument: {
       tickSize,
@@ -5602,7 +5916,10 @@ export default {
             market.stats,
 
           absorption:
-            market.absorption
+            market.absorption,
+
+          absorptionHistory:
+            market.absorptionHistory
         });
       }
 
