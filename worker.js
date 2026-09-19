@@ -2704,7 +2704,7 @@ async function getMarket(symbol, interval, env) {
 function collectorId(env) {
   if (
     !env ||
-    !env.TRADE_COLLECTOR_V5
+    !env.TRADE_COLLECTOR
   ) {
     throw new Error(
       "TRADE_COLLECTOR_V5 binding پیدا نشد"
