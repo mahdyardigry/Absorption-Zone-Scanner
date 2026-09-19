@@ -1404,6 +1404,326 @@ function intervalToMs(interval){
   return 5*60*1000;
 }
 
+function detectStoredLevelAbsorption(
+  levels,
+  candle
+) {
+  if (
+    !Array.isArray(levels) ||
+    !levels.length ||
+    !candle
+  ) {
+    return null;
+  }
+
+  const low = Number(candle.low);
+  const high = Number(candle.high);
+  const range = high - low;
+
+  if (
+    !Number.isFinite(low) ||
+    !Number.isFinite(high) ||
+    !Number.isFinite(range) ||
+    range <= 0
+  ) {
+    return null;
+  }
+
+  let totalBuy = 0;
+  let totalSell = 0;
+
+  for (const level of levels) {
+    totalBuy += Number(level.buyVolume) || 0;
+    totalSell += Number(level.sellVolume) || 0;
+  }
+
+  const totalVolume = totalBuy + totalSell;
+
+  if (totalVolume <= 0) {
+    return null;
+  }
+
+  let best = null;
+
+  for (const level of levels) {
+    const price = Number(level.price);
+    const buyVolume =
+      Number(level.buyVolume) || 0;
+    const sellVolume =
+      Number(level.sellVolume) || 0;
+    const volume =
+      buyVolume + sellVolume;
+
+    if (
+      !Number.isFinite(price) ||
+      volume <= 0
+    ) {
+      continue;
+    }
+
+    const delta =
+      buyVolume - sellVolume;
+
+    const volumeRatio =
+      volume / totalVolume;
+
+    const imbalance =
+      Math.abs(delta) / volume;
+
+    const location =
+      Math.max(
+        0,
+        Math.min(
+          1,
+          (price - low) / range
+        )
+      );
+
+    let score = 0;
+
+    if (volumeRatio >= 0.55) score += 25;
+    if (volumeRatio >= 0.75) score += 15;
+    if (imbalance >= 0.55) score += 20;
+    if (imbalance >= 0.70) score += 15;
+
+    if (
+      delta < 0 &&
+      location <= 0.35
+    ) {
+      score += 20;
+    }
+
+    if (
+      delta > 0 &&
+      location >= 0.65
+    ) {
+      score += 20;
+    }
+
+    if (
+      !best ||
+      score > best.score
+    ) {
+      best = {
+        score,
+        price,
+        volume,
+        delta,
+        buyVolume,
+        sellVolume,
+        volumeRatio,
+        imbalance,
+        location
+      };
+    }
+  }
+
+  if (!best || best.score < 50) {
+    return null;
+  }
+
+  const type =
+    best.delta < 0 &&
+    best.location <= 0.35
+      ? "BUY_ABSORPTION"
+      : best.delta > 0 &&
+        best.location >= 0.65
+        ? "SELL_ABSORPTION"
+        : null;
+
+  if (!type) {
+    return null;
+  }
+
+  return {
+    detected: true,
+    type,
+    score: best.score,
+    priceLow: low,
+    priceHigh: high,
+    centerPrice: best.price,
+    volume: best.volume,
+    delta: best.delta,
+    buyVolume: best.buyVolume,
+    sellVolume: best.sellVolume,
+    volumeRatio: best.volumeRatio,
+    imbalance: best.imbalance,
+    location: best.location,
+    levels
+  };
+}
+
+async function getHistoricalAbsorptionFromStorage(
+  env,
+  symbol,
+  candles
+) {
+  if (
+    !env ||
+    !Array.isArray(candles) ||
+    !candles.length
+  ) {
+    return [];
+  }
+
+  const fiveMinuteCandles =
+    candles.filter(candle =>
+      Number.isFinite(Number(candle?.time))
+    );
+
+  if (!fiveMinuteCandles.length) {
+    return [];
+  }
+
+  const from =
+    Number(fiveMinuteCandles[0].time);
+
+  const to =
+    Number(
+      fiveMinuteCandles[
+        fiveMinuteCandles.length - 1
+      ].time
+    ) + 4 * 60000;
+
+  const stub =
+    collectorStub(env);
+
+  const response =
+    await stub.fetch(
+      "https://internal/internal/history/footprints" +
+      "?symbol=" +
+      encodeURIComponent(symbol) +
+      "&from=" +
+      from +
+      "&to=" +
+      to
+    );
+
+  if (!response.ok) {
+    return [];
+  }
+
+  const data =
+    await response.json();
+
+  const stored =
+    Array.isArray(data?.candles)
+      ? data.candles
+      : [];
+
+  const byMinute =
+    new Map(
+      stored.map(candle => [
+        Number(candle.minute),
+        candle
+      ])
+    );
+
+  const results = [];
+
+  for (
+    const candle of fiveMinuteCandles
+  ) {
+    const candleTime =
+      Number(candle.time);
+
+    const levelMap =
+      new Map();
+
+    for (
+      let i = 0;
+      i < 5;
+      i++
+    ) {
+      const minute =
+        candleTime + i * 60000;
+
+      const storedCandle =
+        byMinute.get(minute);
+
+      if (
+        !storedCandle ||
+        !Array.isArray(
+          storedCandle.levels
+        )
+      ) {
+        continue;
+      }
+
+      for (
+        const level of storedCandle.levels
+      ) {
+        const price =
+          Number(level.price);
+
+        if (!Number.isFinite(price)) {
+          continue;
+        }
+
+        let aggregate =
+          levelMap.get(price);
+
+        if (!aggregate) {
+          aggregate = {
+            price,
+            buyVolume: 0,
+            sellVolume: 0,
+            buyValue: 0,
+            sellValue: 0,
+            buyTrades: 0,
+            sellTrades: 0
+          };
+
+          levelMap.set(
+            price,
+            aggregate
+          );
+        }
+
+        aggregate.buyVolume +=
+          Number(level.buyVolume) || 0;
+
+        aggregate.sellVolume +=
+          Number(level.sellVolume) || 0;
+
+        aggregate.buyValue +=
+          Number(level.buyValue) || 0;
+
+        aggregate.sellValue +=
+          Number(level.sellValue) || 0;
+
+        aggregate.buyTrades +=
+          Number(level.buyTrades) || 0;
+
+        aggregate.sellTrades +=
+          Number(level.sellTrades) || 0;
+      }
+    }
+
+    const levels =
+      [...levelMap.values()]
+        .sort(
+          (a, b) =>
+            a.price - b.price
+        );
+
+    const result =
+      detectStoredLevelAbsorption(
+        levels,
+        candle
+      );
+
+    if (result?.detected) {
+      results.push({
+        ...result,
+        candleTime
+      });
+    }
+  }
+
+  return results;
+}
+
 function detectAbsorptionHistory(trades,candles,interval){
   if(
     !Array.isArray(candles) ||
@@ -2191,10 +2511,7 @@ async function testVolume(
    ON-DEMAND MARKET DATA
 ========================================================= */
 
-async function getMarket(
-  symbol,
-  interval
-) {
+async function getMarket(symbol, interval, env) {
   symbol =
     normalizeSymbol(symbol);
 
@@ -2324,13 +2641,24 @@ async function getMarket(
       candles,
       orderbook
     );
+    let absorptionHistory =
+      detectAbsorptionHistory(
+        trades,
+        candles,
+        interval
+      );
 
-  const absorptionHistory =
-    detectAbsorptionHistory(
-      trades,
-      candles,
-      interval
-    );
+    if (
+      env &&
+      String(interval) === "5"
+    ) {
+      absorptionHistory =
+        await getHistoricalAbsorptionFromStorage(
+          env,
+          symbol,
+          candles
+        );
+    }
 
   return {
     version:
@@ -4702,10 +5030,102 @@ export class AbsorptionStorageV5 {
      FOOTPRINT HISTORY
 ======================================================= */
 
-  getFootprint(
-    symbol,
-    minute
-  ) {
+  getHistoricalFootprints(symbol, from, to) {
+    symbol = normalizeSymbol(symbol);
+    const start = Math.floor(Number(from) / 60000) * 60000;
+    const end = Math.floor(Number(to) / 60000) * 60000;
+
+    if (
+      !Number.isFinite(start) ||
+      !Number.isFinite(end) ||
+      end < start
+    ) {
+      return {
+        version: VERSION,
+        symbol,
+        from: start,
+        to: end,
+        candles: []
+      };
+    }
+
+    const hourFrom =
+      Math.floor(start / 3600000) * 3600000;
+    const hourTo =
+      Math.floor(end / 3600000) * 3600000;
+
+    const rows = this.sql.exec(
+      "SELECT data FROM hour_blocks_v5 WHERE symbol = ? AND hour_start >= ? AND hour_start <= ? ORDER BY hour_start ASC",
+      symbol,
+      hourFrom,
+      hourTo
+    ).toArray();
+
+    const candles = [];
+
+    for (const row of rows) {
+      let data;
+
+      try {
+        data = JSON.parse(row.data);
+      } catch {
+        continue;
+      }
+
+      const storedCandles =
+        Array.isArray(data?.candles)
+          ? data.candles
+          : [];
+
+      for (const candle of storedCandles) {
+        const minute = Number(candle?.time);
+
+        if (
+          !Number.isFinite(minute) ||
+          minute < start ||
+          minute > end
+        ) {
+          continue;
+        }
+
+        const levels =
+          Array.isArray(candle?.levels)
+            ? candle.levels
+                .map(level => ({
+                  price: Number(level.price),
+                  buyVolume: Number(level.buyVolume) || 0,
+                  sellVolume: Number(level.sellVolume) || 0,
+                  buyValue: Number(level.buyValue) || 0,
+                  sellValue: Number(level.sellValue) || 0,
+                  buyTrades: Number(level.buyTrades) || 0,
+                  sellTrades: Number(level.sellTrades) || 0
+                }))
+                .filter(level =>
+                  Number.isFinite(level.price)
+                )
+            : [];
+
+        candles.push({
+          minute,
+          levels
+        });
+      }
+    }
+
+    candles.sort(
+      (a, b) => a.minute - b.minute
+    );
+
+    return {
+      version: VERSION,
+      symbol,
+      from: start,
+      to: end,
+      found: candles.length > 0,
+      candles
+    };
+  }
+$1
     this.initDB();
 
     symbol =
@@ -5259,7 +5679,33 @@ export class AbsorptionStorageV5 {
         );
       }
 
-      if (
+            if (
+        path ===
+        "/internal/history/footprints"
+      ) {
+        const symbol =
+          url.searchParams.get(
+            "symbol"
+          );
+        const from =
+          url.searchParams.get(
+            "from"
+          );
+        const to =
+          url.searchParams.get(
+            "to"
+          );
+
+        return json(
+          this.getHistoricalFootprints(
+            symbol,
+            from,
+            to
+          )
+        );
+      }
+
+if (
         path ===
         "/internal/history/footprint"
       ) {
@@ -5876,7 +6322,8 @@ export default {
         return json(
           await getMarket(
             symbol,
-            interval
+            interval,
+            env
           )
         );
       }
