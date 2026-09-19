@@ -5125,6 +5125,7 @@ export class AbsorptionStorageV5 {
       candles
     };
   }
+  getFootprint(symbol, minute) {
 
     symbol =
       normalizeSymbol(
