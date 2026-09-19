@@ -5125,8 +5125,6 @@ export class AbsorptionStorageV5 {
       candles
     };
   }
-$1
-    this.initDB();
 
     symbol =
       normalizeSymbol(
