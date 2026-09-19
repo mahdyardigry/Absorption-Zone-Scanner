@@ -2707,12 +2707,12 @@ function collectorId(env) {
     !env.TRADE_COLLECTOR
   ) {
     throw new Error(
-      "TRADE_COLLECTOR_V5 binding پیدا نشد"
+      "TRADE_COLLECTOR binding پیدا نشد"
     );
   }
 
   return env
-    .TRADE_COLLECTOR_V5
+    .TRADE_COLLECTOR
     .idFromName(
       "absorption-storage-v5-global"
     );
@@ -2720,7 +2720,7 @@ function collectorId(env) {
 
 function collectorStub(env) {
   return env
-    .TRADE_COLLECTOR_V5
+    .TRADE_COLLECTOR
     .get(
       collectorId(env)
     );
