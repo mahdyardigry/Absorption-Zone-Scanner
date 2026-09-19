@@ -5679,6 +5679,26 @@ export class AbsorptionStorageV5 {
       }
 
             if (
+  path ===
+  "/api/history/footprints"
+) {
+  const symbol =
+    url.searchParams.get("symbol");
+  const from =
+    url.searchParams.get("from");
+  const to =
+    url.searchParams.get("to");
+
+  return json(
+    await this.getHistoricalFootprints(
+      symbol,
+      from,
+      to
+    )
+  );
+}
+
+if (
         path ===
         "/internal/history/footprints"
       ) {
