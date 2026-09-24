@@ -22,3 +22,6 @@ storage = "sqlite"
 [exports.TradeCollector]
 type = "durable-object"
 storage = "sqlite"
+
+[observability]
+enabled = true
