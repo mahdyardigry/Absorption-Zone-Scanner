@@ -5612,14 +5612,14 @@ export class AbsorptionStorageV5 {
       return json({
         ok: false,
         error: "V6_4_4_UPLOAD_SECRET_NOT_CONFIGURED"
-      }, { status: 503 });
+      }, 503);
     }
 
     if (auth !== "Bearer " + secret) {
       return json({
         ok: false,
         error: "UNAUTHORIZED"
-      }, { status: 401 });
+      }, 401);
     }
 
     const text = await request.text();
@@ -5628,7 +5628,7 @@ export class AbsorptionStorageV5 {
       return json({
         ok: false,
         error: "BATCH_TOO_LARGE"
-      }, { status: 413 });
+      }, 413);
     }
 
     let body;
@@ -5639,7 +5639,7 @@ export class AbsorptionStorageV5 {
       return json({
         ok: false,
         error: "INVALID_JSON"
-      }, { status: 400 });
+      }, 400);
     }
 
     const id = String(body?.id || "");
@@ -5675,7 +5675,7 @@ export class AbsorptionStorageV5 {
       return json({
         ok: false,
         error: "INVALID_BATCH"
-      }, { status: 400 });
+      }, 400);
     }
 
     this.ensureV644DB();
