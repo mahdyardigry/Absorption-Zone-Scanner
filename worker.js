@@ -2941,6 +2941,14 @@ export class AbsorptionStorageV5 {
 
   getRowCount() {
     this.initDB();
+      if (
+        path === "/internal/v6_4_4/upload" &&
+        request.method === "POST"
+      ) {
+        return this.receiveV644Batch(request);
+      }
+
+
 
     if (
       this.tableExists !== true
@@ -5577,7 +5585,132 @@ export class AbsorptionStorageV5 {
     };
   }
 
-  /* =======================================================
+  
+  ensureV644DB() {
+    const sql = this.state.storage.sql;
+
+    sql.exec(`
+      CREATE TABLE IF NOT EXISTS v6_4_4_batches (
+        id TEXT PRIMARY KEY,
+        symbol TEXT NOT NULL,
+        kind TEXT NOT NULL,
+        first_ts INTEGER NOT NULL,
+        last_ts INTEGER NOT NULL,
+        message_count INTEGER NOT NULL,
+        encoding TEXT NOT NULL,
+        payload TEXT NOT NULL,
+        received_at INTEGER NOT NULL
+      )
+    `);
+
+    sql.exec(`
+      CREATE INDEX IF NOT EXISTS idx_v644_symbol_time
+      ON v6_4_4_batches(symbol, kind, first_ts, last_ts)
+    `);
+  }
+
+  async receiveV644Batch(request) {
+    const secret = String(this.env?.V6_4_4_UPLOAD_SECRET || "");
+    const auth = String(request.headers.get("Authorization") || "");
+
+    if (!secret) {
+      return json({
+        ok: false,
+        error: "V6_4_4_UPLOAD_SECRET_NOT_CONFIGURED"
+      }, { status: 503 });
+    }
+
+    if (auth !== "Bearer " + secret) {
+      return json({
+        ok: false,
+        error: "UNAUTHORIZED"
+      }, { status: 401 });
+    }
+
+    const text = await request.text();
+
+    if (text.length > 1000000) {
+      return json({
+        ok: false,
+        error: "BATCH_TOO_LARGE"
+      }, { status: 413 });
+    }
+
+    let body;
+
+    try {
+      body = JSON.parse(text);
+    } catch {
+      return json({
+        ok: false,
+        error: "INVALID_JSON"
+      }, { status: 400 });
+    }
+
+    const id = String(body?.id || "");
+    const symbol = normalizeSymbol(body?.symbol);
+    const kind = String(body?.kind || "");
+    const firstTs = safeNumber(body?.firstTs);
+    const lastTs = safeNumber(body?.lastTs);
+    const messageCount = Math.max(
+      0,
+      Math.floor(safeNumber(body?.messageCount))
+    );
+    const encoding = String(body?.encoding || "");
+    const payload = String(body?.payload || "");
+
+    const allowed = new Set([
+      "trades",
+      "orderbook",
+      "liquidation",
+      "ticker",
+      "kline_1m",
+      "kline_5m"
+    ]);
+
+    if (
+      !id ||
+      !symbol ||
+      !allowed.has(kind) ||
+      !firstTs ||
+      !lastTs ||
+      !payload ||
+      encoding !== "gzip+base64"
+    ) {
+      return json({
+        ok: false,
+        error: "INVALID_BATCH"
+      }, { status: 400 });
+    }
+
+    this.ensureV644DB();
+
+    this.state.storage.sql.exec(
+      `INSERT OR IGNORE INTO v6_4_4_batches
+       (id,symbol,kind,first_ts,last_ts,message_count,encoding,payload,received_at)
+       VALUES (?,?,?,?,?,?,?,?,?)`,
+      id,
+      symbol,
+      kind,
+      firstTs,
+      lastTs,
+      messageCount,
+      encoding,
+      payload,
+      Date.now()
+    );
+
+    return json({
+      ok: true,
+      stored: true,
+      id,
+      symbol,
+      kind,
+      messageCount
+    });
+  }
+
+/* =======================================================
      INTERNAL FETCH
 ======================================================= */
 
@@ -6269,6 +6402,33 @@ export default {
       /* ===================================================
          HISTORY
       =================================================== */
+
+      if (
+        url.pathname ===
+        "/api/v6_4_4/upload"
+      ) {
+        if (request.method !== "POST") {
+          return json({
+            ok: false,
+            error: "METHOD_NOT_ALLOWED"
+          }, { status: 405 });
+        }
+
+        const id =
+          env.ABSORPTION_STORAGE.idFromName(
+            "absorption-storage-v5-global"
+          );
+
+        const stub =
+          env.ABSORPTION_STORAGE.get(id);
+
+        return stub.fetch(
+          new Request(
+            "https://absorption-storage/internal/v6_4_4/upload",
+            request
+          )
+        );
+      }
 
       if (
         url.pathname ===
