@@ -5745,7 +5745,16 @@ export class AbsorptionStorageV5 {
         path === "/internal/v6_4_4/upload" &&
         request.method === "POST"
       ) {
-        return this.receiveV644Batch(request);
+        try {
+          return await this.receiveV644Batch(request);
+        } catch (e) {
+          return json({
+            ok: false,
+            error: "V6_4_4_RUNTIME_ERROR",
+            message: String(e),
+            stack: String(e?.stack || "")
+          }, { status: 500 });
+        }
       }
       this.initDB();
 
