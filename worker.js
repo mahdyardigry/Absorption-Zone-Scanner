@@ -5741,14 +5741,14 @@ export class AbsorptionStorageV5 {
         );
       }
 
-      this.initDB();
-
       if (
         path === "/internal/v6_4_4/upload" &&
         request.method === "POST"
       ) {
         return this.receiveV644Batch(request);
       }
+      this.initDB();
+
 
 
       if (
