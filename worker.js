@@ -2942,13 +2942,6 @@ export class AbsorptionStorageV5 {
   getRowCount() {
     this.initDB();
 
-      if (
-        path === "/internal/v6_4_4/upload" &&
-        request.method === "POST"
-      ) {
-        return this.receiveV644Batch(request);
-      }
-
 
 
     if (
